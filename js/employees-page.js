@@ -9,6 +9,8 @@ class EmployeesPageManager {
         this.filteredEmployees = [];
         this.departments = [];
         this.currentEmployee = null;
+        this.currentViewEmployee = null;
+        this.currentDeleteEmployee = null;
         
         // Don't auto-initialize - will be called manually
     }
@@ -296,14 +298,13 @@ class EmployeesPageManager {
         });
 
         document.getElementById('editFromViewBtn')?.addEventListener('click', () => {
-            const employeeName = document.getElementById('viewEmployeeName').textContent;
-            const names = employeeName.split(' ');
-            const employee = this.employees.find(emp => 
-                emp.firstName === names[0] && emp.lastName === names.slice(1).join(' ')
-            );
-            if (employee) {
-                this.closeViewModal();
-                this.openModal(employee);
+            const employeeId = this.currentViewEmployee?.id;
+            this.closeViewModal();
+            if (employeeId) {
+                const employee = this.employees.find(emp => emp.id === employeeId);
+                if (employee) {
+                    this.openModal(employee);
+                }
             }
         });
 
@@ -337,6 +338,36 @@ class EmployeesPageManager {
             if (e.target.classList.contains('modal-overlay')) {
                 this.closeDeleteModal();
             }
+        });
+    }
+
+    addActionButtonListeners() {
+        // Remove existing listeners to prevent duplicates
+        const existingButtons = document.querySelectorAll('.action-edit, .action-view, .action-delete');
+        existingButtons.forEach(button => {
+            button.removeEventListener('click', this.handleActionClick);
+        });
+
+        // Add event listeners for action buttons
+        document.querySelectorAll('.action-edit').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const employeeId = parseInt(e.currentTarget.dataset.employeeId);
+                this.editEmployee(employeeId);
+            });
+        });
+
+        document.querySelectorAll('.action-view').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const employeeId = parseInt(e.currentTarget.dataset.employeeId);
+                this.viewEmployee(employeeId);
+            });
+        });
+
+        document.querySelectorAll('.action-delete').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const employeeId = parseInt(e.currentTarget.dataset.employeeId);
+                this.deleteEmployee(employeeId);
+            });
         });
     }
 
@@ -417,19 +448,22 @@ class EmployeesPageManager {
                 </td>
                 <td>
                     <div class="action-buttons">
-                        <button class="btn btn-sm btn-outline" onclick="window.employeesPageManager.editEmployee(${employee.id})" title="Edit">
+                        <button class="btn btn-sm btn-outline action-edit" data-employee-id="${employee.id}" title="Edit Employee">
                             <span class="btn-icon">✏️</span>
                         </button>
-                        <button class="btn btn-sm btn-outline" onclick="window.employeesPageManager.viewEmployee(${employee.id})" title="View Details">
+                        <button class="btn btn-sm btn-outline action-view" data-employee-id="${employee.id}" title="View Details">
                             <span class="btn-icon">👁️</span>
                         </button>
-                        <button class="btn btn-sm btn-danger" onclick="window.employeesPageManager.deleteEmployee(${employee.id})" title="Delete">
+                        <button class="btn btn-sm btn-danger action-delete" data-employee-id="${employee.id}" title="Delete Employee">
                             <span class="btn-icon">🗑️</span>
                         </button>
                     </div>
                 </td>
             </tr>
         `).join('');
+
+        // Add event listeners for action buttons
+        this.addActionButtonListeners();
     }
 
     getStatusIcon(status) {
@@ -663,6 +697,8 @@ class EmployeesPageManager {
         const modal = document.getElementById('viewEmployeeModal');
         if (!modal) return;
         
+        this.currentViewEmployee = employee;
+        
         // Populate view modal data
         this.setElementText('viewEmployeeName', `${employee.firstName} ${employee.lastName}`);
         this.setElementText('viewEmployeeCode', employee.employeeCode);
@@ -694,6 +730,7 @@ class EmployeesPageManager {
         }
         
         modal.classList.remove('hidden');
+        modal.classList.add('active');
         document.body.style.overflow = 'hidden';
     }
 
@@ -701,28 +738,45 @@ class EmployeesPageManager {
         const modal = document.getElementById('deleteEmployeeModal');
         if (!modal) return;
 
+        this.currentDeleteEmployee = employee;
         this.setElementText('deleteEmployeeName', `${employee.firstName} ${employee.lastName}`);
         this.setElementValue('deleteEmployeeId', employee.id);
         
         modal.classList.remove('hidden');
+        modal.classList.add('active');
         document.body.style.overflow = 'hidden';
     }
 
     confirmDelete() {
         const employeeId = document.getElementById('deleteEmployeeId')?.value;
+        if (!employeeId) {
+            this.showError('Employee ID not found');
+            return;
+        }
+
         const employeeIndex = this.employees.findIndex(emp => emp.id == employeeId);
         
         if (employeeIndex !== -1) {
             const employee = this.employees[employeeIndex];
+            const employeeName = `${employee.firstName} ${employee.lastName}`;
+            
+            // Remove employee from array
             this.employees.splice(employeeIndex, 1);
+            
+            // Update departments list if this was the only employee in a department
+            this.departments = [...new Set(this.employees.map(emp => emp.department))];
             
             // Update filtered employees
             this.applyFilters();
             this.updateStats();
             this.renderTable();
+            this.populateFilters();
             
+            // Close modal and show success
             this.closeDeleteModal();
-            this.showSuccess(`Employee ${employee.firstName} ${employee.lastName} has been deleted successfully.`);
+            this.showSuccess(`${employeeName} has been successfully deleted from the system.`);
+        } else {
+            this.showError('Employee not found');
         }
     }
 
@@ -730,16 +784,20 @@ class EmployeesPageManager {
         const modal = document.getElementById('viewEmployeeModal');
         if (modal) {
             modal.classList.add('hidden');
+            modal.classList.remove('active');
             document.body.style.overflow = '';
         }
+        this.currentViewEmployee = null;
     }
 
     closeDeleteModal() {
         const modal = document.getElementById('deleteEmployeeModal');
         if (modal) {
             modal.classList.add('hidden');
+            modal.classList.remove('active');
             document.body.style.overflow = '';
         }
+        this.currentDeleteEmployee = null;
     }
 
     exportData() {
@@ -797,12 +855,16 @@ class EmployeesPageManager {
     // Utility functions
     setElementText(id, text) {
         const element = document.getElementById(id);
-        if (element) element.textContent = text;
+        if (element) {
+            element.textContent = text;
+        }
     }
 
     setElementValue(id, value) {
         const element = document.getElementById(id);
-        if (element) element.value = value;
+        if (element) {
+            element.value = value;
+        }
     }
 
     showSuccess(message) {

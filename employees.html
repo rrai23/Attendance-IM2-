@@ -838,6 +838,62 @@
             min-width: auto;
         }
 
+        /* Small button styles for table actions */
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            min-width: auto;
+            gap: 0.25rem;
+        }
+
+        .btn-sm .btn-icon {
+            font-size: 0.875rem;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            border-color: #ef4444;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            border-color: #dc2626;
+        }
+
+        /* Tooltip styles for action buttons */
+        .btn[title] {
+            position: relative;
+        }
+
+        .btn[title]:hover::after {
+            content: attr(title);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1f2937;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            z-index: 1000;
+            margin-bottom: 5px;
+        }
+
+        .btn[title]:hover::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 4px solid transparent;
+            border-top-color: #1f2937;
+            z-index: 1000;
+            margin-bottom: 1px;
+        }
+
         /* Employee Info in Table */
         .employee-info {
             display: flex;
@@ -1129,6 +1185,110 @@
 
         .btn-text.hidden {
             display: none;
+        }
+
+        /* Schedule item styling for view modal */
+        .schedule-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color, #e5e7eb);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .schedule-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Detail section styling */
+        .detail-section {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color, #e5e7eb);
+        }
+
+        .detail-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .detail-section h4 {
+            margin-bottom: 1rem;
+            color: var(--text-primary, #111827);
+            font-weight: 600;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .detail-label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary, #6b7280);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .detail-value {
+            font-size: 0.875rem;
+            color: var(--text-primary, #111827);
+            font-weight: 500;
+        }
+
+        /* Warning styles for delete modal */
+        .delete-confirmation {
+            text-align: center;
+            padding: 1.5rem 0;
+        }
+
+        .warning-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: #f59e0b;
+        }
+
+        .delete-confirmation h4 {
+            margin-bottom: 1rem;
+            color: var(--text-primary, #111827);
+        }
+
+        .delete-confirmation p {
+            margin-bottom: 1.5rem;
+            color: var(--text-secondary, #6b7280);
+        }
+
+        .warning-note {
+            background: #fef3c7;
+            border: 1px solid #fbbf24;
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            text-align: left;
+        }
+
+        .warning-note p {
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #92400e;
+        }
+
+        .warning-note ul {
+            list-style: disc;
+            padding-left: 1.5rem;
+            color: #92400e;
+        }
+
+        .warning-note li {
+            margin-bottom: 0.25rem;
         }
     </style>
 </body>
