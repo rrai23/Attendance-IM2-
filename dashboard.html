@@ -1,0 +1,1930 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" class="page-dashboard">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Bricks Attendance System</title>
+    <meta name="description" content="Admin dashboard for Bricks Attendance System with real-time statistics and management tools">
+    <meta name="author" content="Bricks Attendance System">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="/css/styles.css">
+    
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="/js/data-service.js" as="script">
+    <link rel="preload" href="/js/auth.js" as="script">
+    <link rel="preload" href="/js/theme.js" as="script">
+</head>
+<body>
+    <!-- Skip Navigation Links -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <a href="#sidebar" class="skip-link">Skip to navigation</a>
+
+    <!-- Mobile Hamburger Menu Button -->
+    <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+    </button>
+
+    <!-- App Container -->
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-brand">
+                    <div class="brand-icon">🧱</div>
+                    <div class="brand-text">
+                        <h2>Bricks</h2>
+                        <span>Attendance System</span>
+                    </div>
+                </div>
+                <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">
+                    <span class="toggle-icon">‹</span>
+                </button>
+            </div>
+
+            <div class="sidebar-user">
+                <div class="user-avatar">
+                    <span id="user-avatar-text">A</span>
+                </div>
+                <div class="user-info">
+                    <div class="user-name" id="user-name">Administrator</div>
+                    <div class="user-role" id="user-role">Admin</div>
+                </div>
+                <div class="theme-selector">
+                    <button class="theme-option active" data-theme="light" title="Light Mode">
+                        <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                    </button>
+                    <button class="theme-option" data-theme="dark" title="Dark Mode">
+                        <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="/dashboard.html" class="nav-link active" data-page="dashboard" title="Overview and statistics">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Dashboard</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/employee.html" class="nav-link" data-page="employee" title="Employee management">
+                            <span class="nav-icon">👥</span>
+                            <span class="nav-text">Employees</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/analytics.html" class="nav-link" data-page="analytics" title="Detailed attendance analytics">
+                            <span class="nav-icon">📈</span>
+                            <span class="nav-text">Analytics</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/payroll.html" class="nav-link" data-page="payroll" title="Payroll management">
+                            <span class="nav-icon">💰</span>
+                            <span class="nav-text">Payroll</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item nav-item-dropdown" id="reportsDropdown">
+                        <a href="#" class="nav-link nav-dropdown-toggle" 
+                           title="Reports and documents"
+                           role="button"
+                           aria-haspopup="true"
+                           aria-expanded="false"
+                           tabindex="0">
+                            <span class="nav-icon">📋</span>
+                            <span class="nav-text">Reports</span>
+                            <span class="nav-dropdown-arrow">▼</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                        <ul class="nav-dropdown-menu">
+                            <li><a href="/reports/attendance.html" class="nav-dropdown-link">Attendance Reports</a></li>
+                            <li><a href="/reports/payroll.html" class="nav-dropdown-link">Payroll Reports</a></li>
+                            <li><a href="/reports/analytics.html" class="nav-dropdown-link">Analytics Reports</a></li>
+                            <li><a href="/reports/export.html" class="nav-dropdown-link">Export Data</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item nav-item-dropdown" id="toolsDropdown">
+                        <a href="#" class="nav-link nav-dropdown-toggle" 
+                           title="System tools"
+                           role="button"
+                           aria-haspopup="true"
+                           aria-expanded="false"
+                           tabindex="0">
+                            <span class="nav-icon">🔧</span>
+                            <span class="nav-text">Tools</span>
+                            <span class="nav-dropdown-arrow">▼</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                        <ul class="nav-dropdown-menu">
+                            <li><a href="/tools/backup.html" class="nav-dropdown-link">Backup & Restore</a></li>
+                            <li><a href="/tools/import.html" class="nav-dropdown-link">Import Data</a></li>
+                            <li><a href="/tools/logs.html" class="nav-dropdown-link">System Logs</a></li>
+                            <li><a href="/tools/maintenance.html" class="nav-dropdown-link">Maintenance</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/settings.html" class="nav-link" data-page="settings" title="System configuration">
+                            <span class="nav-icon">⚙️</span>
+                            <span class="nav-text">Settings</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <!-- Quick Actions Section -->
+            <div class="sidebar-quick-actions">
+                <div class="quick-actions-header">
+                    <h4>Quick Actions</h4>
+                </div>
+                <div class="quick-actions-grid" role="group" aria-label="Quick action buttons">
+                    <button class="quick-action-btn" 
+                            title="Clock In/Out (Alt+C)" 
+                            id="quickClockBtn"
+                            aria-label="Clock In or Clock Out"
+                            data-shortcut="Alt+C">
+                        <span class="quick-action-icon">🕐</span>
+                        <span class="quick-action-text">Clock In/Out</span>
+                    </button>
+                    <button class="quick-action-btn" 
+                            title="Add Employee (Alt+E)" 
+                            id="quickAddEmployeeBtn"
+                            aria-label="Add new employee"
+                            data-shortcut="Alt+E">
+                        <span class="quick-action-icon">👤</span>
+                        <span class="quick-action-text">Add Employee</span>
+                    </button>
+                    <button class="quick-action-btn" 
+                            title="Generate Report (Alt+R)" 
+                            id="quickReportBtn"
+                            aria-label="Generate attendance report"
+                            data-shortcut="Alt+R">
+                        <span class="quick-action-icon">📊</span>
+                        <span class="quick-action-text">Report</span>
+                    </button>
+                    <button class="quick-action-btn" 
+                            title="System Status (Alt+S)" 
+                            id="quickStatusBtn"
+                            aria-label="View system status"
+                            data-shortcut="Alt+S">
+                        <span class="quick-action-icon">❤️</span>
+                        <span class="quick-action-text">Status</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- System Status Section -->
+            <div class="sidebar-status">
+                <div class="status-header">
+                    <h4>System Status</h4>
+                </div>
+                <div class="status-indicators">
+                    <div class="status-item">
+                        <span class="status-indicator status-online"></span>
+                        <span class="status-text">Server Online</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-indicator status-online"></span>
+                        <span class="status-text">Database Connected</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-indicator status-online"></span>
+                        <span class="status-text">Backup System</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <button class="logout-btn" id="logout-btn" title="Logout">
+                    <span class="logout-icon">🚪</span>
+                    <span class="logout-text">Logout</span>
+                </button>
+                <div class="sidebar-version">
+                    <small>v1.0.0</small>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content" id="main-content">
+            <!-- Dashboard Header -->
+            <header class="dashboard-header">
+                <div class="header-content">
+                    <div class="header-title">
+                        <h1>Dashboard</h1>
+                        <p class="header-subtitle">Welcome back! Here's what's happening today.</p>
+                    </div>
+                    <div class="header-actions">
+                        <div class="current-time">
+                            <span class="time-label">Current Time</span>
+                            <span class="time-value" id="current-time">--:--:--</span>
+                        </div>
+                        <button class="btn btn-primary" id="refresh-dashboard" title="Refresh dashboard data">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23,4 23,10 17,10"></polyline>
+                                <polyline points="1,20 1,14 7,14"></polyline>
+                                <path d="M20.49,9A9,9,0,0,0,5.64,5.64L1,10m22,4L18.36,18.36A9,9,0,0,1,3.51,15"></path>
+                            </svg>
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Content -->
+            <div class="dashboard-content">
+                <!-- Quick Stats Row -->
+                <div class="quick-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="total-employees">--</div>
+                            <div class="stat-label">Total Employees</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="present-today">--</div>
+                            <div class="stat-label">Present Today</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⏰</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="late-today">--</div>
+                            <div class="stat-label">Late Today</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="attendance-rate">--%</div>
+                            <div class="stat-label">Attendance Rate</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Dashboard Tiles -->
+                <div class="tiles-grid grid-2">
+                    <!-- Attendance Count Tile -->
+                    <div class="tile tile-accent dashboard-tile" id="attendance-count-tile">
+                        <div class="tile-header">
+                            <div class="tile-title-group">
+                                <h3 class="tile-title">Today's Attendance</h3>
+                                <p class="tile-subtitle">Real-time attendance overview</p>
+                            </div>
+                            <button class="tile-refresh-btn" title="Refresh attendance data" aria-label="Refresh attendance data">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23,4 23,10 17,10"></polyline>
+                                    <polyline points="1,20 1,14 7,14"></polyline>
+                                    <path d="M20.49,9A9,9,0,0,0,5.64,5.64L1,10m22,4L18.36,18.36A9,9,0,0,1,3.51,15"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="tile-content">
+                            <div class="attendance-overview">
+                                <div class="attendance-main-stat">
+                                    <div class="stat-number" id="main-attendance-count">0</div>
+                                    <div class="stat-label">Present Today</div>
+                                    <div class="stat-sublabel">out of <span id="total-employee-count">0</span> employees</div>
+                                </div>
+                                <div class="attendance-rate">
+                                    <div class="rate-circle" data-rate="0">
+                                        <svg viewBox="0 0 36 36" class="circular-chart">
+                                            <path class="circle-bg" d="M18 2.0845
+                                                a 15.9155 15.9155 0 0 1 0 31.831
+                                                a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                            <path class="circle" stroke-dasharray="0, 100" d="M18 2.0845
+                                                a 15.9155 15.9155 0 0 1 0 31.831
+                                                a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                            <text x="18" y="20.35" class="percentage">0%</text>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="attendance-breakdown">
+                                <div class="breakdown-item present">
+                                    <span class="breakdown-dot"></span>
+                                    <span class="breakdown-label">On Time</span>
+                                    <span class="breakdown-value" id="on-time-count">0</span>
+                                </div>
+                                <div class="breakdown-item late">
+                                    <span class="breakdown-dot"></span>
+                                    <span class="breakdown-label">Late</span>
+                                    <span class="breakdown-value" id="late-count">0</span>
+                                </div>
+                                <div class="breakdown-item absent">
+                                    <span class="breakdown-dot"></span>
+                                    <span class="breakdown-label">Absent</span>
+                                    <span class="breakdown-value" id="absent-count">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Attendance Statistics Chart Tile -->
+                    <div class="tile dashboard-tile" id="attendance-chart-tile">
+                        <div class="tile-header">
+                            <div class="tile-title-group">
+                                <h3 class="tile-title">Attendance Statistics</h3>
+                                <p class="tile-subtitle">Trends and patterns</p>
+                            </div>
+                            <div class="tile-actions">
+                                <select class="chart-period-select" id="chart-period" aria-label="Chart period">
+                                    <option value="week">This Week</option>
+                                    <option value="month" selected>This Month</option>
+                                    <option value="quarter">This Quarter</option>
+                                </select>
+                                <button class="tile-refresh-btn" title="Refresh chart data" aria-label="Refresh chart data">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="23,4 23,10 17,10"></polyline>
+                                        <polyline points="1,20 1,14 7,14"></polyline>
+                                        <path d="M20.49,9A9,9,0,0,0,5.64,5.64L1,10m22,4L18.36,18.36A9,9,0,0,1,3.51,15"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="tile-content">
+                            <div class="chart-container">
+                                <canvas id="attendance-stats-chart" aria-label="Attendance statistics chart"></canvas>
+                            </div>
+                            <div class="chart-loading" id="chart-loading" style="display: none;">
+                                <div class="loading-spinner"></div>
+                                <span>Loading chart data...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Calendar Tile -->
+                    <div class="tile dashboard-tile" id="calendar-tile">
+                        <div class="tile-header">
+                            <div class="tile-title-group">
+                                <h3 class="tile-title">Calendar & Notes</h3>
+                                <p class="tile-subtitle">Schedule and important dates</p>
+                            </div>
+                            <div class="tile-actions">
+                                <button class="btn btn-sm btn-outline" id="add-note-btn" title="Add note for today">
+                                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                    Add Note
+                                </button>
+                                <button class="tile-expand-btn" title="Expand calendar" aria-label="Expand calendar">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="15,3 21,3 21,9"></polyline>
+                                        <polyline points="9,21 3,21 3,15"></polyline>
+                                        <line x1="21" y1="3" x2="14" y2="10"></line>
+                                        <line x1="3" y1="21" x2="10" y2="14"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="tile-content">
+                            <div id="dashboard-calendar" 
+                                 class="dashboard-calendar-container" 
+                                 role="application" 
+                                 aria-label="Interactive calendar with attendance data and notes"
+                                 aria-describedby="calendar-instructions">
+                                <div id="calendar-instructions" class="sr-only">
+                                    Use arrow keys to navigate between dates. Press Enter to select a date or add notes. Press Escape to close any open menus.
+                                </div>
+                                
+                                <!-- New Calendar Implementation -->
+                                <div class="calendar-wrapper">
+                                    <header class="calendar-header">
+                                        <p class="current-date"></p>
+                                        <div class="icons">
+                                            <span id="prev" class="calendar-nav-btn" title="Previous month">‹</span>
+                                            <span id="next" class="calendar-nav-btn" title="Next month">›</span>
+                                        </div>
+                                    </header>
+                                    <div class="calendar">
+                                        <ul class="weeks">
+                                            <li>Sun</li>
+                                            <li>Mon</li>
+                                            <li>Tue</li>
+                                            <li>Wed</li>
+                                            <li>Thu</li>
+                                            <li>Fri</li>
+                                            <li>Sat</li>
+                                        </ul>
+                                        <ul class="days"></ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payday Countdown Tile -->
+                    <div class="tile dashboard-tile" id="payday-countdown-tile">
+                        <div class="tile-header">
+                            <div class="tile-title-group">
+                                <h3 class="tile-title">Next Payday</h3>
+                                <p class="tile-subtitle">Countdown to next payment</p>
+                            </div>
+                            <button class="tile-refresh-btn" title="Refresh payday data" aria-label="Refresh payday data">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23,4 23,10 17,10"></polyline>
+                                    <polyline points="1,20 1,14 7,14"></polyline>
+                                    <path d="M20.49,9A9,9,0,0,0,5.64,5.64L1,10m22,4L18.36,18.36A9,9,0,0,1,3.51,15"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="tile-content">
+                            <div class="countdown-container">
+                                <div class="countdown-main">
+                                    <div class="countdown-number" id="countdown-days">--</div>
+                                    <div class="countdown-label">Days Remaining</div>
+                                </div>
+                                <div class="countdown-details">
+                                    <div class="countdown-date">
+                                        <span class="detail-label">Date:</span>
+                                        <span class="detail-value" id="payday-date">Loading...</span>
+                                    </div>
+                                    <div class="countdown-period">
+                                        <span class="detail-label">Period:</span>
+                                        <span class="detail-value" id="payday-period">Weekly</span>
+                                    </div>
+                                    <div class="countdown-amount" id="countdown-amount-container" style="display: none;">
+                                        <span class="detail-label">Est. Amount:</span>
+                                        <span class="detail-value" id="payday-amount">₱0</span>
+                                    </div>
+                                </div>
+                                <div class="countdown-progress">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" id="payday-progress" style="width: 0%;"></div>
+                                    </div>
+                                    <div class="progress-text">
+                                        <span id="countdown-time">--:--:--</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity Section -->
+                <div class="recent-activity-section">
+                    <div class="section-header">
+                        <h2>Recent Activity</h2>
+                        <button class="btn btn-ghost btn-sm" id="view-all-activity">View All</button>
+                    </div>
+                    <div class="activity-list" id="activity-list">
+                        <div class="activity-item">
+                            <div class="activity-icon">👤</div>
+                            <div class="activity-content">
+                                <div class="activity-text">Loading recent activity...</div>
+                                <div class="activity-time">Just now</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Mobile Floating Action Button Container -->
+    <div class="mobile-fab-container" id="mobile-fab-container" style="display: none;">
+        <button class="mobile-fab-main" 
+                id="mobile-fab-main" 
+                aria-label="Quick actions menu"
+                aria-expanded="false"
+                aria-haspopup="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+        </button>
+        <div class="mobile-fab-menu" role="menu" aria-label="Quick actions">
+            <button class="mobile-fab-item" 
+                    data-action="clock" 
+                    role="menuitem"
+                    aria-label="Clock in or out"
+                    title="Clock In/Out">
+                <span>🕐</span>
+            </button>
+            <button class="mobile-fab-item" 
+                    data-action="employee" 
+                    role="menuitem"
+                    aria-label="Add new employee"
+                    title="Add Employee">
+                <span>👤</span>
+            </button>
+            <button class="mobile-fab-item" 
+                    data-action="report" 
+                    role="menuitem"
+                    aria-label="Generate report"
+                    title="Generate Report">
+                <span>📊</span>
+            </button>
+            <button class="mobile-fab-item" 
+                    data-action="status" 
+                    role="menuitem"
+                    aria-label="View system status"
+                    title="System Status">
+                <span>❤️</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading dashboard...</div>
+        </div>
+    </div>
+
+    <!-- JavaScript Dependencies -->
+    <script src="/js/mock-data.js"></script>
+    <script src="/js/data-service.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/theme.js"></script>
+    <script src="/js/modals.js"></script>
+    <script src="/js/charts.js"></script>
+    <script src="/js/dashboard-calendar.js"></script>
+    <script src="/js/sidebar.js"></script>
+    <script src="/js/dashboard.js"></script>
+
+    <!-- Dashboard Specific Styles -->
+    <style>
+        /* Dashboard-specific styles */
+        .dashboard-header {
+            margin-bottom: var(--spacing-xl);
+            padding-bottom: var(--spacing-lg);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: var(--spacing-lg);
+        }
+
+        .header-title h1 {
+            margin-bottom: var(--spacing-xs);
+            color: var(--text-primary);
+        }
+
+        .header-subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 0;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-lg);
+        }
+
+        .current-time {
+            text-align: right;
+        }
+
+        .time-label {
+            display: block;
+            font-size: var(--font-size-sm);
+            color: var(--text-tertiary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .time-value {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-semibold);
+            color: var(--accent-primary);
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+        }
+
+        /* Quick Stats */
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .stat-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            transition: all var(--transition-fast);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .stat-icon {
+            font-size: 2rem;
+            opacity: 0.8;
+        }
+
+        .stat-value {
+            font-size: var(--font-size-2xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--accent-primary);
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            margin-top: var(--spacing-xs);
+        }
+
+        /* Attendance Overview Styles */
+        .attendance-overview {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .attendance-main-stat {
+            flex: 1;
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: var(--font-weight-bold);
+            color: var(--accent-primary);
+            line-height: 1;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .stat-sublabel {
+            font-size: var(--font-size-sm);
+            color: var(--text-tertiary);
+        }
+
+        .attendance-rate {
+            flex-shrink: 0;
+        }
+
+        .rate-circle {
+            width: 120px;
+            height: 120px;
+        }
+
+        .circular-chart {
+            width: 100%;
+            height: 100%;
+        }
+
+        .circle-bg {
+            fill: none;
+            stroke: var(--bg-tertiary);
+            stroke-width: 2.8;
+        }
+
+        .circle {
+            fill: none;
+            stroke: var(--accent-primary);
+            stroke-width: 2.8;
+            stroke-linecap: round;
+            transition: stroke-dasharray 0.6s ease-in-out;
+        }
+
+        .percentage {
+            fill: var(--text-primary);
+            font-family: var(--font-family);
+            font-size: 0.5em;
+            font-weight: var(--font-weight-semibold);
+            text-anchor: middle;
+        }
+
+        /* Attendance Breakdown */
+        .attendance-breakdown {
+            display: flex;
+            justify-content: space-between;
+            gap: var(--spacing-md);
+        }
+
+        .breakdown-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            flex: 1;
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            transition: background-color var(--transition-fast);
+        }
+
+        .breakdown-item:hover {
+            background-color: var(--bg-secondary);
+        }
+
+        .breakdown-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .breakdown-item.present .breakdown-dot {
+            background-color: var(--accent-analytics);
+        }
+
+        .breakdown-item.late .breakdown-dot {
+            background-color: var(--accent-settings);
+        }
+
+        .breakdown-item.absent .breakdown-dot {
+            background-color: #ff3b30;
+        }
+
+        .breakdown-label {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            flex: 1;
+        }
+
+        .breakdown-value {
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+        }
+
+        /* Chart Styles */
+        .chart-period-select {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: var(--spacing-sm) var(--spacing-md);
+            font-size: var(--font-size-sm);
+            color: var(--text-primary);
+            margin-right: var(--spacing-sm);
+        }
+
+        .chart-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--spacing-md);
+            color: var(--text-secondary);
+        }
+
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--bg-tertiary);
+            border-top: 3px solid var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Countdown Styles */
+        .countdown-container {
+            text-align: center;
+        }
+
+        .countdown-main {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .countdown-number {
+            font-size: 4rem;
+            font-weight: var(--font-weight-bold);
+            color: var(--accent-primary);
+            line-height: 1;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .countdown-label {
+            font-size: var(--font-size-lg);
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .countdown-details {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .countdown-details > div {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .detail-label {
+            color: var(--text-secondary);
+            font-size: var(--font-size-sm);
+        }
+
+        .detail-value {
+            color: var(--text-primary);
+            font-weight: var(--font-weight-medium);
+            font-size: var(--font-size-sm);
+        }
+
+        .countdown-progress {
+            margin-top: var(--spacing-lg);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-hover));
+            border-radius: var(--radius-sm);
+            transition: width var(--transition-normal);
+        }
+
+        .progress-text {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: var(--font-size-lg);
+            color: var(--accent-primary);
+            font-weight: var(--font-weight-semibold);
+        }
+
+        /* Recent Activity */
+        .recent-activity-section {
+            margin-top: var(--spacing-2xl);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .section-header h2 {
+            margin-bottom: 0;
+        }
+
+        .activity-list {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            padding: var(--spacing-lg);
+            border-bottom: 1px solid var(--border-color);
+            transition: background-color var(--transition-fast);
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-item:hover {
+            background-color: var(--bg-secondary);
+        }
+
+        .activity-icon {
+            font-size: 1.5rem;
+            opacity: 0.7;
+        }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-text {
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .activity-time {
+            font-size: var(--font-size-sm);
+            color: var(--text-tertiary);
+        }
+
+        /* Tile Actions */
+        .tile-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .tile-refresh-btn,
+        .tile-expand-btn {
+            background: none;
+            border: none;
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tile-refresh-btn:hover,
+        .tile-expand-btn:hover {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .tile-refresh-btn svg,
+        .tile-expand-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .tile-refresh-btn.loading {
+            animation: spin 1s linear infinite;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--overlay-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-content {
+            background: var(--bg-primary);
+            padding: var(--spacing-2xl);
+            border-radius: var(--radius-xl);
+            text-align: center;
+            box-shadow: var(--shadow-xl);
+        }
+
+        .loading-text {
+            margin-top: var(--spacing-lg);
+            color: var(--text-secondary);
+        }
+
+        /* Skip Navigation Links */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 6px;
+            background: var(--accent-primary);
+            color: var(--color-white);
+            padding: 8px;
+            text-decoration: none;
+            border-radius: var(--radius-sm);
+            z-index: 10000;
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            transition: top var(--transition-fast);
+        }
+
+        .skip-link:focus {
+            top: 6px;
+        }
+
+        /* Mobile Floating Action Button */
+        .mobile-fab-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .mobile-fab-main {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+            color: var(--color-white);
+            border: none;
+            box-shadow: var(--shadow-lg);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+            position: relative;
+            z-index: 1001;
+        }
+
+        .mobile-fab-main:hover {
+            background: var(--accent-hover);
+            transform: scale(1.1);
+        }
+
+        .mobile-fab-main:focus {
+            outline: 2px solid var(--color-white);
+            outline-offset: 2px;
+        }
+
+        .mobile-fab-main svg {
+            width: 24px;
+            height: 24px;
+            transition: transform var(--transition-fast);
+        }
+
+        .mobile-fab-container.open .mobile-fab-main svg {
+            transform: rotate(45deg);
+        }
+
+        .mobile-fab-menu {
+            position: absolute;
+            bottom: 70px;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(20px);
+            transition: all var(--transition-normal);
+        }
+
+        .mobile-fab-container.open .mobile-fab-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .mobile-fab-item {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+            font-size: 1.2rem;
+        }
+
+        .mobile-fab-item:hover {
+            background: var(--accent-light);
+            border-color: var(--accent-primary);
+            transform: scale(1.1);
+        }
+
+        .mobile-fab-item:focus {
+            outline: 2px solid var(--accent-primary);
+            outline-offset: 2px;
+        }
+
+        /* Screen Reader Only Content */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* Dashboard Calendar Styles */
+        .dashboard-calendar-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .calendar-wrapper {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-primary);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .calendar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-md) var(--spacing-lg);
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .calendar-header .current-date {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .calendar-header .icons {
+            display: flex;
+            gap: var(--spacing-xs);
+        }
+
+        .calendar-nav-btn {
+            height: 32px;
+            width: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-secondary);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            font-size: 1.2rem;
+            font-weight: var(--font-weight-semibold);
+            user-select: none;
+            transition: all var(--transition-fast);
+        }
+
+        .calendar-nav-btn:hover {
+            background: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+            transform: scale(1.1);
+        }
+
+        .calendar {
+            padding: var(--spacing-md);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .calendar ul {
+            display: flex;
+            flex-wrap: wrap;
+            list-style: none;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        .calendar .weeks {
+            margin-bottom: var(--spacing-md);
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+            padding: var(--spacing-sm) 0;
+        }
+
+        .calendar li {
+            width: calc(100% / 7);
+            color: var(--text-primary);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .calendar .weeks li {
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-secondary);
+            cursor: default;
+            text-transform: uppercase;
+            font-size: var(--font-size-xs);
+            letter-spacing: 0.05em;
+        }
+
+        .calendar .days {
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .calendar .days li {
+            z-index: 1;
+            cursor: pointer;
+            position: relative;
+            margin-bottom: var(--spacing-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 36px;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
+        }
+
+        .days li.inactive {
+            color: var(--text-tertiary);
+            opacity: 0.5;
+        }
+
+        .days li.active {
+            color: white;
+            background: var(--accent-primary);
+            font-weight: var(--font-weight-semibold);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .days li:not(.active):not(.inactive):hover {
+            background: var(--bg-secondary);
+            color: var(--accent-primary);
+            transform: scale(1.05);
+        }
+
+        .days li.inactive:hover {
+            background: var(--bg-tertiary);
+            opacity: 0.7;
+        }
+
+        /* Calendar day states and features */
+        .days li.selected {
+            background: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+            transform: scale(1.05);
+            z-index: 2;
+            position: relative;
+        }
+
+        .days li.has-note {
+            position: relative;
+            background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
+            border: 2px solid #4caf50;
+            color: #2e7d32;
+            font-weight: var(--font-weight-semibold);
+        }
+
+        .days li.has-note::after {
+            content: '📝';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 10px;
+            line-height: 1;
+        }
+
+        .days li.holiday {
+            background: linear-gradient(135deg, #fff3e0 0%, #ffcc80 100%);
+            border: 2px solid #ff9500;
+            color: #e65100;
+            position: relative;
+            font-weight: var(--font-weight-semibold);
+        }
+
+        .days li.holiday::before {
+            content: '🇵🇭';
+            position: absolute;
+            top: 1px;
+            left: 2px;
+            font-size: 10px;
+            line-height: 1;
+        }
+
+        .days li.holiday.has-note {
+            background: linear-gradient(45deg, 
+                #fff3e0 0%, #fff3e0 30%, 
+                #e8f5e8 30%, #e8f5e8 70%, 
+                #fff3e0 70%, #fff3e0 100%);
+            background-size: 12px 12px;
+            border: 2px solid #ff6f00;
+            color: #bf360c;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .days li.holiday.has-note::before {
+            content: '🇵🇭';
+            top: 1px;
+            left: 2px;
+            font-size: 8px;
+        }
+
+        .days li.holiday.has-note::after {
+            content: '📝';
+            top: 1px;
+            right: 2px;
+            color: #2e7d32;
+            font-size: 8px;
+        }
+
+        /* Enhanced hover effects for highlighted days */
+        .days li.has-note:hover {
+            background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%);
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+            z-index: 3;
+        }
+
+        .days li.holiday:hover {
+            background: linear-gradient(135deg, #ffcc80 0%, #ffb74d 100%);
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(255, 149, 0, 0.3);
+            z-index: 3;
+        }
+
+        .days li.holiday.has-note:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(255, 111, 0, 0.4);
+            z-index: 3;
+        }
+
+        /* Pulse animation for today if it has notes or is a holiday */
+        .days li.active.has-note,
+        .days li.active.holiday {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+            }
+        }
+
+        .days li.active.holiday {
+            animation-name: pulse-holiday;
+        }
+
+        @keyframes pulse-holiday {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 149, 0, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(255, 149, 0, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 149, 0, 0);
+            }
+        }
+
+        /* Accessibility improvements */
+        .days li[data-date] {
+            cursor: pointer;
+        }
+
+        .days li[data-date]:focus {
+            outline: 2px solid var(--accent-primary);
+            outline-offset: 2px;
+        }
+
+        .days li[data-date]:hover {
+            background: var(--accent-light);
+            transform: scale(1.02);
+        }
+
+        .days li.inactive:hover {
+            background: var(--bg-tertiary);
+            transform: none;
+        }
+
+        /* Dark mode calendar adjustments */
+        [data-theme="dark"] .days li.has-note {
+            background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%);
+            border-color: #66bb6a;
+            color: #c8e6c9;
+        }
+
+        [data-theme="dark"] .days li.has-note::after {
+            color: #a5d6a7;
+        }
+
+        [data-theme="dark"] .days li.holiday {
+            background: linear-gradient(135deg, #3e2723 0%, #5d4037 100%);
+            border-color: #ff6b35;
+            color: #ffcccb;
+        }
+
+        [data-theme="dark"] .days li.holiday.has-note {
+            background: linear-gradient(45deg, 
+                #3e2723 0%, #3e2723 30%, 
+                #1b5e20 30%, #1b5e20 70%, 
+                #3e2723 70%, #3e2723 100%);
+            background-size: 12px 12px;
+            border-color: #ff8f00;
+            color: #ffcc80;
+        }
+
+        [data-theme="dark"] .days li.holiday.has-note::after {
+            color: #66bb6a;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all var(--transition-normal);
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--bg-primary);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-xl);
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow: hidden;
+            transform: scale(0.9);
+            transition: transform var(--transition-normal);
+        }
+
+        .modal-overlay.active .modal {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-lg);
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+        }
+
+        .modal-title {
+            margin: 0;
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .modal-close:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .modal-close svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .modal-body {
+            padding: var(--spacing-lg);
+        }
+
+        .modal-footer {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: var(--spacing-md);
+            padding: var(--spacing-lg);
+            border-top: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+        }
+
+        .form-group {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: var(--spacing-sm);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            color: var(--text-primary);
+        }
+
+        .form-input,
+        .form-textarea {
+            width: 100%;
+            padding: var(--spacing-md);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: var(--font-size-base);
+            font-family: var(--font-family);
+            transition: border-color var(--transition-fast);
+        }
+
+        .form-input:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
+        }
+
+        .form-input[readonly] {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        /* Button Styles */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border: 1px solid transparent;
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            text-decoration: none;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border-color: var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--text-secondary);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            border-color: transparent;
+        }
+
+        .btn-ghost:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .btn-sm {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            font-size: var(--font-size-xs);
+        }
+
+        .btn-icon {
+            width: 16px;
+            height: 16px;
+        }
+    </style>
+
+    <!-- Dashboard Initialization Script -->
+    <script>
+        // Initialize dashboard when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize core components
+            if (typeof SidebarManager !== 'undefined') {
+                window.sidebarManager = new SidebarManager();
+            }
+            
+            if (typeof DashboardController !== 'undefined') {
+                window.dashboardController = new DashboardController();
+            }
+            
+            // Update current time
+            function updateCurrentTime() {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('en-US', {
+                    hour12: false,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                const timeElement = document.getElementById('current-time');
+                if (timeElement) {
+                    timeElement.textContent = timeString;
+                }
+            }
+
+            // Update time immediately and then every second
+            updateCurrentTime();
+            setInterval(updateCurrentTime, 1000);
+
+            // Handle mobile hamburger menu
+            const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+            if (mobileMenuToggle) {
+                mobileMenuToggle.addEventListener('click', function() {
+                    if (window.sidebarManager) {
+                        window.sidebarManager.toggleSidebar();
+                        // Update aria-expanded
+                        const isCollapsed = window.sidebarManager.isCollapsed;
+                        mobileMenuToggle.setAttribute('aria-expanded', !isCollapsed);
+                    }
+                });
+            }
+
+            // Handle mobile FAB
+            const mobileFabMain = document.getElementById('mobile-fab-main');
+            const mobileFabContainer = document.getElementById('mobile-fab-container');
+            if (mobileFabMain && mobileFabContainer) {
+                mobileFabMain.addEventListener('click', function() {
+                    const isOpen = mobileFabContainer.classList.contains('open');
+                    mobileFabContainer.classList.toggle('open');
+                    mobileFabMain.setAttribute('aria-expanded', !isOpen);
+                });
+
+                // Handle FAB menu items
+                mobileFabContainer.addEventListener('click', function(e) {
+                    const fabItem = e.target.closest('.mobile-fab-item');
+                    if (fabItem) {
+                        const action = fabItem.dataset.action;
+                        if (window.sidebarManager) {
+                            window.sidebarManager.handleMobileFabAction(action);
+                        }
+                        // Close FAB menu
+                        mobileFabContainer.classList.remove('open');
+                        mobileFabMain.setAttribute('aria-expanded', 'false');
+                    }
+                });
+
+                // Close FAB menu when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!mobileFabContainer.contains(e.target)) {
+                        mobileFabContainer.classList.remove('open');
+                        mobileFabMain.setAttribute('aria-expanded', 'false');
+                    }
+                });
+            }
+
+            // Handle keyboard shortcuts for quick actions
+            document.addEventListener('keydown', function(e) {
+                if (e.altKey) {
+                    switch(e.key.toLowerCase()) {
+                        case 'c':
+                            e.preventDefault();
+                            document.getElementById('quickClockBtn')?.click();
+                            break;
+                        case 'e':
+                            e.preventDefault();
+                            document.getElementById('quickAddEmployeeBtn')?.click();
+                            break;
+                        case 'r':
+                            e.preventDefault();
+                            document.getElementById('quickReportBtn')?.click();
+                            break;
+                        case 's':
+                            e.preventDefault();
+                            document.getElementById('quickStatusBtn')?.click();
+                            break;
+                    }
+                }
+            });
+
+            // Handle refresh button
+            const refreshBtn = document.getElementById('refresh-dashboard');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', function() {
+                    if (window.refreshDashboard) {
+                        window.refreshDashboard();
+                    }
+                });
+            }
+
+            // Handle add note button
+            const addNoteBtn = document.getElementById('add-note-btn');
+            if (addNoteBtn) {
+                addNoteBtn.addEventListener('click', function() {
+                    // Add note for today
+                    const today = new Date();
+                    const calendar = window.dashboardController?.calendar;
+                    if (calendar) {
+                        const todayStr = calendar.formatDateKey(today);
+                        calendar.openNoteModal(todayStr);
+                    } else {
+                        // Fallback: manually open note modal for today
+                        const modal = document.getElementById('noteModal');
+                        if (modal) {
+                            const titleElement = document.getElementById('noteModalTitle');
+                            const dateInput = document.getElementById('noteDate');
+                            const contentTextarea = document.getElementById('noteContent');
+                            const deleteBtn = document.getElementById('deleteNoteBtn');
+
+                            if (titleElement) titleElement.textContent = 'Add Note for Today';
+                            if (dateInput) dateInput.value = today.toLocaleDateString('en-US', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                            });
+                            if (contentTextarea) contentTextarea.value = '';
+                            if (deleteBtn) deleteBtn.style.display = 'none';
+                            
+                            const todayStr = today.getFullYear() + '-' + 
+                                           String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                                           String(today.getDate()).padStart(2, '0');
+                            modal.dataset.currentDate = todayStr;
+                            modal.classList.add('active');
+                            if (contentTextarea) contentTextarea.focus();
+                        }
+                    }
+                });
+            }
+
+            // Handle view all activity button
+            const viewAllBtn = document.getElementById('view-all-activity');
+            if (viewAllBtn) {
+                viewAllBtn.addEventListener('click', function() {
+                    // Navigate to analytics page or show activity modal
+                    window.location.href = '/analytics.html';
+                });
+            }
+
+            // Setup global note modal handlers
+            function setupNoteModalHandlers() {
+                const modal = document.getElementById('noteModal');
+                if (!modal) return;
+
+                const closeBtn = document.getElementById('noteModalClose');
+                const cancelBtn = document.getElementById('cancelNoteBtn');
+                const saveBtn = document.getElementById('saveNoteBtn');
+                const deleteBtn = document.getElementById('deleteNoteBtn');
+
+                const closeModal = () => {
+                    modal.classList.remove('active');
+                };
+
+                // Close handlers
+                if (closeBtn) closeBtn.onclick = closeModal;
+                if (cancelBtn) cancelBtn.onclick = closeModal;
+
+                // Save handler
+                if (saveBtn) {
+                    saveBtn.onclick = () => {
+                        const dateKey = modal.dataset.currentDate;
+                        const content = document.getElementById('noteContent')?.value.trim() || '';
+                        
+                        if (window.dashboardController?.calendar) {
+                            window.dashboardController.calendar.saveNote(dateKey, content);
+                        } else {
+                            // Fallback: save to localStorage directly
+                            const notes = JSON.parse(localStorage.getItem('calendar-notes') || '{}');
+                            if (content) {
+                                notes[dateKey] = content;
+                            } else {
+                                delete notes[dateKey];
+                            }
+                            localStorage.setItem('calendar-notes', JSON.stringify(notes));
+                        }
+                        closeModal();
+                    };
+                }
+
+                // Delete handler
+                if (deleteBtn) {
+                    deleteBtn.onclick = () => {
+                        const dateKey = modal.dataset.currentDate;
+                        
+                        if (window.dashboardController?.calendar) {
+                            window.dashboardController.calendar.deleteNote(dateKey);
+                        } else {
+                            // Fallback: delete from localStorage directly
+                            const notes = JSON.parse(localStorage.getItem('calendar-notes') || '{}');
+                            delete notes[dateKey];
+                            localStorage.setItem('calendar-notes', JSON.stringify(notes));
+                        }
+                        closeModal();
+                    };
+                }
+
+                // ESC key and click outside to close
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && modal.classList.contains('active')) {
+                        closeModal();
+                    }
+                });
+
+                modal.onclick = (e) => {
+                    if (e.target === modal) {
+                        closeModal();
+                    }
+                };
+            }
+
+            // Initialize note modal handlers
+            setupNoteModalHandlers();
+
+            console.log('Dashboard page initialized');
+        });
+    </script>
+
+    <!-- Note Modal -->
+    <div id="noteModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="noteModalTitle">Add Note</h3>
+                <button class="modal-close" id="noteModalClose" aria-label="Close modal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="noteDate" class="form-label">Date</label>
+                    <input type="text" id="noteDate" class="form-input" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="noteContent" class="form-label">Note</label>
+                    <textarea id="noteContent" class="form-textarea" placeholder="Enter your note..." rows="4"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="deleteNoteBtn" class="btn btn-secondary" style="margin-right: auto;">Delete Note</button>
+                <button id="cancelNoteBtn" class="btn btn-secondary">Cancel</button>
+                <button id="saveNoteBtn" class="btn btn-primary">Save Note</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

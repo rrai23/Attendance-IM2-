@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wage Update Test - Philippine Peso</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+        }
+        .test-result.success { background: #d4edda; color: #155724; }
+        .test-result.error { background: #f8d7da; color: #721c24; }
+        .test-result.info { background: #d1ecf1; color: #0c5460; }
+        .currency-test {
+            display: inline-block;
+            margin: 5px 10px;
+            padding: 5px 10px;
+            background: #e9ecef;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #employee-data {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Wage Update & Currency Test</h1>
+    
+    <div class="test-section">
+        <h3>Currency Formatting Test</h3>
+        <p>Testing Philippine Peso formatting:</p>
+        <div id="currency-formats"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Data Service & Wage Update Test</h3>
+        <button onclick="testWageUpdate()">Test Wage Update</button>
+        <button onclick="showEmployeeData()">Show Employee Data</button>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Current Employee Data</h3>
+        <div id="employee-data">Loading...</div>
+    </div>
+
+    <!-- Include required scripts -->
+    <script src="js/utils.js"></script>
+    <script src="js/mock-data.js"></script>
+    <script src="js/data-service.js"></script>
+    <script src="js/payroll.js"></script>
+    <script src="js/modals.js"></script>
+
+    <script>
+        // Initialize data service
+        const dataService = new DataService();
+
+        function logResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('test-results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            resultsDiv.appendChild(resultDiv);
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // Test currency formatting
+        function testCurrencyFormatting() {
+            const amounts = [0, 100, 1000, 12345.67, 999999.99];
+            const formatsDiv = document.getElementById('currency-formats');
+            
+            amounts.forEach(amount => {
+                const formatted = utils.formatCurrency(amount);
+                const span = document.createElement('span');
+                span.className = 'currency-test';
+                span.textContent = `${amount} → ${formatted}`;
+                formatsDiv.appendChild(span);
+            });
+        }
+
+        // Test wage update functionality
+        async function testWageUpdate() {
+            try {
+                logResult('Starting wage update test...', 'info');
+                
+                // Get employees first
+                const employees = await dataService.getEmployees();
+                if (!employees || employees.length === 0) {
+                    logResult('❌ No employees found', 'error');
+                    return;
+                }
+                
+                const testEmployee = employees[0];
+                const originalRate = testEmployee.hourlyRate;
+                const newRate = originalRate + 50; // Increase by ₱50
+                
+                logResult(`Testing with employee: ${testEmployee.firstName} ${testEmployee.lastName}`, 'info');
+                logResult(`Original rate: ₱${originalRate}/hr`, 'info');
+                logResult(`New rate: ₱${newRate}/hr`, 'info');
+                
+                // Update the wage
+                const result = await dataService.updateEmployeeWage(testEmployee.id, newRate);
+                logResult(`✅ API call successful: ${JSON.stringify(result)}`, 'success');
+                
+                // Verify the update by fetching the employee again
+                const updatedEmployee = await dataService.getEmployee(testEmployee.id);
+                if (updatedEmployee && updatedEmployee.hourlyRate === newRate) {
+                    logResult(`✅ Wage update verified! New rate: ₱${updatedEmployee.hourlyRate}/hr`, 'success');
+                } else {
+                    logResult(`❌ Wage update failed. Expected: ₱${newRate}, Got: ₱${updatedEmployee?.hourlyRate || 'undefined'}`, 'error');
+                }
+                
+                // Update employee data display
+                showEmployeeData();
+                
+            } catch (error) {
+                logResult(`❌ Wage update test failed: ${error.message}`, 'error');
+                console.error('Wage update error:', error);
+            }
+        }
+
+        // Show current employee data
+        async function showEmployeeData() {
+            try {
+                const employees = await dataService.getEmployees();
+                const dataDiv = document.getElementById('employee-data');
+                
+                if (!employees || employees.length === 0) {
+                    dataDiv.innerHTML = '<p>No employees found</p>';
+                    return;
+                }
+                
+                let html = '<h4>Current Employee Wages:</h4><ul>';
+                employees.forEach(emp => {
+                    const formattedRate = utils.formatCurrency(emp.hourlyRate);
+                    html += `<li><strong>${emp.firstName} ${emp.lastName}</strong>: ${formattedRate}/hr (ID: ${emp.id})</li>`;
+                });
+                html += '</ul>';
+                
+                dataDiv.innerHTML = html;
+                
+            } catch (error) {
+                document.getElementById('employee-data').innerHTML = `<p style="color: red;">Error loading employee data: ${error.message}</p>`;
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            testCurrencyFormatting();
+            showEmployeeData();
+            logResult('Page initialized - ready for testing', 'info');
+        });
+    </script>
+</body>
+</html>
