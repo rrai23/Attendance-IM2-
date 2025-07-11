@@ -943,185 +943,192 @@
             width: 90vw;
         }
 
-        /* Form sections in modals */
-        .form-section {
-            margin-bottom: 1.5rem;
-            padding-bottom: 1.5rem;
+        /* Modal overlay fixes */
+        .modal-overlay {
+            position: fixed !important;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 9999;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: all;
+        }
+
+        .modal {
+            background: var(--bg-primary, #ffffff);
+            border-radius: 8px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.9) translateY(20px);
+            transition: all 0.3s ease-out;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-overlay.active .modal {
+            transform: scale(1) translateY(0);
+        }
+
+        .modal-header {
+            padding: 1.5rem;
             border-bottom: 1px solid var(--border-color, #e5e7eb);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
-        .form-section:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
-
-        .form-section h4 {
-            margin: 0 0 1rem 0;
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
             color: var(--text-primary, #111827);
-            font-size: 1.125rem;
         }
 
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            color: var(--text-secondary, #6b7280);
+            border-radius: 4px;
+            transition: all 0.2s ease;
         }
 
-        /* Schedule grid */
-        .schedule-grid {
+        .modal-close:hover {
+            background: var(--bg-secondary, #f9fafb);
+            color: var(--text-primary, #111827);
+        }
+
+        .modal-content {
+            padding: 1.5rem;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .modal-actions {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border-color, #e5e7eb);
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+            background: var(--bg-secondary, #f9fafb);
+        }
+
+        /* Form styles for modal */
+        .form-group {
             display: flex;
             flex-direction: column;
             gap: 0.5rem;
         }
 
-        .schedule-day {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 0.5rem;
-            background: var(--bg-secondary, #f9fafb);
-            border-radius: 4px;
+        .form-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-primary, #111827);
         }
 
-        .checkbox-container {
-            display: flex;
+        .form-input {
+            padding: 0.75rem;
+            border: 1px solid var(--border-color, #e5e7eb);
+            border-radius: 6px;
+            background: var(--bg-primary, #ffffff);
+            color: var(--text-primary, #111827);
+            font-size: 0.875rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-input:required:invalid {
+            border-color: #ef4444;
+        }
+
+        /* Button styles */
+        .btn {
+            display: inline-flex;
             align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-decoration: none;
             cursor: pointer;
-            user-select: none;
-            min-width: 120px;
-        }
-
-        .checkbox-container input[type="checkbox"] {
-            display: none;
-        }
-
-        .checkbox-checkmark {
-            width: 18px;
-            height: 18px;
-            border: 2px solid var(--border-color, #e5e7eb);
-            border-radius: 4px;
-            margin-right: 0.5rem;
-            position: relative;
             transition: all 0.2s ease;
+            white-space: nowrap;
         }
 
-        .checkbox-container input[type="checkbox"]:checked + .checkbox-checkmark {
-            background-color: #3b82f6;
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
             border-color: #3b82f6;
         }
 
-        .checkbox-container input[type="checkbox"]:checked + .checkbox-checkmark::after {
-            content: '✓';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            font-size: 12px;
-            font-weight: bold;
+        .btn-primary:hover {
+            background: #2563eb;
+            border-color: #2563eb;
         }
 
-        .time-inputs {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+        .btn-secondary {
+            background: var(--bg-secondary, #f9fafb);
+            color: var(--text-primary, #111827);
+            border-color: var(--border-color, #e5e7eb);
         }
 
-        .time-inputs span {
-            color: var(--text-secondary, #6b7280);
-            font-size: 0.875rem;
+        .btn-secondary:hover {
+            background: var(--bg-tertiary, #f3f4f6);
         }
 
-        .time-inputs input {
-            min-width: 100px;
+        .btn-outline {
+            background: transparent;
+            color: var(--text-primary, #111827);
+            border-color: var(--border-color, #e5e7eb);
         }
 
-        /* Empty state and loading */
-        .empty-state,
-        .loading-state {
-            text-align: center;
-            padding: 2rem;
-            color: var(--text-secondary, #6b7280);
+        .btn-outline:hover {
+            background: var(--bg-secondary, #f9fafb);
         }
 
-        .empty-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
+        .btn:disabled {
             opacity: 0.5;
+            cursor: not-allowed;
         }
 
-        .loading-spinner {
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            border: 4px solid var(--border-color, #e5e7eb);
-            border-top: 4px solid #3b82f6;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 1rem;
+        .btn-loading {
+            display: none;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .btn-loading.active {
+            display: flex;
         }
 
-        /* Responsive adjustments */
-        @media (max-width: 1024px) {
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 768px) {
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .header-filters {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .filter-group {
-                flex-direction: row;
-                align-items: center;
-                justify-content: space-between;
-            }
-
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-
-            .schedule-day {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 0.5rem;
-            }
-
-            .time-inputs {
-                justify-content: center;
-            }
-
-            .modal.large {
-                width: 95%;
-                max-height: 90vh;
-            }
-            
-            .table-container {
-                font-size: 0.75rem;
-            }
-            
-            .table th,
-            .table td {
-                padding: 0.5rem;
-            }
-            
-            .action-buttons {
-                flex-direction: column;
-                gap: 0.25rem;
-            }
+        .btn-text.hidden {
+            display: none;
         }
     </style>
 </body>

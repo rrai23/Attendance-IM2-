@@ -190,18 +190,32 @@ class EmployeesPageManager {
     populateFilters() {
         // Populate department filter
         const departmentFilter = document.getElementById('departmentFilter');
-        this.departments.forEach(dept => {
-            const option = new Option(dept, dept);
-            departmentFilter.appendChild(option);
-        });
+        if (departmentFilter) {
+            // Clear existing options except the first one (All Departments)
+            const firstOption = departmentFilter.firstElementChild;
+            departmentFilter.innerHTML = '';
+            if (firstOption) departmentFilter.appendChild(firstOption);
+            
+            this.departments.forEach(dept => {
+                const option = new Option(dept, dept);
+                departmentFilter.appendChild(option);
+            });
+        }
 
         // Populate manager dropdown in modal
         const managerSelect = document.getElementById('manager');
-        const managers = this.employees.filter(emp => emp.role === 'manager' || emp.role === 'admin');
-        managers.forEach(manager => {
-            const option = new Option(`${manager.firstName} ${manager.lastName}`, `${manager.firstName} ${manager.lastName}`);
-            managerSelect.appendChild(option);
-        });
+        if (managerSelect) {
+            // Clear existing options except the first one (Select Manager)
+            const firstOption = managerSelect.firstElementChild;
+            managerSelect.innerHTML = '';
+            if (firstOption) managerSelect.appendChild(firstOption);
+            
+            const managers = this.employees.filter(emp => emp.role === 'manager' || emp.role === 'admin');
+            managers.forEach(manager => {
+                const option = new Option(`${manager.firstName} ${manager.lastName}`, `${manager.firstName} ${manager.lastName}`);
+                managerSelect.appendChild(option);
+            });
+        }
     }
 
     setupEventListeners() {
@@ -220,6 +234,13 @@ class EmployeesPageManager {
 
         document.getElementById('cancelBtn')?.addEventListener('click', () => {
             this.closeModal();
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('employeeModal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'employeeModal') {
+                this.closeModal();
+            }
         });
 
         // Form submission
@@ -447,12 +468,14 @@ class EmployeesPageManager {
         }
 
         modal.classList.remove('hidden');
+        modal.classList.add('active');
         document.body.style.overflow = 'hidden';
     }
 
     closeModal() {
         const modal = document.getElementById('employeeModal');
         if (modal) {
+            modal.classList.remove('active');
             modal.classList.add('hidden');
             document.body.style.overflow = '';
         }
@@ -543,15 +566,51 @@ class EmployeesPageManager {
     }
 
     getFormData() {
+        // Validate required fields
+        const requiredFields = [
+            { id: 'firstName', name: 'First Name' },
+            { id: 'lastName', name: 'Last Name' },
+            { id: 'email', name: 'Email' },
+            { id: 'employeeCode', name: 'Employee ID' },
+            { id: 'department', name: 'Department' },
+            { id: 'position', name: 'Position' },
+            { id: 'hireDate', name: 'Hire Date' },
+            { id: 'role', name: 'Role' },
+            { id: 'status', name: 'Status' }
+        ];
+
+        for (const field of requiredFields) {
+            const element = document.getElementById(field.id);
+            if (!element || !element.value.trim()) {
+                throw new Error(`${field.name} is required`);
+            }
+        }
+
+        // Validate email format
+        const email = document.getElementById('email').value;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            throw new Error('Please enter a valid email address');
+        }
+
+        // Check for duplicate employee code (only for new employees)
+        const employeeCode = document.getElementById('employeeCode').value;
+        if (!this.currentEmployee) {
+            const existingEmployee = this.employees.find(emp => emp.employeeCode === employeeCode);
+            if (existingEmployee) {
+                throw new Error('Employee ID already exists');
+            }
+        }
+
         return {
-            employeeCode: document.getElementById('employeeCode')?.value || '',
-            firstName: document.getElementById('firstName')?.value || '',
-            lastName: document.getElementById('lastName')?.value || '',
-            email: document.getElementById('email')?.value || '',
-            phone: document.getElementById('phone')?.value || '',
-            department: document.getElementById('department')?.value || '',
-            position: document.getElementById('position')?.value || '',
-            manager: document.getElementById('manager')?.value || '',
+            employeeCode: document.getElementById('employeeCode')?.value.trim() || '',
+            firstName: document.getElementById('firstName')?.value.trim() || '',
+            lastName: document.getElementById('lastName')?.value.trim() || '',
+            email: document.getElementById('email')?.value.trim() || '',
+            phone: document.getElementById('phone')?.value.trim() || '',
+            department: document.getElementById('department')?.value.trim() || '',
+            position: document.getElementById('position')?.value.trim() || '',
+            manager: document.getElementById('manager')?.value.trim() || '',
             hireDate: document.getElementById('hireDate')?.value || '',
             salary: parseFloat(document.getElementById('salary')?.value) || 0,
             role: document.getElementById('role')?.value || 'employee',
@@ -747,13 +806,119 @@ class EmployeesPageManager {
     }
 
     showSuccess(message) {
-        // For now, use alert - in a real app, this would be a toast notification
-        alert(message);
+        this.showToast(message, 'success');
     }
 
     showError(message) {
-        // For now, use alert - in a real app, this would be a toast notification
-        alert(message);
+        this.showToast(message, 'error');
+    }
+
+    showToast(message, type = 'info') {
+        // Create toast element
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = `
+            <div class="toast-content">
+                <span class="toast-icon">${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span>
+                <span class="toast-message">${message}</span>
+            </div>
+            <button class="toast-close">&times;</button>
+        `;
+
+        // Add styles if not already present
+        if (!document.getElementById('toast-styles')) {
+            const style = document.createElement('style');
+            style.id = 'toast-styles';
+            style.textContent = `
+                .toast {
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: white;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 8px;
+                    padding: 1rem;
+                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+                    z-index: 10000;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    max-width: 400px;
+                    animation: toastSlideIn 0.3s ease-out;
+                }
+                .toast-success { border-left: 4px solid #22c55e; }
+                .toast-error { border-left: 4px solid #ef4444; }
+                .toast-info { border-left: 4px solid #3b82f6; }
+                .toast-content {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    flex: 1;
+                }
+                .toast-message {
+                    font-size: 0.875rem;
+                    color: #374151;
+                }
+                .toast-close {
+                    background: none;
+                    border: none;
+                    font-size: 1.25rem;
+                    cursor: pointer;
+                    color: #9ca3af;
+                    padding: 0;
+                    line-height: 1;
+                }
+                .toast-close:hover {
+                    color: #374151;
+                }
+                @keyframes toastSlideIn {
+                    from {
+                        transform: translateX(100%);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                }
+                @keyframes toastSlideOut {
+                    from {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                    to {
+                        transform: translateX(100%);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // Add to page
+        document.body.appendChild(toast);
+
+        // Add close handler
+        const closeBtn = toast.querySelector('.toast-close');
+        closeBtn.addEventListener('click', () => {
+            this.removeToast(toast);
+        });
+
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            this.removeToast(toast);
+        }, 5000);
+    }
+
+    removeToast(toast) {
+        if (toast && toast.parentNode) {
+            toast.style.animation = 'toastSlideOut 0.3s ease-in';
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
+        }
     }
 }
 
