@@ -224,13 +224,12 @@
         </aside>
         
         <main class="main-content" id="main-content">
-            <div class="container">
-                <!-- Page Header -->
-                <header class="page-header">
-                    <div class="page-title-section">
-                        <h1 class="page-title">Payroll Management</h1>
-                        <p class="page-subtitle">Manage employee wages, overtime, and payroll processing</p>
-                    </div>
+            <!-- Page Header -->
+            <header class="page-header">
+                <div class="page-title-section">
+                    <h1 class="page-title">Payroll Management</h1>
+                    <p class="page-subtitle">Manage employee wages, overtime, and payroll processing</p>
+                </div>
                     <div class="page-actions">
                         <button class="btn btn-outline payroll-refresh-btn">
                             <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -245,14 +244,15 @@
                                 <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                             </svg>
                             Process Payroll
-                        </button>
-                    </div>
-                </header>
+                        </button>                </div>
+            </header>
 
+            <!-- Main Content Area -->
+            <div class="content-area">
                 <!-- Main Content Grid -->
                 <div class="tiles-grid grid-2">
                     <!-- Payroll Overview Tile -->
-                    <div class="tile tile-large payroll-overview-tile">
+                    <div class="tile payroll-overview-tile">
                         <div class="tile-header">
                             <div>
                                 <h3 class="tile-title">Payroll Overview</h3>
@@ -405,9 +405,9 @@
                 </div>
 
                 <!-- Additional Statistics Section -->
-                <div class="tiles-grid grid-3" style="margin-top: 2rem;">
+                <div class="tiles-grid grid-2" style="margin-top: 2rem;">
                     <!-- Payroll Trends Chart -->
-                    <div class="tile tile-large">
+                    <div class="tile">
                         <div class="tile-header">
                             <div>
                                 <h3 class="tile-title">Payroll Trends</h3>
@@ -1082,6 +1082,11 @@
 
         /* Responsive Design */
         @media (max-width: 768px) {
+            /* Make tiles stack vertically on mobile */
+            .tiles-grid.grid-2 {
+                grid-template-columns: 1fr;
+            }
+            
             .summary-stats {
                 grid-template-columns: repeat(2, 1fr);
             }

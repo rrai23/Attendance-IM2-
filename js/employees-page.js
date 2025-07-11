@@ -43,6 +43,8 @@ class EmployeesPageManager {
                     position: 'Senior Developer',
                     manager: 'Charlie Wilson',
                     hireDate: '2023-01-15',
+                    hourlyRate: 40.87,
+                    salaryType: 'hourly',
                     salary: 85000,
                     role: 'employee',
                     status: 'active',
@@ -65,6 +67,8 @@ class EmployeesPageManager {
                     position: 'Marketing Manager',
                     manager: null,
                     hireDate: '2022-06-10',
+                    hourlyRate: 36.06,
+                    salaryType: 'hourly',
                     salary: 75000,
                     role: 'manager',
                     status: 'active',
@@ -87,6 +91,8 @@ class EmployeesPageManager {
                     position: 'Sales Representative',
                     manager: 'Jane Smith',
                     hireDate: '2023-03-20',
+                    hourlyRate: 26.44,
+                    salaryType: 'hourly',
                     salary: 55000,
                     role: 'employee',
                     status: 'active',
@@ -109,6 +115,8 @@ class EmployeesPageManager {
                     position: 'HR Coordinator',
                     manager: 'Jane Smith',
                     hireDate: '2022-11-08',
+                    hourlyRate: 28.85,
+                    salaryType: 'hourly',
                     salary: 60000,
                     role: 'employee',
                     status: 'active',
@@ -131,6 +139,8 @@ class EmployeesPageManager {
                     position: 'Engineering Manager',
                     manager: null,
                     hireDate: '2021-04-12',
+                    hourlyRate: 45.67,
+                    salaryType: 'hourly',
                     salary: 95000,
                     role: 'manager',
                     status: 'active',
@@ -153,6 +163,8 @@ class EmployeesPageManager {
                     position: 'Financial Analyst',
                     manager: 'John Doe',
                     hireDate: '2023-07-03',
+                    hourlyRate: 27.88,
+                    salaryType: 'hourly',
                     salary: 58000,
                     role: 'employee',
                     status: 'inactive',
@@ -246,10 +258,44 @@ class EmployeesPageManager {
         });
 
         // Form submission
-        document.getElementById('employeeForm')?.addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.saveEmployee();
-        });
+        const form = document.getElementById('employeeForm');
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.saveEmployee();
+            });
+        }
+
+        // Auto-calculate salary based on hourly rate
+        const hourlyRateInput = document.getElementById('hourlyRate');
+        const salaryTypeSelect = document.getElementById('salaryType');
+        const salaryInput = document.getElementById('salary');
+
+        const calculateSalary = () => {
+            const hourlyRate = parseFloat(hourlyRateInput?.value) || 0;
+            const salaryType = salaryTypeSelect?.value || 'hourly';
+            
+            if (salaryType === 'hourly' && hourlyRate > 0) {
+                // Calculate annual salary: hourlyRate * 40 hours/week * 52 weeks/year
+                const annualSalary = hourlyRate * 40 * 52;
+                if (salaryInput) {
+                    salaryInput.value = Math.round(annualSalary);
+                    salaryInput.placeholder = 'Auto-calculated from hourly rate';
+                }
+            } else if (salaryType === 'salary') {
+                if (salaryInput) {
+                    salaryInput.placeholder = 'Enter fixed annual salary';
+                }
+            }
+        };
+
+        if (hourlyRateInput) {
+            hourlyRateInput.addEventListener('input', calculateSalary);
+        }
+        
+        if (salaryTypeSelect) {
+            salaryTypeSelect.addEventListener('change', calculateSalary);
+        }
 
         // Filter changes
         document.getElementById('departmentFilter')?.addEventListener('change', () => {
@@ -520,7 +566,7 @@ class EmployeesPageManager {
         const fields = [
             'employeeId', 'firstName', 'lastName', 'email', 'phone',
             'employeeCode', 'department', 'position', 'manager',
-            'hireDate', 'salary', 'role', 'status'
+            'hireDate', 'hourlyRate', 'salaryType', 'salary', 'role', 'status'
         ];
 
         fields.forEach(field => {
@@ -646,6 +692,8 @@ class EmployeesPageManager {
             position: document.getElementById('position')?.value.trim() || '',
             manager: document.getElementById('manager')?.value.trim() || '',
             hireDate: document.getElementById('hireDate')?.value || '',
+            hourlyRate: parseFloat(document.getElementById('hourlyRate')?.value) || 15.00,
+            salaryType: document.getElementById('salaryType')?.value || 'hourly',
             salary: parseFloat(document.getElementById('salary')?.value) || 0,
             role: document.getElementById('role')?.value || 'employee',
             status: document.getElementById('status')?.value || 'active',
@@ -708,7 +756,9 @@ class EmployeesPageManager {
         this.setElementText('viewEmployeePosition', employee.position);
         this.setElementText('viewEmployeeManager', employee.manager || 'N/A');
         this.setElementText('viewEmployeeHireDate', new Date(employee.hireDate).toLocaleDateString());
-        this.setElementText('viewEmployeeSalary', employee.salary ? `$${employee.salary.toLocaleString()}` : 'N/A');
+        this.setElementText('viewEmployeeHourlyRate', employee.hourlyRate ? `₱${employee.hourlyRate.toFixed(2)}/hr` : 'N/A');
+        this.setElementText('viewEmployeeSalaryType', employee.salaryType ? this.capitalizeFirst(employee.salaryType) : 'Hourly');
+        this.setElementText('viewEmployeeSalary', employee.salary ? `₱${employee.salary.toLocaleString()}` : 'N/A');
         this.setElementText('viewEmployeeRole', this.capitalizeFirst(employee.role));
         
         const statusElement = document.getElementById('viewEmployeeStatus');

@@ -594,6 +594,36 @@ const BusinessUtils = {
 // General Utilities
 const Utils = {
     /**
+     * Format currency (shortcut to CurrencyUtils.formatCurrency)
+     * @param {number} amount - Amount to format
+     * @param {string} currency - Currency code (default: PHP)
+     * @param {string} locale - Locale for formatting (default: en-PH)
+     * @returns {string} Formatted currency string
+     */
+    formatCurrency(amount, currency = 'PHP', locale = 'en-PH') {
+        return CurrencyUtils.formatCurrency(amount, currency, locale);
+    },
+
+    /**
+     * Parse currency string to number (shortcut to CurrencyUtils.parseCurrency)
+     * @param {string} currencyString - Currency string to parse
+     * @returns {number} Parsed number
+     */
+    parseCurrency(currencyString) {
+        return CurrencyUtils.parseCurrency(currencyString);
+    },
+
+    /**
+     * Format date (shortcut to DateUtils.formatDate)
+     * @param {Date|string} date - Date to format
+     * @param {string} format - Format type
+     * @returns {string} Formatted date string
+     */
+    formatDate(date, format = 'short') {
+        return DateUtils.formatDate(date, format);
+    },
+
+    /**
      * Debounce function calls
      * @param {Function} func - Function to debounce
      * @param {number} wait - Wait time in milliseconds
@@ -1669,3 +1699,6 @@ window.AccessibilityUtils = AccessibilityUtils;
 window.TouchUtils = TouchUtils;
 window.ColorUtils = ColorUtils;
 window.InteractionUtils = InteractionUtils;
+
+// Create a lowercase alias for compatibility
+window.utils = Utils;

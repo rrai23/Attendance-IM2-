@@ -252,51 +252,334 @@ class DataService {
 
     async getEmployees() {
         await this.simulateDelay(100, 300);
+        
+        // Extract employee data from users array if needed
+        if (!this.data.employees && this.data.users) {
+            this.data.employees = this.data.users.map(user => ({
+                id: user.employee?.id || user.id,
+                firstName: user.employee?.firstName || 'Unknown',
+                lastName: user.employee?.lastName || 'User',
+                email: user.employee?.email || '',
+                phone: user.employee?.phone || '',
+                position: user.employee?.position || '',
+                department: user.employee?.department || '',
+                hireDate: user.employee?.hireDate || '',
+                status: user.employee?.status || 'active',
+                role: user.role || 'employee',
+                hourlyRate: user.employee?.hourlyRate || 15.00,
+                salaryType: user.employee?.salaryType || 'hourly',
+                salary: user.employee?.salary || (user.employee?.hourlyRate * 40 * 52) || 31200 // Annual estimate
+            }));
+        }
+        
         return this.data.employees || [];
     }
 
-    async getDepartments() {
-        await this.simulateDelay(50, 200);
-        const employees = this.data.employees || [];
-        const departments = [...new Set(employees.map(emp => emp.department))];
-        return departments.map((name, index) => ({ id: index + 1, name }));
+    async getEmployee(employeeId) {
+        await this.simulateDelay(50, 150);
+        
+        const employees = await this.getEmployees();
+        return employees.find(emp => emp.id == employeeId) || null;
     }
 
-    async getEmployeesByDepartment(departmentId) {
+    async updateEmployeeWage(employeeId, newHourlyRate, notes = '') {
         await this.simulateDelay(100, 300);
-        const employees = this.data.employees || [];
-        const departments = await this.getDepartments();
-        const department = departments.find(dept => dept.id === parseInt(departmentId));
         
-        if (!department) return [];
+        // Update in users array if employee data is stored there
+        if (this.data.users) {
+            const user = this.data.users.find(u => u.employee?.id == employeeId || u.id == employeeId);
+            if (user && user.employee) {
+                user.employee.hourlyRate = parseFloat(newHourlyRate);
+                // Update annual salary estimate if it exists
+                if (user.employee.salary) {
+                    user.employee.salary = parseFloat(newHourlyRate) * 40 * 52; // 40 hours/week * 52 weeks
+                }
+            }
+        }
         
-        return employees.filter(emp => emp.department === department.name);
+        // Update in employees array if it exists
+        if (this.data.employees) {
+            const employee = this.data.employees.find(emp => emp.id == employeeId);
+            if (employee) {
+                employee.hourlyRate = parseFloat(newHourlyRate);
+                // Update annual salary estimate if it exists
+                if (employee.salary) {
+                    employee.salary = parseFloat(newHourlyRate) * 40 * 52;
+                }
+            }
+        }
+        
+        // Log the wage change
+        if (!this.data.wageHistory) {
+            this.data.wageHistory = [];
+        }
+        
+        this.data.wageHistory.push({
+            employeeId: employeeId,
+            previousRate: null, // Would be tracked in real system
+            newRate: parseFloat(newHourlyRate),
+            notes: notes,
+            updatedBy: 'admin', // Would come from session in real system
+            updatedAt: new Date().toISOString()
+        });
+        
+        return {
+            success: true,
+            employeeId: employeeId,
+            newHourlyRate: parseFloat(newHourlyRate),
+            message: 'Employee wage updated successfully'
+        };
     }
 
-    async getEmployeePerformance(employeeId = null) {
+    async updateEmployee(employeeId, employeeData) {
+        await this.simulateDelay(100, 300);
+        
+        // Update in users array
+        if (this.data.users) {
+            const user = this.data.users.find(u => u.employee?.id == employeeId || u.id == employeeId);
+            if (user && user.employee) {
+                Object.assign(user.employee, employeeData);
+            }
+        }
+        
+        // Update in employees array
+        if (this.data.employees) {
+            const employeeIndex = this.data.employees.findIndex(emp => emp.id == employeeId);
+            if (employeeIndex !== -1) {
+                this.data.employees[employeeIndex] = {
+                    ...this.data.employees[employeeIndex],
+                    ...employeeData
+                };
+            }
+        }
+        
+        return {
+            success: true,
+            employeeId: employeeId,
+            message: 'Employee updated successfully'
+        };
+    }
+
+    async addEmployee(employeeData) {
+        await this.simulateDelay(200, 400);
+        
+        const newId = Math.max(...(this.data.employees?.map(e => e.id) || [0])) + 1;
+        const newEmployee = {
+            id: newId,
+            ...employeeData,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+        
+        if (!this.data.employees) {
+            this.data.employees = [];
+        }
+        
+        this.data.employees.push(newEmployee);
+        
+        return {
+            success: true,
+            employee: newEmployee,
+            message: 'Employee added successfully'
+        };
+    }
+
+    async deleteEmployee(employeeId) {
+        await this.simulateDelay(100, 300);
+        
+        // Remove from employees array
+        if (this.data.employees) {
+            this.data.employees = this.data.employees.filter(emp => emp.id != employeeId);
+        }
+        
+        // Remove from users array
+        if (this.data.users) {
+            this.data.users = this.data.users.filter(user => 
+                user.employee?.id != employeeId && user.id != employeeId
+            );
+        }
+        
+        return {
+            success: true,
+            employeeId: employeeId,
+            message: 'Employee deleted successfully'
+        };
+    }
+
+    // Payroll calculation method
+    async calculatePayroll(employeeId, startDate, endDate) {
         await this.simulateDelay(200, 500);
         
-        // Generate mock performance data
-        const employees = this.data.employees || [];
-        const targetEmployees = employeeId 
-            ? employees.filter(emp => emp.id === employeeId)
-            : employees;
-
-        return targetEmployees.map(emp => ({
-            employeeId: emp.id,
-            employeeName: `${emp.firstName} ${emp.lastName}`,
-            punctualityScore: Math.floor(Math.random() * 20 + 80), // 80-100
-            attendanceScore: Math.floor(Math.random() * 15 + 85),  // 85-100
-            overtimeScore: Math.floor(Math.random() * 30 + 70),    // 70-100
-            consistencyScore: Math.floor(Math.random() * 25 + 75), // 75-100
-            reliabilityScore: Math.floor(Math.random() * 20 + 80), // 80-100
-            lastUpdated: new Date().toISOString()
-        }));
+        const employee = await this.getEmployee(employeeId);
+        if (!employee) {
+            throw new Error('Employee not found');
+        }
+        
+        // Get attendance records for the period
+        const attendanceRecords = await this.getAttendanceRecords(employeeId, startDate, endDate);
+        
+        // Calculate total hours worked
+        let totalHours = 0;
+        let workDays = 0;
+        
+        attendanceRecords.forEach(record => {
+            if (record.hoursWorked && record.hoursWorked > 0) {
+                totalHours += record.hoursWorked;
+                workDays++;
+            }
+        });
+        
+        // Calculate regular and overtime hours
+        const standardHours = 8; // hours per day
+        const expectedHours = workDays * standardHours;
+        const regularHours = Math.min(totalHours, expectedHours);
+        const overtimeHours = Math.max(0, totalHours - expectedHours);
+        
+        // Calculate pay
+        const hourlyRate = employee.hourlyRate || 15.00;
+        const overtimeRate = 1.5;
+        
+        const regularPay = regularHours * hourlyRate;
+        const overtimePay = overtimeHours * hourlyRate * overtimeRate;
+        const grossPay = regularPay + overtimePay;
+        
+        // Calculate basic deductions (simplified)
+        const taxRate = 0.20; // 20% tax
+        const taxes = grossPay * taxRate;
+        const netPay = grossPay - taxes;
+        
+        return {
+            employeeId: employeeId,
+            employeeName: `${employee.firstName} ${employee.lastName}`,
+            periodStart: startDate,
+            periodEnd: endDate,
+            totalHours: Math.round(totalHours * 100) / 100,
+            regularHours: Math.round(regularHours * 100) / 100,
+            overtimeHours: Math.round(overtimeHours * 100) / 100,
+            hourlyRate: hourlyRate,
+            regularPay: Math.round(regularPay * 100) / 100,
+            overtimePay: Math.round(overtimePay * 100) / 100,
+            grossPay: Math.round(grossPay * 100) / 100,
+            taxes: Math.round(taxes * 100) / 100,
+            deductions: Math.round(taxes * 100) / 100, // Only taxes for now
+            netPay: Math.round(netPay * 100) / 100,
+            workDays: workDays
+        };
     }
 
-    async getSettings() {
+    // Overtime Management Methods
+    async getOvertimeRequests() {
         await this.simulateDelay(100, 300);
-        return this.data.settings || {};
+        
+        if (!this.data.overtimeRequests) {
+            this.data.overtimeRequests = [];
+        }
+        
+        return this.data.overtimeRequests;
+    }
+
+    async addOvertimeRequest(requestData) {
+        await this.simulateDelay(100, 300);
+        
+        if (!this.data.overtimeRequests) {
+            this.data.overtimeRequests = [];
+        }
+        
+        const newRequest = {
+            id: Math.max(...(this.data.overtimeRequests.map(r => r.id) || [0])) + 1,
+            ...requestData,
+            status: 'pending',
+            submittedAt: new Date().toISOString()
+        };
+        
+        this.data.overtimeRequests.push(newRequest);
+        
+        return {
+            success: true,
+            request: newRequest,
+            message: 'Overtime request submitted successfully'
+        };
+    }
+
+    async updateOvertimeRequest(requestId, updates) {
+        await this.simulateDelay(100, 300);
+        
+        if (!this.data.overtimeRequests) {
+            this.data.overtimeRequests = [];
+        }
+        
+        const requestIndex = this.data.overtimeRequests.findIndex(r => r.id == requestId);
+        if (requestIndex === -1) {
+            throw new Error('Overtime request not found');
+        }
+        
+        this.data.overtimeRequests[requestIndex] = {
+            ...this.data.overtimeRequests[requestIndex],
+            ...updates,
+            updatedAt: new Date().toISOString()
+        };
+        
+        return {
+            success: true,
+            request: this.data.overtimeRequests[requestIndex],
+            message: 'Overtime request updated successfully'
+        };
+    }
+
+    // Payroll History Methods
+    async getPayrollHistory(employeeId = null) {
+        await this.simulateDelay(100, 300);
+        
+        if (!this.data.payrollHistory) {
+            this.data.payrollHistory = [];
+        }
+        
+        let history = this.data.payrollHistory;
+        
+        if (employeeId) {
+            history = history.filter(record => record.employeeId == employeeId);
+        }
+        
+        return history.sort((a, b) => new Date(b.payDate) - new Date(a.payDate));
+    }
+
+    async addPayrollRecord(payrollData) {
+        await this.simulateDelay(100, 300);
+        
+        if (!this.data.payrollHistory) {
+            this.data.payrollHistory = [];
+        }
+        
+        const newRecord = {
+            id: Math.max(...(this.data.payrollHistory.map(r => r.id) || [0])) + 1,
+            ...payrollData,
+            processedAt: new Date().toISOString()
+        };
+        
+        this.data.payrollHistory.push(newRecord);
+        
+        return {
+            success: true,
+            record: newRecord,
+            message: 'Payroll record added successfully'
+        };
+    }
+
+    // Settings Methods
+    async getSettings() {
+        await this.simulateDelay(50, 150);
+        
+        return this.data.settings || {
+            company: {
+                name: "Bricks Construction Co.",
+                workingHours: 8
+            },
+            payroll: {
+                frequency: 'biweekly',
+                standardWage: 15.00,
+                overtimeRate: 1.5
+            }
+        };
     }
 
     async saveSettings(settings) {

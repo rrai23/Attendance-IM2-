@@ -453,65 +453,86 @@ class PayrollController {
      * Show edit wage modal
      */
     async showEditWageModal(employeeId) {
-        // Check if modalManager is available
-        if (typeof modalManager === 'undefined' && typeof window.modalManager === 'undefined') {
-            console.error('modalManager is not available');
-            return;
-        }
-        
-        const manager = typeof modalManager !== 'undefined' ? modalManager : window.modalManager;
-        
         const employee = this.employees.find(emp => emp.id === employeeId);
         if (!employee) {
             console.warn(`Employee with ID ${employeeId} not found`);
             return;
         }
 
-        const modalId = manager.create({
-            title: `Edit Wage - ${employee.firstName} ${employee.lastName}`,
-            form: {
-                fields: [
+        // Check if modalManager is available for fancy modal, otherwise use simple prompt
+        if (typeof modalManager !== 'undefined' || typeof window.modalManager !== 'undefined') {
+            const manager = typeof modalManager !== 'undefined' ? modalManager : window.modalManager;
+            
+            const modalId = manager.create({
+                title: `Edit Wage - ${employee.firstName} ${employee.lastName}`,
+                form: {
+                    fields: [
+                        {
+                            type: 'number',
+                            name: 'hourlyRate',
+                            label: 'Hourly Rate (₱/hr)',
+                            value: employee.hourlyRate,
+                            required: true,
+                            step: '0.01',
+                            min: '0'
+                        },
+                        {
+                            type: 'textarea',
+                            name: 'notes',
+                            label: 'Notes (optional)',
+                            placeholder: 'Reason for wage change...',
+                            rows: 3
+                        }
+                    ]
+                },
+                buttons: [
                     {
-                        type: 'number',
-                        name: 'hourlyRate',
-                        label: 'Hourly Rate ($)',
-                        value: employee.hourlyRate,
-                        required: true,
-                        step: '0.01',
-                        min: '0'
+                        text: 'Cancel',
+                        class: 'btn-secondary',
+                        action: 'cancel'
                     },
                     {
-                        type: 'textarea',
-                        name: 'notes',
-                        label: 'Notes (optional)',
-                        placeholder: 'Reason for wage change...',
-                        rows: 3
+                        text: 'Update Wage',
+                        class: 'btn-primary',
+                        action: 'submit'
                     }
-                ]
-            },
-            buttons: [
-                {
-                    text: 'Cancel',
-                    class: 'btn-secondary',
-                    action: 'cancel'
-                },
-                {
-                    text: 'Update Wage',
-                    class: 'btn-primary',
-                    action: 'submit'
+                ],
+                onSubmit: async (data) => {
+                    try {
+                        await this.updateEmployeeWage(employeeId, parseFloat(data.hourlyRate), data.notes);
+                        this.showSuccess('Employee wage updated successfully');
+                        return true;
+                    } catch (error) {
+                        this.showError('Failed to update employee wage');
+                        return false;
+                    }
                 }
-            ],
-            onSubmit: async (data) => {
+            });
+        } else {
+            // Fallback to simple prompt if modalManager is not available
+            const currentRate = employee.hourlyRate;
+            const newRateInput = prompt(
+                `Edit wage for ${employee.firstName} ${employee.lastName}\n` +
+                `Current hourly rate: ₱${currentRate}/hr\n\n` +
+                `Enter new hourly rate (₱/hr):`,
+                currentRate
+            );
+            
+            if (newRateInput !== null) {
+                const newRate = parseFloat(newRateInput);
+                if (isNaN(newRate) || newRate < 0) {
+                    this.showError('Please enter a valid hourly rate');
+                    return;
+                }
+                
                 try {
-                    await this.updateEmployeeWage(employeeId, parseFloat(data.hourlyRate), data.notes);
-                    this.showSuccess('Employee wage updated successfully');
-                    return true;
+                    await this.updateEmployeeWage(employeeId, newRate, 'Wage updated via simple dialog');
+                    this.showSuccess(`Wage updated to ₱${newRate}/hr for ${employee.firstName} ${employee.lastName}`);
                 } catch (error) {
                     this.showError('Failed to update employee wage');
-                    return false;
                 }
             }
-        });
+        }
     }
 
     /**
