@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Employees Page</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-section { margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; }
+        .error { color: red; }
+        .success { color: green; }
+        .warning { color: orange; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Debug Employees Page</h1>
+    
+    <div class="debug-section">
+        <h3>Script Loading Status</h3>
+        <div id="scriptStatus"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h3>DOM Elements Check</h3>
+        <div id="domStatus"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h3>JavaScript Errors</h3>
+        <div id="errorLog"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h3>Test Navigation</h3>
+        <a href="/employees.html" target="_blank">Open Employees Page</a>
+    </div>
+
+    <!-- Load the same scripts as employees.html -->
+    <script src="/js/data-service.js"></script>
+    <script src="/js/theme.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/sidebar.js"></script>
+    <script src="/js/employees-page.js"></script>
+    
+    <script>
+        // Capture console errors
+        const originalError = console.error;
+        const errors = [];
+        console.error = function(...args) {
+            errors.push(args.join(' '));
+            originalError.apply(console, args);
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check script loading
+            const scriptStatus = document.getElementById('scriptStatus');
+            const domStatus = document.getElementById('domStatus');
+            const errorLog = document.getElementById('errorLog');
+            
+            // Check if EmployeesPageManager class exists
+            if (typeof EmployeesPageManager !== 'undefined') {
+                scriptStatus.innerHTML += '<div class="success">✅ EmployeesPageManager class loaded</div>';
+                
+                // Try to create an instance
+                try {
+                    const testManager = new EmployeesPageManager();
+                    scriptStatus.innerHTML += '<div class="success">✅ EmployeesPageManager instance created</div>';
+                } catch (error) {
+                    scriptStatus.innerHTML += '<div class="error">❌ Error creating EmployeesPageManager: ' + error.message + '</div>';
+                }
+            } else {
+                scriptStatus.innerHTML += '<div class="error">❌ EmployeesPageManager class not found</div>';
+            }
+            
+            // Check other dependencies
+            const dependencies = [
+                'window.themeManager',
+                'window.authManager', 
+                'window.dataService'
+            ];
+            
+            dependencies.forEach(dep => {
+                const exists = eval('typeof ' + dep + ' !== "undefined"');
+                if (exists) {
+                    scriptStatus.innerHTML += '<div class="success">✅ ' + dep + ' loaded</div>';
+                } else {
+                    scriptStatus.innerHTML += '<div class="warning">⚠️ ' + dep + ' not found (may be optional)</div>';
+                }
+            });
+            
+            // Check DOM elements that should exist on employees page
+            const requiredElements = [
+                'employeesTable',
+                'employeesTableBody', 
+                'addEmployeeBtn',
+                'emptyState'
+            ];
+            
+            requiredElements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    domStatus.innerHTML += '<div class="success">✅ Element #' + id + ' found</div>';
+                } else {
+                    domStatus.innerHTML += '<div class="warning">⚠️ Element #' + id + ' not found (expected on employees page)</div>';
+                }
+            });
+            
+            // Display any errors
+            setTimeout(() => {
+                if (errors.length > 0) {
+                    errorLog.innerHTML = errors.map(err => '<div class="error">❌ ' + err + '</div>').join('');
+                } else {
+                    errorLog.innerHTML = '<div class="success">✅ No JavaScript errors detected</div>';
+                }
+            }, 2000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1877 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" class="page-employees">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Management - Bricks Attendance System</title>
+    <meta name="description" content="Admin panel for managing employee profiles, information, and system access">
+    <meta name="author" content="Bricks Attendance System">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="/css/styles.css">
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="/js/data-service.js" as="script">
+    <link rel="preload" href="/js/auth.js" as="script">
+    <link rel="preload" href="/js/theme.js" as="script">
+</head>
+<body>
+    <!-- Skip Navigation Links -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <a href="#sidebar" class="skip-link">Skip to navigation</a>
+
+    <!-- Mobile Hamburger Menu Button -->
+    <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+    </button>
+
+    <!-- App Container -->
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-brand">
+                    <div class="brand-icon">🧱</div>
+                    <div class="brand-text">
+                        <h2>Bricks</h2>
+                        <span>Attendance System</span>
+                    </div>
+                </div>
+                <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">
+                    <span class="toggle-icon">‹</span>
+                </button>
+            </div>
+
+            <div class="sidebar-user">
+                <div class="user-avatar">
+                    <span id="user-avatar-text">A</span>
+                </div>
+                <div class="user-info">
+                    <div class="user-name" id="user-name">Administrator</div>
+                    <div class="user-role" id="user-role">Admin</div>
+                </div>
+                <div class="theme-selector">
+                    <button class="theme-option active" data-theme="light" title="Light Mode">
+                        <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                    </button>
+                    <button class="theme-option" data-theme="dark" title="Dark Mode">
+                        <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="/dashboard.html" class="nav-link" data-page="dashboard" title="Overview and statistics">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Dashboard</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/employees.html" class="nav-link active" data-page="employees" title="Employee management">
+                            <span class="nav-icon">👥</span>
+                            <span class="nav-text">Employees</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/employee-management.html" class="nav-link" data-page="employee-management" title="Manage employee attendance">
+                            <span class="nav-icon">🕐</span>
+                            <span class="nav-text">Attendance</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/analytics.html" class="nav-link" data-page="analytics" title="Detailed attendance analytics">
+                            <span class="nav-icon">📈</span>
+                            <span class="nav-text">Analytics</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/payroll.html" class="nav-link" data-page="payroll" title="Payroll management">
+                            <span class="nav-icon">💰</span>
+                            <span class="nav-text">Payroll</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item nav-item-dropdown" id="reportsDropdown">
+                        <a href="#" class="nav-link nav-dropdown-toggle" 
+                           title="Reports and documents"
+                           role="button"
+                           aria-haspopup="true"
+                           aria-expanded="false"
+                           tabindex="0">
+                            <span class="nav-icon">📋</span>
+                            <span class="nav-text">Reports</span>
+                            <span class="nav-dropdown-arrow">▼</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                        <ul class="nav-dropdown-menu">
+                            <li><a href="/reports/attendance.html" class="nav-dropdown-link">Attendance Reports</a></li>
+                            <li><a href="/reports/payroll.html" class="nav-dropdown-link">Payroll Reports</a></li>
+                            <li><a href="/reports/analytics.html" class="nav-dropdown-link">Analytics Reports</a></li>
+                            <li><a href="/reports/export.html" class="nav-dropdown-link">Export Data</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item nav-item-dropdown" id="toolsDropdown">
+                        <a href="#" class="nav-link nav-dropdown-toggle" 
+                           title="System tools"
+                           role="button"
+                           aria-haspopup="true"
+                           aria-expanded="false"
+                           tabindex="0">
+                            <span class="nav-icon">🔧</span>
+                            <span class="nav-text">Tools</span>
+                            <span class="nav-dropdown-arrow">▼</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                        <ul class="nav-dropdown-menu">
+                            <li><a href="/tools/backup.html" class="nav-dropdown-link">Backup & Restore</a></li>
+                            <li><a href="/tools/import.html" class="nav-dropdown-link">Import Data</a></li>
+                            <li><a href="/tools/logs.html" class="nav-dropdown-link">System Logs</a></li>
+                            <li><a href="/tools/maintenance.html" class="nav-dropdown-link">Maintenance</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/settings.html" class="nav-link" data-page="settings" title="System configuration">
+                            <span class="nav-icon">⚙️</span>
+                            <span class="nav-text">Settings</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <!-- Quick Actions Section -->
+            <div class="sidebar-quick-actions">
+                <div class="quick-actions-header">
+                    <h4>Quick Actions</h4>
+                </div>
+                <div class="quick-actions-grid" role="group" aria-label="Quick action buttons">
+                    <button class="quick-action-btn" 
+                            title="Add Employee (Alt+E)" 
+                            id="quickAddEmployeeBtn"
+                            aria-label="Add new employee"
+                            data-shortcut="Alt+E">
+                        <span class="quick-action-icon">👤</span>
+                        <span class="quick-action-text">Add Employee</span>
+                    </button>
+                    <button class="quick-action-btn" 
+                            title="Employee Directory (Alt+D)" 
+                            id="quickDirectoryBtn"
+                            aria-label="View employee directory"
+                            data-shortcut="Alt+D">
+                        <span class="quick-action-icon">📖</span>
+                        <span class="quick-action-text">Directory</span>
+                    </button>
+                    <button class="quick-action-btn" 
+                            title="Bulk Import (Alt+I)" 
+                            id="quickImportBtn"
+                            aria-label="Import employees"
+                            data-shortcut="Alt+I">
+                        <span class="quick-action-icon">📥</span>
+                        <span class="quick-action-text">Import</span>
+                    </button>
+                    <button class="quick-action-btn" 
+                            title="Export Data (Alt+X)" 
+                            id="quickExportBtn"
+                            aria-label="Export employee data"
+                            data-shortcut="Alt+X">
+                        <span class="quick-action-icon">📤</span>
+                        <span class="quick-action-text">Export</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Logout Section -->
+            <div class="sidebar-logout">
+                <button class="logout-btn" id="logout-btn" title="Sign out (Alt+L)" aria-label="Sign out">
+                    <span class="logout-icon">🚪</span>
+                    <span class="logout-text">Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content" id="main-content">
+            <!-- Header -->
+            <header class="page-header">
+                <div class="header-top">
+                    <div class="header-title">
+                        <h1>Employee Management</h1>
+                        <p>Manage employee profiles, information, and system access</p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="btn btn-outline" id="exportBtn" title="Export employee data">
+                            <span class="btn-icon">📥</span>
+                            <span class="btn-text">Export</span>
+                        </button>
+                        <button class="btn btn-outline" id="importBtn" title="Import employee data">
+                            <span class="btn-icon">📤</span>
+                            <span class="btn-text">Import</span>
+                        </button>
+                        <button class="btn btn-secondary" id="refreshBtn" title="Refresh data">
+                            <span class="btn-icon">🔄</span>
+                            <span class="btn-text">Refresh</span>
+                        </button>
+                        <button class="btn btn-primary" id="addEmployeeBtn">
+                            <span class="btn-icon">👤➕</span>
+                            <span class="btn-text">Add Employee</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Filters and Search -->
+                <div class="header-filters">
+                    <div class="filter-group">
+                        <label for="departmentFilter" class="filter-label">Department:</label>
+                        <select id="departmentFilter" class="filter-select">
+                            <option value="">All Departments</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="statusFilter" class="filter-label">Status:</label>
+                        <select id="statusFilter" class="filter-select">
+                            <option value="">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="suspended">Suspended</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="roleFilter" class="filter-label">Role:</label>
+                        <select id="roleFilter" class="filter-select">
+                            <option value="">All Roles</option>
+                            <option value="admin">Admin</option>
+                            <option value="manager">Manager</option>
+                            <option value="employee">Employee</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="searchInput" class="filter-label">Search:</label>
+                        <input type="text" id="searchInput" class="filter-input" placeholder="Search employees...">
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Statistics Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card stat-total">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="totalEmployees">0</div>
+                            <div class="stat-label">Total Employees</div>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-active">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="activeEmployees">0</div>
+                            <div class="stat-label">Active</div>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-departments">
+                        <div class="stat-icon">🏢</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="totalDepartments">0</div>
+                            <div class="stat-label">Departments</div>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-new">
+                        <div class="stat-icon">🆕</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="newThisMonth">0</div>
+                            <div class="stat-label">New This Month</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Employees Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Employee Directory</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="table-container">
+                            <table class="table" id="employeesTable">
+                                <thead>
+                                    <tr>
+                                        <th>Employee</th>
+                                        <th>Employee ID</th>
+                                        <th>Department</th>
+                                        <th>Position</th>
+                                        <th>Email</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="employeesTableBody">
+                                    <!-- Table rows will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Empty State -->
+                        <div class="empty-state hidden" id="emptyState">
+                            <div class="empty-icon">👥</div>
+                            <h3>No employees found</h3>
+                            <p>No employees match the selected filters. Try adjusting your search criteria.</p>
+                            <button class="btn btn-primary" id="addFirstEmployeeBtn">
+                                <span class="btn-icon">👤➕</span>
+                                <span class="btn-text">Add First Employee</span>
+                            </button>
+                        </div>
+
+                        <!-- Loading State -->
+                        <div class="loading-state hidden" id="loadingState">
+                            <div class="loading-spinner"></div>
+                            <p>Loading employees...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Employee Modal -->
+    <div class="modal-overlay hidden" id="employeeModal">
+        <div class="modal large">
+            <div class="modal-header">
+                <h3 id="modalTitle">Add Employee</h3>
+                <button class="modal-close" id="closeModal" aria-label="Close modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-content">
+                <form id="employeeForm" class="form">
+                    <input type="hidden" id="employeeId">
+                    
+                    <!-- Personal Information -->
+                    <div class="form-section">
+                        <h4>Personal Information</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="firstName" class="form-label">First Name *</label>
+                                <input type="text" id="firstName" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="lastName" class="form-label">Last Name *</label>
+                                <input type="text" id="lastName" class="form-input" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="email" class="form-label">Email Address *</label>
+                                <input type="email" id="email" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="phone" class="form-label">Phone Number</label>
+                                <input type="tel" id="phone" class="form-input">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Employment Information -->
+                    <div class="form-section">
+                        <h4>Employment Information</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="employeeCode" class="form-label">Employee ID *</label>
+                                <input type="text" id="employeeCode" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="department" class="form-label">Department *</label>
+                                <select id="department" class="form-input" required>
+                                    <option value="">Select Department</option>
+                                    <option value="Engineering">Engineering</option>
+                                    <option value="Marketing">Marketing</option>
+                                    <option value="Sales">Sales</option>
+                                    <option value="HR">Human Resources</option>
+                                    <option value="Finance">Finance</option>
+                                    <option value="Operations">Operations</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="position" class="form-label">Position/Title *</label>
+                                <input type="text" id="position" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="manager" class="form-label">Manager</label>
+                                <select id="manager" class="form-input">
+                                    <option value="">Select Manager</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="hireDate" class="form-label">Hire Date *</label>
+                                <input type="date" id="hireDate" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="salary" class="form-label">Salary</label>
+                                <input type="number" id="salary" class="form-input" step="0.01" min="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- System Access -->
+                    <div class="form-section">
+                        <h4>System Access</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="role" class="form-label">System Role *</label>
+                                <select id="role" class="form-input" required>
+                                    <option value="">Select Role</option>
+                                    <option value="employee">Employee</option>
+                                    <option value="manager">Manager</option>
+                                    <option value="admin">Administrator</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="status" class="form-label">Status *</label>
+                                <select id="status" class="form-input" required>
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                    <option value="suspended">Suspended</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Work Schedule -->
+                    <div class="form-section">
+                        <h4>Work Schedule</h4>
+                        <div class="schedule-grid">
+                            <div class="schedule-day">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="mondayActive" checked>
+                                    <span class="checkbox-checkmark"></span>
+                                    <span class="checkbox-label">Monday</span>
+                                </label>
+                                <div class="time-inputs">
+                                    <input type="time" id="mondayStart" value="09:00" class="form-input">
+                                    <span>to</span>
+                                    <input type="time" id="mondayEnd" value="17:00" class="form-input">
+                                </div>
+                            </div>
+                            <div class="schedule-day">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="tuesdayActive" checked>
+                                    <span class="checkbox-checkmark"></span>
+                                    <span class="checkbox-label">Tuesday</span>
+                                </label>
+                                <div class="time-inputs">
+                                    <input type="time" id="tuesdayStart" value="09:00" class="form-input">
+                                    <span>to</span>
+                                    <input type="time" id="tuesdayEnd" value="17:00" class="form-input">
+                                </div>
+                            </div>
+                            <div class="schedule-day">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="wednesdayActive" checked>
+                                    <span class="checkbox-checkmark"></span>
+                                    <span class="checkbox-label">Wednesday</span>
+                                </label>
+                                <div class="time-inputs">
+                                    <input type="time" id="wednesdayStart" value="09:00" class="form-input">
+                                    <span>to</span>
+                                    <input type="time" id="wednesdayEnd" value="17:00" class="form-input">
+                                </div>
+                            </div>
+                            <div class="schedule-day">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="thursdayActive" checked>
+                                    <span class="checkbox-checkmark"></span>
+                                    <span class="checkbox-label">Thursday</span>
+                                </label>
+                                <div class="time-inputs">
+                                    <input type="time" id="thursdayStart" value="09:00" class="form-input">
+                                    <span>to</span>
+                                    <input type="time" id="thursdayEnd" value="17:00" class="form-input">
+                                </div>
+                            </div>
+                            <div class="schedule-day">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="fridayActive" checked>
+                                    <span class="checkbox-checkmark"></span>
+                                    <span class="checkbox-label">Friday</span>
+                                </label>
+                                <div class="time-inputs">
+                                    <input type="time" id="fridayStart" value="09:00" class="form-input">
+                                    <span>to</span>
+                                    <input type="time" id="fridayEnd" value="17:00" class="form-input">
+                                </div>
+                            </div>
+                            <div class="schedule-day">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="saturdayActive">
+                                    <span class="checkbox-checkmark"></span>
+                                    <span class="checkbox-label">Saturday</span>
+                                </label>
+                                <div class="time-inputs">
+                                    <input type="time" id="saturdayStart" value="09:00" class="form-input">
+                                    <span>to</span>
+                                    <input type="time" id="saturdayEnd" value="17:00" class="form-input">
+                                </div>
+                            </div>
+                            <div class="schedule-day">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="sundayActive">
+                                    <span class="checkbox-checkmark"></span>
+                                    <span class="checkbox-label">Sunday</span>
+                                </label>
+                                <div class="time-inputs">
+                                    <input type="time" id="sundayStart" value="09:00" class="form-input">
+                                    <span>to</span>
+                                    <input type="time" id="sundayEnd" value="17:00" class="form-input">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="saveBtn">
+                            <span class="btn-text">Save Employee</span>
+                            <span class="btn-loading hidden">
+                                <span class="loading-spinner"></span>
+                                Saving...
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Employee Modal -->
+    <div class="modal-overlay hidden" id="viewEmployeeModal">
+        <div class="modal large">
+            <div class="modal-header">
+                <h3>Employee Details</h3>
+                <button class="modal-close" id="closeViewModal" aria-label="Close modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-content">
+                <div class="employee-details">
+                    <!-- Personal Information -->
+                    <div class="detail-section">
+                        <h4>Personal Information</h4>
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <label class="detail-label">Full Name</label>
+                                <div class="detail-value" id="viewEmployeeName">-</div>
+                            </div>
+                            <div class="detail-item">
+                                <label class="detail-label">Employee ID</label>
+                                <div class="detail-value" id="viewEmployeeCode">-</div>
+                            </div>
+                            <div class="detail-item">
+                                <label class="detail-label">Email Address</label>
+                                <div class="detail-value" id="viewEmployeeEmail">-</div>
+                            </div>
+                            <div class="detail-item">
+                                <label class="detail-label">Phone Number</label>
+                                <div class="detail-value" id="viewEmployeePhone">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Employment Information -->
+                    <div class="detail-section">
+                        <h4>Employment Information</h4>
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <label class="detail-label">Department</label>
+                                <div class="detail-value" id="viewEmployeeDepartment">-</div>
+                            </div>
+                            <div class="detail-item">
+                                <label class="detail-label">Position</label>
+                                <div class="detail-value" id="viewEmployeePosition">-</div>
+                            </div>
+                            <div class="detail-item">
+                                <label class="detail-label">Manager</label>
+                                <div class="detail-value" id="viewEmployeeManager">-</div>
+                            </div>
+                            <div class="detail-item">
+                                <label class="detail-label">Hire Date</label>
+                                <div class="detail-value" id="viewEmployeeHireDate">-</div>
+                            </div>
+                            <div class="detail-item">
+                                <label class="detail-label">Salary</label>
+                                <div class="detail-value" id="viewEmployeeSalary">-</div>
+                            </div>
+                            <div class="detail-item">
+                                <label class="detail-label">System Role</label>
+                                <div class="detail-value" id="viewEmployeeRole">-</div>
+                            </div>
+                            <div class="detail-item">
+                                <label class="detail-label">Status</label>
+                                <div class="detail-value" id="viewEmployeeStatus">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Work Schedule -->
+                    <div class="detail-section">
+                        <h4>Work Schedule</h4>
+                        <div class="detail-value" id="viewEmployeeSchedule">-</div>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" id="closeViewModalBtn">
+                        <span class="btn-text">Close</span>
+                    </button>
+                    <button type="button" class="btn btn-primary" id="editFromViewBtn">
+                        <span class="btn-icon">✏️</span>
+                        <span class="btn-text">Edit Employee</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Employee Modal -->
+    <div class="modal-overlay hidden" id="deleteEmployeeModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Delete Employee</h3>
+                <button class="modal-close" id="closeDeleteModal" aria-label="Close modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-content">
+                <div class="delete-confirmation">
+                    <div class="warning-icon">⚠️</div>
+                    <h4>Are you sure you want to delete this employee?</h4>
+                    <p>You are about to permanently delete <strong id="deleteEmployeeName">Employee Name</strong> from the system. This action cannot be undone.</p>
+                    
+                    <div class="warning-note">
+                        <p><strong>This will also:</strong></p>
+                        <ul>
+                            <li>Remove all attendance records for this employee</li>
+                            <li>Remove access to the system</li>
+                            <li>Update any related payroll calculations</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <input type="hidden" id="deleteEmployeeId">
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" id="cancelDeleteBtn">
+                        <span class="btn-text">Cancel</span>
+                    </button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                        <span class="btn-icon">🗑️</span>
+                        <span class="btn-text">Delete Employee</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/js/data-service.js"></script>
+    <script src="/js/theme.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/sidebar.js"></script>
+    <script src="/js/employees-page.js"></script>
+    <script>
+        // The main functionality is now in /js/employees-page.js
+        // This inline script is kept for any page-specific overrides if needed
+    </script>
+            constructor() {
+                this.employees = [];
+                this.filteredEmployees = [];
+                this.departments = [];
+                
+                this.init();
+            }
+
+            async init() {
+                try {
+                    await this.loadEmployees();
+                    this.setupEventListeners();
+                    this.updateStats();
+                    this.renderTable();
+                    this.populateFilters();
+                } catch (error) {
+                    console.error('Failed to initialize employees page:', error);
+                    this.showError('Failed to load page data');
+                }
+            }
+
+            async loadEmployees() {
+                try {
+                    // Mock employee data - in a real app, this would come from an API
+                    this.employees = [
+                        {
+                            id: 1,
+                            employeeCode: 'EMP001',
+                            firstName: 'John',
+                            lastName: 'Doe',
+                            email: 'john.doe@company.com',
+                            phone: '+1-555-0101',
+                            department: 'Engineering',
+                            position: 'Senior Developer',
+                            manager: 'Charlie Wilson',
+                            hireDate: '2023-01-15',
+                            salary: 85000,
+                            role: 'employee',
+                            status: 'active',
+                            schedule: {
+                                monday: { active: true, start: '09:00', end: '17:00' },
+                                tuesday: { active: true, start: '09:00', end: '17:00' },
+                                wednesday: { active: true, start: '09:00', end: '17:00' },
+                                thursday: { active: true, start: '09:00', end: '17:00' },
+                                friday: { active: true, start: '09:00', end: '17:00' }
+                            }
+                        },
+                        {
+                            id: 2,
+                            employeeCode: 'EMP002',
+                            firstName: 'Jane',
+                            lastName: 'Smith',
+                            email: 'jane.smith@company.com',
+                            phone: '+1-555-0102',
+                            department: 'Marketing',
+                            position: 'Marketing Manager',
+                            manager: null,
+                            hireDate: '2022-06-10',
+                            salary: 75000,
+                            role: 'manager',
+                            status: 'active',
+                            schedule: {
+                                monday: { active: true, start: '08:30', end: '16:30' },
+                                tuesday: { active: true, start: '08:30', end: '16:30' },
+                                wednesday: { active: true, start: '08:30', end: '16:30' },
+                                thursday: { active: true, start: '08:30', end: '16:30' },
+                                friday: { active: true, start: '08:30', end: '16:30' }
+                            }
+                        },
+                        {
+                            id: 3,
+                            employeeCode: 'EMP003',
+                            firstName: 'Bob',
+                            lastName: 'Johnson',
+                            email: 'bob.johnson@company.com',
+                            phone: '+1-555-0103',
+                            department: 'Sales',
+                            position: 'Sales Representative',
+                            manager: 'Jane Smith',
+                            hireDate: '2023-03-20',
+                            salary: 55000,
+                            role: 'employee',
+                            status: 'active',
+                            schedule: {
+                                monday: { active: true, start: '09:00', end: '17:00' },
+                                tuesday: { active: true, start: '09:00', end: '17:00' },
+                                wednesday: { active: true, start: '09:00', end: '17:00' },
+                                thursday: { active: true, start: '09:00', end: '17:00' },
+                                friday: { active: true, start: '09:00', end: '17:00' }
+                            }
+                        },
+                        {
+                            id: 4,
+                            employeeCode: 'EMP004',
+                            firstName: 'Alice',
+                            lastName: 'Brown',
+                            email: 'alice.brown@company.com',
+                            phone: '+1-555-0104',
+                            department: 'HR',
+                            position: 'HR Coordinator',
+                            manager: null,
+                            hireDate: '2022-09-05',
+                            salary: 60000,
+                            role: 'manager',
+                            status: 'active',
+                            schedule: {
+                                monday: { active: true, start: '08:00', end: '16:00' },
+                                tuesday: { active: true, start: '08:00', end: '16:00' },
+                                wednesday: { active: true, start: '08:00', end: '16:00' },
+                                thursday: { active: true, start: '08:00', end: '16:00' },
+                                friday: { active: true, start: '08:00', end: '16:00' }
+                            }
+                        },
+                        {
+                            id: 5,
+                            employeeCode: 'EMP005',
+                            firstName: 'Charlie',
+                            lastName: 'Wilson',
+                            email: 'charlie.wilson@company.com',
+                            phone: '+1-555-0105',
+                            department: 'Engineering',
+                            position: 'Lead Developer',
+                            manager: null,
+                            hireDate: '2021-11-01',
+                            salary: 95000,
+                            role: 'manager',
+                            status: 'active',
+                            schedule: {
+                                monday: { active: true, start: '10:00', end: '18:00' },
+                                tuesday: { active: true, start: '10:00', end: '18:00' },
+                                wednesday: { active: true, start: '10:00', end: '18:00' },
+                                thursday: { active: true, start: '10:00', end: '18:00' },
+                                friday: { active: true, start: '10:00', end: '18:00' }
+                            }
+                        }
+                    ];
+
+                    this.filteredEmployees = [...this.employees];
+                    this.departments = [...new Set(this.employees.map(emp => emp.department))];
+                } catch (error) {
+                    console.error('Failed to load employees:', error);
+                }
+            }
+
+            populateFilters() {
+                // Populate department filter
+                const departmentFilter = document.getElementById('departmentFilter');
+                this.departments.forEach(dept => {
+                    const option = new Option(dept, dept);
+                    departmentFilter.appendChild(option);
+                });
+
+                // Populate manager dropdown in modal
+                const managerSelect = document.getElementById('manager');
+                const managers = this.employees.filter(emp => emp.role === 'manager' || emp.role === 'admin');
+                managers.forEach(manager => {
+                    const option = new Option(`${manager.firstName} ${manager.lastName}`, `${manager.firstName} ${manager.lastName}`);
+                    managerSelect.appendChild(option);
+                });
+            }
+
+            setupEventListeners() {
+                // Modal controls
+                document.getElementById('addEmployeeBtn').addEventListener('click', () => {
+                    this.openModal();
+                });
+
+                document.getElementById('addFirstEmployeeBtn').addEventListener('click', () => {
+                    this.openModal();
+                });
+
+                document.getElementById('closeModal').addEventListener('click', () => {
+                    this.closeModal();
+                });
+
+                document.getElementById('cancelBtn').addEventListener('click', () => {
+                    this.closeModal();
+                });
+
+                // Form submission
+                document.getElementById('employeeForm').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.saveEmployee();
+                });
+
+                // Filter changes
+                document.getElementById('departmentFilter').addEventListener('change', () => {
+                    this.applyFilters();
+                });
+
+                document.getElementById('statusFilter').addEventListener('change', () => {
+                    this.applyFilters();
+                });
+
+                document.getElementById('roleFilter').addEventListener('change', () => {
+                    this.applyFilters();
+                });
+
+                document.getElementById('searchInput').addEventListener('input', () => {
+                    this.applyFilters();
+                });
+
+                // Quick actions
+                document.getElementById('quickAddEmployeeBtn').addEventListener('click', () => {
+                    this.openModal();
+                });
+
+                // Other buttons
+                document.getElementById('refreshBtn').addEventListener('click', () => {
+                    this.loadEmployees();
+                    this.updateStats();
+                    this.renderTable();
+                });
+
+                document.getElementById('exportBtn').addEventListener('click', () => {
+                    this.exportData();
+                });
+
+                document.getElementById('importBtn').addEventListener('click', () => {
+                    this.showError('Import functionality will be implemented in the next version.');
+                });
+
+                // View modal event listeners
+                document.getElementById('closeViewModal').addEventListener('click', () => {
+                    this.closeViewModal();
+                });
+
+                document.getElementById('closeViewModalBtn').addEventListener('click', () => {
+                    this.closeViewModal();
+                });
+
+                document.getElementById('editFromViewBtn').addEventListener('click', () => {
+                    const employeeName = document.getElementById('viewEmployeeName').textContent;
+                    const names = employeeName.split(' ');
+                    const employee = this.employees.find(emp => 
+                        emp.firstName === names[0] && emp.lastName === names.slice(1).join(' ')
+                    );
+                    if (employee) {
+                        this.closeViewModal();
+                        this.openModal(employee);
+                    }
+                });
+
+                // Delete modal event listeners
+                document.getElementById('closeDeleteModal').addEventListener('click', () => {
+                    this.closeDeleteModal();
+                });
+
+                document.getElementById('cancelDeleteBtn').addEventListener('click', () => {
+                    this.closeDeleteModal();
+                });
+
+                document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
+                    this.confirmDelete();
+                });
+
+                // Close modals on overlay click
+                document.getElementById('employeeModal').addEventListener('click', (e) => {
+                    if (e.target.classList.contains('modal-overlay')) {
+                        this.closeModal();
+                    }
+                });
+
+                document.getElementById('viewEmployeeModal').addEventListener('click', (e) => {
+                    if (e.target.classList.contains('modal-overlay')) {
+                        this.closeViewModal();
+                    }
+                });
+
+                document.getElementById('deleteEmployeeModal').addEventListener('click', (e) => {
+                    if (e.target.classList.contains('modal-overlay')) {
+                        this.closeDeleteModal();
+                    }
+                });
+            }
+
+            applyFilters() {
+                const department = document.getElementById('departmentFilter').value;
+                const status = document.getElementById('statusFilter').value;
+                const role = document.getElementById('roleFilter').value;
+                const search = document.getElementById('searchInput').value.toLowerCase();
+
+                this.filteredEmployees = this.employees.filter(employee => {
+                    let matches = true;
+
+                    if (department && employee.department !== department) {
+                        matches = false;
+                    }
+
+                    if (status && employee.status !== status) {
+                        matches = false;
+                    }
+
+                    if (role && employee.role !== role) {
+                        matches = false;
+                    }
+
+                    if (search) {
+                        const fullName = `${employee.firstName} ${employee.lastName}`.toLowerCase();
+                        const searchFields = [
+                            fullName,
+                            employee.employeeCode.toLowerCase(),
+                            employee.email.toLowerCase(),
+                            employee.department.toLowerCase(),
+                            employee.position.toLowerCase()
+                        ];
+                        
+                        if (!searchFields.some(field => field.includes(search))) {
+                            matches = false;
+                        }
+                    }
+
+                    return matches;
+                });
+
+                this.renderTable();
+            }
+
+            updateStats() {
+                const totalEmployees = this.employees.length;
+                const activeEmployees = this.employees.filter(emp => emp.status === 'active').length;
+                const totalDepartments = this.departments.length;
+                
+                // Calculate new employees this month
+                const currentMonth = new Date().getMonth();
+                const currentYear = new Date().getFullYear();
+                const newThisMonth = this.employees.filter(emp => {
+                    const hireDate = new Date(emp.hireDate);
+                    return hireDate.getMonth() === currentMonth && hireDate.getFullYear() === currentYear;
+                }).length;
+
+                document.getElementById('totalEmployees').textContent = totalEmployees;
+                document.getElementById('activeEmployees').textContent = activeEmployees;
+                document.getElementById('totalDepartments').textContent = totalDepartments;
+                document.getElementById('newThisMonth').textContent = newThisMonth;
+            }
+
+            renderTable() {
+                const tbody = document.getElementById('employeesTableBody');
+                const emptyState = document.getElementById('emptyState');
+
+                if (this.filteredEmployees.length === 0) {
+                    tbody.innerHTML = '';
+                    emptyState.classList.remove('hidden');
+                    return;
+                }
+
+                emptyState.classList.add('hidden');
+
+                tbody.innerHTML = this.filteredEmployees.map(employee => `
+                    <tr>
+                        <td>
+                            <div class="employee-info">
+                                <div class="employee-name">${employee.firstName} ${employee.lastName}</div>
+                                <div class="employee-email">${employee.email}</div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="employee-code">${employee.employeeCode}</span>
+                        </td>
+                        <td>${employee.department}</td>
+                        <td>${employee.position}</td>
+                        <td>${employee.email}</td>
+                        <td>
+                            <span class="status-badge status-${employee.status}">
+                                ${this.getStatusIcon(employee.status)} ${this.capitalizeFirst(employee.status)}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn btn-sm btn-outline" onclick="employeesPage.editEmployee(${employee.id})" title="Edit">
+                                    <span class="btn-icon">✏️</span>
+                                </button>
+                                <button class="btn btn-sm btn-outline" onclick="employeesPage.viewEmployee(${employee.id})" title="View Details">
+                                    <span class="btn-icon">👁️</span>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="employeesPage.deleteEmployee(${employee.id})" title="Delete">
+                                    <span class="btn-icon">🗑️</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            getStatusIcon(status) {
+                const icons = {
+                    active: '✅',
+                    inactive: '⏸️',
+                    suspended: '🚫'
+                };
+                return icons[status] || '❓';
+            }
+
+            capitalizeFirst(str) {
+                return str.charAt(0).toUpperCase() + str.slice(1);
+            }
+
+            openModal(employee = null) {
+                const modal = document.getElementById('employeeModal');
+                const form = document.getElementById('employeeForm');
+                const title = document.getElementById('modalTitle');
+
+                if (employee) {
+                    title.textContent = 'Edit Employee';
+                    this.populateForm(employee);
+                } else {
+                    title.textContent = 'Add Employee';
+                    form.reset();
+                    document.getElementById('employeeId').value = '';
+                    // Set default values
+                    document.getElementById('hireDate').value = new Date().toISOString().split('T')[0];
+                    document.getElementById('status').value = 'active';
+                    document.getElementById('role').value = 'employee';
+                }
+
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+
+            closeModal() {
+                const modal = document.getElementById('employeeModal');
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+
+            populateForm(employee) {
+                document.getElementById('employeeId').value = employee.id;
+                document.getElementById('firstName').value = employee.firstName;
+                document.getElementById('lastName').value = employee.lastName;
+                document.getElementById('email').value = employee.email;
+                document.getElementById('phone').value = employee.phone || '';
+                document.getElementById('employeeCode').value = employee.employeeCode;
+                document.getElementById('department').value = employee.department;
+                document.getElementById('position').value = employee.position;
+                document.getElementById('manager').value = employee.manager || '';
+                document.getElementById('hireDate').value = employee.hireDate;
+                document.getElementById('salary').value = employee.salary || '';
+                document.getElementById('role').value = employee.role;
+                document.getElementById('status').value = employee.status;
+
+                // Populate schedule
+                if (employee.schedule) {
+                    Object.keys(employee.schedule).forEach(day => {
+                        const daySchedule = employee.schedule[day];
+                        document.getElementById(`${day}Active`).checked = daySchedule.active;
+                        document.getElementById(`${day}Start`).value = daySchedule.start;
+                        document.getElementById(`${day}End`).value = daySchedule.end;
+                    });
+                }
+            }
+
+            async saveEmployee() {
+                const saveBtn = document.getElementById('saveBtn');
+                const btnText = saveBtn.querySelector('.btn-text');
+                const btnLoading = saveBtn.querySelector('.btn-loading');
+
+                // Show loading state
+                btnText.classList.add('hidden');
+                btnLoading.classList.remove('hidden');
+                saveBtn.disabled = true;
+
+                try {
+                    const employeeData = {
+                        id: document.getElementById('employeeId').value || Date.now(),
+                        employeeCode: document.getElementById('employeeCode').value,
+                        firstName: document.getElementById('firstName').value,
+                        lastName: document.getElementById('lastName').value,
+                        email: document.getElementById('email').value,
+                        phone: document.getElementById('phone').value,
+                        department: document.getElementById('department').value,
+                        position: document.getElementById('position').value,
+                        manager: document.getElementById('manager').value,
+                        hireDate: document.getElementById('hireDate').value,
+                        salary: parseFloat(document.getElementById('salary').value) || 0,
+                        role: document.getElementById('role').value,
+                        status: document.getElementById('status').value,
+                        schedule: {
+                            monday: {
+                                active: document.getElementById('mondayActive').checked,
+                                start: document.getElementById('mondayStart').value,
+                                end: document.getElementById('mondayEnd').value
+                            },
+                            tuesday: {
+                                active: document.getElementById('tuesdayActive').checked,
+                                start: document.getElementById('tuesdayStart').value,
+                                end: document.getElementById('tuesdayEnd').value
+                            },
+                            wednesday: {
+                                active: document.getElementById('wednesdayActive').checked,
+                                start: document.getElementById('wednesdayStart').value,
+                                end: document.getElementById('wednesdayEnd').value
+                            },
+                            thursday: {
+                                active: document.getElementById('thursdayActive').checked,
+                                start: document.getElementById('thursdayStart').value,
+                                end: document.getElementById('thursdayEnd').value
+                            },
+                            friday: {
+                                active: document.getElementById('fridayActive').checked,
+                                start: document.getElementById('fridayStart').value,
+                                end: document.getElementById('fridayEnd').value
+                            }
+                        }
+                    };
+
+                    const existingIndex = this.employees.findIndex(emp => emp.id == employeeData.id);
+                    
+                    if (existingIndex >= 0) {
+                        this.employees[existingIndex] = employeeData;
+                    } else {
+                        this.employees.push(employeeData);
+                    }
+
+                    this.applyFilters();
+                    this.updateStats();
+                    this.closeModal();
+                    this.showSuccess('Employee saved successfully!');
+
+                } catch (error) {
+                    console.error('Failed to save employee:', error);
+                    this.showError('Failed to save employee: ' + error.message);
+                } finally {
+                    // Reset button state
+                    btnText.classList.remove('hidden');
+                    btnLoading.classList.add('hidden');
+                    saveBtn.disabled = false;
+                }
+            }
+
+            editEmployee(id) {
+                const employee = this.employees.find(emp => emp.id === id);
+                if (employee) {
+                    this.openModal(employee);
+                }
+            }
+
+            viewEmployee(id) {
+                const employee = this.employees.find(emp => emp.id === id);
+                if (employee) {
+                    alert(`Employee Details:\n\nName: ${employee.firstName} ${employee.lastName}\nID: ${employee.employeeCode}\nDepartment: ${employee.department}\nPosition: ${employee.position}\nEmail: ${employee.email}\nStatus: ${employee.status}`);
+                }
+            }
+
+            deleteEmployee(id) {
+                const employee = this.employees.find(emp => emp.id === id);
+                if (employee && confirm(`Are you sure you want to delete ${employee.firstName} ${employee.lastName}?`)) {
+                    this.employees = this.employees.filter(emp => emp.id !== id);
+                    this.applyFilters();
+                    this.updateStats();
+                    this.showSuccess('Employee deleted successfully!');
+                }
+            }
+
+            exportData() {
+                const csv = this.convertToCSV(this.filteredEmployees);
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `employees-${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }
+
+            convertToCSV(data) {
+                const headers = ['Employee Code', 'First Name', 'Last Name', 'Email', 'Phone', 'Department', 'Position', 'Manager', 'Hire Date', 'Salary', 'Role', 'Status'];
+                const rows = data.map(emp => [
+                    emp.employeeCode,
+                    emp.firstName,
+                    emp.lastName,
+                    emp.email,
+                    emp.phone || '',
+                    emp.department,
+                    emp.position,
+                    emp.manager || '',
+                    emp.hireDate,
+                    emp.salary || '',
+                    emp.role,
+                    emp.status
+                ]);
+
+                return [headers, ...rows].map(row => 
+                    row.map(field => `"${field}"`).join(',')
+                ).join('\n');
+            }
+
+            editEmployee(employeeId) {
+                const employee = this.employees.find(emp => emp.id == employeeId);
+                if (employee) {
+                    this.openModal(employee);
+                }
+            }
+
+            viewEmployee(employeeId) {
+                const employee = this.employees.find(emp => emp.id == employeeId);
+                if (employee) {
+                    this.openViewModal(employee);
+                }
+            }
+
+            deleteEmployee(employeeId) {
+                const employee = this.employees.find(emp => emp.id == employeeId);
+                if (employee) {
+                    this.openDeleteModal(employee);
+                }
+            }
+
+            openViewModal(employee) {
+                const modal = document.getElementById('viewEmployeeModal');
+                
+                // Populate view modal data
+                document.getElementById('viewEmployeeName').textContent = `${employee.firstName} ${employee.lastName}`;
+                document.getElementById('viewEmployeeCode').textContent = employee.employeeCode;
+                document.getElementById('viewEmployeeEmail').textContent = employee.email;
+                document.getElementById('viewEmployeePhone').textContent = employee.phone || 'N/A';
+                document.getElementById('viewEmployeeDepartment').textContent = employee.department;
+                document.getElementById('viewEmployeePosition').textContent = employee.position;
+                document.getElementById('viewEmployeeManager').textContent = employee.manager || 'N/A';
+                document.getElementById('viewEmployeeHireDate').textContent = new Date(employee.hireDate).toLocaleDateString();
+                document.getElementById('viewEmployeeSalary').textContent = employee.salary ? `$${employee.salary.toLocaleString()}` : 'N/A';
+                document.getElementById('viewEmployeeRole').textContent = this.capitalizeFirst(employee.role);
+                
+                const statusElement = document.getElementById('viewEmployeeStatus');
+                statusElement.innerHTML = `<span class="status-badge status-${employee.status}">${this.getStatusIcon(employee.status)} ${this.capitalizeFirst(employee.status)}</span>`;
+                
+                // Populate schedule
+                const scheduleContainer = document.getElementById('viewEmployeeSchedule');
+                const scheduleHtml = Object.keys(employee.schedule || {}).map(day => {
+                    const daySchedule = employee.schedule[day];
+                    if (daySchedule.active) {
+                        return `<div class="schedule-item"><strong>${this.capitalizeFirst(day)}:</strong> ${daySchedule.start} - ${daySchedule.end}</div>`;
+                    }
+                    return `<div class="schedule-item"><strong>${this.capitalizeFirst(day)}:</strong> Not scheduled</div>`;
+                }).join('');
+                scheduleContainer.innerHTML = scheduleHtml;
+                
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+
+            openDeleteModal(employee) {
+                const modal = document.getElementById('deleteEmployeeModal');
+                document.getElementById('deleteEmployeeName').textContent = `${employee.firstName} ${employee.lastName}`;
+                document.getElementById('deleteEmployeeId').value = employee.id;
+                
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+
+            confirmDelete() {
+                const employeeId = document.getElementById('deleteEmployeeId').value;
+                const employeeIndex = this.employees.findIndex(emp => emp.id == employeeId);
+                
+                if (employeeIndex !== -1) {
+                    const employee = this.employees[employeeIndex];
+                    this.employees.splice(employeeIndex, 1);
+                    
+                    // Update filtered employees
+                    this.applyFilters();
+                    this.updateStats();
+                    this.renderTable();
+                    
+                    this.closeDeleteModal();
+                    this.showSuccess(`Employee ${employee.firstName} ${employee.lastName} has been deleted successfully.`);
+                }
+            }
+
+            closeViewModal() {
+                const modal = document.getElementById('viewEmployeeModal');
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+
+            closeDeleteModal() {
+                const modal = document.getElementById('deleteEmployeeModal');
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+
+            showSuccess(message) {
+                alert(message);
+            }
+
+            showError(message) {
+                alert(message);
+            }
+        }
+
+        // Global instance
+        let employeesPage;
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                try {
+                    employeesPage = new EmployeesPage();
+                    
+                    // Set theme
+                    if (typeof themeManager !== 'undefined') {
+                        themeManager.setPage('employees');
+                    }
+                } catch (error) {
+                    console.error('Failed to initialize employees page:', error);
+                }
+            }, 100);
+        });
+    </script>
+
+    <!-- Additional Styles -->
+    <style>
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .stat-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            transition: all var(--transition-fast);
+        }
+
+        .stat-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .stat-icon {
+            font-size: 2rem;
+            opacity: 0.8;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+
+        .stat-label {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        .stat-total { border-left: 4px solid #3b82f6; }
+        .stat-active { border-left: 4px solid #22c55e; }
+        .stat-departments { border-left: 4px solid #f59e0b; }
+        .stat-new { border-left: 4px solid #8b5cf6; }
+
+        .header-filters {
+            display: flex;
+            gap: var(--spacing-md);
+            flex-wrap: wrap;
+            align-items: end;
+            margin-top: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+        }
+
+        .filter-label {
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .filter-select,
+        .filter-input {
+            padding: var(--spacing-sm);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-width: 120px;
+        }
+
+        .employee-info {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+        }
+
+        .employee-name {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .employee-email {
+            font-size: var(--font-size-xs);
+            color: var(--text-tertiary);
+        }
+
+        .employee-code {
+            font-family: monospace;
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: var(--radius-xs);
+            font-size: var(--font-size-sm);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            font-weight: 500;
+        }
+
+        .status-active { background: #dcfce7; color: #166534; }
+        .status-inactive { background: #f3f4f6; color: #374151; }
+        .status-suspended { background: #fee2e2; color: #991b1b; }
+
+        .modal.large {
+            max-width: 800px;
+            width: 90vw;
+        }
+
+        .form-section {
+            margin-bottom: var(--spacing-lg);
+            padding-bottom: var(--spacing-lg);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .form-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .form-section h4 {
+            margin: 0 0 var(--spacing-md) 0;
+            color: var(--text-primary);
+            font-size: var(--font-size-lg);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+        }
+
+        .schedule-grid {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .schedule-day {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            padding: var(--spacing-sm);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-sm);
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            min-width: 120px;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            display: none;
+        }
+
+        .checkbox-checkmark {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            margin-right: var(--spacing-sm);
+            position: relative;
+            transition: all var(--transition-fast);
+        }
+
+        .checkbox-container input[type="checkbox"]:checked + .checkbox-checkmark {
+            background-color: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .checkbox-container input[type="checkbox"]:checked + .checkbox-checkmark::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .time-inputs {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .time-inputs span {
+            color: var(--text-secondary);
+            font-size: var(--font-size-sm);
+        }
+
+        .time-inputs input {
+            min-width: 100px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: var(--spacing-xs);
+        }
+
+        .empty-state,
+        .loading-state {
+            text-align: center;
+            padding: var(--spacing-xl);
+            color: var(--text-secondary);
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: var(--spacing-md);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .header-filters {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-group {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .schedule-day {
+                flex-direction: column;
+                align-items: stretch;
+                gap: var(--spacing-sm);
+            }
+
+            .time-inputs {
+                justify-content: center;
+            }
+        }
+
+        /* View Modal Styles */
+        .employee-details {
+            padding: var(--spacing-md) 0;
+        }
+
+        .detail-section {
+            margin-bottom: var(--spacing-lg);
+            padding-bottom: var(--spacing-lg);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .detail-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .detail-section h4 {
+            margin-bottom: var(--spacing-md);
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--spacing-md);
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+        }
+
+        .detail-label {
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .detail-value {
+            font-size: var(--font-size-base);
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .schedule-item {
+            padding: var(--spacing-xs) 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .schedule-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Delete Modal Styles */
+        .delete-confirmation {
+            text-align: center;
+            padding: var(--spacing-lg) 0;
+        }
+
+        .warning-icon {
+            font-size: 4rem;
+            margin-bottom: var(--spacing-md);
+            color: #f59e0b;
+        }
+
+        .delete-confirmation h4 {
+            margin-bottom: var(--spacing-md);
+            color: var(--text-primary);
+        }
+
+        .delete-confirmation p {
+            margin-bottom: var(--spacing-lg);
+            color: var(--text-secondary);
+        }
+
+        .warning-note {
+            background: #fef3c7;
+            border: 1px solid #fbbf24;
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin: var(--spacing-lg) 0;
+            text-align: left;
+        }
+
+        .warning-note p {
+            margin-bottom: var(--spacing-sm);
+            font-weight: 500;
+            color: #92400e;
+        }
+
+        .warning-note ul {
+            list-style: disc;
+            padding-left: var(--spacing-lg);
+            color: #92400e;
+        }
+
+        .warning-note li {
+            margin-bottom: var(--spacing-xs);
+        }
+
+        /* Enhanced status badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+
+        .status-badge.status-active {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        .status-badge.status-inactive {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+
+        .status-badge.status-suspended {
+            background: #fecaca;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+
+        /* Enhanced responsive adjustments */
+        @media (max-width: 768px) {
+            .header-filters {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-group {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .schedule-day {
+                flex-direction: column;
+                align-items: stretch;
+                gap: var(--spacing-sm);
+            }
+
+            .time-inputs {
+                justify-content: center;
+            }
+
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .modal.large {
+                width: 95%;
+                max-height: 90vh;
+            }
+        }
+    </style>
+</body>
+</html>

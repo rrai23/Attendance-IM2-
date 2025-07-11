@@ -22,6 +22,20 @@ class SidebarManager {
                     description: 'Overview and statistics'
                 },
                 {
+                    id: 'employees',
+                    label: 'Employees',
+                    icon: '👥',
+                    url: '/employees.html',
+                    description: 'Employee management'
+                },
+                {
+                    id: 'employee-management',
+                    label: 'Attendance',
+                    icon: '🕐',
+                    url: '/employee-management.html',
+                    description: 'Manage employee attendance'
+                },
+                {
                     id: 'analytics',
                     label: 'Analytics',
                     icon: '📈',

@@ -1,0 +1,1158 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="light" class="page-employees">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Management - Bricks Attendance System</title>
+    <meta name="description" content="Admin panel for managing employee profiles, information, and system access">
+    <meta name="author" content="Bricks Attendance System">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="/css/styles.css">
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="/js/data-service.js" as="script">
+    <link rel="preload" href="/js/auth.js" as="script">
+    <link rel="preload" href="/js/theme.js" as="script">
+</head>
+<body>
+    <!-- Skip Navigation Links -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <a href="#sidebar" class="skip-link">Skip to navigation</a>
+
+    <!-- Mobile Hamburger Menu Button -->
+    <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+    </button>
+
+    <!-- App Container -->
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-brand">
+                    <div class="brand-icon">🧱</div>
+                    <div class="brand-text">
+                        <h2>Bricks</h2>
+                        <span>Attendance System</span>
+                    </div>
+                </div>
+                <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">
+                    <span class="toggle-icon">‹</span>
+                </button>
+            </div>
+
+            <div class="sidebar-user">
+                <div class="user-avatar">
+                    <span id="user-avatar-text">A</span>
+                </div>
+                <div class="user-info">
+                    <div class="user-name" id="user-name">Administrator</div>
+                    <div class="user-role" id="user-role">Admin</div>
+                </div>
+                <div class="theme-selector">
+                    <button class="theme-option active" data-theme="light" title="Light Mode">
+                        <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                    </button>
+                    <button class="theme-option" data-theme="dark" title="Dark Mode">
+                        <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="/dashboard.html" class="nav-link" data-page="dashboard" title="Overview and statistics">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Dashboard</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/employees.html" class="nav-link active" data-page="employees" title="Employee management">
+                            <span class="nav-icon">👥</span>
+                            <span class="nav-text">Employees</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/employee-management.html" class="nav-link" data-page="employee-management" title="Manage employee attendance">
+                            <span class="nav-icon">🕘</span>
+                            <span class="nav-text">Attendance</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/analytics.html" class="nav-link" data-page="analytics" title="Detailed attendance analytics">
+                            <span class="nav-icon">📈</span>
+                            <span class="nav-text">Analytics</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/payroll.html" class="nav-link" data-page="payroll" title="Payroll management">
+                            <span class="nav-icon">💰</span>
+                            <span class="nav-text">Payroll</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item nav-item-dropdown" id="reportsDropdown">
+                        <a href="#" class="nav-link nav-dropdown-toggle" 
+                           data-page="reports" title="System reports">
+                            <span class="nav-icon">📋</span>
+                            <span class="nav-text">Reports</span>
+                            <span class="nav-dropdown-arrow">▼</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                        <ul class="nav-dropdown">
+                            <li class="nav-dropdown-item">
+                                <a href="/reports/employee-report.html" class="nav-dropdown-link">Employee Report</a>
+                            </li>
+                            <li class="nav-dropdown-item">
+                                <a href="/reports/attendance-report.html" class="nav-dropdown-link">Attendance Report</a>
+                            </li>
+                            <li class="nav-dropdown-item">
+                                <a href="/reports/payroll-report.html" class="nav-dropdown-link">Payroll Report</a>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/settings.html" class="nav-link" data-page="settings" title="System settings">
+                            <span class="nav-icon">🔧</span>
+                            <span class="nav-text">Settings</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <!-- Quick Actions Section -->
+            <div class="sidebar-quick-actions">
+                <div class="quick-actions-header">
+                    <h4>Quick Actions</h4>
+                </div>
+                <div class="quick-actions-grid" role="group" aria-label="Quick action buttons">
+                    <button class="quick-action-btn" 
+                            title="Add Employee (Alt+E)" 
+                            id="quickAddEmployeeBtn"
+                            aria-label="Add new employee"
+                            data-shortcut="Alt+E">
+                        <span class="quick-action-icon">👤</span>
+                        <span class="quick-action-text">Add Employee</span>
+                    </button>
+                    <button class="quick-action-btn" 
+                            title="Employee Directory (Alt+D)" 
+                            id="quickDirectoryBtn"
+                            aria-label="View employee directory"
+                            data-shortcut="Alt+D">
+                        <span class="quick-action-icon">📖</span>
+                        <span class="quick-action-text">Directory</span>
+                    </button>
+                    <button class="quick-action-btn" 
+                            title="Bulk Import (Alt+I)" 
+                            id="quickImportBtn"
+                            aria-label="Import employees"
+                            data-shortcut="Alt+I">
+                        <span class="quick-action-icon">📥</span>
+                        <span class="quick-action-text">Import</span>
+                    </button>
+                    <button class="quick-action-btn" 
+                            title="Export Data (Alt+X)" 
+                            id="quickExportBtn"
+                            aria-label="Export employee data"
+                            data-shortcut="Alt+X">
+                        <span class="quick-action-icon">📤</span>
+                        <span class="quick-action-text">Export</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Logout Section -->
+            <div class="sidebar-logout">
+                <button class="logout-btn" id="logout-btn" title="Sign out (Alt+L)" aria-label="Sign out">
+                    <span class="logout-icon">🚪</span>
+                    <span class="logout-text">Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content" id="main-content">
+            <!-- Header -->
+            <header class="page-header">
+                <div class="header-top">
+                    <div class="header-title">
+                        <h1>Employee Management</h1>
+                        <p>Manage employee profiles, information, and system access</p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="btn btn-outline" id="exportBtn" title="Export employee data">
+                            <span class="btn-icon">📥</span>
+                            <span class="btn-text">Export</span>
+                        </button>
+                        <button class="btn btn-outline" id="importBtn" title="Import employee data">
+                            <span class="btn-icon">📤</span>
+                            <span class="btn-text">Import</span>
+                        </button>
+                        <button class="btn btn-secondary" id="refreshBtn" title="Refresh data">
+                            <span class="btn-icon">🔄</span>
+                            <span class="btn-text">Refresh</span>
+                        </button>
+                        <button class="btn btn-primary" id="addEmployeeBtn">
+                            <span class="btn-icon">👤➕</span>
+                            <span class="btn-text">Add Employee</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Filters and Search -->
+                <div class="header-filters">
+                    <div class="filter-group">
+                        <label for="departmentFilter" class="filter-label">Department:</label>
+                        <select id="departmentFilter" class="filter-select">
+                            <option value="">All Departments</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="statusFilter" class="filter-label">Status:</label>
+                        <select id="statusFilter" class="filter-select">
+                            <option value="">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="suspended">Suspended</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="roleFilter" class="filter-label">Role:</label>
+                        <select id="roleFilter" class="filter-select">
+                            <option value="">All Roles</option>
+                            <option value="admin">Admin</option>
+                            <option value="manager">Manager</option>
+                            <option value="employee">Employee</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="searchInput" class="filter-label">Search:</label>
+                        <input type="text" id="searchInput" class="filter-input" placeholder="Search employees...">
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Statistics Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card stat-total">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="totalEmployees">0</div>
+                            <div class="stat-label">Total Employees</div>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-active">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="activeEmployees">0</div>
+                            <div class="stat-label">Active</div>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-departments">
+                        <div class="stat-icon">🏢</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="totalDepartments">0</div>
+                            <div class="stat-label">Departments</div>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-new">
+                        <div class="stat-icon">🆕</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="newThisMonth">0</div>
+                            <div class="stat-label">New This Month</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Employees Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Employee Directory</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="table-container">
+                            <table class="table" id="employeesTable">
+                                <thead>
+                                    <tr>
+                                        <th>Employee</th>
+                                        <th>Employee ID</th>
+                                        <th>Department</th>
+                                        <th>Position</th>
+                                        <th>Email</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="employeesTableBody">
+                                    <!-- Table rows will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Empty State -->
+                        <div class="empty-state hidden" id="emptyState">
+                            <div class="empty-icon">👥</div>
+                            <h3>No employees found</h3>
+                            <p>No employees match the selected filters. Try adjusting your search criteria.</p>
+                            <button class="btn btn-primary" id="addFirstEmployeeBtn">
+                                <span class="btn-icon">👤➕</span>
+                                <span class="btn-text">Add First Employee</span>
+                            </button>
+                        </div>
+
+                        <!-- Loading State -->
+                        <div class="loading-state hidden" id="loadingState">
+                            <div class="loading-spinner"></div>
+                            <p>Loading employees...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Employee Modal -->
+    <div class="modal-overlay hidden" id="employeeModal">
+        <div class="modal large">
+            <div class="modal-header">
+                <h3 id="modalTitle">Add Employee</h3>
+                <button class="modal-close" id="closeModal" aria-label="Close modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-content">
+                <form id="employeeForm" class="form">
+                    <input type="hidden" id="employeeId">
+                    
+                    <!-- Personal Information -->
+                    <div class="form-section">
+                        <h4>Personal Information</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="firstName" class="form-label">First Name *</label>
+                                <input type="text" id="firstName" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="lastName" class="form-label">Last Name *</label>
+                                <input type="text" id="lastName" class="form-input" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="email" class="form-label">Email Address *</label>
+                                <input type="email" id="email" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="phone" class="form-label">Phone Number</label>
+                                <input type="tel" id="phone" class="form-input">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Employment Information -->
+                    <div class="form-section">
+                        <h4>Employment Information</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="employeeCode" class="form-label">Employee ID *</label>
+                                <input type="text" id="employeeCode" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="department" class="form-label">Department *</label>
+                                <select id="department" class="form-input" required>
+                                    <option value="">Select Department</option>
+                                    <option value="Engineering">Engineering</option>
+                                    <option value="Marketing">Marketing</option>
+                                    <option value="Sales">Sales</option>
+                                    <option value="HR">Human Resources</option>
+                                    <option value="Finance">Finance</option>
+                                    <option value="Operations">Operations</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="position" class="form-label">Position/Title *</label>
+                                <input type="text" id="position" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="manager" class="form-label">Manager</label>
+                                <select id="manager" class="form-input">
+                                    <option value="">Select Manager</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="hireDate" class="form-label">Hire Date *</label>
+                                <input type="date" id="hireDate" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="salary" class="form-label">Salary</label>
+                                <input type="number" id="salary" class="form-input" step="0.01" min="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- System Access -->
+                    <div class="form-section">
+                        <h4>System Access</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="role" class="form-label">System Role *</label>
+                                <select id="role" class="form-input" required>
+                                    <option value="">Select Role</option>
+                                    <option value="employee">Employee</option>
+                                    <option value="manager">Manager</option>
+                                    <option value="admin">Administrator</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="status" class="form-label">Status *</label>
+                                <select id="status" class="form-input" required>
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                    <option value="suspended">Suspended</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Work Schedule -->
+                    <div class="form-section">
+                        <h4>Work Schedule</h4>
+                        <div class="schedule-grid">
+                            <div class="schedule-day">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="mondayActive" checked>
+                                    <span class="checkbox-checkmark"></span>
+                                    <span class="checkbox-label">Monday</span>
+                                </label>
+                                <div class="time-inputs">
+                                    <input type="time" id="mondayStart" value="09:00" class="form-input">
+                                    <span>to</span>
+                                    <input type="time" id="mondayEnd" value="17:00" class="form-input">
+                                </div>
+                            </div>
+                            <div class="schedule-day">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="tuesdayActive" checked>
+                                    <span class="checkbox-checkmark"></span>
+                                    <span class="checkbox-label">Tuesday</span>
+                                </label>
+                                <div class="time-inputs">
+                                    <input type="time" id="tuesdayStart" value="09:00" class="form-input">
+                                    <span>to</span>
+                                    <input type="time" id="tuesdayEnd" value="17:00" class="form-input">
+                                </div>
+                            </div>
+                            <div class="schedule-day">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="wednesdayActive" checked>
+                                    <span class="checkbox-checkmark"></span>
+                                    <span class="checkbox-label">Wednesday</span>
+                                </label>
+                                <div class="time-inputs">
+                                    <input type="time" id="wednesdayStart" value="09:00" class="form-input">
+                                    <span>to</span>
+                                    <input type="time" id="wednesdayEnd" value="17:00" class="form-input">
+                                </div>
+                            </div>
+                            <div class="schedule-day">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="thursdayActive" checked>
+                                    <span class="checkbox-checkmark"></span>
+                                    <span class="checkbox-label">Thursday</span>
+                                </label>
+                                <div class="time-inputs">
+                                    <input type="time" id="thursdayStart" value="09:00" class="form-input">
+                                    <span>to</span>
+                                    <input type="time" id="thursdayEnd" value="17:00" class="form-input">
+                                </div>
+                            </div>
+                            <div class="schedule-day">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="fridayActive" checked>
+                                    <span class="checkbox-checkmark"></span>
+                                    <span class="checkbox-label">Friday</span>
+                                </label>
+                                <div class="time-inputs">
+                                    <input type="time" id="fridayStart" value="09:00" class="form-input">
+                                    <span>to</span>
+                                    <input type="time" id="fridayEnd" value="17:00" class="form-input">
+                                </div>
+                            </div>
+                            <div class="schedule-day">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="saturdayActive">
+                                    <span class="checkbox-checkmark"></span>
+                                    <span class="checkbox-label">Saturday</span>
+                                </label>
+                                <div class="time-inputs">
+                                    <input type="time" id="saturdayStart" value="09:00" class="form-input">
+                                    <span>to</span>
+                                    <input type="time" id="saturdayEnd" value="17:00" class="form-input">
+                                </div>
+                            </div>
+                            <div class="schedule-day">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="sundayActive">
+                                    <span class="checkbox-checkmark"></span>
+                                    <span class="checkbox-label">Sunday</span>
+                                </label>
+                                <div class="time-inputs">
+                                    <input type="time" id="sundayStart" value="09:00" class="form-input">
+                                    <span>to</span>
+                                    <input type="time" id="sundayEnd" value="17:00" class="form-input">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="saveBtn">
+                            <span class="btn-text">Save Employee</span>
+                            <span class="btn-loading hidden">
+                                <span class="loading-spinner"></span>
+                                Saving...
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Employee Modal -->
+    <div class="modal-overlay hidden" id="viewEmployeeModal">
+        <div class="modal large">
+            <div class="modal-header">
+                <h3>Employee Details</h3>
+                <button class="modal-close" id="closeViewModal" aria-label="Close modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-content">
+                <div class="employee-details">
+                    <!-- Personal Information -->
+                    <div class="detail-section">
+                        <h4>Personal Information</h4>
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <label class="detail-label">Full Name</label>
+                                <div class="detail-value" id="viewEmployeeName">-</div>
+                            </div>
+                            <div class="detail-item">
+                                <label class="detail-label">Employee ID</label>
+                                <div class="detail-value" id="viewEmployeeCode">-</div>
+                            </div>
+                            <div class="detail-item">
+                                <label class="detail-label">Email Address</label>
+                                <div class="detail-value" id="viewEmployeeEmail">-</div>
+                            </div>
+                            <div class="detail-item">
+                                <label class="detail-label">Phone Number</label>
+                                <div class="detail-value" id="viewEmployeePhone">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Employment Information -->
+                    <div class="detail-section">
+                        <h4>Employment Information</h4>
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <label class="detail-label">Department</label>
+                                <div class="detail-value" id="viewEmployeeDepartment">-</div>
+                            </div>
+                            <div class="detail-item">
+                                <label class="detail-label">Position</label>
+                                <div class="detail-value" id="viewEmployeePosition">-</div>
+                            </div>
+                            <div class="detail-item">
+                                <label class="detail-label">Manager</label>
+                                <div class="detail-value" id="viewEmployeeManager">-</div>
+                            </div>
+                            <div class="detail-item">
+                                <label class="detail-label">Hire Date</label>
+                                <div class="detail-value" id="viewEmployeeHireDate">-</div>
+                            </div>
+                            <div class="detail-item">
+                                <label class="detail-label">Salary</label>
+                                <div class="detail-value" id="viewEmployeeSalary">-</div>
+                            </div>
+                            <div class="detail-item">
+                                <label class="detail-label">System Role</label>
+                                <div class="detail-value" id="viewEmployeeRole">-</div>
+                            </div>
+                            <div class="detail-item">
+                                <label class="detail-label">Status</label>
+                                <div class="detail-value" id="viewEmployeeStatus">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Work Schedule -->
+                    <div class="detail-section">
+                        <h4>Work Schedule</h4>
+                        <div class="detail-value" id="viewEmployeeSchedule">-</div>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" id="closeViewModalBtn">
+                        <span class="btn-text">Close</span>
+                    </button>
+                    <button type="button" class="btn btn-primary" id="editFromViewBtn">
+                        <span class="btn-icon">✏️</span>
+                        <span class="btn-text">Edit Employee</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Employee Modal -->
+    <div class="modal-overlay hidden" id="deleteEmployeeModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Delete Employee</h3>
+                <button class="modal-close" id="closeDeleteModal" aria-label="Close modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-content">
+                <div class="delete-confirmation">
+                    <div class="warning-icon">⚠️</div>
+                    <h4>Are you sure you want to delete this employee?</h4>
+                    <p>You are about to permanently delete <strong id="deleteEmployeeName">Employee Name</strong> from the system. This action cannot be undone.</p>
+                    
+                    <div class="warning-note">
+                        <p><strong>This will also:</strong></p>
+                        <ul>
+                            <li>Remove all attendance records for this employee</li>
+                            <li>Remove access to the system</li>
+                            <li>Update any related payroll calculations</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <input type="hidden" id="deleteEmployeeId">
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" id="cancelDeleteBtn">
+                        <span class="btn-text">Cancel</span>
+                    </button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                        <span class="btn-icon">🗑️</span>
+                        <span class="btn-text">Delete Employee</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/js/data-service.js"></script>
+    <script src="/js/theme.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/sidebar.js"></script>
+    <script src="/js/employees-page.js"></script>
+    <script>
+        // Initialize the employees page manager when DOM is loaded
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                console.log('Initializing EmployeesPageManager...');
+                window.employeesManager = new EmployeesPageManager();
+                await window.employeesManager.init();
+                console.log('EmployeesPageManager initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize EmployeesPageManager:', error);
+                // Show error to user
+                const errorDiv = document.createElement('div');
+                errorDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #fee; border: 1px solid #f88; color: #c44; padding: 15px; border-radius: 5px; z-index: 9999; max-width: 300px;';
+                errorDiv.textContent = 'Failed to load employee data: ' + error.message;
+                document.body.appendChild(errorDiv);
+                setTimeout(() => errorDiv.remove(), 5000);
+            }
+        });
+    </script>
+
+    <!-- Additional Styles -->
+    <style>
+
+        .stat-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            transition: all var(--transition-fast);
+        }
+
+        .stat-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .stat-icon {
+            font-size: 2rem;
+            opacity: 0.8;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+
+        .stat-label {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        .stat-total { border-left: 4px solid #3b82f6; }
+        .stat-active { border-left: 4px solid #22c55e; }
+        .stat-departments { border-left: 4px solid #f59e0b; }
+        .stat-new { border-left: 4px solid #8b5cf6; }
+
+        .header-filters {
+            display: flex;
+            gap: var(--spacing-md);
+            flex-wrap: wrap;
+            align-items: end;
+            margin-top: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+        }
+
+        .filter-label {
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .filter-select,
+        .filter-input {
+            padding: var(--spacing-sm);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-width: 120px;
+        }
+
+        .employee-info {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+        }
+
+        .employee-name {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .employee-email {
+            font-size: var(--font-size-xs);
+            color: var(--text-tertiary);
+        }
+
+        .employee-code {
+            font-family: monospace;
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: var(--radius-xs);
+            font-size: var(--font-size-sm);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            font-weight: 500;
+        }
+
+        .status-active { background: #dcfce7; color: #166534; }
+        .status-inactive { background: #f3f4f6; color: #374151; }
+        .status-suspended { background: #fee2e2; color: #991b1b; }
+
+        .modal.large {
+            max-width: 800px;
+            width: 90vw;
+        }
+
+        .form-section {
+            margin-bottom: var(--spacing-lg);
+            padding-bottom: var(--spacing-lg);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .form-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .form-section h4 {
+            margin: 0 0 var(--spacing-md) 0;
+            color: var(--text-primary);
+            font-size: var(--font-size-lg);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+        }
+
+        .schedule-grid {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .schedule-day {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            padding: var(--spacing-sm);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-sm);
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            min-width: 120px;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            display: none;
+        }
+
+        .checkbox-checkmark {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            margin-right: var(--spacing-sm);
+            position: relative;
+            transition: all var(--transition-fast);
+        }
+
+        .checkbox-container input[type="checkbox"]:checked + .checkbox-checkmark {
+            background-color: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .checkbox-container input[type="checkbox"]:checked + .checkbox-checkmark::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .time-inputs {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .time-inputs span {
+            color: var(--text-secondary);
+            font-size: var(--font-size-sm);
+        }
+
+        .time-inputs input {
+            min-width: 100px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: var(--spacing-xs);
+        }
+
+        .empty-state,
+        .loading-state {
+            text-align: center;
+            padding: var(--spacing-xl);
+            color: var(--text-secondary);
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: var(--spacing-md);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .header-filters {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-group {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .schedule-day {
+                flex-direction: column;
+                align-items: stretch;
+                gap: var(--spacing-sm);
+            }
+
+            .time-inputs {
+                justify-content: center;
+            }
+        }
+
+        /* View Modal Styles */
+        .employee-details {
+            padding: var(--spacing-md) 0;
+        }
+
+        .detail-section {
+            margin-bottom: var(--spacing-lg);
+            padding-bottom: var(--spacing-lg);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .detail-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .detail-section h4 {
+            margin-bottom: var(--spacing-md);
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--spacing-md);
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+        }
+
+        .detail-label {
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .detail-value {
+            font-size: var(--font-size-base);
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .schedule-item {
+            padding: var(--spacing-xs) 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .schedule-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Delete Modal Styles */
+        .delete-confirmation {
+            text-align: center;
+            padding: var(--spacing-lg) 0;
+        }
+
+        .warning-icon {
+            font-size: 4rem;
+            margin-bottom: var(--spacing-md);
+            color: #f59e0b;
+        }
+
+        .delete-confirmation h4 {
+            margin-bottom: var(--spacing-md);
+            color: var(--text-primary);
+        }
+
+        .delete-confirmation p {
+            margin-bottom: var(--spacing-lg);
+            color: var(--text-secondary);
+        }
+
+        .warning-note {
+            background: #fef3c7;
+            border: 1px solid #fbbf24;
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin: var(--spacing-lg) 0;
+            text-align: left;
+        }
+
+        .warning-note p {
+            margin-bottom: var(--spacing-sm);
+            font-weight: 500;
+            color: #92400e;
+        }
+
+        .warning-note ul {
+            list-style: disc;
+            padding-left: var(--spacing-lg);
+            color: #92400e;
+        }
+
+        .warning-note li {
+            margin-bottom: var(--spacing-xs);
+        }
+
+        /* Enhanced status badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+
+        .status-badge.status-active {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        .status-badge.status-inactive {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+
+        .status-badge.status-suspended {
+            background: #fecaca;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+
+        /* Enhanced responsive adjustments */
+        @media (max-width: 768px) {
+            .header-filters {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-group {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .schedule-day {
+                flex-direction: column;
+                align-items: stretch;
+                gap: var(--spacing-sm);
+            }
+
+            .time-inputs {
+                justify-content: center;
+            }
+
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .modal.large {
+                width: 95%;
+                max-height: 90vh;
+            }
+        }
+    </style>
+</body>
+</html>
