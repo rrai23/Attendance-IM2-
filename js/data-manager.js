@@ -92,49 +92,32 @@ class DataManager {
     }
 
     async generateInitialData() {
-        // Generate employee data
-        this.employees = [
-            {
-                id: 1,
-                employeeId: 'EMP001',
-                name: 'John Doe',
-                department: 'Engineering',
-                position: 'Senior Developer',
-                email: 'john.doe@company.com'
-            },
-            {
-                id: 2,
-                employeeId: 'EMP002',
-                name: 'Jane Smith',
-                department: 'Marketing',
-                position: 'Marketing Manager',
-                email: 'jane.smith@company.com'
-            },
-            {
-                id: 3,
-                employeeId: 'EMP003',
-                name: 'Bob Johnson',
-                department: 'Sales',
-                position: 'Sales Representative',
-                email: 'bob.johnson@company.com'
-            },
-            {
-                id: 4,
-                employeeId: 'EMP004',
-                name: 'Alice Brown',
-                department: 'HR',
-                position: 'HR Coordinator',
-                email: 'alice.brown@company.com'
-            },
-            {
-                id: 5,
-                employeeId: 'EMP005',
-                name: 'Charlie Wilson',
-                department: 'Engineering',
-                position: 'Lead Developer',
-                email: 'charlie.wilson@company.com'
+        // Use centralized data service to get employee data if available
+        if (typeof dataService !== 'undefined') {
+            try {
+                const employeesData = await dataService.getEmployees();
+                
+                // Transform data to match the expected format for this module
+                this.employees = employeesData.map(emp => ({
+                    id: emp.id,
+                    employeeId: emp.employeeCode || `EMP${String(emp.id).padStart(3, '0')}`,
+                    name: `${emp.firstName} ${emp.lastName}`,
+                    department: emp.department,
+                    position: emp.position,
+                    email: emp.email,
+                    role: emp.role
+                }));
+                
+                console.log(`Data Manager loaded ${this.employees.length} employees from data service`);
+            } catch (error) {
+                console.error('Failed to load employees from data service:', error);
+                // Fallback to hardcoded data
+                this.generateFallbackEmployeeData();
             }
-        ];
+        } else {
+            console.warn('dataService not available, using fallback employee data');
+            this.generateFallbackEmployeeData();
+        }
 
         // Generate attendance data for today and yesterday
         const today = new Date();
@@ -210,6 +193,52 @@ class DataManager {
         ];
 
         this.saveToStorage();
+    }
+
+    generateFallbackEmployeeData() {
+        // Fallback employee data if data service is not available
+        this.employees = [
+            {
+                id: 1,
+                employeeId: 'EMP001',
+                name: 'John Doe',
+                department: 'Engineering',
+                position: 'Senior Developer',
+                email: 'john.doe@company.com'
+            },
+            {
+                id: 2,
+                employeeId: 'EMP002',
+                name: 'Jane Smith',
+                department: 'Marketing',
+                position: 'Marketing Manager',
+                email: 'jane.smith@company.com'
+            },
+            {
+                id: 3,
+                employeeId: 'EMP003',
+                name: 'Bob Johnson',
+                department: 'Sales',
+                position: 'Sales Representative',
+                email: 'bob.johnson@company.com'
+            },
+            {
+                id: 4,
+                employeeId: 'EMP004',
+                name: 'Alice Brown',
+                department: 'HR',
+                position: 'HR Coordinator',
+                email: 'alice.brown@company.com'
+            },
+            {
+                id: 5,
+                employeeId: 'EMP005',
+                name: 'Charlie Wilson',
+                department: 'Engineering',
+                position: 'Lead Developer',
+                email: 'charlie.wilson@company.com'
+            }
+        ];
     }
 
     // Employee methods

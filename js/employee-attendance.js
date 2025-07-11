@@ -46,87 +46,48 @@ class EmployeeAttendanceManager {
      */
     async loadEmployees() {
         try {
-            // In a real application, this would fetch from an API
-            this.employees = [
-                {
-                    id: 1,
-                    employeeId: 'EMP001',
-                    name: 'John Doe',
-                    department: 'Engineering',
-                    position: 'Senior Developer',
-                    email: 'john.doe@company.com',
-                    schedule: {
-                        monday: { start: '09:00', end: '17:00' },
-                        tuesday: { start: '09:00', end: '17:00' },
-                        wednesday: { start: '09:00', end: '17:00' },
-                        thursday: { start: '09:00', end: '17:00' },
-                        friday: { start: '09:00', end: '17:00' }
+            // Use centralized data service to get employee data
+            if (typeof dataService !== 'undefined') {
+                const employeesData = await dataService.getEmployees();
+                
+                // Transform data to match the expected format for this module
+                this.employees = employeesData.map(emp => ({
+                    id: emp.id,
+                    employeeId: emp.employeeCode || `EMP${String(emp.id).padStart(3, '0')}`,
+                    name: `${emp.firstName} ${emp.lastName}`,
+                    department: emp.department,
+                    position: emp.position,
+                    email: emp.email,
+                    phone: emp.phone,
+                    role: emp.role,
+                    schedule: this.getEmployeeSchedule(emp)
+                }));
+                
+                console.log(`Loaded ${this.employees.length} employees from data service`);
+                return this.employees;
+            } else {
+                console.warn('dataService not available, using fallback data');
+                // Fallback to original hardcoded data if dataService is not available
+                this.employees = [
+                    {
+                        id: 1,
+                        employeeId: 'EMP001',
+                        name: 'John Doe',
+                        department: 'Engineering',
+                        position: 'Senior Developer',
+                        email: 'john.doe@company.com',
+                        schedule: {
+                            monday: { start: '09:00', end: '17:00' },
+                            tuesday: { start: '09:00', end: '17:00' },
+                            wednesday: { start: '09:00', end: '17:00' },
+                            thursday: { start: '09:00', end: '17:00' },
+                            friday: { start: '09:00', end: '17:00' }
+                        }
                     }
-                },
-                {
-                    id: 2,
-                    employeeId: 'EMP002',
-                    name: 'Jane Smith',
-                    department: 'Marketing',
-                    position: 'Marketing Manager',
-                    email: 'jane.smith@company.com',
-                    schedule: {
-                        monday: { start: '08:30', end: '16:30' },
-                        tuesday: { start: '08:30', end: '16:30' },
-                        wednesday: { start: '08:30', end: '16:30' },
-                        thursday: { start: '08:30', end: '16:30' },
-                        friday: { start: '08:30', end: '16:30' }
-                    }
-                },
-                {
-                    id: 3,
-                    employeeId: 'EMP003',
-                    name: 'Bob Johnson',
-                    department: 'Sales',
-                    position: 'Sales Representative',
-                    email: 'bob.johnson@company.com',
-                    schedule: {
-                        monday: { start: '09:00', end: '17:00' },
-                        tuesday: { start: '09:00', end: '17:00' },
-                        wednesday: { start: '09:00', end: '17:00' },
-                        thursday: { start: '09:00', end: '17:00' },
-                        friday: { start: '09:00', end: '17:00' }
-                    }
-                },
-                {
-                    id: 4,
-                    employeeId: 'EMP004',
-                    name: 'Alice Brown',
-                    department: 'HR',
-                    position: 'HR Coordinator',
-                    email: 'alice.brown@company.com',
-                    schedule: {
-                        monday: { start: '08:00', end: '16:00' },
-                        tuesday: { start: '08:00', end: '16:00' },
-                        wednesday: { start: '08:00', end: '16:00' },
-                        thursday: { start: '08:00', end: '16:00' },
-                        friday: { start: '08:00', end: '16:00' }
-                    }
-                },
-                {
-                    id: 5,
-                    employeeId: 'EMP005',
-                    name: 'Charlie Wilson',
-                    department: 'Engineering',
-                    position: 'Lead Developer',
-                    email: 'charlie.wilson@company.com',
-                    schedule: {
-                        monday: { start: '10:00', end: '18:00' },
-                        tuesday: { start: '10:00', end: '18:00' },
-                        wednesday: { start: '10:00', end: '18:00' },
-                        thursday: { start: '10:00', end: '18:00' },
-                        friday: { start: '10:00', end: '18:00' }
-                    }
-                }
-            ];
-            
-            console.log(`Loaded ${this.employees.length} employees`);
-            return this.employees;
+                ];
+                console.log(`Loaded ${this.employees.length} fallback employees`);
+                return this.employees;
+            }
         } catch (error) {
             console.error('Error loading employees:', error);
             throw new Error('Failed to load employee data');
@@ -134,14 +95,63 @@ class EmployeeAttendanceManager {
     }
 
     /**
+     * Get employee schedule from employee data
+     */
+    getEmployeeSchedule(emp) {
+        // If employee has schedule data, use it; otherwise use default
+        if (emp.schedule) {
+            return emp.schedule;
+        }
+        
+        // Default schedule based on position/role
+        const defaultStart = emp.role === 'manager' ? '07:30' : '08:00';
+        const defaultEnd = emp.role === 'manager' ? '16:30' : '17:00';
+        
+        return {
+            monday: { start: defaultStart, end: defaultEnd },
+            tuesday: { start: defaultStart, end: defaultEnd },
+            wednesday: { start: defaultStart, end: defaultEnd },
+            thursday: { start: defaultStart, end: defaultEnd },
+            friday: { start: defaultStart, end: defaultEnd }
+        };
+    }
+
+    /**
      * Load attendance records
      */
     async loadAttendanceRecords() {
         try {
-            // Generate sample attendance data for the current week
-            this.attendanceRecords = this.generateSampleAttendance();
-            console.log(`Loaded ${this.attendanceRecords.length} attendance records`);
-            return this.attendanceRecords;
+            // Use centralized data service to get attendance records
+            if (typeof dataService !== 'undefined') {
+                // Get all attendance records from data service
+                const records = await dataService.getAttendanceRecords();
+                
+                // Transform data to match the expected format for this module
+                this.attendanceRecords = records.map(record => ({
+                    id: record.id,
+                    employeeId: record.employeeId,
+                    date: record.date,
+                    clockIn: record.timeIn,
+                    clockOut: record.timeOut,
+                    lunchStart: record.lunchStart,
+                    lunchEnd: record.lunchEnd,
+                    hours: record.hoursWorked || 0,
+                    regularHours: record.regularHours || 0,
+                    overtimeHours: record.overtimeHours || 0,
+                    status: record.status,
+                    notes: record.notes || '',
+                    employee: this.employees.find(emp => emp.id === record.employeeId)
+                }));
+                
+                console.log(`Loaded ${this.attendanceRecords.length} attendance records from data service`);
+                return this.attendanceRecords;
+            } else {
+                console.warn('dataService not available, generating sample attendance data');
+                // Fallback to generating sample data if dataService is not available
+                this.attendanceRecords = this.generateSampleAttendance();
+                console.log(`Generated ${this.attendanceRecords.length} sample attendance records`);
+                return this.attendanceRecords;
+            }
         } catch (error) {
             console.error('Error loading attendance records:', error);
             throw new Error('Failed to load attendance data');

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System-wide Data Integration Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #2c3e50;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .stat-card {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #3498db;
+            margin-bottom: 8px;
+        }
+        .stat-label {
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .grid-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+        .grid-4 {
+            grid-template-columns: repeat(4, 1fr);
+        }
+        .chart-container {
+            height: 300px;
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+        }
+        .progress-bar {
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+        .progress-value {
+            height: 100%;
+            background-color: #3498db;
+            transition: width 0.5s;
+        }
+        .department-card {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .department-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        .department-stats {
+            display: flex;
+            justify-content: space-between;
+        }
+        .department-stat {
+            text-align: center;
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>System-wide Data Integration Test</h1>
+        <p>This page verifies that employee data is consistent across all system components.</p>
+
+        <div class="section">
+            <h2>1. Employee Count Verification</h2>
+            <div class="stats-grid grid-4">
+                <div class="stat-card">
+                    <div class="stat-value" id="employeeCount">0</div>
+                    <div class="stat-label">Total Employees</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="departmentCount">0</div>
+                    <div class="stat-label">Departments</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="analyticsEmployeeCount">0</div>
+                    <div class="stat-label">Analytics Employee Count</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="activeEmployees">0</div>
+                    <div class="stat-label">Active Employees</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>2. Department Distribution</h2>
+            <div id="departmentList"></div>
+        </div>
+
+        <div class="section">
+            <h2>3. Attendance Data Verification</h2>
+            <div class="stats-grid grid-3">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalAttendanceRecords">0</div>
+                    <div class="stat-label">Total Attendance Records</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="attendanceToday">0</div>
+                    <div class="stat-label">Present Today</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="attendanceRate">0%</div>
+                    <div class="stat-label">Attendance Rate</div>
+                </div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Attendance Records</th>
+                        <th>Present</th>
+                        <th>Absent</th>
+                        <th>Late</th>
+                    </tr>
+                </thead>
+                <tbody id="attendanceTable"></tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>4. Payroll Data Verification</h2>
+            <div class="stats-grid grid-3">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalPayroll">₱0</div>
+                    <div class="stat-label">Monthly Payroll</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="avgSalary">₱0</div>
+                    <div class="stat-label">Average Salary</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="payrollRecords">0</div>
+                    <div class="stat-label">Payroll Records</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>5. Analytics Data Verification</h2>
+            <div class="stats-grid grid-4">
+                <div class="stat-card">
+                    <div class="stat-value" id="analyticsTotal">0</div>
+                    <div class="stat-label">Analytics Total Employees</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="analyticsPresentToday">0</div>
+                    <div class="stat-label">Analytics Present Today</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="analyticsAttendanceRate">0%</div>
+                    <div class="stat-label">Analytics Attendance Rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="analyticsTardyRate">0%</div>
+                    <div class="stat-label">Analytics Tardy Rate</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/mock-data.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check if mockData is loaded
+            if (typeof mockData === 'undefined') {
+                alert('Error: Mock data not loaded! Check if mock-data.js is included properly.');
+                return;
+            }
+
+            // 1. Verify employee count
+            const employees = mockData.users || [];
+            document.getElementById('employeeCount').textContent = employees.length;
+            
+            const activeEmployees = employees.filter(user => user.status === 'active').length;
+            document.getElementById('activeEmployees').textContent = activeEmployees;
+            
+            // Get unique departments
+            const departments = [...new Set(employees.map(user => user.employee.department))];
+            document.getElementById('departmentCount').textContent = departments.length;
+            
+            // Analytics employee count
+            const analyticsEmployeeCount = mockData.analytics?.attendanceStats?.totalEmployees || 0;
+            document.getElementById('analyticsEmployeeCount').textContent = analyticsEmployeeCount;
+            
+            // 2. Department distribution
+            const departmentMap = {};
+            employees.forEach(user => {
+                const department = user.employee.department;
+                if (!departmentMap[department]) {
+                    departmentMap[department] = [];
+                }
+                departmentMap[department].push(user.employee);
+            });
+            
+            const departmentListContainer = document.getElementById('departmentList');
+            departments.forEach(dept => {
+                const employeesInDept = departmentMap[dept] || [];
+                const card = document.createElement('div');
+                card.className = 'department-card';
+                
+                card.innerHTML = `
+                    <div class="department-name">${dept}</div>
+                    <div class="department-stats">
+                        <div class="department-stat">
+                            <strong>${employeesInDept.length}</strong>
+                            <div>Employees</div>
+                        </div>
+                        <div class="department-stat">
+                            <strong>₱${calculateAvgSalary(employeesInDept).toLocaleString()}</strong>
+                            <div>Avg. Salary</div>
+                        </div>
+                        <div class="department-stat">
+                            <strong>${calculateAttendanceRate(employeesInDept)}%</strong>
+                            <div>Attendance</div>
+                        </div>
+                    </div>
+                `;
+                
+                departmentListContainer.appendChild(card);
+            });
+            
+            // 3. Attendance data
+            const attendanceRecords = mockData.attendanceRecords || [];
+            document.getElementById('totalAttendanceRecords').textContent = attendanceRecords.length;
+            
+            // Calculate present today
+            const today = '2025-07-12'; // Current date in the mock system
+            const presentToday = attendanceRecords.filter(record => 
+                record.date === today && (record.status === 'present' || record.status === 'tardy')
+            ).length;
+            document.getElementById('attendanceToday').textContent = presentToday;
+            
+            // Attendance rate
+            const attendanceRate = Math.round((presentToday / employees.length) * 100);
+            document.getElementById('attendanceRate').textContent = `${attendanceRate}%`;
+            
+            // Attendance table
+            const attendanceTableBody = document.getElementById('attendanceTable');
+            const employeeAttendance = {};
+            
+            // Initialize attendance counts for each employee
+            employees.forEach(user => {
+                employeeAttendance[user.employee.id] = {
+                    name: `${user.employee.firstName} ${user.employee.lastName}`,
+                    total: 0,
+                    present: 0,
+                    absent: 0,
+                    late: 0
+                };
+            });
+            
+            // Count attendance records
+            attendanceRecords.forEach(record => {
+                if (employeeAttendance[record.employeeId]) {
+                    employeeAttendance[record.employeeId].total++;
+                    
+                    if (record.status === 'present') {
+                        employeeAttendance[record.employeeId].present++;
+                    } else if (record.status === 'absent') {
+                        employeeAttendance[record.employeeId].absent++;
+                    } else if (record.status === 'tardy' || record.status === 'late') {
+                        employeeAttendance[record.employeeId].late++;
+                        employeeAttendance[record.employeeId].present++; // Late is still present
+                    }
+                }
+            });
+            
+            // Populate attendance table
+            Object.entries(employeeAttendance).forEach(([id, data]) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${data.name}</td>
+                    <td>${data.total}</td>
+                    <td>${data.present}</td>
+                    <td>${data.absent}</td>
+                    <td>${data.late}</td>
+                `;
+                attendanceTableBody.appendChild(row);
+            });
+            
+            // 4. Payroll data
+            const totalMonthlyPayroll = employees.reduce((sum, user) => {
+                const hourlyRate = user.employee.hourlyRate || 0;
+                // Assume 40 hours per week, 4 weeks per month
+                return sum + (hourlyRate * 40 * 4);
+            }, 0);
+            
+            document.getElementById('totalPayroll').textContent = `₱${totalMonthlyPayroll.toLocaleString()}`;
+            
+            const avgSalary = totalMonthlyPayroll / employees.length;
+            document.getElementById('avgSalary').textContent = `₱${Math.round(avgSalary).toLocaleString()}`;
+            
+            const payrollRecords = mockData.payrollHistory?.length || 0;
+            document.getElementById('payrollRecords').textContent = payrollRecords;
+            
+            // 5. Analytics data
+            const analytics = mockData.analytics?.attendanceStats || {};
+            document.getElementById('analyticsTotal').textContent = analytics.totalEmployees || 0;
+            document.getElementById('analyticsPresentToday').textContent = analytics.presentToday || 0;
+            document.getElementById('analyticsAttendanceRate').textContent = `${analytics.attendanceRate || 0}%`;
+            document.getElementById('analyticsTardyRate').textContent = `${analytics.tardyRate || 0}%`;
+        });
+        
+        // Helper functions
+        function calculateAvgSalary(employees) {
+            if (!employees || employees.length === 0) return 0;
+            
+            const totalMonthly = employees.reduce((sum, emp) => {
+                return sum + (emp.hourlyRate * 40 * 4); // 40 hours/week, 4 weeks/month
+            }, 0);
+            
+            return Math.round(totalMonthly / employees.length);
+        }
+        
+        function calculateAttendanceRate(employees) {
+            if (!employees || employees.length === 0) return 0;
+            
+            // Get employee IDs
+            const employeeIds = employees.map(emp => emp.id);
+            
+            // Count present records
+            const attendanceRecords = mockData.attendanceRecords || [];
+            let totalRecords = 0;
+            let presentRecords = 0;
+            
+            employeeIds.forEach(id => {
+                const records = attendanceRecords.filter(record => record.employeeId === id);
+                totalRecords += records.length;
+                presentRecords += records.filter(record => 
+                    record.status === 'present' || record.status === 'tardy'
+                ).length;
+            });
+            
+            return totalRecords > 0 ? Math.round((presentRecords / totalRecords) * 100) : 0;
+        }
+    </script>
+</body>
+</html>

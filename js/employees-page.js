@@ -22,6 +22,7 @@ class EmployeesPageManager {
             this.updateStats();
             this.renderTable();
             this.populateFilters();
+            this.setupDataSyncListeners();
         } catch (error) {
             console.error('Failed to initialize employees page:', error);
             this.showError('Failed to load page data');
@@ -30,80 +31,115 @@ class EmployeesPageManager {
 
     async loadEmployees() {
         try {
-            // Mock employee data - in a real app, this would come from an API
-            this.employees = [
-                {
-                    id: 1,
-                    employeeCode: 'EMP001',
-                    firstName: 'John',
-                    lastName: 'Doe',
-                    email: 'john.doe@company.com',
-                    phone: '+1-555-0101',
-                    department: 'Engineering',
-                    position: 'Senior Developer',
-                    manager: 'Charlie Wilson',
-                    hireDate: '2023-01-15',
-                    hourlyRate: 40.87,
-                    salaryType: 'hourly',
-                    salary: 85000,
-                    role: 'employee',
-                    status: 'active',
-                    schedule: {
+            // Use centralized data service to get employee data
+            if (typeof dataService !== 'undefined') {
+                console.log('Getting employees from data service...');
+                const employeesData = await dataService.getEmployees();
+                console.log('Received employee data:', employeesData);
+                
+                // Transform data to match the employees page format expectations
+                this.employees = employeesData.map(emp => ({
+                    id: emp.id,
+                    employeeCode: emp.employeeCode || `EMP${String(emp.id).padStart(3, '0')}`,
+                    firstName: emp.firstName || emp.name?.split(' ')[0] || 'Unknown',
+                    lastName: emp.lastName || emp.name?.split(' ').slice(1).join(' ') || 'Employee',
+                    email: emp.email,
+                    phone: emp.phone,
+                    department: emp.department,
+                    position: emp.position,
+                    manager: emp.manager,
+                    hireDate: emp.hireDate,
+                    hourlyRate: emp.hourlyRate,
+                    salaryType: emp.salaryType || 'hourly',
+                    salary: emp.salary || (emp.hourlyRate * 40 * 52), // Calculate annual salary from hourly
+                    role: emp.role,
+                    status: emp.status,
+                    schedule: emp.schedule || {
                         monday: { active: true, start: '09:00', end: '17:00' },
                         tuesday: { active: true, start: '09:00', end: '17:00' },
                         wednesday: { active: true, start: '09:00', end: '17:00' },
                         thursday: { active: true, start: '09:00', end: '17:00' },
                         friday: { active: true, start: '09:00', end: '17:00' }
                     }
-                },
-                {
-                    id: 2,
-                    employeeCode: 'EMP002',
-                    firstName: 'Jane',
-                    lastName: 'Smith',
-                    email: 'jane.smith@company.com',
-                    phone: '+1-555-0102',
-                    department: 'Marketing',
-                    position: 'Marketing Manager',
-                    manager: null,
-                    hireDate: '2022-06-10',
-                    hourlyRate: 36.06,
-                    salaryType: 'hourly',
-                    salary: 75000,
-                    role: 'manager',
-                    status: 'active',
-                    schedule: {
-                        monday: { active: true, start: '08:30', end: '16:30' },
-                        tuesday: { active: true, start: '08:30', end: '16:30' },
-                        wednesday: { active: true, start: '08:30', end: '16:30' },
-                        thursday: { active: true, start: '08:30', end: '16:30' },
-                        friday: { active: true, start: '08:30', end: '16:30' }
-                    }
-                },
-                {
-                    id: 3,
-                    employeeCode: 'EMP003',
-                    firstName: 'Bob',
-                    lastName: 'Johnson',
-                    email: 'bob.johnson@company.com',
-                    phone: '+1-555-0103',
-                    department: 'Sales',
-                    position: 'Sales Representative',
-                    manager: 'Jane Smith',
-                    hireDate: '2023-03-20',
-                    hourlyRate: 26.44,
-                    salaryType: 'hourly',
-                    salary: 55000,
-                    role: 'employee',
-                    status: 'active',
-                    schedule: {
-                        monday: { active: true, start: '09:00', end: '17:00' },
-                        tuesday: { active: true, start: '09:00', end: '17:00' },
-                        wednesday: { active: true, start: '09:00', end: '17:00' },
-                        thursday: { active: true, start: '09:00', end: '17:00' },
-                        friday: { active: true, start: '09:00', end: '17:00' }
-                    }
-                },
+                }));
+                
+                console.log(`Loaded ${this.employees.length} employees from data service`);
+            } else {
+                console.warn('dataService not available, using fallback data');
+                // Fallback to basic mock data if data service isn't available
+                this.employees = [
+                    {
+                        id: 1,
+                        employeeCode: 'EMP001',
+                        firstName: 'John',
+                        lastName: 'Doe',
+                        email: 'john.doe@company.com',
+                        phone: '+1-555-0101',
+                        department: 'Engineering',
+                        position: 'Senior Developer',
+                        manager: 'Charlie Wilson',
+                        hireDate: '2023-01-15',
+                        hourlyRate: 40.87,
+                        salaryType: 'hourly',
+                        salary: 85000,
+                        role: 'employee',
+                        status: 'active',
+                        schedule: {
+                            monday: { active: true, start: '09:00', end: '17:00' },
+                            tuesday: { active: true, start: '09:00', end: '17:00' },
+                            wednesday: { active: true, start: '09:00', end: '17:00' },
+                            thursday: { active: true, start: '09:00', end: '17:00' },
+                            friday: { active: true, start: '09:00', end: '17:00' }
+                        }
+                    },
+                    {
+                        id: 2,
+                        employeeCode: 'EMP002',
+                        firstName: 'Jane',
+                        lastName: 'Smith',
+                        email: 'jane.smith@company.com',
+                        phone: '+1-555-0102',
+                        department: 'Marketing',
+                        position: 'Marketing Manager',
+                        manager: null,
+                        hireDate: '2022-06-10',
+                        hourlyRate: 36.06,
+                        salaryType: 'hourly',
+                        salary: 75000,
+                        role: 'manager',
+                        status: 'active',
+                        schedule: {
+                            monday: { active: true, start: '08:30', end: '16:30' },
+                            tuesday: { active: true, start: '08:30', end: '16:30' },
+                            wednesday: { active: true, start: '08:30', end: '16:30' },
+                            thursday: { active: true, start: '08:30', end: '16:30' },
+                            friday: { active: true, start: '08:30', end: '16:30' }
+                        }
+                    },
+                    {
+                        id: 3,
+                        employeeCode: 'EMP003',
+                        firstName: 'Bob',
+                        lastName: 'Johnson',
+                        email: 'bob.johnson@company.com',
+                        phone: '+1-555-0103',
+                        department: 'Sales',
+                        position: 'Sales Representative',
+                        manager: 'Jane Smith',
+                        hireDate: '2023-03-20',
+                        hourlyRate: 26.44,
+                        salaryType: 'hourly',
+                        salary: 55000,
+                        role: 'employee',
+                        status: 'active',
+                        schedule: {
+                            monday: { active: true, start: '09:00', end: '17:00' },
+                            tuesday: { active: true, start: '09:00', end: '17:00' },
+                            wednesday: { active: true, start: '09:00', end: '17:00' },
+                            thursday: { active: true, start: '09:00', end: '17:00' },
+                            friday: { active: true, start: '09:00', end: '17:00' }
+                        }
+                    },
                 {
                     id: 4,
                     employeeCode: 'EMP004',
@@ -177,6 +213,7 @@ class EmployeesPageManager {
                     }
                 }
             ];
+            }
 
             // Extract departments
             this.departments = [...new Set(this.employees.map(emp => emp.department))];
@@ -319,15 +356,31 @@ class EmployeesPageManager {
             this.openModal();
         });
 
+        document.getElementById('quickPayrollBtn')?.addEventListener('click', () => {
+            window.location.href = 'payroll.html';
+        });
+
         // Other buttons
-        document.getElementById('refreshBtn')?.addEventListener('click', () => {
-            this.loadEmployees();
-            this.updateStats();
-            this.renderTable();
+        document.getElementById('refreshBtn')?.addEventListener('click', async () => {
+            try {
+                await this.refreshData();
+            } catch (error) {
+                console.error('Error refreshing employee data:', error);
+                this.showError('Failed to refresh employee data');
+            }
+        });
+
+        document.getElementById('syncPayrollBtn')?.addEventListener('click', async () => {
+            try {
+                await this.syncWithPayroll();
+            } catch (error) {
+                console.error('Error syncing with payroll:', error);
+                this.showError('Failed to sync with payroll system');
+            }
         });
 
         document.getElementById('exportBtn')?.addEventListener('click', () => {
-            this.exportData();
+            this.exportToCSV();
         });
 
         document.getElementById('importBtn')?.addEventListener('click', () => {
@@ -899,6 +952,230 @@ class EmployeesPageManager {
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+        }
+    }
+
+    /**
+     * Update employee wage rate
+     */
+    async updateEmployeeWage(employeeId, newRate, notes = '') {
+        try {
+            // Update in data service if available
+            if (typeof dataService !== 'undefined' && dataService.updateEmployeeWage) {
+                await dataService.updateEmployeeWage(employeeId, newRate);
+            }
+            
+            // Update local employee data
+            const employee = this.employees.find(emp => emp.id === employeeId);
+            if (employee) {
+                const oldRate = employee.hourlyRate;
+                employee.hourlyRate = newRate;
+                employee.salary = newRate * 40 * 52; // Update annual salary calculation
+                
+                console.log(`Employee ${employee.firstName} ${employee.lastName} wage updated from ${oldRate} to ${newRate}`);
+                if (notes) {
+                    console.log(`Wage change reason: ${notes}`);
+                }
+                
+                // Update filtered data if needed
+                this.filteredEmployees = this.filteredEmployees.map(emp => 
+                    emp.id === employeeId ? { ...emp, hourlyRate: newRate, salary: newRate * 40 * 52 } : emp
+                );
+                
+                // Re-render the table to show updated data
+                this.renderTable();
+                
+                // Notify payroll system if available
+                if (typeof window.payrollController !== 'undefined' && window.payrollController.refreshData) {
+                    await window.payrollController.refreshData();
+                }
+                
+                this.showToast('Employee wage updated successfully', 'success');
+                return true;
+            } else {
+                throw new Error('Employee not found');
+            }
+        } catch (error) {
+            console.error('Error updating employee wage:', error);
+            this.showToast('Failed to update employee wage', 'error');
+            throw error;
+        }
+    }
+
+    /**
+     * Sync employee data with payroll system
+     */
+    async syncWithPayroll() {
+        try {
+            if (typeof window.payrollController !== 'undefined') {
+                // Get latest employee data from data service
+                await this.loadEmployees();
+                
+                // Refresh payroll data to match
+                if (window.payrollController.refreshData) {
+                    await window.payrollController.refreshData();
+                }
+                
+                this.showToast('Employee data synchronized with payroll', 'success');
+            } else {
+                console.warn('Payroll controller not available for sync');
+            }
+        } catch (error) {
+            console.error('Error syncing with payroll:', error);
+            this.showToast('Failed to sync with payroll system', 'error');
+        }
+    }
+
+    /**
+     * Get employee by ID
+     */
+    getEmployee(employeeId) {
+        return this.employees.find(emp => emp.id === employeeId);
+    }
+
+    /**
+     * Update employee data
+     */
+    async updateEmployee(employeeId, updatedData) {
+        try {
+            // Update in data service if available
+            if (typeof dataService !== 'undefined' && dataService.updateEmployee) {
+                await dataService.updateEmployee(employeeId, updatedData);
+            }
+            
+            // Update local data
+            const employeeIndex = this.employees.findIndex(emp => emp.id === employeeId);
+            if (employeeIndex !== -1) {
+                this.employees[employeeIndex] = { ...this.employees[employeeIndex], ...updatedData };
+                
+                // Update filtered data
+                const filteredIndex = this.filteredEmployees.findIndex(emp => emp.id === employeeId);
+                if (filteredIndex !== -1) {
+                    this.filteredEmployees[filteredIndex] = { ...this.filteredEmployees[filteredIndex], ...updatedData };
+                }
+                
+                // Re-render components
+                this.renderTable();
+                this.updateStats();
+                
+                // Sync with payroll if wage-related data changed
+                if (updatedData.hourlyRate || updatedData.salary || updatedData.position || updatedData.department) {
+                    await this.syncWithPayroll();
+                }
+                
+                return true;
+            } else {
+                throw new Error('Employee not found');
+            }
+        } catch (error) {
+            console.error('Error updating employee:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Refresh data from data service
+     */
+    async refreshData() {
+        try {
+            await this.loadEmployees();
+            this.renderTable();
+            this.updateStats();
+            this.populateFilters();
+            this.showToast('Employee data refreshed', 'success');
+        } catch (error) {
+            console.error('Error refreshing employee data:', error);
+            this.showToast('Failed to refresh employee data', 'error');
+        }
+    }
+
+    /**
+     * Export employee data to CSV
+     */
+    exportToCSV() {
+        try {
+            const headers = [
+                'Employee ID',
+                'First Name',
+                'Last Name',
+                'Email',
+                'Phone',
+                'Department',
+                'Position',
+                'Manager',
+                'Hire Date',
+                'Hourly Rate',
+                'Annual Salary',
+                'Role',
+                'Status'
+            ];
+
+            const rows = this.filteredEmployees.map(emp => [
+                emp.employeeCode,
+                emp.firstName,
+                emp.lastName,
+                emp.email,
+                emp.phone,
+                emp.department,
+                emp.position,
+                emp.manager || '',
+                emp.hireDate,
+                emp.hourlyRate,
+                emp.salary,
+                emp.role,
+                emp.status
+            ]);
+
+            const csvContent = [headers, ...rows]
+                .map(row => row.map(cell => `"${cell}"`).join(','))
+                .join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `employees_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+
+            this.showToast('Employee data exported successfully', 'success');
+        } catch (error) {
+            console.error('Error exporting employee data:', error);
+            this.showToast('Failed to export employee data', 'error');
+        }
+    }
+
+    /**
+     * Set up data service event listeners for auto-sync
+     */
+    setupDataSyncListeners() {
+        if (typeof dataService !== 'undefined' && dataService.addEventListener) {
+            // Listen for employee wage updates
+            dataService.addEventListener('employeeWageUpdated', (data) => {
+                console.log('Employee wage updated, refreshing employees page data');
+                this.refreshData();
+            });
+
+            // Listen for employee data updates
+            dataService.addEventListener('employeeDataUpdated', (data) => {
+                console.log('Employee data updated, refreshing employees page data');
+                this.refreshData();
+            });
+
+            // Listen for new employees
+            dataService.addEventListener('employeeAdded', (data) => {
+                console.log('New employee added, refreshing employees page data');
+                this.refreshData();
+            });
+
+            // Listen for deleted employees
+            dataService.addEventListener('employeeDeleted', (data) => {
+                console.log('Employee deleted, refreshing employees page data');
+                this.refreshData();
+            });
         }
     }
 

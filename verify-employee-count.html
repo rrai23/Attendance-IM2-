@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Count Verification</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #333; }
+        .verification-container { margin-bottom: 20px; border: 1px solid #ddd; padding: 15px; border-radius: 5px; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        .warning { color: orange; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Employee Count Verification - All Systems Should Show 6 Employees</h1>
+    
+    <div class="verification-container">
+        <h3>1. Mock Data Structure</h3>
+        <div id="mock-verification"></div>
+    </div>
+
+    <div class="verification-container">
+        <h3>2. Data Service getEmployees()</h3>
+        <div id="service-verification"></div>
+        <table id="employees-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Department</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="verification-container">
+        <h3>3. Attendance Statistics</h3>
+        <div id="stats-verification"></div>
+    </div>
+
+    <div class="verification-container">
+        <h3>4. Summary</h3>
+        <div id="summary"></div>
+    </div>
+
+    <script src="js/mock-data.js"></script>
+    <script src="js/data-service.js"></script>
+    <script>
+        let dataService;
+        let results = {};
+
+        async function verifySystem() {
+            try {
+                // Initialize data service
+                dataService = new DataService();
+                
+                // 1. Check mock data
+                await verifyMockData();
+                
+                // 2. Check data service
+                await verifyDataService();
+                
+                // 3. Check attendance stats
+                await verifyAttendanceStats();
+                
+                // 4. Generate summary
+                generateSummary();
+                
+            } catch (error) {
+                console.error('Verification failed:', error);
+                document.getElementById('summary').innerHTML = `<p class="error">Verification failed: ${error.message}</p>`;
+            }
+        }
+
+        async function verifyMockData() {
+            const output = document.getElementById('mock-verification');
+            
+            if (!mockData || !mockData.users) {
+                output.innerHTML = '<p class="error">❌ Mock data users array not found</p>';
+                results.mockData = false;
+                return;
+            }
+
+            const userCount = mockData.users.length;
+            const roles = mockData.users.map(user => user.role);
+            const roleCount = {
+                admin: roles.filter(r => r === 'admin').length,
+                manager: roles.filter(r => r === 'manager').length,
+                employee: roles.filter(r => r === 'employee').length
+            };
+
+            if (userCount === 6) {
+                output.innerHTML = `
+                    <p class="success">✅ Mock data contains 6 users</p>
+                    <p>Roles: ${roleCount.admin} admin, ${roleCount.manager} manager, ${roleCount.employee} employees</p>
+                `;
+                results.mockData = true;
+            } else {
+                output.innerHTML = `<p class="error">❌ Mock data contains ${userCount} users, expected 6</p>`;
+                results.mockData = false;
+            }
+        }
+
+        async function verifyDataService() {
+            const output = document.getElementById('service-verification');
+            const tableBody = document.querySelector('#employees-table tbody');
+            
+            try {
+                const employees = await dataService.getEmployees();
+                
+                if (employees.length === 6) {
+                    output.innerHTML = `<p class="success">✅ DataService.getEmployees() returns 6 employees</p>`;
+                    results.dataService = true;
+                } else {
+                    output.innerHTML = `<p class="error">❌ DataService.getEmployees() returns ${employees.length} employees, expected 6</p>`;
+                    results.dataService = false;
+                }
+
+                // Show employees in table
+                tableBody.innerHTML = '';
+                employees.forEach(emp => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${emp.id}</td>
+                        <td>${emp.firstName} ${emp.lastName}</td>
+                        <td>${emp.role}</td>
+                        <td>${emp.department}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+
+            } catch (error) {
+                output.innerHTML = `<p class="error">❌ Error getting employees: ${error.message}</p>`;
+                results.dataService = false;
+            }
+        }
+
+        async function verifyAttendanceStats() {
+            const output = document.getElementById('stats-verification');
+            
+            try {
+                const stats = await dataService.getAttendanceStats();
+                
+                if (stats.totalEmployees === 6) {
+                    output.innerHTML = `
+                        <p class="success">✅ Attendance statistics show 6 total employees</p>
+                        <p>Present: ${stats.presentToday}, Absent: ${stats.absentToday}, Late: ${stats.tardyToday}</p>
+                    `;
+                    results.attendanceStats = true;
+                } else {
+                    output.innerHTML = `<p class="error">❌ Attendance statistics show ${stats.totalEmployees} employees, expected 6</p>`;
+                    results.attendanceStats = false;
+                }
+
+            } catch (error) {
+                output.innerHTML = `<p class="error">❌ Error getting attendance stats: ${error.message}</p>`;
+                results.attendanceStats = false;
+            }
+        }
+
+        function generateSummary() {
+            const summary = document.getElementById('summary');
+            const allPassed = Object.values(results).every(result => result === true);
+            
+            if (allPassed) {
+                summary.innerHTML = `
+                    <p class="success">🎉 ALL SYSTEMS CONSISTENT!</p>
+                    <p>All components now correctly show 6 employees including:</p>
+                    <ul>
+                        <li>1 Admin (John Administrator)</li>
+                        <li>1 Manager (Maria Garcia)</li>
+                        <li>4 Employees (David Chen, Samantha Patel, Robert Johnson, Lisa Martinez)</li>
+                    </ul>
+                    <p>The inconsistency has been fixed by updating the data service to include managers in the employee count.</p>
+                `;
+            } else {
+                const failedChecks = Object.entries(results)
+                    .filter(([key, value]) => !value)
+                    .map(([key, value]) => key);
+                
+                summary.innerHTML = `
+                    <p class="error">❌ INCONSISTENCY STILL EXISTS</p>
+                    <p>Failed checks: ${failedChecks.join(', ')}</p>
+                `;
+            }
+        }
+
+        // Run verification when page loads
+        window.addEventListener('DOMContentLoaded', verifySystem);
+    </script>
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test 6 Employees Data Integration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .employee-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        .employee-card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 6px;
+            background: #fafafa;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .stat-card {
+            background: #e8f4f8;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c5aa0;
+        }
+        h1 { color: #2c5aa0; text-align: center; }
+        h2 { color: #333; border-bottom: 2px solid #2c5aa0; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>6 Employees Data Integration Test</h1>
+        
+        <div class="section">
+            <h2>Data Validation Summary</h2>
+            <div id="validation-summary"></div>
+        </div>
+
+        <div class="section">
+            <h2>Employee Directory (Should show exactly 6 employees)</h2>
+            <div id="employee-list" class="employee-grid"></div>
+        </div>
+
+        <div class="section">
+            <h2>Analytics Overview</h2>
+            <div id="analytics-stats" class="stats-grid"></div>
+        </div>
+
+        <div class="section">
+            <h2>Payroll Summary</h2>
+            <div id="payroll-stats" class="stats-grid"></div>
+        </div>
+
+        <div class="section">
+            <h2>Current Attendance (Today: July 12, 2025)</h2>
+            <div id="attendance-today" class="stats-grid"></div>
+        </div>
+    </div>
+
+    <script src="js/mock-data.js"></script>
+    <script>
+        // Validation and display script
+        document.addEventListener('DOMContentLoaded', function() {
+            validateAndDisplayData();
+        });
+
+        function validateAndDisplayData() {
+            // Validation
+            const totalEmployees = mockData.users.length;
+            const analyticsTotal = mockData.analytics.attendanceStats.totalEmployees;
+            const validationDiv = document.getElementById('validation-summary');
+            
+            let validationHTML = '<div class="stats-grid">';
+            
+            if (totalEmployees === 6) {
+                validationHTML += '<div class="stat-card success">✓ Employee Count: 6 employees found</div>';
+            } else {
+                validationHTML += `<div class="stat-card error">✗ Employee Count: ${totalEmployees} employees (should be 6)</div>`;
+            }
+            
+            if (analyticsTotal === 6) {
+                validationHTML += '<div class="stat-card success">✓ Analytics Match: Correctly shows 6 employees</div>';
+            } else {
+                validationHTML += `<div class="stat-card error">✗ Analytics Mismatch: Shows ${analyticsTotal} employees</div>`;
+            }
+            
+            validationHTML += '</div>';
+            validationDiv.innerHTML = validationHTML;
+
+            // Display employee list
+            displayEmployees();
+            displayAnalytics();
+            displayPayrollStats();
+            displayAttendanceToday();
+        }
+
+        function displayEmployees() {
+            const employeeDiv = document.getElementById('employee-list');
+            let html = '';
+            
+            mockData.users.forEach(user => {
+                const emp = user.employee;
+                html += `
+                    <div class="employee-card">
+                        <h3>${emp.name}</h3>
+                        <p><strong>ID:</strong> ${emp.id}</p>
+                        <p><strong>Position:</strong> ${emp.position}</p>
+                        <p><strong>Department:</strong> ${emp.department}</p>
+                        <p><strong>Hourly Rate:</strong> ₱${emp.hourlyRate}/hr</p>
+                        <p><strong>Schedule:</strong> ${emp.schedule.shift} (${emp.schedule.startTime} - ${emp.schedule.endTime})</p>
+                    </div>
+                `;
+            });
+            
+            employeeDiv.innerHTML = html;
+        }
+
+        function displayAnalytics() {
+            const analyticsDiv = document.getElementById('analytics-stats');
+            const stats = mockData.analytics.attendanceStats;
+            
+            analyticsDiv.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${stats.totalEmployees}</div>
+                    <div>Total Employees</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.presentToday}</div>
+                    <div>Present Today</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.attendanceRate}%</div>
+                    <div>Overall Attendance Rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.tardyRate}%</div>
+                    <div>Tardiness Rate</div>
+                </div>
+            `;
+        }
+
+        function displayPayrollStats() {
+            const payrollDiv = document.getElementById('payroll-stats');
+            
+            // Calculate total payroll from our 6 employees
+            let totalPayroll = 0;
+            mockData.users.forEach(user => {
+                // Estimate monthly salary (hourly rate * 40 hours * 4 weeks)
+                totalPayroll += user.employee.hourlyRate * 40 * 4;
+            });
+            
+            const avgSalary = totalPayroll / mockData.users.length;
+            
+            payrollDiv.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">6</div>
+                    <div>Employees on Payroll</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">₱${totalPayroll.toLocaleString()}</div>
+                    <div>Total Monthly Payroll</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">₱${Math.round(avgSalary).toLocaleString()}</div>
+                    <div>Average Monthly Salary</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">5</div>
+                    <div>Departments</div>
+                </div>
+            `;
+        }
+
+        function displayAttendanceToday() {
+            const attendanceDiv = document.getElementById('attendance-today');
+            const today = '2025-07-12';
+            
+            // Count attendance for today
+            let presentCount = 0;
+            let absentCount = 0;
+            let lateCount = 0;
+            
+            mockData.users.forEach(user => {
+                const todayRecord = mockData.attendanceRecords.find(record => 
+                    record.employeeId === user.employee.id && record.date === today
+                );
+                
+                if (todayRecord) {
+                    if (todayRecord.status === 'present' || todayRecord.status === 'late') {
+                        presentCount++;
+                        if (todayRecord.status === 'late') lateCount++;
+                    } else {
+                        absentCount++;
+                    }
+                } else {
+                    absentCount++;
+                }
+            });
+            
+            attendanceDiv.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${presentCount}</div>
+                    <div>Present Today</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${absentCount}</div>
+                    <div>Absent Today</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${lateCount}</div>
+                    <div>Late Today</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${Math.round((presentCount / 6) * 100)}%</div>
+                    <div>Attendance Rate Today</div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

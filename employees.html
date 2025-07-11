@@ -184,6 +184,14 @@
                         <span class="quick-action-icon">📤</span>
                         <span class="quick-action-text">Export</span>
                     </button>
+                    <button class="quick-action-btn" 
+                            title="Payroll System (Alt+P)" 
+                            id="quickPayrollBtn"
+                            aria-label="Go to payroll system"
+                            data-shortcut="Alt+P">
+                        <span class="quick-action-icon">💰</span>
+                        <span class="quick-action-text">Payroll</span>
+                    </button>
                 </div>
             </div>
 
@@ -217,6 +225,10 @@
                         <button class="btn btn-secondary" id="refreshBtn" title="Refresh data">
                             <span class="btn-icon">🔄</span>
                             <span class="btn-text">Refresh</span>
+                        </button>
+                        <button class="btn btn-outline" id="syncPayrollBtn" title="Sync with payroll system">
+                            <span class="btn-icon">🔗</span>
+                            <span class="btn-text">Sync Payroll</span>
                         </button>
                         <button class="btn btn-primary" id="addEmployeeBtn">
                             <span class="btn-icon">👤➕</span>
@@ -682,16 +694,26 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/js/data-manager.js"></script>
-    <script src="/js/data-service.js"></script>
-    <script src="/js/theme.js"></script>
-    <script src="/js/auth.js"></script>
-    <script src="/js/sidebar.js"></script>
-    <script src="/js/employees-page.js"></script>
+    <script src="js/mock-data.js"></script>
+    <script src="js/data-manager.js"></script>
+    <script src="js/data-service.js"></script>
+    <script src="js/theme.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/employees-page.js"></script>
     <script>
         // Initialize the employees page manager when DOM is loaded
         document.addEventListener('DOMContentLoaded', async function() {
             try {
+                // Debug output to verify the mock-data.js loaded correctly
+                if (typeof mockData !== 'undefined') {
+                    console.log('Mock data loaded successfully:');
+                    console.log('- Users:', mockData.users.length);
+                    console.log('- Attendance records:', mockData.attendanceRecords.length);
+                } else {
+                    console.error('mockData is not defined! Check if mock-data.js is loaded correctly.');
+                }
+                
                 console.log('Initializing EmployeesPageManager...');
                 window.employeesManager = new EmployeesPageManager();
                 await window.employeesManager.init();

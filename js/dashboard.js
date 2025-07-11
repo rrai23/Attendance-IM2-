@@ -230,7 +230,8 @@ class DashboardController {
      */
     processTodayAttendance(records) {
         // Get total number of employees from the data service
-        const totalEmployees = 6; // This should match the number of active employees
+        // There are 6 employees in the mock-data.js users array
+        const totalEmployees = 6; // This matches the number of employees in mock-data.js
         
         let present = 0;
         let late = 0;

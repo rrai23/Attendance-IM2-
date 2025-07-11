@@ -188,6 +188,14 @@
                         <span class="quick-action-icon">💵</span>
                         <span class="quick-action-text">Wages</span>
                     </button>
+                    <button class="quick-action-btn" 
+                            title="Employee Directory (Alt+D)" 
+                            id="quickEmployeesBtn"
+                            aria-label="View employee directory"
+                            data-shortcut="Alt+D">
+                        <span class="quick-action-icon">👥</span>
+                        <span class="quick-action-text">Employees</span>
+                    </button>
                 </div>
             </div>
 
@@ -250,7 +258,7 @@
             <!-- Main Content Area -->
             <div class="content-area">
                 <!-- Main Content Grid -->
-                <section class="tiles-grid grid-2 main-payroll-section">
+                <div class="tiles-grid grid-payroll-2">
                     <!-- Payroll Overview Tile -->
                     <div class="tile payroll-overview-tile">
                         <div class="tile-header">
@@ -310,10 +318,7 @@
                             </div>
                         </div>
                     </div>
-                </section>
 
-                <!-- Secondary Tiles Grid -->
-                <section class="tiles-grid grid-3 secondary-payroll-section">
                     <!-- Employee Wages Tile -->
                     <div class="tile employee-wages-tile">
                         <div class="tile-header">
@@ -405,16 +410,12 @@
                             </div>
                         </div>
                     </div>
-                </section>
+                </div>
 
                 <!-- Additional Statistics Section -->
-<<<<<<< HEAD
-                <div class="tiles-grid grid-2" style="margin-top: 2rem;">
-=======
-                <section class="tiles-grid grid-3 additional-stats-section">
->>>>>>> 33c064a904df154b8dccd997c33e5d00c85b4ec2
+                <div class="tiles-grid grid-payroll-2" style="margin-top: 2rem;">
                     <!-- Payroll Trends Chart -->
-                    <div class="tile">
+                    <div class="tile tile-large">
                         <div class="tile-header">
                             <div>
                                 <h3 class="tile-title">Payroll Trends</h3>
@@ -453,13 +454,13 @@
                             </div>
                         </div>
                     </div>
-                </section>
+                </div>
             </div>
         </main>
     </div>
 
     <!-- Mobile Floating Action Button Container -->
-    <div class="mobile-fab-container" id="mobile-fab-container">
+    <div class="mobile-fab-container" id="mobile-fab-container" style="display: none;">
         <button class="mobile-fab-main" 
                 id="mobile-fab-main" 
                 aria-label="Quick payroll actions menu"
@@ -1089,11 +1090,6 @@
 
         /* Responsive Design */
         @media (max-width: 768px) {
-            /* Make tiles stack vertically on mobile */
-            .tiles-grid.grid-2 {
-                grid-template-columns: 1fr;
-            }
-            
             .summary-stats {
                 grid-template-columns: repeat(2, 1fr);
             }

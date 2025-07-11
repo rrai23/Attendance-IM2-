@@ -35,6 +35,7 @@ class PayrollController {
             // Only setup DOM-dependent features if we're in a browser with DOM elements
             if (typeof document !== 'undefined') {
                 this.setupEventListeners();
+                this.setupDataSyncListeners();
                 this.renderPayrollOverview();
                 this.renderEmployeeWages();
                 this.renderOvertimeRequests();
@@ -167,6 +168,47 @@ class PayrollController {
                 this.handlePayPeriodChange(e.target.value);
             });
         }
+
+        // Quick action buttons
+        const quickProcessBtn = document.getElementById('quickProcessPayrollBtn');
+        if (quickProcessBtn) {
+            quickProcessBtn.addEventListener('click', () => this.showProcessPayrollModal());
+        }
+
+        const quickExportBtn = document.getElementById('quickExportBtn');
+        if (quickExportBtn) {
+            quickExportBtn.addEventListener('click', () => this.exportPayrollData());
+        }
+
+        const quickOvertimeBtn = document.getElementById('quickOvertimeBtn');
+        if (quickOvertimeBtn) {
+            quickOvertimeBtn.addEventListener('click', () => {
+                // Scroll to overtime requests section
+                const overtimeSection = document.querySelector('.overtime-requests-tile');
+                if (overtimeSection) {
+                    overtimeSection.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        }
+
+        const quickWageBtn = document.getElementById('quickWageBtn');
+        if (quickWageBtn) {
+            quickWageBtn.addEventListener('click', () => {
+                // Scroll to employee wages section
+                const wageSection = document.querySelector('.employee-wages-tile');
+                if (wageSection) {
+                    wageSection.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        }
+
+        const quickEmployeesBtn = document.getElementById('quickEmployeesBtn');
+        if (quickEmployeesBtn) {
+            quickEmployeesBtn.addEventListener('click', () => {
+                // Navigate to employees page
+                window.location.href = 'employees.html';
+            });
+        }
     }
 
     /**
@@ -261,8 +303,8 @@ class PayrollController {
             return `
                 <div class="wage-item" data-employee-id="${employee.id}">
                     <div class="employee-info">
-                        <div class="employee-name">${employee.firstName} ${employee.lastName}</div>
-                        <div class="employee-role">${employee.role}</div>
+                        <div class="employee-name">${employee.name}</div>
+                        <div class="employee-role">${employee.position} - ${employee.department}</div>
                     </div>
                     <div class="wage-details">
                         <div class="hourly-rate">${this.formatCurrency(employee.hourlyRate)}/hr</div>
@@ -342,7 +384,7 @@ class PayrollController {
      */
     renderOvertimeRequest(request, isPending) {
         const employee = this.employees.find(emp => emp.id === request.employeeId);
-        const employeeName = employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown';
+        const employeeName = employee ? employee.name : request.employeeName || 'Unknown';
         
         const statusClass = {
             'pending': 'status-pending',
@@ -420,7 +462,7 @@ class PayrollController {
      */
     renderPayrollHistoryItem(record) {
         const employee = this.employees.find(emp => emp.id === record.employeeId);
-        const employeeName = employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown';
+        const employeeName = employee ? employee.name : record.employeeName || 'Unknown';
 
         return `
             <div class="history-item" data-record-id="${record.id}">
@@ -453,86 +495,65 @@ class PayrollController {
      * Show edit wage modal
      */
     async showEditWageModal(employeeId) {
+        // Check if modalManager is available
+        if (typeof modalManager === 'undefined' && typeof window.modalManager === 'undefined') {
+            console.error('modalManager is not available');
+            return;
+        }
+        
+        const manager = typeof modalManager !== 'undefined' ? modalManager : window.modalManager;
+        
         const employee = this.employees.find(emp => emp.id === employeeId);
         if (!employee) {
             console.warn(`Employee with ID ${employeeId} not found`);
             return;
         }
 
-        // Check if modalManager is available for fancy modal, otherwise use simple prompt
-        if (typeof modalManager !== 'undefined' || typeof window.modalManager !== 'undefined') {
-            const manager = typeof modalManager !== 'undefined' ? modalManager : window.modalManager;
-            
-            const modalId = manager.create({
-                title: `Edit Wage - ${employee.firstName} ${employee.lastName}`,
-                form: {
-                    fields: [
-                        {
-                            type: 'number',
-                            name: 'hourlyRate',
-                            label: 'Hourly Rate (₱/hr)',
-                            value: employee.hourlyRate,
-                            required: true,
-                            step: '0.01',
-                            min: '0'
-                        },
-                        {
-                            type: 'textarea',
-                            name: 'notes',
-                            label: 'Notes (optional)',
-                            placeholder: 'Reason for wage change...',
-                            rows: 3
-                        }
-                    ]
-                },
-                buttons: [
+        const modalId = manager.create({
+            title: `Edit Wage - ${employee.firstName} ${employee.lastName}`,
+            form: {
+                fields: [
                     {
-                        text: 'Cancel',
-                        class: 'btn-secondary',
-                        action: 'cancel'
+                        type: 'number',
+                        name: 'hourlyRate',
+                        label: 'Hourly Rate ($)',
+                        value: employee.hourlyRate,
+                        required: true,
+                        step: '0.01',
+                        min: '0'
                     },
                     {
-                        text: 'Update Wage',
-                        class: 'btn-primary',
-                        action: 'submit'
+                        type: 'textarea',
+                        name: 'notes',
+                        label: 'Notes (optional)',
+                        placeholder: 'Reason for wage change...',
+                        rows: 3
                     }
-                ],
-                onSubmit: async (data) => {
-                    try {
-                        await this.updateEmployeeWage(employeeId, parseFloat(data.hourlyRate), data.notes);
-                        this.showSuccess('Employee wage updated successfully');
-                        return true;
-                    } catch (error) {
-                        this.showError('Failed to update employee wage');
-                        return false;
-                    }
+                ]
+            },
+            buttons: [
+                {
+                    text: 'Cancel',
+                    class: 'btn-secondary',
+                    action: 'cancel'
+                },
+                {
+                    text: 'Update Wage',
+                    class: 'btn-primary',
+                    action: 'submit'
                 }
-            });
-        } else {
-            // Fallback to simple prompt if modalManager is not available
-            const currentRate = employee.hourlyRate;
-            const newRateInput = prompt(
-                `Edit wage for ${employee.firstName} ${employee.lastName}\n` +
-                `Current hourly rate: ₱${currentRate}/hr\n\n` +
-                `Enter new hourly rate (₱/hr):`,
-                currentRate
-            );
-            
-            if (newRateInput !== null) {
-                const newRate = parseFloat(newRateInput);
-                if (isNaN(newRate) || newRate < 0) {
-                    this.showError('Please enter a valid hourly rate');
-                    return;
-                }
-                
+            ],
+            onSubmit: async (data) => {
                 try {
-                    await this.updateEmployeeWage(employeeId, newRate, 'Wage updated via simple dialog');
-                    this.showSuccess(`Wage updated to ₱${newRate}/hr for ${employee.firstName} ${employee.lastName}`);
+                    await this.updateEmployeeWage(employeeId, parseFloat(data.hourlyRate), data.notes);
+                    this.showSuccess('Employee wage updated successfully');
+                    return true;
                 } catch (error) {
                     this.showError('Failed to update employee wage');
+                    return false;
                 }
             }
-        }
+        });
     }
 
     /**
@@ -1006,6 +1027,53 @@ class PayrollController {
         // Clear any intervals or timeouts
         if (this.refreshInterval) {
             clearInterval(this.refreshInterval);
+        }
+    }
+
+    /**
+     * Set up data service event listeners for auto-sync
+     */
+    setupDataSyncListeners() {
+        if (typeof dataService !== 'undefined' && dataService.addEventListener) {
+            // Listen for employee wage updates
+            dataService.addEventListener('employeeWageUpdated', async (data) => {
+                console.log('Employee wage updated, refreshing payroll data');
+                try {
+                    await this.refreshData();
+                } catch (error) {
+                    console.error('Error refreshing payroll data after wage update:', error);
+                }
+            });
+
+            // Listen for employee data updates
+            dataService.addEventListener('employeeDataUpdated', async (data) => {
+                console.log('Employee data updated, refreshing payroll data');
+                try {
+                    await this.refreshData();
+                } catch (error) {
+                    console.error('Error refreshing payroll data after employee update:', error);
+                }
+            });
+
+            // Listen for new employees
+            dataService.addEventListener('employeeAdded', async (data) => {
+                console.log('New employee added, refreshing payroll data');
+                try {
+                    await this.refreshData();
+                } catch (error) {
+                    console.error('Error refreshing payroll data after employee added:', error);
+                }
+            });
+
+            // Listen for deleted employees
+            dataService.addEventListener('employeeDeleted', async (data) => {
+                console.log('Employee deleted, refreshing payroll data');
+                try {
+                    await this.refreshData();
+                } catch (error) {
+                    console.error('Error refreshing payroll data after employee deleted:', error);
+                }
+            });
         }
     }
 }

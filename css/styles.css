@@ -1287,7 +1287,7 @@ a:hover {
 }
 
 .tiles-grid.grid-2 {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
 }
 
 .tiles-grid.grid-3 {
@@ -1296,6 +1296,25 @@ a:hover {
 
 .tiles-grid.grid-4 {
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+/* Payroll-specific 2-column layout */
+.tiles-grid.grid-payroll-2 {
+  grid-template-columns: repeat(2, 1fr);
+  max-width: 100%;
+}
+
+/* Responsive grid behavior */
+@media (max-width: 768px) {
+  .tiles-grid.grid-payroll-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1024px) and (min-width: 769px) {
+  .tiles-grid.grid-payroll-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 /* Dashboard specific tiles */
@@ -1444,7 +1463,7 @@ select.form-select {
   background: var(--bg-primary) !important;
   border: 1px solid var(--border-color) !important;
   border-radius: var(--radius-md) !important;
-  padding: var(--spacing-md) 40px var(--spacing-md) var(--spacing-md) var(--spacing-md) var(--spacing-md) var(--spacing-md) var(--spacing-md) var(--spacing-md) var(--spacing-md) !important;
+  padding: var(--spacing-md) 40px var(--spacing-md) var(--spacing-md) !important;
   font-family: var(--font-family) !important;
   font-size: var(--font-size-base) !important;
   color: var(--text-primary) !important;
@@ -2201,322 +2220,5 @@ select.form-select {
   to {
     transform: translateX(100%);
     opacity: 0;
-  }
-}
-
-/* ===== PAYROLL PAGE SPECIFIC STYLES ===== */
-/* Reduce excessive padding on payroll page */
-.page-payroll .main-content {
-  padding: var(--spacing-md);
-}
-
-.page-payroll .container {
-  padding: 0;
-  max-width: none;
-}
-
-/* Reduce header spacing */
-.page-payroll .page-header {
-  margin-bottom: var(--spacing-lg);
-}
-
-/* Reduce tile grid spacing */
-.page-payroll .tiles-grid {
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
-}
-
-.page-payroll .page-header {
-  margin-bottom: var(--spacing-xl);
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--spacing-lg);
-}
-
-.page-payroll .page-title-section {
-  flex: 1;
-}
-
-.page-payroll .page-actions {
-  display: flex;
-  gap: var(--spacing-md);
-  flex-wrap: wrap;
-}
-
-/* Payroll Tiles Grid */
-.page-payroll .tiles-grid {
-  margin-bottom: var(--spacing-xl);
-}
-
-.page-payroll .additional-stats-section {
-  margin-top: var(--spacing-lg);
-  padding-top: var(--spacing-lg);
-  border-top: 1px solid var(--border-color);
-}
-
-/* Improved grid responsiveness */
-.page-payroll .tiles-grid.grid-3 {
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: var(--spacing-lg);
-}
-
-/* Ensure consistent tile heights within sections */
-.page-payroll .secondary-payroll-section .tile {
-  min-height: 350px;
-}
-
-.page-payroll .additional-stats-section .tile {
-  min-height: 300px;
-}
-
-/* Payroll overview tile improvements */
-.page-payroll .payroll-overview-tile {
-  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
-  border: 2px solid var(--accent-light);
-}
-
-.page-payroll .payroll-overview-tile .tile-header {
-  background: var(--accent-light);
-  margin: calc(-1 * var(--spacing-lg)) calc(-1 * var(--spacing-lg)) var(--spacing-lg) calc(-1 * var(--spacing-lg));
-  padding: var(--spacing-lg);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-}
-
-.page-payroll .payroll-overview-tile .tile-title {
-  color: var(--accent-primary);
-  font-weight: var(--font-weight-bold);
-}
-
-/* Improve chart container positioning */
-.page-payroll .chart-container {
-  position: relative;
-  background: var(--bg-secondary);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-  margin-top: var(--spacing-md);
-}
-
-/* Better loading state positioning */
-.page-payroll .loading-state {
-  background: var(--bg-tertiary);
-  border-radius: var(--radius-md);
-  border: 1px dashed var(--border-color);
-  margin-top: var(--spacing-md);
-}
-
-/* Form elements positioning */
-.page-payroll .pay-period-select,
-.page-payroll .form-select {
-  min-width: 160px;
-  max-width: 200px;
-}
-
-/* Button groups positioning */
-.page-payroll .summary-actions,
-.page-payroll .page-actions {
-  align-items: center;
-}
-
-/* Mobile-specific improvements */
-@media (max-width: 768px) {
-  .page-payroll .main-content {
-    padding: var(--spacing-sm);
-  }
-  
-  .page-payroll .tiles-grid {
-    gap: var(--spacing-sm);
-  }
-  
-  .page-payroll .tiles-grid.grid-3 {
-    grid-template-columns: 1fr;
-  }
-  
-  .page-payroll .secondary-payroll-section .tile {
-    min-height: auto;
-  }
-  
-  .page-payroll .additional-stats-section .tile {
-    min-height: auto;
-  }
-}
-
-/* Ultra-wide screen improvements */
-@media (min-width: 1600px) {
-  .page-payroll .tiles-grid.grid-3 {
-    grid-template-columns: repeat(3, 1fr);
-  }
-  
-  .page-payroll .additional-stats-section {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-/* Reduce tile padding for more compact layout */
-.page-payroll .tile-header {
-  padding: var(--spacing-md);
-}
-
-.page-payroll .tile-content {
-  padding: var(--spacing-md);
-}
-
-/* Adjust spacing within payroll tiles */
-.page-payroll .summary-stats {
-  gap: var(--spacing-md);
-  margin: var(--spacing-md) 0;
-}
-
-.page-payroll .summary-actions {
-  margin-top: var(--spacing-md);
-  padding-top: var(--spacing-md);
-}
-
-/* Tighten spacing within payroll summary elements */
-.page-payroll .summary-header {
-  margin-bottom: var(--spacing-sm);
-}
-
-.page-payroll .summary-header h4 {
-  margin-bottom: var(--spacing-xs);
-}
-
-.page-payroll .stat-item {
-  padding: var(--spacing-sm);
-}
-
-.page-payroll .stat-value {
-  margin-bottom: var(--spacing-xs);
-}
-
-/* Reduce spacing in other payroll sections */
-.page-payroll .wages-header,
-.page-payroll .overtime-header,
-.page-payroll .history-header {
-  margin-bottom: var(--spacing-sm);
-  padding-bottom: var(--spacing-sm);
-}
-
-/* ===== LOGOUT CONFIRMATION MODAL ===== */
-/* Special styling for logout confirmation modals */
-.modal-logout-confirm {
-  border: 2px solid var(--color-red-300);
-  box-shadow: 0 10px 25px rgba(255, 59, 48, 0.15), var(--shadow-xl);
-}
-
-.modal-logout-confirm .modal-header {
-  background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
-  border-bottom: 1px solid #fca5a5;
-}
-
-.modal-logout-confirm .modal-title {
-  color: #dc2626;
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
-
-.modal-logout-confirm .modal-title::before {
-  content: '⚠️';
-  font-size: 1.2em;
-}
-
-.modal-logout-confirm .modal-body {
-  padding: var(--spacing-xl);
-  text-align: center;
-}
-
-.modal-logout-confirm .modal-body p {
-  font-size: var(--font-size-base);
-  color: var(--text-primary);
-  margin-bottom: var(--spacing-lg);
-  line-height: 1.6;
-}
-
-.modal-logout-confirm .modal-footer {
-  padding: var(--spacing-lg) var(--spacing-xl);
-  background: var(--bg-secondary);
-  justify-content: center;
-  gap: var(--spacing-lg);
-}
-
-.modal-logout-confirm .btn {
-  min-width: 100px;
-  font-weight: var(--font-weight-semibold);
-}
-
-.modal-logout-confirm .btn-primary {
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-  border-color: #dc2626;
-  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
-}
-
-.modal-logout-confirm .btn-primary:hover {
-  background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
-  border-color: #b91c1c;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(220, 38, 38, 0.4);
-}
-
-.modal-logout-confirm .btn-secondary {
-  background: var(--bg-primary);
-  border: 2px solid var(--border-color);
-  color: var(--text-primary);
-}
-
-.modal-logout-confirm .btn-secondary:hover {
-  background: var(--bg-tertiary);
-  border-color: var(--accent-primary);
-  color: var(--accent-primary);
-}
-
-/* Dark theme adjustments for logout modal */
-[data-theme="dark"] .modal-logout-confirm .modal-header {
-  background: linear-gradient(135deg, #451a1a 0%, #7f1d1d 100%);
-  border-bottom-color: #dc2626;
-}
-
-[data-theme="dark"] .modal-logout-confirm .modal-title {
-  color: #fca5a5;
-}
-
-[data-theme="dark"] .modal-logout-confirm .modal-footer {
-  background: var(--bg-tertiary);
-}
-
-/* Animation for logout modal */
-.modal-logout-confirm.modal-animated {
-  animation: logoutModalShow 0.3s ease-out;
-}
-
-@keyframes logoutModalShow {
-  0% {
-    opacity: 0;
-    transform: scale(0.8) translateY(-20px);
-  }
-  50% {
-    opacity: 0.8;
-    transform: scale(1.02) translateY(-10px);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-/* Mobile responsiveness for logout modal */
-@media (max-width: 480px) {
-  .modal-logout-confirm {
-    margin: var(--spacing-md);
-    width: calc(100vw - 2 * var(--spacing-md));
-  }
-  
-  .modal-logout-confirm .modal-footer {
-    flex-direction: column;
-    gap: var(--spacing-md);
-  }
-  
-  .modal-logout-confirm .btn {
-    width: 100%;
   }
 }
