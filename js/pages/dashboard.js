@@ -356,10 +356,21 @@ class DashboardPage {
      * Handle logout
      */
     handleLogout() {
-        const confirmLogout = confirm('Are you sure you want to logout?');
-        if (confirmLogout) {
-            this.cleanup();
-            Auth.logout();
+        // Use specialized logout modal
+        if (typeof confirmLogout !== 'undefined') {
+            confirmLogout({
+                onConfirm: () => {
+                    this.cleanup();
+                    Auth.logout();
+                }
+            });
+        } else {
+            // Fallback to browser confirm if modal system not available
+            const confirmLogout = confirm('Are you sure you want to logout?');
+            if (confirmLogout) {
+                this.cleanup();
+                Auth.logout();
+            }
         }
     }
 

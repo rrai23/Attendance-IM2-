@@ -90,11 +90,12 @@ class ModalManager {
     generateModalHTML(modalId, config, options) {
         const sizeClass = `modal-${options.size}`;
         const positionClass = `modal-${options.position}`;
+        const customClass = options.customClass || '';
 
         return `
             <div id="${modalId}" class="modal-wrapper">
                 <div class="modal-overlay ${options.animation ? 'modal-animated' : ''}" data-modal-id="${modalId}">
-                    <div class="modal ${sizeClass} ${positionClass}" role="dialog" aria-labelledby="${modalId}-title" aria-modal="true">
+                    <div class="modal ${sizeClass} ${positionClass} ${customClass}" role="dialog" aria-labelledby="${modalId}-title" aria-modal="true">
                         ${this.generateModalHeader(modalId, config, options)}
                         ${this.generateModalBody(modalId, config)}
                         ${this.generateModalFooter(modalId, config)}
@@ -765,3 +766,35 @@ window.closeModal = (modalId) => modalManager.close(modalId);
 window.confirmAction = (options) => modalManager.confirm(options);
 window.showAlert = (options) => modalManager.alert(options);
 window.showPrompt = (options) => modalManager.prompt(options);
+
+// Specialized logout confirmation function
+window.confirmLogout = (options = {}) => {
+    return modalManager.create({
+        title: options.title || 'Confirm Logout',
+        content: `
+            <div class="text-center">
+                <p>${options.message || 'Are you sure you want to logout? You will be redirected to the login page.'}</p>
+                ${options.unsavedChanges ? '<p style="color: var(--color-orange-600); font-weight: 500;">⚠️ You have unsaved changes that will be lost.</p>' : ''}
+            </div>
+        `,
+        buttons: [
+            {
+                text: options.cancelText || 'Cancel',
+                class: 'btn-secondary',
+                action: 'cancel'
+            },
+            {
+                text: options.confirmText || 'Logout',
+                class: options.unsavedChanges ? 'btn-warning' : 'btn-primary',
+                action: 'confirm'
+            }
+        ],
+        onConfirm: options.onConfirm,
+        onCancel: options.onCancel,
+        options: {
+            size: 'sm',
+            customClass: 'modal-logout-confirm',
+            ...options.modalOptions
+        }
+    });
+};

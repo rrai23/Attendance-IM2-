@@ -250,7 +250,7 @@
                 </header>
 
                 <!-- Main Content Grid -->
-                <div class="tiles-grid grid-2">
+                <section class="tiles-grid grid-2 main-payroll-section">
                     <!-- Payroll Overview Tile -->
                     <div class="tile tile-large payroll-overview-tile">
                         <div class="tile-header">
@@ -310,7 +310,10 @@
                             </div>
                         </div>
                     </div>
+                </section>
 
+                <!-- Secondary Tiles Grid -->
+                <section class="tiles-grid grid-3 secondary-payroll-section">
                     <!-- Employee Wages Tile -->
                     <div class="tile employee-wages-tile">
                         <div class="tile-header">
@@ -402,10 +405,10 @@
                             </div>
                         </div>
                     </div>
-                </div>
+                </section>
 
                 <!-- Additional Statistics Section -->
-                <div class="tiles-grid grid-3" style="margin-top: 2rem;">
+                <section class="tiles-grid grid-3 additional-stats-section">
                     <!-- Payroll Trends Chart -->
                     <div class="tile tile-large">
                         <div class="tile-header">
@@ -446,13 +449,13 @@
                             </div>
                         </div>
                     </div>
-                </div>
+                </section>
             </div>
         </main>
     </div>
 
     <!-- Mobile Floating Action Button Container -->
-    <div class="mobile-fab-container" id="mobile-fab-container" style="display: none;">
+    <div class="mobile-fab-container" id="mobile-fab-container">
         <button class="mobile-fab-main" 
                 id="mobile-fab-main" 
                 aria-label="Quick payroll actions menu"
