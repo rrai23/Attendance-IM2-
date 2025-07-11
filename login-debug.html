@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Debug - Bricks Attendance System</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="page-login">
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-brand">
+                <h1>Bricks Attendance</h1>
+                <p>Debug Login Page</p>
+            </div>
+
+            <form id="debugLoginForm">
+                <div class="form-group">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" id="username" class="form-input" value="admin">
+                </div>
+
+                <div class="form-group">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" id="password" class="form-input" value="admin">
+                </div>
+
+                <button type="submit" class="btn btn-primary">Debug Login</button>
+            </form>
+
+            <div id="debugOutput" style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 8px;">
+                <h3>Debug Information:</h3>
+                <div id="debugMessages"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/js/data-service.js"></script>
+    <script src="/js/theme.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+        function addDebugMessage(message) {
+            const debugMessages = document.getElementById('debugMessages');
+            const div = document.createElement('div');
+            div.style.margin = '5px 0';
+            div.innerHTML = `<small>${new Date().toLocaleTimeString()}: ${message}</small>`;
+            debugMessages.appendChild(div);
+            console.log('DEBUG:', message);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            addDebugMessage('DOM loaded');
+            
+            // Check script availability
+            addDebugMessage(`dataService: ${typeof dataService !== 'undefined' ? 'LOADED' : 'NOT LOADED'}`);
+            addDebugMessage(`themeManager: ${typeof themeManager !== 'undefined' ? 'LOADED' : 'NOT LOADED'}`);
+            addDebugMessage(`authService: ${typeof authService !== 'undefined' ? 'LOADED' : 'NOT LOADED'}`);
+
+            // Test basic functionality
+            const form = document.getElementById('debugLoginForm');
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                
+                addDebugMessage(`Attempting login with: ${username} / ${password}`);
+                
+                try {
+                    if (typeof authService === 'undefined') {
+                        throw new Error('authService is not available');
+                    }
+                    
+                    addDebugMessage('Calling authService.login...');
+                    const result = await authService.login(username, password, false);
+                    
+                    addDebugMessage(`Login result: ${JSON.stringify(result, null, 2)}`);
+                    
+                    if (result.success) {
+                        addDebugMessage('✅ Login successful!');
+                        addDebugMessage(`Redirect URL: ${result.redirectUrl}`);
+                    } else {
+                        addDebugMessage(`❌ Login failed: ${result.message}`);
+                    }
+                } catch (error) {
+                    addDebugMessage(`💥 ERROR: ${error.message}`);
+                    addDebugMessage(`Error stack: ${error.stack}`);
+                }
+            });
+        });
+
+        // Set page theme
+        if (typeof themeManager !== 'undefined') {
+            themeManager.setPage('login');
+        }
+    </script>
+</body>
+</html>

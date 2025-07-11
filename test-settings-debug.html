@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .debug-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .debug-result {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+        }
+        .debug-result.success { background: #d4edda; color: #155724; }
+        .debug-result.error { background: #f8d7da; color: #721c24; }
+        .debug-result.info { background: #d1ecf1; color: #0c5460; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Settings Page Debug Test</h1>
+    
+    <div class="debug-section">
+        <h3>Script Loading Test</h3>
+        <div id="script-results"></div>
+    </div>
+
+    <div class="debug-section">
+        <h3>Dependencies Test</h3>
+        <button onclick="testDependencies()">Test Dependencies</button>
+        <div id="dependency-results"></div>
+    </div>
+
+    <div class="debug-section">
+        <h3>Settings Controller Test</h3>
+        <button onclick="testSettingsController()">Test Settings Controller</button>
+        <div id="settings-results"></div>
+    </div>
+
+    <!-- Include scripts in correct order -->
+    <script src="js/utils.js"></script>
+    <script src="js/mock-data.js"></script>
+    <script src="js/data-service.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/theme.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/modals.js"></script>
+    <script src="js/user-management.js"></script>
+    <script src="js/settings.js"></script>
+
+    <script>
+        function logResult(message, type = 'info', containerId = 'script-results') {
+            const resultsDiv = document.getElementById(containerId);
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `debug-result ${type}`;
+            resultDiv.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            resultsDiv.appendChild(resultDiv);
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // Test script loading
+        document.addEventListener('DOMContentLoaded', function() {
+            // Test if scripts loaded
+            logResult(`utils.js loaded: ${typeof utils !== 'undefined' ? '✅' : '❌'}`, 
+                typeof utils !== 'undefined' ? 'success' : 'error');
+            logResult(`mockData loaded: ${typeof mockData !== 'undefined' ? '✅' : '❌'}`, 
+                typeof mockData !== 'undefined' ? 'success' : 'error');
+            logResult(`DataService loaded: ${typeof DataService !== 'undefined' ? '✅' : '❌'}`, 
+                typeof DataService !== 'undefined' ? 'success' : 'error');
+            logResult(`ThemeManager loaded: ${typeof ThemeManager !== 'undefined' ? '✅' : '❌'}`, 
+                typeof ThemeManager !== 'undefined' ? 'success' : 'error');
+            logResult(`SidebarManager loaded: ${typeof SidebarManager !== 'undefined' ? '✅' : '❌'}`, 
+                typeof SidebarManager !== 'undefined' ? 'success' : 'error');
+            logResult(`SettingsController loaded: ${typeof SettingsController !== 'undefined' ? '✅' : '❌'}`, 
+                typeof SettingsController !== 'undefined' ? 'success' : 'error');
+        });
+
+        function testDependencies() {
+            const container = 'dependency-results';
+            
+            try {
+                // Test DataService
+                if (typeof DataService !== 'undefined') {
+                    const dataService = new DataService();
+                    logResult('✅ DataService can be instantiated', 'success', container);
+                } else {
+                    logResult('❌ DataService class not found', 'error', container);
+                }
+
+                // Test ThemeManager
+                if (typeof ThemeManager !== 'undefined') {
+                    const themeManager = new ThemeManager();
+                    logResult('✅ ThemeManager can be instantiated', 'success', container);
+                } else {
+                    logResult('❌ ThemeManager class not found', 'error', container);
+                }
+
+                // Test SidebarManager
+                if (typeof SidebarManager !== 'undefined') {
+                    const sidebarManager = new SidebarManager();
+                    logResult('✅ SidebarManager can be instantiated', 'success', container);
+                } else {
+                    logResult('❌ SidebarManager class not found', 'error', container);
+                }
+
+            } catch (error) {
+                logResult(`❌ Dependency test failed: ${error.message}`, 'error', container);
+            }
+        }
+
+        function testSettingsController() {
+            const container = 'settings-results';
+            
+            try {
+                if (typeof SettingsController === 'undefined') {
+                    logResult('❌ SettingsController class not found', 'error', container);
+                    return;
+                }
+
+                logResult('🔄 Attempting to create SettingsController...', 'info', container);
+                
+                // Initialize required globals first
+                if (!window.dataService) {
+                    window.dataService = new DataService();
+                    logResult('✅ DataService initialized globally', 'success', container);
+                }
+
+                if (!window.themeManager) {
+                    window.themeManager = new ThemeManager();
+                    logResult('✅ ThemeManager initialized globally', 'success', container);
+                }
+
+                // Try to create SettingsController
+                const settingsController = new SettingsController();
+                logResult('✅ SettingsController created successfully', 'success', container);
+                
+                window.settingsController = settingsController;
+                logResult('✅ SettingsController assigned to global scope', 'success', container);
+
+            } catch (error) {
+                logResult(`❌ SettingsController test failed: ${error.message}`, 'error', container);
+                console.error('Settings controller error details:', error);
+            }
+        }
+    </script>
+</body>
+</html>

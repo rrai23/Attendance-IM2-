@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal Login Test</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="page-login">
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-brand">
+                <h1>Minimal Test</h1>
+                <p>Basic functionality check</p>
+            </div>
+
+            <form id="testForm">
+                <div class="form-group">
+                    <input type="text" placeholder="Username" value="admin" id="user">
+                </div>
+                <div class="form-group">
+                    <input type="password" placeholder="Password" value="admin" id="pass">
+                </div>
+                <button type="submit" class="btn btn-primary">Test Login</button>
+            </form>
+
+            <div id="result" style="margin-top: 20px; padding: 10px; border-radius: 5px;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Minimal inline authentication test
+        const testCredentials = {
+            admin: { username: 'admin', password: 'admin', role: 'admin' },
+            employee: { username: 'employee', password: 'employee', role: 'employee' }
+        };
+
+        function showResult(message, success = false) {
+            const result = document.getElementById('result');
+            result.textContent = message;
+            result.style.backgroundColor = success ? '#d4edda' : '#f8d7da';
+            result.style.border = success ? '1px solid #c3e6cb' : '1px solid #f5c6cb';
+            result.style.color = success ? '#155724' : '#721c24';
+        }
+
+        document.getElementById('testForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('user').value;
+            const password = document.getElementById('pass').value;
+            
+            console.log('Testing login:', username, password);
+            
+            // Simple credential check
+            if (testCredentials[username] && testCredentials[username].password === password) {
+                const redirectUrl = username === 'admin' ? '/dashboard.html' : '/employee.html';
+                showResult(`✅ Login successful! Redirecting to ${redirectUrl}`, true);
+                
+                setTimeout(() => {
+                    window.location.href = redirectUrl;
+                }, 2000);
+            } else {
+                showResult('❌ Invalid credentials. Try admin/admin or employee/employee', false);
+            }
+        });
+    </script>
+</body>
+</html>

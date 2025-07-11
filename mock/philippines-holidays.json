@@ -1,0 +1,118 @@
+{
+  "2025": {
+    "01-01": {
+      "name": "New Year's Day",
+      "type": "regular"
+    },
+    "02-25": {
+      "name": "EDSA People Power Revolution Anniversary",
+      "type": "regular"
+    },
+    "04-17": {
+      "name": "Maundy Thursday",
+      "type": "regular"
+    },
+    "04-18": {
+      "name": "Good Friday",
+      "type": "regular"
+    },
+    "04-19": {
+      "name": "Black Saturday",
+      "type": "special"
+    },
+    "04-09": {
+      "name": "Araw ng Kagitingan (Day of Valor)",
+      "type": "regular"
+    },
+    "05-01": {
+      "name": "Labor Day",
+      "type": "regular"
+    },
+    "06-12": {
+      "name": "Independence Day",
+      "type": "regular"
+    },
+    "08-25": {
+      "name": "National Heroes Day",
+      "type": "regular"
+    },
+    "11-01": {
+      "name": "All Saints Day",
+      "type": "regular"
+    },
+    "11-30": {
+      "name": "Bonifacio Day",
+      "type": "regular"
+    },
+    "12-25": {
+      "name": "Christmas Day",
+      "type": "regular"
+    },
+    "12-30": {
+      "name": "Rizal Day",
+      "type": "regular"
+    },
+    "12-31": {
+      "name": "New Year's Eve",
+      "type": "special"
+    }
+  },
+  "2026": {
+    "01-01": {
+      "name": "New Year's Day",
+      "type": "regular"
+    },
+    "02-25": {
+      "name": "EDSA People Power Revolution Anniversary",
+      "type": "regular"
+    },
+    "04-02": {
+      "name": "Maundy Thursday",
+      "type": "regular"
+    },
+    "04-03": {
+      "name": "Good Friday",
+      "type": "regular"
+    },
+    "04-04": {
+      "name": "Black Saturday",
+      "type": "special"
+    },
+    "04-09": {
+      "name": "Araw ng Kagitingan (Day of Valor)",
+      "type": "regular"
+    },
+    "05-01": {
+      "name": "Labor Day",
+      "type": "regular"
+    },
+    "06-12": {
+      "name": "Independence Day",
+      "type": "regular"
+    },
+    "08-31": {
+      "name": "National Heroes Day",
+      "type": "regular"
+    },
+    "11-01": {
+      "name": "All Saints Day",
+      "type": "regular"
+    },
+    "11-30": {
+      "name": "Bonifacio Day",
+      "type": "regular"
+    },
+    "12-25": {
+      "name": "Christmas Day",
+      "type": "regular"
+    },
+    "12-30": {
+      "name": "Rizal Day",
+      "type": "regular"
+    },
+    "12-31": {
+      "name": "New Year's Eve",
+      "type": "special"
+    }
+  }
+}

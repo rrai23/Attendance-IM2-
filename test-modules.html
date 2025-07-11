@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module Error Test</title>
+</head>
+<body>
+    <h1>Testing for Module Errors</h1>
+    <div id="log"></div>
+
+    <script>
+        function log(msg) {
+            document.getElementById('log').innerHTML += '<div>' + msg + '</div>';
+            console.log(msg);
+        }
+        
+        // Capture all errors
+        window.addEventListener('error', function(e) {
+            log('ERROR: ' + e.message + ' (File: ' + e.filename + ', Line: ' + e.lineno + ')');
+        });
+        
+        log('Starting tests...');
+        
+        // Test 1: Basic script loading
+        log('Test 1: Loading mock-data.js...');
+    </script>
+    
+    <script src="/js/mock-data.js"></script>
+    
+    <script>
+        log('Test 1 complete. mockData type: ' + typeof mockData);
+        
+        log('Test 2: Loading data-service.js...');
+    </script>
+    
+    <script src="/js/data-service.js"></script>
+    
+    <script>
+        log('Test 2 complete. dataService type: ' + typeof dataService);
+        
+        // Test if any scripts contain problematic module syntax
+        log('Test 3: Checking for module-related globals...');
+        log('exports: ' + typeof exports);
+        log('module: ' + typeof module);
+        log('require: ' + typeof require);
+        log('window: ' + typeof window);
+        
+        log('All tests complete!');
+    </script>
+</body>
+</html>

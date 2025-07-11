@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Styling Test</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        body {
+            padding: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .test-section {
+            margin-bottom: 3rem;
+            padding: 2rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+        }
+        
+        .test-title {
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            font-weight: var(--font-weight-semibold);
+        }
+        
+        /* Debug styles to see what's happening */
+        .form-input,
+        .form-select,
+        .form-textarea {
+            border: 3px solid red !important;
+            background-color: yellow !important;
+        }
+        
+        .debug-info {
+            background: var(--bg-tertiary);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: var(--radius-sm);
+            font-family: monospace;
+            font-size: var(--font-size-sm);
+        }
+    </style>
+</head>
+<body>
+    <h1>Form Styling Test</h1>
+    
+    <div class="debug-info">
+        This page tests if our form CSS classes are working. Red borders and yellow backgrounds should appear if the CSS is applied.
+    </div>
+
+    <div class="test-section">
+        <h2 class="test-title">Input Elements with Classes</h2>
+        <div class="form-group">
+            <label for="test-input" class="form-label">Text Input</label>
+            <input type="text" id="test-input" class="form-input" value="Test Value" placeholder="Type here...">
+        </div>
+        
+        <div class="form-group">
+            <label for="test-select" class="form-label">Select Dropdown</label>
+            <select id="test-select" class="form-select">
+                <option value="">Choose an option</option>
+                <option value="option1">Option 1</option>
+                <option value="option2" selected>Option 2 (Selected)</option>
+                <option value="option3">Option 3</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="test-textarea" class="form-label">Textarea</label>
+            <textarea id="test-textarea" class="form-textarea" placeholder="Enter text here...">Sample text content</textarea>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2 class="test-title">Raw Elements (No Classes)</h2>
+        <div class="form-group">
+            <label>Raw Input</label>
+            <input type="text" value="Raw input - should be unstyled">
+        </div>
+        
+        <div class="form-group">
+            <label>Raw Select</label>
+            <select>
+                <option>Raw select - should be unstyled</option>
+                <option selected>Raw selected option</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Raw Textarea</label>
+            <textarea>Raw textarea - should be unstyled</textarea>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2 class="test-title">CSS Variable Test</h2>
+        <div class="debug-info">
+            <div>--bg-primary: <span style="background: var(--bg-primary); padding: 0.25rem;">test</span></div>
+            <div>--border-color: <span style="border: 2px solid var(--border-color); padding: 0.25rem;">test</span></div>
+            <div>--accent-primary: <span style="color: var(--accent-primary);">test</span></div>
+        </div>
+    </div>
+
+    <script>
+        // Log computed styles for debugging
+        const testInput = document.getElementById('test-input');
+        const testSelect = document.getElementById('test-select');
+        
+        setTimeout(() => {
+            console.log('=== Form Styling Debug ===');
+            console.log('Input computed styles:', window.getComputedStyle(testInput));
+            console.log('Input border:', window.getComputedStyle(testInput).border);
+            console.log('Input background:', window.getComputedStyle(testInput).backgroundColor);
+            
+            console.log('Select computed styles:', window.getComputedStyle(testSelect));
+            console.log('Select border:', window.getComputedStyle(testSelect).border);
+            console.log('Select background:', window.getComputedStyle(testSelect).backgroundColor);
+            
+            // Check if classes exist
+            console.log('Input has form-input class:', testInput.classList.contains('form-input'));
+            console.log('Select has form-select class:', testSelect.classList.contains('form-select'));
+        }, 100);
+    </script>
+</body>
+</html>

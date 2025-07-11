@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Debug Test</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js" 
+            onload="console.log('Chart.js loaded:', typeof Chart);"
+            onerror="console.error('Chart.js failed to load');"></script>
+</head>
+<body>
+    <div style="padding: 20px;">
+        <h1>Dashboard Debug Test</h1>
+        <div id="status">Loading...</div>
+        <canvas id="testChart" width="400" height="200"></canvas>
+        
+        <div id="errors" style="margin-top: 20px; color: red; font-family: monospace;"></div>
+    </div>
+
+    <!-- Load JavaScript files one by one -->
+    <script>
+        window.addEventListener('error', function(e) {
+            const errorDiv = document.getElementById('errors');
+            errorDiv.innerHTML += '<div>ERROR: ' + e.message + ' (File: ' + e.filename + ', Line: ' + e.lineno + ')</div>';
+            console.error('Global error:', e);
+        });
+        
+        function updateStatus(msg) {
+            document.getElementById('status').textContent = msg;
+            console.log('Status:', msg);
+        }
+        
+        updateStatus('Starting tests...');
+    </script>
+    
+    <script src="/js/mock-data.js" 
+            onload="updateStatus('mock-data.js loaded');"
+            onerror="updateStatus('mock-data.js FAILED');"></script>
+    
+    <script src="/js/data-service.js" 
+            onload="updateStatus('data-service.js loaded');"
+            onerror="updateStatus('data-service.js FAILED');"></script>
+    
+    <script src="/js/auth.js" 
+            onload="updateStatus('auth.js loaded');"
+            onerror="updateStatus('auth.js FAILED');"></script>
+    
+    <script src="/js/theme.js" 
+            onload="updateStatus('theme.js loaded');"
+            onerror="updateStatus('theme.js FAILED');"></script>
+    
+    <script src="/js/modals.js" 
+            onload="updateStatus('modals.js loaded');"
+            onerror="updateStatus('modals.js FAILED');"></script>
+    
+    <script src="/js/charts.js" 
+            onload="updateStatus('charts.js loaded');"
+            onerror="updateStatus('charts.js FAILED');"></script>
+            
+    <script src="/js/dashboard-calendar.js" 
+            onload="updateStatus('dashboard-calendar.js loaded');"
+            onerror="updateStatus('dashboard-calendar.js FAILED');"></script>
+    
+    <script src="/js/sidebar.js" 
+            onload="updateStatus('sidebar.js loaded');"
+            onerror="updateStatus('sidebar.js FAILED');"></script>
+    
+    <script src="/js/dashboard.js" 
+            onload="updateStatus('dashboard.js loaded');"
+            onerror="updateStatus('dashboard.js FAILED');"></script>
+
+    <script>
+        setTimeout(() => {
+            updateStatus('Testing complete. Check console for details.');
+            
+            console.log('Final status check:');
+            console.log('Chart:', typeof Chart);
+            console.log('mockData:', typeof mockData);
+            console.log('dataService:', typeof dataService);
+            console.log('SidebarManager:', typeof SidebarManager);
+            console.log('DashboardController:', typeof DashboardController);
+            
+            // Try creating a simple chart
+            if (typeof Chart !== 'undefined') {
+                try {
+                    const ctx = document.getElementById('testChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: ['Test'],
+                            datasets: [{
+                                label: 'Test Data',
+                                data: [1],
+                                backgroundColor: 'blue'
+                            }]
+                        }
+                    });
+                    updateStatus('Chart test successful!');
+                } catch (error) {
+                    updateStatus('Chart test failed: ' + error.message);
+                    console.error('Chart test error:', error);
+                }
+            } else {
+                updateStatus('Chart.js not available for testing');
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

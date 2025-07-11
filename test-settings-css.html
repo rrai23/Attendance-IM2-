@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" class="page-settings">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings CSS Test</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        body {
+            padding: 20px;
+            background: var(--bg-secondary);
+        }
+        .test-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--bg-primary);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px var(--shadow-color);
+        }
+        .debug-info {
+            background: #f0f0f0;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Settings Form CSS Test</h1>
+        
+        <div class="debug-info" id="css-vars"></div>
+        
+        <form class="settings-form">
+            <div class="form-group">
+                <label for="test-input" class="form-label">Test Input</label>
+                <input type="text" id="test-input" class="form-input" value="Test Value" placeholder="Enter text">
+            </div>
+            
+            <div class="form-group">
+                <label for="test-select" class="form-label">Test Select</label>
+                <select id="test-select" class="form-select">
+                    <option value="option1">Option 1</option>
+                    <option value="option2" selected>Option 2</option>
+                    <option value="option3">Option 3</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="test-textarea" class="form-label">Test Textarea</label>
+                <textarea id="test-textarea" class="form-textarea" rows="3" placeholder="Enter text here">Test content</textarea>
+            </div>
+        </form>
+        
+        <h2>Debugging</h2>
+        <button onclick="debugCSS()">Debug CSS Variables</button>
+        <button onclick="checkClasses()">Check Classes</button>
+        <div id="debug-output"></div>
+    </div>
+
+    <script>
+        function debugCSS() {
+            const debugOutput = document.getElementById('debug-output');
+            const cssVarsDiv = document.getElementById('css-vars');
+            
+            // Get computed styles
+            const computedStyle = getComputedStyle(document.documentElement);
+            
+            const vars = [
+                '--accent-primary',
+                '--bg-primary',
+                '--text-primary',
+                '--border-color',
+                '--spacing-md',
+                '--radius-md',
+                '--font-size-base'
+            ];
+            
+            let cssInfo = 'CSS Variables:\n';
+            vars.forEach(varName => {
+                const value = computedStyle.getPropertyValue(varName);
+                cssInfo += `${varName}: ${value}\n`;
+            });
+            
+            cssVarsDiv.textContent = cssInfo;
+            
+            // Check form elements
+            const formSelect = document.getElementById('test-select');
+            const selectStyles = getComputedStyle(formSelect);
+            
+            debugOutput.innerHTML = `
+                <h3>Form Select Computed Styles:</h3>
+                <p>Background: ${selectStyles.backgroundColor}</p>
+                <p>Border: ${selectStyles.border}</p>
+                <p>Padding: ${selectStyles.padding}</p>
+                <p>Border-radius: ${selectStyles.borderRadius}</p>
+                <p>Font-size: ${selectStyles.fontSize}</p>
+                <p>Color: ${selectStyles.color}</p>
+                <p>Classes: ${formSelect.className}</p>
+            `;
+        }
+        
+        function checkClasses() {
+            const debugOutput = document.getElementById('debug-output');
+            
+            const elements = [
+                { id: 'test-input', expected: 'form-input' },
+                { id: 'test-select', expected: 'form-select' },
+                { id: 'test-textarea', expected: 'form-textarea' }
+            ];
+            
+            let output = '<h3>Element Classes Check:</h3>';
+            elements.forEach(el => {
+                const element = document.getElementById(el.id);
+                const hasClass = element.classList.contains(el.expected);
+                output += `<p>${el.id}: ${hasClass ? '✅' : '❌'} ${el.expected} (actual: ${element.className})</p>`;
+            });
+            
+            debugOutput.innerHTML = output;
+        }
+        
+        // Auto-run debug on load
+        document.addEventListener('DOMContentLoaded', function() {
+            debugCSS();
+        });
+    </script>
+</body>
+</html>
