@@ -1,3 +1,34 @@
+/* ===== SF PRO FONT FACE ===== */
+@font-face {
+  font-family: "San Francisco";
+  font-weight: 400;
+  src: url("https://applesocial.s3.amazonaws.com/assets/styles/fonts/sanfrancisco/sanfranciscodisplay-regular-webfont.woff");
+}
+
+@font-face {
+  font-family: "San Francisco";
+  font-weight: 300;
+  src: url("https://applesocial.s3.amazonaws.com/assets/styles/fonts/sanfrancisco/sanfranciscodisplay-light-webfont.woff");
+}
+
+@font-face {
+  font-family: "San Francisco";
+  font-weight: 500;
+  src: url("https://applesocial.s3.amazonaws.com/assets/styles/fonts/sanfrancisco/sanfranciscodisplay-medium-webfont.woff");
+}
+
+@font-face {
+  font-family: "San Francisco";
+  font-weight: 600;
+  src: url("https://applesocial.s3.amazonaws.com/assets/styles/fonts/sanfrancisco/sanfranciscodisplay-semibold-webfont.woff");
+}
+
+@font-face {
+  font-family: "San Francisco";
+  font-weight: 700;
+  src: url("https://applesocial.s3.amazonaws.com/assets/styles/fonts/sanfrancisco/sanfranciscodisplay-bold-webfont.woff");
+}
+
 /* ===== CSS CUSTOM PROPERTIES ===== */
 :root {
   /* Base Colors */
@@ -39,7 +70,7 @@
   --accent-hover: rgba(0, 122, 255, 0.8);
 
   /* Typography */
-  --font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-family: "San Francisco", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-base: 1rem;
@@ -254,6 +285,15 @@ a:hover {
   flex-direction: column;
 }
 
+/* Prevent flash of unstyled content (FOUC) */
+.sidebar:not(.sidebar-initialized) {
+  visibility: hidden;
+}
+
+.sidebar.sidebar-initialized {
+  visibility: visible;
+}
+
 .sidebar.hidden {
   transform: translateX(-100%);
   transition: transform var(--transition-normal) ease-in-out;
@@ -419,44 +459,6 @@ a:hover {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* Theme selector in sidebar */
-.theme-selector {
-  display: flex;
-  align-items: center;
-  background-color: var(--bg-tertiary);
-  border-radius: var(--radius-md);
-  padding: 2px;
-  margin-left: var(--spacing-sm);
-}
-
-.theme-option {
-  background: none;
-  border: none;
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  font-size: var(--font-size-xs);
-  color: var(--text-secondary);
-}
-
-.theme-option.active {
-  background-color: var(--accent-primary);
-  color: white;
-  box-shadow: var(--shadow-sm);
-}
-
-.theme-option:hover:not(.active) {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-}
-
-.theme-icon {
-  width: 14px;
-  height: 14px;
-  margin-right: 4px;
 }
 
 /* Sidebar Navigation */
@@ -2012,96 +2014,192 @@ select.form-select {
   cursor: not-allowed;
 }
 
-/* Responsive design */
-@media (max-width: 768px) {
-  .modal {
-    margin: var(--spacing-md);
-    width: auto !important;
-    max-width: none;
-  }
-  
-  .modal-header,
-  .modal-body,
-  .modal-footer {
-    padding: var(--spacing-md);
-  }
-  
-  .modal-footer {
-    flex-direction: column;
-    gap: var(--spacing-sm);
-  }
-  
-  .modal-footer .btn {
-    width: 100%;
-  }
+/* Enhanced quick action buttons */
+.quick-actions-header h4 {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 var(--spacing-md) 0;
 }
 
-/* Dark mode adjustments */
-[data-theme="dark"] .modal-overlay {
-  background: rgba(0, 0, 0, 0.7);
+.quick-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  min-height: 60px;
+  position: relative;
 }
 
-[data-theme="dark"] .modal {
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+.quick-action-btn:hover {
+  background-color: var(--accent-light);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-[data-theme="dark"] .modal .form-input,
-[data-theme="dark"] .modal .form-textarea,
-[data-theme="dark"] .modal .form-select {
-  background: var(--bg-tertiary);
-  border-color: var(--border-color);
+.quick-action-btn:active {
+  transform: translateY(0);
 }
 
-[data-theme="dark"] .modal .form-input:focus,
-[data-theme="dark"] .modal .form-textarea:focus,
-[data-theme="dark"] .modal .form-select:focus {
+.quick-action-icon {
+  font-size: 1.2rem;
+  margin-bottom: var(--spacing-xs);
+  display: block;
+}
+
+.quick-action-text {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* Status section headers */
+.status-header h4 {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 var(--spacing-md) 0;
+}
+
+/* Theme selector in sidebar */
+.theme-selector {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-sm);
+}
+
+.theme-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  padding: 0;
+}
+
+.theme-option:hover {
+  border-color: var(--accent-primary);
+  background: var(--accent-light);
+}
+
+.theme-option.active {
+  border-color: var(--accent-primary);
+  background: var(--accent-primary);
+  color: var(--color-white);
+}
+
+.theme-option .theme-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* Sidebar notifications */
+.sidebar-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
   background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  max-width: 300px;
+  animation: slideInRight 0.3s ease-out;
 }
 
-/* ===== DEBUGGING FORM STYLES ===== */
-/* These styles should be very obvious if they're applied */
-.form-input {
-  min-height: 40px !important;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+.sidebar-notification.fade-out {
+  animation: slideOutRight 0.3s ease-in;
 }
 
-.form-select {
-  min-height: 40px !important;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+.notification-content {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-md);
+  gap: var(--spacing-sm);
 }
 
-.form-textarea {
-  min-height: 80px !important;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+.notification-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
 }
 
-/* High specificity override for settings page */
-.settings-container .form-input,
-.settings-container .form-select,
-.settings-container .form-textarea {
-  background-color: var(--bg-primary) !important;
-  border: 2px solid var(--border-color) !important;
-  border-radius: var(--radius-md) !important;
-  padding: var(--spacing-md) !important;
-  font-family: var(--font-family) !important;
-  font-size: var(--font-size-base) !important;
-  color: var(--text-primary) !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-  -webkit-appearance: none !important;
-  -moz-appearance: none !important;
-  appearance: none !important;
+.notification-message {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
 }
 
-/* Even higher specificity */
-.page-settings .settings-container .tile .form-input,
-.page-settings .settings-container .tile .form-select,
-.page-settings .settings-container .tile .form-textarea {
-  background-color: var(--bg-primary) !important;
-  border: 2px solid var(--accent-primary) !important;
-  border-radius: var(--radius-md) !important;
-  padding: var(--spacing-md) !important;
-  font-family: var(--font-family) !important;
-  font-size: var(--font-size-base) !important;
-  color: var(--text-primary) !important;
+.notification-close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  padding: 0;
+  margin-left: var(--spacing-sm);
+  flex-shrink: 0;
+}
+
+.notification-close:hover {
+  color: var(--text-primary);
+}
+
+/* Notification types */
+.notification-success {
+  border-left: 4px solid #34c759;
+}
+
+.notification-error {
+  border-left: 4px solid #ff3b30;
+}
+
+.notification-warning {
+  border-left: 4px solid #ff9500;
+}
+
+.notification-info {
+  border-left: 4px solid #007aff;
+}
+
+/* Notification animations */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
 }

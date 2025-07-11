@@ -54,7 +54,7 @@ class SidebarManager {
             ]
         };
 
-        this.init();
+        // Don't auto-initialize - will be called by the initialization system
     }
 
     /**
@@ -70,6 +70,7 @@ class SidebarManager {
         this.updateActiveState();
         this.setupResponsiveHandling();
         this.addDropdownAriaAttributes();
+        this.syncThemeSelector();
     }
 
     /**
@@ -85,10 +86,16 @@ class SidebarManager {
      * Get user role from auth service
      */
     getUserRole() {
-        if (typeof authService !== 'undefined') {
-            const user = authService.getCurrentUser();
-            this.userRole = user ? user.role : 'admin';
-        } else {
+        try {
+            if (typeof authService !== 'undefined' && authService) {
+                const user = authService.getCurrentUser();
+                this.userRole = user ? user.role : 'admin';
+            } else {
+                // Fallback role detection
+                this.userRole = this.currentPage === 'employee' ? 'employee' : 'admin';
+            }
+        } catch (error) {
+            console.warn('Error getting user role from authService:', error);
             // Fallback role detection
             this.userRole = this.currentPage === 'employee' ? 'employee' : 'admin';
         }
@@ -150,6 +157,26 @@ class SidebarManager {
                     <div class="user-name">${userName}</div>
                     <div class="user-role">${userRole}</div>
                 </div>
+                <div class="theme-selector">
+                    <button class="theme-option active" data-theme="light" title="Light Mode">
+                        <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                    </button>
+                    <button class="theme-option" data-theme="dark" title="Dark Mode">
+                        <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             <nav class="sidebar-nav" role="navigation" aria-label="Main navigation">
@@ -157,6 +184,68 @@ class SidebarManager {
                     ${this.generateMenuItems()}
                 </ul>
             </nav>
+
+            <!-- Quick Actions Section -->
+            <div class="sidebar-quick-actions">
+                <div class="quick-actions-header">
+                    <h4>Quick Actions</h4>
+                </div>
+                <div class="quick-actions-grid" role="group" aria-label="Quick action buttons">
+                    <button class="quick-action-btn" 
+                            title="Clock In/Out (Alt+C)" 
+                            id="quickClockBtn"
+                            aria-label="Clock In or Clock Out"
+                            data-shortcut="Alt+C">
+                        <span class="quick-action-icon">🕐</span>
+                        <span class="quick-action-text">Clock In/Out</span>
+                    </button>
+                    <button class="quick-action-btn" 
+                            title="Add Employee (Alt+E)" 
+                            id="quickAddEmployeeBtn"
+                            aria-label="Add new employee"
+                            data-shortcut="Alt+E">
+                        <span class="quick-action-icon">👤</span>
+                        <span class="quick-action-text">Add Employee</span>
+                    </button>
+                    <button class="quick-action-btn" 
+                            title="Generate Report (Alt+R)" 
+                            id="quickReportBtn"
+                            aria-label="Generate attendance report"
+                            data-shortcut="Alt+R">
+                        <span class="quick-action-icon">📊</span>
+                        <span class="quick-action-text">Report</span>
+                    </button>
+                    <button class="quick-action-btn" 
+                            title="System Status (Alt+Q)" 
+                            id="quickStatusBtn"
+                            aria-label="View system status"
+                            data-shortcut="Alt+Q">
+                        <span class="quick-action-icon">❤️</span>
+                        <span class="quick-action-text">Status</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- System Status Section -->
+            <div class="sidebar-status">
+                <div class="status-header">
+                    <h4>System Status</h4>
+                </div>
+                <div class="status-indicators">
+                    <div class="status-item">
+                        <span class="status-indicator status-online"></span>
+                        <span class="status-text">Server Online</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-indicator status-online"></span>
+                        <span class="status-text">Database Connected</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-indicator status-online"></span>
+                        <span class="status-text">Backup System</span>
+                    </div>
+                </div>
+            </div>
 
             <div class="sidebar-footer">
                 <button class="logout-btn" title="Logout">
@@ -219,12 +308,8 @@ class SidebarManager {
             logoutBtn.addEventListener('click', () => this.handleLogout());
         }
 
-        // Listen for auth events
-        if (typeof authService !== 'undefined') {
-            authService.onAuthEvent('login', (user) => this.handleUserChange(user));
-            authService.onAuthEvent('logout', () => this.handleUserLogout());
-            authService.onAuthEvent('user_updated', (user) => this.handleUserChange(user));
-        }
+        // Listen for auth events - defer to ensure authService is available
+        this.setupAuthEventListeners();
 
         // Listen for theme changes
         document.addEventListener('themechange', (e) => {
@@ -233,6 +318,27 @@ class SidebarManager {
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
+    }
+
+    /**
+     * Setup authentication event listeners with proper error handling
+     */
+    setupAuthEventListeners() {
+        // Use a small delay to ensure all scripts are loaded
+        setTimeout(() => {
+            try {
+                if (typeof authService !== 'undefined' && authService) {
+                    authService.onAuthEvent('login', (user) => this.handleUserChange(user));
+                    authService.onAuthEvent('logout', () => this.handleUserLogout());
+                    authService.onAuthEvent('user_updated', (user) => this.handleUserChange(user));
+                    console.log('Sidebar: Auth event listeners set up successfully');
+                } else {
+                    console.warn('Sidebar: authService not available for event listeners');
+                }
+            } catch (error) {
+                console.warn('Sidebar: Error setting up auth event listeners:', error);
+            }
+        }, 100);
     }
 
     /**
@@ -291,6 +397,9 @@ class SidebarManager {
         if (quickStatusBtn) {
             quickStatusBtn.addEventListener('click', () => this.handleQuickStatus());
         }
+
+        // Theme selector buttons - retry setup if needed
+        this.setupThemeSelector();
 
         // Update system status periodically
         this.updateSystemStatus();
@@ -595,6 +704,28 @@ class SidebarManager {
         if (event.altKey && event.key === 's') {
             event.preventDefault();
             this.toggleSidebar();
+        }
+
+        // Quick action shortcuts
+        if (event.altKey) {
+            switch (event.key.toLowerCase()) {
+                case 'c':
+                    event.preventDefault();
+                    this.handleQuickClock();
+                    break;
+                case 'e':
+                    event.preventDefault();
+                    this.handleQuickAddEmployee();
+                    break;
+                case 'r':
+                    event.preventDefault();
+                    this.handleQuickReport();
+                    break;
+                case 'q':
+                    event.preventDefault();
+                    this.handleQuickStatus();
+                    break;
+            }
         }
 
         // Alt + 1-4 for quick navigation (admin only)
@@ -943,7 +1074,16 @@ class SidebarManager {
         if (typeof window.showQuickClockModal === 'function') {
             window.showQuickClockModal();
         } else {
-            console.log('Quick clock action triggered');
+            // Basic clock in/out functionality
+            const now = new Date().toLocaleTimeString();
+            const clockAction = localStorage.getItem('lastClockAction') || 'out';
+            const newAction = clockAction === 'in' ? 'out' : 'in';
+            
+            localStorage.setItem('lastClockAction', newAction);
+            localStorage.setItem('lastClockTime', now);
+            
+            // Show a simple notification
+            this.showNotification(`Clocked ${newAction} at ${now}`, 'success');
         }
     }
 
@@ -951,6 +1091,7 @@ class SidebarManager {
         if (typeof window.showAddEmployeeModal === 'function') {
             window.showAddEmployeeModal();
         } else {
+            // Redirect to employee page with add parameter
             window.location.href = '/employee.html#add';
         }
     }
@@ -959,7 +1100,21 @@ class SidebarManager {
         if (typeof window.showQuickReportModal === 'function') {
             window.showQuickReportModal();
         } else {
-            console.log('Quick report action triggered');
+            // Basic report generation
+            const reportData = {
+                type: 'quick-summary',
+                date: new Date().toLocaleDateString(),
+                employees: 'All Active',
+                format: 'PDF'
+            };
+            
+            this.showNotification('Generating quick attendance report...', 'info');
+            console.log('Quick report generated:', reportData);
+            
+            // Simulate report generation
+            setTimeout(() => {
+                this.showNotification('Report generated successfully!', 'success');
+            }, 2000);
         }
     }
 
@@ -967,7 +1122,86 @@ class SidebarManager {
         if (typeof window.showSystemStatusModal === 'function') {
             window.showSystemStatusModal();
         } else {
-            console.log('System status action triggered');
+            // Show basic system status info
+            const status = {
+                server: 'Online',
+                database: 'Connected',
+                users: Math.floor(Math.random() * 50) + 10,
+                uptime: '99.8%'
+            };
+            
+            this.showNotification(`System Status: ${status.server} | Users: ${status.users} | Uptime: ${status.uptime}`, 'info');
+        }
+    }
+
+    /**
+     * Handle theme change from sidebar theme selector
+     */
+    handleThemeChange(theme) {
+        console.log('Theme change requested:', theme);
+        console.log('window.setTheme available:', typeof window.setTheme);
+        console.log('themeManager available:', typeof window.themeManager);
+        
+        // Try multiple ways to change theme
+        let themeChanged = false;
+        
+        // Method 1: Use window.setTheme if available
+        if (typeof window.setTheme === 'function') {
+            try {
+                window.setTheme(theme);
+                themeChanged = true;
+                console.log('Theme changed using window.setTheme');
+            } catch (error) {
+                console.error('Error using window.setTheme:', error);
+            }
+        }
+        
+        // Method 2: Use themeManager directly if available
+        if (!themeChanged && typeof window.themeManager !== 'undefined' && window.themeManager.setTheme) {
+            try {
+                window.themeManager.setTheme(theme);
+                themeChanged = true;
+                console.log('Theme changed using themeManager.setTheme');
+            } catch (error) {
+                console.error('Error using themeManager.setTheme:', error);
+            }
+        }
+        
+        // Method 3: Manual theme change as fallback
+        if (!themeChanged) {
+            try {
+                document.documentElement.setAttribute('data-theme', theme);
+                document.body.className = theme === 'dark' ? 'dark-theme' : 'light-theme';
+                themeChanged = true;
+                console.log('Theme changed manually');
+            } catch (error) {
+                console.error('Error changing theme manually:', error);
+            }
+        }
+        
+        if (themeChanged) {
+            // Update theme selector buttons
+            const themeButtons = document.querySelectorAll('.theme-option');
+            console.log('Updating theme buttons, found:', themeButtons.length);
+            
+            themeButtons.forEach(button => {
+                button.classList.remove('active');
+                if (button.getAttribute('data-theme') === theme) {
+                    button.classList.add('active');
+                    console.log('Activated button for theme:', theme);
+                }
+            });
+            
+            console.log(`Theme successfully changed to: ${theme}`);
+            this.showNotification(`Switched to ${theme} mode`, 'success');
+            
+            // Trigger custom event
+            const event = new CustomEvent('themeChanged', { detail: theme });
+            document.dispatchEvent(event);
+            
+        } else {
+            console.warn('Failed to change theme. Available theme functions:', Object.keys(window).filter(k => k.toLowerCase().includes('theme')));
+            this.showNotification('Unable to change theme', 'error');
         }
     }
 
@@ -982,6 +1216,59 @@ class SidebarManager {
             const isOnline = Math.random() > 0.1; // 90% uptime simulation
             indicator.className = `status-indicator ${isOnline ? 'status-online' : 'status-error'}`;
         });
+    }
+
+    /**
+     * Show a notification message
+     */
+    showNotification(message, type = 'info', duration = 3000) {
+        // Remove any existing notifications
+        const existingNotification = document.querySelector('.sidebar-notification');
+        if (existingNotification) {
+            existingNotification.remove();
+        }
+        
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `sidebar-notification notification-${type}`;
+        notification.innerHTML = `
+            <div class="notification-content">
+                <span class="notification-icon">${this.getNotificationIcon(type)}</span>
+                <span class="notification-message">${message}</span>
+                <button class="notification-close" aria-label="Close notification">×</button>
+            </div>
+        `;
+        
+        // Add to sidebar
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+            sidebar.appendChild(notification);
+            
+            // Add event listener for close button
+            const closeBtn = notification.querySelector('.notification-close');
+            closeBtn.addEventListener('click', () => notification.remove());
+            
+            // Auto-remove after duration
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.classList.add('fade-out');
+                    setTimeout(() => notification.remove(), 300);
+                }
+            }, duration);
+        }
+    }
+
+    /**
+     * Get icon for notification type
+     */
+    getNotificationIcon(type) {
+        switch (type) {
+            case 'success': return '✅';
+            case 'error': return '❌';
+            case 'warning': return '⚠️';
+            case 'info':
+            default: return 'ℹ️';
+        }
     }
 
     /**
@@ -1011,25 +1298,55 @@ class SidebarManager {
 }
 
 // Create and export sidebar manager instance
-const sidebarManager = new SidebarManager();
+// Delay instantiation to avoid initialization order issues
+let sidebarManager;
 
 // Export for different module systems
 if (typeof module !== 'undefined' && module.exports) {
+    // For Node.js environments, create instance immediately
+    sidebarManager = new SidebarManager();
     module.exports = sidebarManager;
 } else if (typeof window !== 'undefined') {
-    window.sidebarManager = sidebarManager;
-}
+    // For browser environments, defer instantiation
+    const initializeSidebar = () => {
+        if (!sidebarManager) {
+            sidebarManager = new SidebarManager();
+            // Initialize after creating the instance
+            sidebarManager.init();
+            window.sidebarManager = sidebarManager;
+        }
+        return sidebarManager;
+    };
 
-// Auto-initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        sidebarManager.init();
+    // Auto-initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeSidebar();
+        });
+    } else {
+        // DOM already ready, initialize immediately
+        initializeSidebar();
+    }
+
+    // Make sure sidebarManager is available on window
+    Object.defineProperty(window, 'sidebarManager', {
+        get: function() {
+            return sidebarManager || initializeSidebar();
+        },
+        configurable: true
     });
-} else {
-    sidebarManager.init();
 }
 
 // Utility functions for easy access
-window.toggleSidebar = () => sidebarManager.toggleSidebar();
-window.setActivePage = (page) => sidebarManager.setActivePage(page);
-window.getSidebarState = () => sidebarManager.getState();
+window.toggleSidebar = () => {
+    const manager = window.sidebarManager;
+    return manager ? manager.toggleSidebar() : console.warn('Sidebar not initialized');
+};
+window.setActivePage = (page) => {
+    const manager = window.sidebarManager;
+    return manager ? manager.setActivePage(page) : console.warn('Sidebar not initialized');
+};
+window.getSidebarState = () => {
+    const manager = window.sidebarManager;
+    return manager ? manager.getState() : { error: 'Sidebar not initialized' };
+};

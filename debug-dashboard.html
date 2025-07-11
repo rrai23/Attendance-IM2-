@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Debug Test</title>
     <link rel="stylesheet" href="/css/styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js" 
-            onload="console.log('Chart.js loaded:', typeof Chart);"
-            onerror="console.error('Chart.js failed to load');"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts" 
+            onload="console.log('ApexCharts loaded:', typeof ApexCharts);"
+            onerror="console.error('ApexCharts failed to load');"></script>
 </head>
 <body>
     <div style="padding: 20px;">
         <h1>Dashboard Debug Test</h1>
         <div id="status">Loading...</div>
-        <canvas id="testChart" width="400" height="200"></canvas>
+        <div id="testChart" style="width: 400px; height: 200px; border: 1px solid #ccc; margin: 20px 0;"></div>
         
         <div id="errors" style="margin-top: 20px; color: red; font-family: monospace;"></div>
     </div>
@@ -75,34 +75,40 @@
             updateStatus('Testing complete. Check console for details.');
             
             console.log('Final status check:');
-            console.log('Chart:', typeof Chart);
+            console.log('ApexCharts:', typeof ApexCharts);
             console.log('mockData:', typeof mockData);
             console.log('dataService:', typeof dataService);
+            console.log('authService:', typeof authService);
             console.log('SidebarManager:', typeof SidebarManager);
             console.log('DashboardController:', typeof DashboardController);
+            console.log('chartsManager:', typeof chartsManager);
             
-            // Try creating a simple chart
-            if (typeof Chart !== 'undefined') {
+            // Try creating a simple ApexCharts chart
+            if (typeof ApexCharts !== 'undefined') {
                 try {
-                    const ctx = document.getElementById('testChart').getContext('2d');
-                    new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: ['Test'],
-                            datasets: [{
-                                label: 'Test Data',
-                                data: [1],
-                                backgroundColor: 'blue'
-                            }]
+                    const options = {
+                        chart: {
+                            type: 'bar',
+                            height: 200
+                        },
+                        series: [{
+                            name: 'Test Data',
+                            data: [44, 55, 57, 56, 61, 58, 63, 60, 66]
+                        }],
+                        xaxis: {
+                            categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep']
                         }
-                    });
-                    updateStatus('Chart test successful!');
+                    };
+                    
+                    const chart = new ApexCharts(document.querySelector("#testChart"), options);
+                    chart.render();
+                    updateStatus('ApexCharts test successful!');
                 } catch (error) {
-                    updateStatus('Chart test failed: ' + error.message);
-                    console.error('Chart test error:', error);
+                    updateStatus('ApexCharts test failed: ' + error.message);
+                    console.error('ApexCharts test error:', error);
                 }
             } else {
-                updateStatus('Chart.js not available for testing');
+                updateStatus('ApexCharts not available for testing');
             }
         }, 2000);
     </script>

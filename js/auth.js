@@ -142,9 +142,11 @@ class AuthService {
             console.log('AuthService: Stored authentication data');
 
             // Set token in data service if available
-            if (typeof dataService !== 'undefined') {
+            if (typeof dataService !== 'undefined' && dataService && typeof dataService.setAuthToken === 'function') {
                 dataService.setAuthToken(token);
                 console.log('AuthService: Set token in data service');
+            } else {
+                console.warn('AuthService: dataService.setAuthToken not available');
             }
 
             // Trigger login event
@@ -180,7 +182,7 @@ class AuthService {
         localStorage.removeItem(this.userKey);
 
         // Clear data service token if available
-        if (typeof dataService !== 'undefined') {
+        if (typeof dataService !== 'undefined' && dataService && typeof dataService.setAuthToken === 'function') {
             dataService.setAuthToken(null);
         }
 
@@ -472,8 +474,15 @@ class AuthService {
     }
 }
 
-// Create and export singleton instance
+// Create and export singleton instance immediately to avoid temporal dead zone issues
 const authService = new AuthService();
+
+// Export immediately for both module systems
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = authService;
+} else if (typeof window !== 'undefined') {
+    window.authService = authService;
+}
 
 // Initialize page protection when DOM is loaded
 if (typeof document !== 'undefined') {
@@ -484,11 +493,4 @@ if (typeof document !== 'undefined') {
     } else {
         authService.initPageProtection();
     }
-}
-
-// Export for different module systems
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = authService;
-} else if (typeof window !== 'undefined') {
-    window.authService = authService;
 }

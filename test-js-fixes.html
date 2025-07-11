@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript Fixes Test - Bricks Attendance System</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        .test-result { margin: 10px 0; padding: 8px; border-radius: 3px; }
+        button { margin: 5px; padding: 8px 15px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        #log { height: 200px; overflow-y: auto; background: #f8f9fa; border: 1px solid #dee2e6; padding: 10px; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>JavaScript Fixes Test</h1>
+    <p>This page tests the fixes for JavaScript errors in the Bricks Attendance System.</p>
+
+    <div class="test-section info">
+        <h3>Test Results</h3>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Interactive Tests</h3>
+        <button onclick="testDataServiceSetAuthToken()">Test dataService.setAuthToken</button>
+        <button onclick="testAuthServiceAccess()">Test authService access</button>
+        <button onclick="testSidebarInitialization()">Test sidebar initialization</button>
+        <button onclick="testChartsManager()">Test charts manager</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <div class="test-section">
+        <h3>Console Log</h3>
+        <div id="log"></div>
+    </div>
+
+    <!-- Load scripts in the same order as dashboard.html -->
+    <script src="/js/mock-data.js" onerror="logError('Failed to load mock-data.js')"></script>
+    <script src="/js/data-service.js" onerror="logError('Failed to load data-service.js')"></script>
+    <script src="/js/auth.js" onerror="logError('Failed to load auth.js')"></script>
+    <script src="/js/theme.js" onerror="logError('Failed to load theme.js')"></script>
+    <script src="/js/charts.js" onerror="logError('Failed to load charts.js')"></script>
+    <script src="/js/sidebar.js" onerror="logError('Failed to load sidebar.js')"></script>
+
+    <script>
+        let testResults = [];
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function logError(message) {
+            log(message, 'error');
+        }
+
+        function addTestResult(testName, passed, message) {
+            testResults.push({ testName, passed, message });
+            updateTestResults();
+        }
+
+        function updateTestResults() {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = testResults.map(result => `
+                <div class="test-result ${result.passed ? 'success' : 'error'}">
+                    <strong>${result.testName}:</strong> 
+                    ${result.passed ? '✅ PASSED' : '❌ FAILED'} - ${result.message}
+                </div>
+            `).join('');
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        // Run automatic tests when page loads
+        window.addEventListener('load', () => {
+            log('Page loaded, running automatic tests...');
+            setTimeout(() => {
+                runAutomaticTests();
+            }, 500);
+        });
+
+        function runAutomaticTests() {
+            // Test 1: DataService existence and methods
+            try {
+                const hasDataService = typeof dataService !== 'undefined';
+                const hasSetAuthToken = hasDataService && typeof dataService.setAuthToken === 'function';
+                const hasGetAuthToken = hasDataService && typeof dataService.getAuthToken === 'function';
+                
+                addTestResult('DataService Availability', hasDataService, 
+                    hasDataService ? 'dataService is available' : 'dataService not found');
+                
+                addTestResult('DataService.setAuthToken', hasSetAuthToken, 
+                    hasSetAuthToken ? 'setAuthToken method exists' : 'setAuthToken method missing');
+                
+                addTestResult('DataService.getAuthToken', hasGetAuthToken, 
+                    hasGetAuthToken ? 'getAuthToken method exists' : 'getAuthToken method missing');
+                
+                log(`DataService test: exists=${hasDataService}, setAuthToken=${hasSetAuthToken}, getAuthToken=${hasGetAuthToken}`);
+            } catch (error) {
+                addTestResult('DataService Tests', false, `Error: ${error.message}`);
+                log(`DataService test error: ${error.message}`, 'error');
+            }
+
+            // Test 2: AuthService existence
+            try {
+                const hasAuthService = typeof authService !== 'undefined';
+                addTestResult('AuthService Availability', hasAuthService, 
+                    hasAuthService ? 'authService is available' : 'authService not found');
+                log(`AuthService test: exists=${hasAuthService}`);
+            } catch (error) {
+                addTestResult('AuthService Tests', false, `Error: ${error.message}`);
+                log(`AuthService test error: ${error.message}`, 'error');
+            }
+
+            // Test 3: Sidebar initialization
+            try {
+                const hasSidebarManager = typeof window.sidebarManager !== 'undefined';
+                addTestResult('Sidebar Manager', hasSidebarManager, 
+                    hasSidebarManager ? 'sidebarManager is available' : 'sidebarManager not found');
+                log(`Sidebar test: exists=${hasSidebarManager}`);
+            } catch (error) {
+                addTestResult('Sidebar Tests', false, `Error: ${error.message}`);
+                log(`Sidebar test error: ${error.message}`, 'error');
+            }
+
+            // Test 4: Charts manager
+            try {
+                const hasChartsManager = typeof window.chartsManager !== 'undefined';
+                addTestResult('Charts Manager', hasChartsManager, 
+                    hasChartsManager ? 'chartsManager is available' : 'chartsManager not found');
+                log(`Charts test: exists=${hasChartsManager}`);
+            } catch (error) {
+                addTestResult('Charts Tests', false, `Error: ${error.message}`);
+                log(`Charts test error: ${error.message}`, 'error');
+            }
+        }
+
+        // Interactive test functions
+        function testDataServiceSetAuthToken() {
+            try {
+                if (typeof dataService !== 'undefined' && dataService.setAuthToken) {
+                    dataService.setAuthToken('test-token-123');
+                    const token = dataService.getAuthToken();
+                    log(`✅ dataService.setAuthToken test successful. Token: ${token}`);
+                    addTestResult('setAuthToken Interactive Test', true, 'Successfully set and retrieved token');
+                } else {
+                    log('❌ dataService.setAuthToken not available', 'error');
+                    addTestResult('setAuthToken Interactive Test', false, 'Method not available');
+                }
+            } catch (error) {
+                log(`❌ dataService.setAuthToken test failed: ${error.message}`, 'error');
+                addTestResult('setAuthToken Interactive Test', false, error.message);
+            }
+        }
+
+        function testAuthServiceAccess() {
+            try {
+                if (typeof authService !== 'undefined') {
+                    const sessionInfo = authService.getSessionInfo();
+                    log(`✅ authService access successful. Session info: ${JSON.stringify(sessionInfo, null, 2)}`);
+                    addTestResult('AuthService Interactive Test', true, 'Successfully accessed authService');
+                } else {
+                    log('❌ authService not available', 'error');
+                    addTestResult('AuthService Interactive Test', false, 'authService not found');
+                }
+            } catch (error) {
+                log(`❌ authService test failed: ${error.message}`, 'error');
+                addTestResult('AuthService Interactive Test', false, error.message);
+            }
+        }
+
+        function testSidebarInitialization() {
+            try {
+                if (typeof window.sidebarManager !== 'undefined') {
+                    const state = window.getSidebarState();
+                    log(`✅ Sidebar test successful. State: ${JSON.stringify(state, null, 2)}`);
+                    addTestResult('Sidebar Interactive Test', true, 'Successfully accessed sidebar');
+                } else {
+                    log('❌ sidebarManager not available', 'error');
+                    addTestResult('Sidebar Interactive Test', false, 'sidebarManager not found');
+                }
+            } catch (error) {
+                log(`❌ Sidebar test failed: ${error.message}`, 'error');
+                addTestResult('Sidebar Interactive Test', false, error.message);
+            }
+        }
+
+        function testChartsManager() {
+            try {
+                if (typeof window.chartsManager !== 'undefined') {
+                    // Test basic chart creation
+                    log(`✅ Charts manager test successful. Available methods: ${Object.keys(window.chartsManager).join(', ')}`);
+                    addTestResult('Charts Interactive Test', true, 'Successfully accessed charts manager');
+                } else {
+                    log('❌ chartsManager not available', 'error');
+                    addTestResult('Charts Interactive Test', false, 'chartsManager not found');
+                }
+            } catch (error) {
+                log(`❌ Charts test failed: ${error.message}`, 'error');
+                addTestResult('Charts Interactive Test', false, error.message);
+            }
+        }
+
+        // Enhanced error handling
+        window.onerror = function(message, source, lineno, colno, error) {
+            log(`❌ JavaScript Error: ${message} at ${source}:${lineno}:${colno}`, 'error');
+            return false;
+        };
+
+        window.addEventListener('unhandledrejection', function(event) {
+            log(`❌ Unhandled Promise Rejection: ${event.reason}`, 'error');
+        });
+    </script>
+</body>
+</html>

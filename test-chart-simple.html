@@ -3,24 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chart.js Test</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <title>ApexCharts Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 </head>
 <body>
-    <h1>Chart.js Loading Test</h1>
-    <canvas id="testChart" width="400" height="200"></canvas>
+    <h1>ApexCharts Loading Test</h1>
+    <div id="testChart"></div>
     
     <div id="status">Loading...</div>
 
     <script>
-        console.log('Testing Chart.js loading...');
-        console.log('Chart available:', typeof Chart);
+        console.log('Testing ApexCharts loading...');
+        console.log('ApexCharts available:', typeof ApexCharts);
         
         function updateStatus(message) {
             document.getElementById('status').textContent = message;
         }
         
-        // Wait for Chart.js to load
+        // Wait for ApexCharts to load
         function waitForChart() {
             return new Promise((resolve, reject) => {
                 let attempts = 0;
@@ -28,16 +28,16 @@
                 
                 function check() {
                     attempts++;
-                    console.log(`Attempt ${attempts}: Chart type = ${typeof Chart}`);
+                    console.log(`Attempt ${attempts}: ApexCharts type = ${typeof ApexCharts}`);
                     
-                    if (typeof Chart !== 'undefined') {
-                        updateStatus('Chart.js loaded successfully!');
-                        console.log('Chart.js loaded successfully');
+                    if (typeof ApexCharts !== 'undefined') {
+                        updateStatus('ApexCharts loaded successfully!');
+                        console.log('ApexCharts loaded successfully');
                         resolve();
                     } else if (attempts >= maxAttempts) {
-                        updateStatus('Chart.js failed to load after 5 seconds');
-                        console.error('Chart.js failed to load');
-                        reject(new Error('Chart.js not available'));
+                        updateStatus('ApexCharts failed to load after 5 seconds');
+                        console.error('ApexCharts failed to load');
+                        reject(new Error('ApexCharts not available'));
                     } else {
                         setTimeout(check, 100);
                     }
@@ -49,39 +49,36 @@
         // Test chart creation
         waitForChart().then(() => {
             try {
-                const ctx = document.getElementById('testChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: ['Red', 'Blue', 'Yellow', 'Green'],
-                        datasets: [{
-                            label: 'Test Data',
-                            data: [12, 19, 3, 5],
-                            backgroundColor: ['red', 'blue', 'yellow', 'green']
-                        }]
+                const options = {
+                    chart: {
+                        type: 'bar',
+                        height: 350
                     },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: {
-                                position: 'top',
-                            },
-                            title: {
-                                display: true,
-                                text: 'Chart.js Test Chart'
-                            }
-                        }
+                    series: [{
+                        name: 'Test Data',
+                        data: [12, 19, 3, 5]
+                    }],
+                    xaxis: {
+                        categories: ['Red', 'Blue', 'Yellow', 'Green']
+                    },
+                    colors: ['#FF0000', '#0000FF', '#FFFF00', '#008000'],
+                    title: {
+                        text: 'ApexCharts Test Chart'
                     }
-                });
-                updateStatus('Chart.js loaded and chart created successfully!');
+                };
+                
+                const chart = new ApexCharts(document.querySelector("#testChart"), options);
+                chart.render();
+                
+                updateStatus('ApexCharts loaded and chart created successfully!');
                 console.log('Chart created successfully');
             } catch (error) {
                 updateStatus('Error creating chart: ' + error.message);
                 console.error('Error creating chart:', error);
             }
         }).catch(error => {
-            updateStatus('Failed to load Chart.js: ' + error.message);
-            console.error('Failed to load Chart.js:', error);
+            updateStatus('Failed to load ApexCharts: ' + error.message);
+            console.error('Failed to load ApexCharts:', error);
         });
     </script>
 </body>

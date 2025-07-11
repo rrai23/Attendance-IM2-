@@ -174,6 +174,16 @@ class DataService {
         }
     }
 
+    // Authentication token management
+    setAuthToken(token) {
+        this.authToken = token;
+        console.log('Auth token updated:', token ? 'Token set' : 'Token cleared');
+    }
+
+    getAuthToken() {
+        return this.authToken;
+    }
+
     async getAttendanceOverview(startDate, endDate) {
         try {
             await this.simulateDelay(100, 300);
@@ -338,12 +348,37 @@ class DataService {
     }
 }
 
-// Create singleton instance
+// Create singleton instance and export immediately
 const dataService = new DataService();
 
-// Export for different environments
+// Export immediately for both module systems to avoid temporal dead zone issues
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = dataService;
-} else {
+} else if (typeof window !== 'undefined') {
     window.dataService = dataService;
+}
+
+// Ensure methods exist for compatibility (defensive programming)
+if (!dataService.setAuthToken) {
+    dataService.setAuthToken = function(token) {
+        this.authToken = token;
+        console.log('Auth token updated:', token ? 'Token set' : 'Token cleared');
+    };
+}
+
+if (!dataService.getAuthToken) {
+    dataService.getAuthToken = function() {
+        return this.authToken;
+    };
+}
+
+// Add a global verification function for debugging
+if (typeof window !== 'undefined') {
+    window.verifyDataService = function() {
+        console.log('DataService verification:', {
+            exists: typeof dataService !== 'undefined',
+            hasSetAuthToken: typeof dataService.setAuthToken === 'function',
+            hasGetAuthToken: typeof dataService.getAuthToken === 'function'
+        });
+    };
 }

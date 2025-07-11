@@ -13,8 +13,8 @@
     <!-- Stylesheets -->
     <link rel="stylesheet" href="/css/styles.css">
     
-    <!-- Chart.js for data visualization -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+    <!-- ApexCharts for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     
     <!-- Preload critical resources -->
     <link rel="preload" href="/js/data-service.js" as="script">
@@ -1678,16 +1678,16 @@
                 loadingOverlay.style.display = 'flex';
             }
             
-            // Wait for Chart.js to be available
+            // Wait for ApexCharts to be available
             const waitForChart = () => {
-                if (typeof Chart !== 'undefined' && Chart.register) {
-                    console.log('Chart.js is available, initializing dashboard...');
+                if (typeof ApexCharts !== 'undefined') {
+                    console.log('ApexCharts is available, initializing dashboard...');
                     initializeDashboard();
                 } else {
                     waitForChart.attempts = (waitForChart.attempts || 0) + 1;
                     
                     if (waitForChart.attempts > 30) { // 3 seconds max
-                        console.warn('Chart.js not available after 3 seconds, initializing with fallbacks');
+                        console.warn('ApexCharts not available after 3 seconds, initializing with fallbacks');
                         initializeDashboardWithoutCharts();
                         return;
                     }
@@ -1697,9 +1697,9 @@
             };
             
             function initializeDashboard() {
-                console.log('Chart.js loaded successfully, initializing dashboard...');
+                console.log('ApexCharts loaded successfully, initializing dashboard...');
                 console.log('Available globals:', {
-                    Chart: typeof Chart,
+                    ApexCharts: typeof ApexCharts,
                     SidebarManager: typeof SidebarManager,
                     DashboardController: typeof DashboardController,
                     dataService: typeof dataService,
