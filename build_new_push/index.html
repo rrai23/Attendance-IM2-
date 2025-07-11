@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Bricks Attendance System - Employee Management and Time Tracking">
+    <meta name="keywords" content="attendance, employee, management, time tracking, payroll">
+    <meta name="author" content="Bricks Attendance System">
+    <meta name="robots" content="noindex, nofollow">
+    
+    <!-- Responsive Design -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- iOS Safari -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Bricks Attendance">
+    
+    <!-- Android Chrome -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#007AFF">
+    
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <title>Bricks Attendance System</title>
+    
+    <style>
+        /* Minimal loading styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        
+        .loading-container {
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        .loading-text {
+            font-size: 1.1rem;
+            font-weight: 500;
+            opacity: 0.9;
+        }
+        
+        .loading-subtext {
+            font-size: 0.9rem;
+            opacity: 0.7;
+            margin-top: 0.5rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Error state */
+        .error-container {
+            background: rgba(255, 59, 48, 0.1);
+            border: 1px solid rgba(255, 59, 48, 0.3);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+            text-align: left;
+        }
+        
+        .error-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #ff6b6b;
+        }
+        
+        .error-message {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            line-height: 1.4;
+        }
+        
+        .retry-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+            transition: all 0.2s ease;
+        }
+        
+        .retry-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-container fade-in" id="loadingContainer">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Bricks Attendance System</div>
+        <div class="loading-subtext">Initializing application...</div>
+    </div>
+
+    <script>
+        // Application initialization and routing
+        class AppInitializer {
+            constructor() {
+                this.loadingContainer = document.getElementById('loadingContainer');
+                this.maxRetries = 3;
+                this.retryCount = 0;
+                this.init();
+            }
+
+            async init() {
+                try {
+                    await this.checkSystemRequirements();
+                    await this.loadAuthService();
+                    await this.handleRouting();
+                } catch (error) {
+                    console.error('Application initialization failed:', error);
+                    this.showError(error);
+                }
+            }
+
+            async checkSystemRequirements() {
+                // Check for required browser features
+                const requirements = [
+                    'localStorage' in window,
+                    'sessionStorage' in window,
+                    'JSON' in window,
+                    'fetch' in window || 'XMLHttpRequest' in window,
+                    'Promise' in window
+                ];
+
+                const missingFeatures = [];
+                
+                if (!requirements[0]) missingFeatures.push('Local Storage');
+                if (!requirements[1]) missingFeatures.push('Session Storage');
+                if (!requirements[2]) missingFeatures.push('JSON Support');
+                if (!requirements[3]) missingFeatures.push('Network Requests');
+                if (!requirements[4]) missingFeatures.push('Promise Support');
+
+                if (missingFeatures.length > 0) {
+                    throw new Error(`Your browser is missing required features: ${missingFeatures.join(', ')}. Please update your browser.`);
+                }
+
+                // Check for minimum viewport size
+                if (window.innerWidth < 320 || window.innerHeight < 480) {
+                    console.warn('Small viewport detected. Some features may not display optimally.');
+                }
+            }
+
+            async loadAuthService() {
+                return new Promise((resolve, reject) => {
+                    // Try to load auth service
+                    const script = document.createElement('script');
+                    script.src = 'js/auth.js';
+                    script.onload = () => {
+                        // Give auth service time to initialize
+                        setTimeout(() => {
+                            if (typeof authService !== 'undefined') {
+                                resolve();
+                            } else {
+                                reject(new Error('Authentication service failed to load'));
+                            }
+                        }, 100);
+                    };
+                    script.onerror = () => {
+                        reject(new Error('Failed to load authentication service'));
+                    };
+                    document.head.appendChild(script);
+                });
+            }
+
+            async handleRouting() {
+                this.updateLoadingText('Checking authentication...');
+
+                // Small delay for better UX
+                await this.delay(500);
+
+                try {
+                    // Check if user is already authenticated
+                    const isAuthenticated = this.checkAuthentication();
+                    
+                    if (isAuthenticated) {
+                        const user = this.getCurrentUser();
+                        const redirectUrl = this.getRedirectUrl(user.role);
+                        
+                        this.updateLoadingText(`Welcome back, ${user.name || user.username}!`);
+                        await this.delay(800);
+                        
+                        this.redirect(redirectUrl);
+                    } else {
+                        // No authentication found, redirect to login
+                        this.updateLoadingText('Redirecting to login...');
+                        await this.delay(500);
+                        
+                        this.redirect('login.html');
+                    }
+                } catch (error) {
+                    console.error('Routing error:', error);
+                    // If there's an error with auth service, still redirect to login
+                    this.redirect('login.html');
+                }
+            }
+
+            checkAuthentication() {
+                try {
+                    // Check if auth service is available
+                    if (typeof authService !== 'undefined' && authService.isAuthenticated) {
+                        return authService.isAuthenticated();
+                    }
+
+                    // Fallback: check localStorage directly
+                    const authData = localStorage.getItem('bricks_auth');
+                    if (!authData) return false;
+
+                    const auth = JSON.parse(authData);
+                    const now = new Date().getTime();
+                    
+                    // Check if token is expired
+                    if (auth.expiresAt && now > auth.expiresAt) {
+                        localStorage.removeItem('bricks_auth');
+                        return false;
+                    }
+
+                    return auth.isAuthenticated && auth.user;
+                } catch (error) {
+                    console.error('Authentication check failed:', error);
+                    return false;
+                }
+            }
+
+            getCurrentUser() {
+                try {
+                    if (typeof authService !== 'undefined' && authService.getCurrentUser) {
+                        return authService.getCurrentUser();
+                    }
+
+                    // Fallback: get from localStorage
+                    const authData = localStorage.getItem('bricks_auth');
+                    if (authData) {
+                        const auth = JSON.parse(authData);
+                        return auth.user;
+                    }
+                } catch (error) {
+                    console.error('Failed to get current user:', error);
+                }
+                return null;
+            }
+
+            getRedirectUrl(role) {
+                const roleRoutes = {
+                    'admin': 'dashboard.html',
+                    'manager': 'dashboard.html',
+                    'employee': 'employee.html',
+                    'user': 'employee.html'
+                };
+
+                return roleRoutes[role] || 'dashboard.html';
+            }
+
+            redirect(url) {
+                // Add some visual feedback before redirect
+                this.updateLoadingText('Loading...');
+                
+                setTimeout(() => {
+                    window.location.href = url;
+                }, 200);
+            }
+
+            updateLoadingText(text) {
+                const loadingText = document.querySelector('.loading-text');
+                if (loadingText) {
+                    loadingText.textContent = text;
+                }
+            }
+
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            showError(error) {
+                const container = this.loadingContainer;
+                
+                container.innerHTML = `
+                    <div class="loading-spinner" style="border-top-color: #ff6b6b;"></div>
+                    <div class="loading-text">Application Error</div>
+                    <div class="error-container">
+                        <div class="error-title">Failed to Initialize</div>
+                        <div class="error-message">${error.message || 'An unexpected error occurred while starting the application.'}</div>
+                        <button class="retry-button" onclick="location.reload()">
+                            Retry (${this.maxRetries - this.retryCount} attempts remaining)
+                        </button>
+                    </div>
+                `;
+
+                // Auto-retry after delay if retries remaining
+                if (this.retryCount < this.maxRetries) {
+                    setTimeout(() => {
+                        this.retryCount++;
+                        location.reload();
+                    }, 3000);
+                }
+            }
+        }
+
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                // Page became visible, check if we need to refresh auth
+                const authData = localStorage.getItem('bricks_auth');
+                if (authData) {
+                    try {
+                        const auth = JSON.parse(authData);
+                        const now = new Date().getTime();
+                        
+                        if (auth.expiresAt && now > auth.expiresAt) {
+                            // Token expired while page was hidden
+                            localStorage.removeItem('bricks_auth');
+                            location.reload();
+                        }
+                    } catch (error) {
+                        console.error('Auth check on visibility change failed:', error);
+                    }
+                }
+            }
+        });
+
+        // Handle online/offline status
+        window.addEventListener('online', () => {
+            console.log('Application is online');
+        });
+
+        window.addEventListener('offline', () => {
+            console.log('Application is offline');
+        });
+
+        // Initialize application when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                new AppInitializer();
+            });
+        } else {
+            new AppInitializer();
+        }
+
+        // Global error handler
+        window.addEventListener('error', (event) => {
+            console.error('Global error:', event.error);
+            
+            // If it's a critical error during initialization, show fallback
+            if (event.error && event.error.message && 
+                (event.error.message.includes('auth') || event.error.message.includes('script'))) {
+                
+                setTimeout(() => {
+                    if (window.location.pathname.endsWith('index.html') || 
+                        window.location.pathname === '/' || 
+                        window.location.pathname.endsWith('/')) {
+                        window.location.href = 'login.html';
+                    }
+                }, 2000);
+            }
+        });
+
+        // Prevent back button on index page
+        history.pushState(null, null, location.href);
+        window.addEventListener('popstate', () => {
+            history.pushState(null, null, location.href);
+        });
+    </script>
+</body>
+</html>

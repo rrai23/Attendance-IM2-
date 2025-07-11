@@ -1,0 +1,1957 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" class="page-settings">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Bricks Attendance System</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" type="image/x-icon" href="assets/icons/favicon.ico">
+</head>
+<body>
+    <!-- Skip Navigation Links -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <a href="#sidebar" class="skip-link">Skip to navigation</a>
+
+    <!-- Mobile Hamburger Menu Button -->
+    <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+    </button>
+
+    <!-- Notification Container -->
+    <div id="notification-container"></div>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-brand">
+                    <div class="brand-icon">🧱</div>
+                    <div class="brand-text">
+                        <h2>Bricks</h2>
+                        <span>Attendance System</span>
+                    </div>
+                </div>
+                <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">
+                    <span class="toggle-icon">‹</span>
+                </button>
+            </div>
+
+            <div class="sidebar-user">
+                <div class="user-avatar">
+                    <span id="user-avatar-text">A</span>
+                </div>
+                <div class="user-info">
+                    <div class="user-name" id="user-name">Administrator</div>
+                    <div class="user-role" id="user-role">Admin</div>
+                </div>
+                <div class="theme-selector">
+                    <button class="theme-option active" data-theme="light" title="Light Mode">
+                        <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                    </button>
+                    <button class="theme-option" data-theme="dark" title="Dark Mode">
+                        <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="/dashboard.html" class="nav-link" data-page="dashboard" title="Overview and statistics">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Dashboard</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/employee.html" class="nav-link" data-page="employee" title="Employee management">
+                            <span class="nav-icon">👥</span>
+                            <span class="nav-text">Employees</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/analytics.html" class="nav-link" data-page="analytics" title="Detailed attendance analytics">
+                            <span class="nav-icon">📈</span>
+                            <span class="nav-text">Analytics</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/payroll.html" class="nav-link" data-page="payroll" title="Payroll management">
+                            <span class="nav-icon">💰</span>
+                            <span class="nav-text">Payroll</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item nav-item-dropdown" id="reportsDropdown">
+                        <a href="#" class="nav-link nav-dropdown-toggle" 
+                           title="Reports and documents"
+                           role="button"
+                           aria-haspopup="true"
+                           aria-expanded="false"
+                           tabindex="0">
+                            <span class="nav-icon">📋</span>
+                            <span class="nav-text">Reports</span>
+                            <span class="nav-dropdown-arrow">▼</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                        <ul class="nav-dropdown-menu">
+                            <li><a href="/reports/attendance.html" class="nav-dropdown-link">Attendance Reports</a></li>
+                            <li><a href="/reports/payroll.html" class="nav-dropdown-link">Payroll Reports</a></li>
+                            <li><a href="/reports/analytics.html" class="nav-dropdown-link">Analytics Reports</a></li>
+                            <li><a href="/reports/export.html" class="nav-dropdown-link">Export Data</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item nav-item-dropdown" id="toolsDropdown">
+                        <a href="#" class="nav-link nav-dropdown-toggle" 
+                           title="System tools"
+                           role="button"
+                           aria-haspopup="true"
+                           aria-expanded="false"
+                           tabindex="0">
+                            <span class="nav-icon">🔧</span>
+                            <span class="nav-text">Tools</span>
+                            <span class="nav-dropdown-arrow">▼</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                        <ul class="nav-dropdown-menu">
+                            <li><a href="/tools/backup.html" class="nav-dropdown-link">Backup & Restore</a></li>
+                            <li><a href="/tools/import.html" class="nav-dropdown-link">Import Data</a></li>
+                            <li><a href="/tools/logs.html" class="nav-dropdown-link">System Logs</a></li>
+                            <li><a href="/tools/maintenance.html" class="nav-dropdown-link">Maintenance</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/settings.html" class="nav-link active" data-page="settings" title="System configuration">
+                            <span class="nav-icon">⚙️</span>
+                            <span class="nav-text">Settings</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <!-- Quick Actions Section -->
+            <div class="sidebar-quick-actions">
+                <div class="quick-actions-header">
+                    <h4>Quick Actions</h4>
+                </div>
+                <div class="quick-actions-grid" role="group" aria-label="Quick action buttons">
+                    <button class="quick-action-btn" 
+                            title="Clock In/Out (Alt+C)" 
+                            id="quickClockBtn"
+                            aria-label="Clock In or Clock Out"
+                            data-shortcut="Alt+C">
+                        <span class="quick-action-icon">🕐</span>
+                        <span class="quick-action-text">Clock In/Out</span>
+                    </button>
+                    <button class="quick-action-btn" 
+                            title="Add Employee (Alt+E)" 
+                            id="quickAddEmployeeBtn"
+                            aria-label="Add new employee"
+                            data-shortcut="Alt+E">
+                        <span class="quick-action-icon">👤</span>
+                        <span class="quick-action-text">Add Employee</span>
+                    </button>
+                    <button class="quick-action-btn" 
+                            title="Generate Report (Alt+R)" 
+                            id="quickReportBtn"
+                            aria-label="Generate attendance report"
+                            data-shortcut="Alt+R">
+                        <span class="quick-action-icon">📊</span>
+                        <span class="quick-action-text">Report</span>
+                    </button>
+                    <button class="quick-action-btn" 
+                            title="System Status (Alt+S)" 
+                            id="quickStatusBtn"
+                            aria-label="View system status"
+                            data-shortcut="Alt+S">
+                        <span class="quick-action-icon">❤️</span>
+                        <span class="quick-action-text">Status</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- System Status Section -->
+            <div class="sidebar-status">
+                <div class="status-header">
+                    <h4>System Status</h4>
+                </div>
+                <div class="status-indicators">
+                    <div class="status-item">
+                        <span class="status-indicator status-online"></span>
+                        <span class="status-text">Server Online</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-indicator status-online"></span>
+                        <span class="status-text">Database Connected</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-indicator status-online"></span>
+                        <span class="status-text">Backup System</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <button class="logout-btn" id="logout-btn" title="Logout">
+                    <span class="logout-icon">🚪</span>
+                    <span class="logout-text">Logout</span>
+                </button>
+                <div class="sidebar-version">
+                    <small>v1.0.0</small>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content" id="main-content">
+            <div class="container">
+                <!-- Page Header -->
+                <header class="page-header">
+                    <div class="page-title-section">
+                        <h1 class="page-title">Settings</h1>
+                        <p class="page-subtitle">Configure system preferences and manage user accounts</p>
+                    </div>
+                    <div class="page-actions">
+                        <button class="btn btn-secondary" id="export-settings-btn">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7,10 12,15 17,10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Export Settings
+                        </button>
+                        <button class="btn btn-outline" id="import-settings-btn">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17,8 12,3 7,8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            Import Settings
+                        </button>
+                        <button class="btn btn-primary" id="save-settings-btn" disabled>
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                <polyline points="17,21 17,13 7,13 7,21"></polyline>
+                                <polyline points="7,3 7,8 15,8"></polyline>
+                            </svg>
+                            Save Changes
+                        </button>
+                    </div>
+                </header>
+
+                <!-- Settings Navigation Tabs -->
+                <nav class="settings-tabs">
+                    <button class="settings-tab active" data-tab="general">
+                        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1m15.5-3.5L19 4l-1.5 1.5M5 20l1.5-1.5L5 17"></path>
+                        </svg>
+                        General
+                    </button>
+                    <button class="settings-tab" data-tab="payroll">
+                        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="1" x2="12" y2="23"></line>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        </svg>
+                        Payroll
+                    </button>
+                    <button class="settings-tab" data-tab="attendance">
+                        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12,6 12,12 16,14"></polyline>
+                        </svg>
+                        Attendance
+                    </button>
+                    <button class="settings-tab" data-tab="notifications">
+                        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                        </svg>
+                        Notifications
+                    </button>
+                    <button class="settings-tab" data-tab="security">
+                        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        </svg>
+                        Security
+                    </button>
+                    <button class="settings-tab" data-tab="theme">
+                        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+                        </svg>
+                        Theme
+                    </button>
+                    <button class="settings-tab" data-tab="users">
+                        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        Users
+                    </button>
+                </nav>
+
+                <!-- Settings Content -->
+                <div class="settings-container">
+                    <!-- General Settings -->
+                    <div class="settings-content active" id="general-settings">
+                        <div class="tiles-grid grid-2">
+                            <div class="tile">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">Company Information</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                        <polyline points="9,22 9,12 15,12 15,22"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <form class="settings-form">
+                                        <div class="form-group">
+                                            <label for="company-name" class="form-label">Company Name</label>
+                                            <input type="text" id="company-name" name="general.companyName" class="form-input" value="Bricks Company" required>
+                                            <div class="field-error" id="company-name-error"></div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="company-address" class="form-label">Address</label>
+                                            <textarea id="company-address" name="general.address" class="form-textarea" rows="3" placeholder="Enter company address"></textarea>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="company-phone" class="form-label">Phone Number</label>
+                                            <input type="tel" id="company-phone" name="general.phone" class="form-input" placeholder="(555) 123-4567">
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="tile">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">Regional Settings</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <form class="settings-form">
+                                        <div class="form-group">
+                                            <label for="timezone" class="form-label">Timezone</label>
+                                            <select id="timezone" name="general.timezone" class="form-select">
+                                                <option value="Asia/Manila">Asia/Manila (Philippine Time)</option>
+                                                <option value="America/New_York">Eastern Time (ET)</option>
+                                                <option value="America/Chicago">Central Time (CT)</option>
+                                                <option value="America/Denver">Mountain Time (MT)</option>
+                                                <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                                                <option value="America/Toronto">Toronto</option>
+                                                <option value="Europe/London">London</option>
+                                                <option value="Europe/Paris">Paris</option>
+                                                <option value="Asia/Tokyo">Tokyo</option>
+                                                <option value="Asia/Singapore">Singapore</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="date-format" class="form-label">Date Format</label>
+                                            <select id="date-format" name="general.dateFormat" class="form-select">
+                                                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                                                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                                                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="time-format" class="form-label">Time Format</label>
+                                            <select id="time-format" name="general.timeFormat" class="form-select">
+                                                <option value="12">12 Hour</option>
+                                                <option value="24">24 Hour</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="currency" class="form-label">Currency</label>
+                                            <select id="currency" name="general.currency" class="form-select">
+                                                <option value="PHP">PHP (₱)</option>
+                                                <option value="USD">USD ($)</option>
+                                                <option value="EUR">EUR (€)</option>
+                                                <option value="GBP">GBP (£)</option>
+                                                <option value="CAD">CAD ($)</option>
+                                            </select>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payroll Settings -->
+                    <div class="settings-content" id="payroll-settings">
+                        <div class="tiles-grid grid-2">
+                            <div class="tile">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">Pay Period Configuration</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <form class="settings-form">
+                                        <div class="form-group">
+                                            <label for="pay-period" class="form-label">Pay Period</label>
+                                            <select id="pay-period" name="payroll.payPeriod" class="form-select">
+                                                <option value="weekly">Weekly</option>
+                                                <option value="biweekly" selected>Bi-weekly</option>
+                                                <option value="monthly">Monthly</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="payday" class="form-label">Payday</label>
+                                            <select id="payday" name="payroll.payday" class="form-select">
+                                                <option value="monday">Monday</option>
+                                                <option value="tuesday">Tuesday</option>
+                                                <option value="wednesday">Wednesday</option>
+                                                <option value="thursday">Thursday</option>
+                                                <option value="friday" selected>Friday</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="pay-start-date" class="form-label">Pay Period Start Date</label>
+                                            <input type="date" id="pay-start-date" name="payroll.startDate" class="form-input">
+                                            <small class="form-help">First day of the current pay period cycle</small>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="tile">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">Overtime Configuration</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polyline points="12,6 12,12 16,14"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <form class="settings-form">
+                                        <div class="form-group">
+                                            <label for="overtime-rate" class="form-label">Overtime Rate Multiplier</label>
+                                            <input type="number" id="overtime-rate" name="payroll.overtimeRate" class="form-input" value="1.5" min="1" max="3" step="0.1" required>
+                                            <small class="form-help">Standard rate multiplier for overtime hours</small>
+                                            <div class="field-error" id="overtime-rate-error"></div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="overtime-threshold" class="form-label">Overtime Threshold (hours/week)</label>
+                                            <input type="number" id="overtime-threshold" name="payroll.overtimeThreshold" class="form-input" value="40" min="30" max="60" required>
+                                            <small class="form-help">Hours per week before overtime applies</small>
+                                            <div class="field-error" id="overtime-threshold-error"></div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="rounding-rules" class="form-label">Time Rounding Rules</label>
+                                            <select id="rounding-rules" name="payroll.roundingRules" class="form-select">
+                                                <option value="none">No Rounding</option>
+                                                <option value="nearest_minute">Nearest Minute</option>
+                                                <option value="nearest_quarter" selected>Nearest 15 Minutes</option>
+                                                <option value="nearest_half">Nearest 30 Minutes</option>
+                                            </select>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="tile tile-large">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">Payroll Automation</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <form class="settings-form">
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="auto-calculate" name="payroll.autoCalculate" checked>
+                                                <span class="checkmark"></span>
+                                                Auto-calculate payroll
+                                            </label>
+                                            <small class="form-help">Automatically calculate payroll at end of pay period</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="auto-approve-regular" name="payroll.autoApproveRegular">
+                                                <span class="checkmark"></span>
+                                                Auto-approve regular hours
+                                            </label>
+                                            <small class="form-help">Automatically approve regular time entries</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="require-overtime-approval" name="payroll.requireOvertimeApproval" checked>
+                                                <span class="checkmark"></span>
+                                                Require overtime approval
+                                            </label>
+                                            <small class="form-help">Overtime hours must be approved before payroll</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="payroll-cutoff" class="form-label">Payroll Cutoff Time</label>
+                                            <input type="time" id="payroll-cutoff" name="payroll.cutoffTime" class="form-input" value="17:00">
+                                            <small class="form-help">Time entries after this time go to next pay period</small>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Attendance Settings -->
+                    <div class="settings-content" id="attendance-settings">
+                        <div class="tiles-grid grid-2">
+                            <div class="tile">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">Clock In/Out Settings</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polyline points="12,6 12,12 16,14"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <form class="settings-form">
+                                        <div class="form-group">
+                                            <label for="clock-in-grace" class="form-label">Clock In Grace Period (minutes)</label>
+                                            <input type="number" id="clock-in-grace" name="attendance.clockInGrace" class="form-input" value="5" min="0" max="30">
+                                            <small class="form-help">Minutes after scheduled start time before marked as tardy</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="clock-out-grace" class="form-label">Clock Out Grace Period (minutes)</label>
+                                            <input type="number" id="clock-out-grace" name="attendance.clockOutGrace" class="form-input" value="5" min="0" max="30">
+                                            <small class="form-help">Minutes before scheduled end time allowed for early clock out</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="require-location" name="attendance.requireLocation">
+                                                <span class="checkmark"></span>
+                                                Require location verification
+                                            </label>
+                                            <small class="form-help">Employees must be at approved locations to clock in/out</small>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="tile">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">Break Settings</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                                        <path d="M16 10a4 4 0 0 1-8 0"></path>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <form class="settings-form">
+                                        <div class="form-group">
+                                            <label for="lunch-break-duration" class="form-label">Default Lunch Break (minutes)</label>
+                                            <input type="number" id="lunch-break-duration" name="attendance.lunchBreakDuration" class="form-input" value="30" min="15" max="120">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="short-break-duration" class="form-label">Short Break Duration (minutes)</label>
+                                            <input type="number" id="short-break-duration" name="attendance.shortBreakDuration" class="form-input" value="15" min="5" max="30">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="auto-deduct-lunch" name="attendance.autoDeductLunch" checked>
+                                                <span class="checkmark"></span>
+                                                Auto-deduct lunch break
+                                            </label>
+                                            <small class="form-help">Automatically deduct lunch time from total hours</small>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="tile">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">Automation Settings</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <form class="settings-form">
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="auto-clock-out" name="attendance.autoClockOut">
+                                                <span class="checkmark"></span>
+                                                Auto clock out employees
+                                            </label>
+                                            <small class="form-help">Automatically clock out employees at specified time</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="auto-clock-out-time" class="form-label">Auto Clock Out Time</label>
+                                            <input type="time" id="auto-clock-out-time" name="attendance.autoClockOutTime" class="form-input" value="18:00">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="require-notes" name="attendance.requireNotes">
+                                                <span class="checkmark"></span>
+                                                Require notes for manual time adjustments
+                                            </label>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="tile">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">Tardiness & Absence</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <form class="settings-form">
+                                        <div class="form-group">
+                                            <label for="tardy-threshold" class="form-label">Tardiness Threshold (minutes)</label>
+                                            <input type="number" id="tardy-threshold" name="attendance.tardyThreshold" class="form-input" value="10" min="1" max="60">
+                                            <small class="form-help">Minutes late before marked as tardy</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="absence-threshold" class="form-label">Absence Threshold (hours)</label>
+                                            <input type="number" id="absence-threshold" name="attendance.absenceThreshold" class="form-input" value="4" min="1" max="8">
+                                            <small class="form-help">Hours without clocking in before marked as absent</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="send-tardy-alerts" name="attendance.sendTardyAlerts" checked>
+                                                <span class="checkmark"></span>
+                                                Send tardiness alerts
+                                            </label>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notifications Settings -->
+                    <div class="settings-content" id="notifications-settings">
+                        <div class="tiles-grid grid-2">
+                            <div class="tile">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">Email Notifications</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                        <polyline points="22,6 12,13 2,6"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <form class="settings-form">
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="email-notifications" name="notifications.emailNotifications" checked>
+                                                <span class="checkmark"></span>
+                                                Enable email notifications
+                                            </label>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="smtp-server" class="form-label">SMTP Server</label>
+                                            <input type="text" id="smtp-server" name="notifications.smtpServer" class="form-input" placeholder="smtp.gmail.com">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="smtp-port" class="form-label">SMTP Port</label>
+                                            <input type="number" id="smtp-port" name="notifications.smtpPort" class="form-input" value="587">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="email-from" class="form-label">From Email</label>
+                                            <input type="email" id="email-from" name="notifications.fromEmail" class="form-input" placeholder="noreply@company.com">
+                                        </div>
+                                        <div class="form-group">
+                                            <button type="button" id="test-email-btn" class="btn btn-secondary">
+                                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                                    <polyline points="22,4 12,14.01 9,11.01"></polyline>
+                                                </svg>
+                                                Send Test Email
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="tile">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">Alert Types</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <form class="settings-form">
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="tardy-alerts" name="notifications.tardyAlerts" checked>
+                                                <span class="checkmark"></span>
+                                                Tardiness alerts
+                                            </label>
+                                            <small class="form-help">Notify when employees are late</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="overtime-alerts" name="notifications.overtimeAlerts" checked>
+                                                <span class="checkmark"></span>
+                                                Overtime alerts
+                                            </label>
+                                            <small class="form-help">Notify when employees approach overtime</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="payroll-reminders" name="notifications.payrollReminders" checked>
+                                                <span class="checkmark"></span>
+                                                Payroll reminders
+                                            </label>
+                                            <small class="form-help">Remind about upcoming payroll deadlines</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="system-updates" name="notifications.systemUpdates">
+                                                <span class="checkmark"></span>
+                                                System update notifications
+                                            </label>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="absence-alerts" name="notifications.absenceAlerts" checked>
+                                                <span class="checkmark"></span>
+                                                Absence alerts
+                                            </label>
+                                            <small class="form-help">Notify when employees don't clock in</small>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Security Settings -->
+                    <div class="settings-content" id="security-settings">
+                        <div class="tiles-grid grid-2">
+                            <div class="tile">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">Session Management</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <form class="settings-form">
+                                        <div class="form-group">
+                                            <label for="session-timeout" class="form-label">Session Timeout (minutes)</label>
+                                            <input type="number" id="session-timeout" name="security.sessionTimeout" class="form-input" value="480" min="30" max="1440">
+                                            <small class="form-help">Automatically log out users after inactivity</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="remember-me" name="security.allowRememberMe" checked>
+                                                <span class="checkmark"></span>
+                                                Allow "Remember Me" option
+                                            </label>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="max-login-attempts" class="form-label">Max Login Attempts</label>
+                                            <input type="number" id="max-login-attempts" name="security.maxLoginAttempts" class="form-input" value="5" min="3" max="10">
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="tile">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">Password Policy</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                        <circle cx="12" cy="16" r="1"></circle>
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <form class="settings-form">
+                                        <div class="form-group">
+                                            <label for="password-min-length" class="form-label">Minimum Password Length</label>
+                                            <input type="number" id="password-min-length" name="security.passwordMinLength" class="form-input" value="6" min="4" max="20">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="require-uppercase" name="security.requireUppercase">
+                                                <span class="checkmark"></span>
+                                                Require uppercase letters
+                                            </label>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="require-numbers" name="security.requireNumbers">
+                                                <span class="checkmark"></span>
+                                                Require numbers
+                                            </label>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="require-special" name="security.requireSpecialChars">
+                                                <span class="checkmark"></span>
+                                                Require special characters
+                                            </label>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="require-password-change" name="security.requirePasswordChange">
+                                                <span class="checkmark"></span>
+                                                Require periodic password changes
+                                            </label>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="password-change-interval" class="form-label">Password Change Interval (days)</label>
+                                            <input type="number" id="password-change-interval" name="security.passwordChangeInterval" class="form-input" value="90" min="30" max="365">
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="tile">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">Two-Factor Authentication</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M9 12l2 2 4-4"></path>
+                                        <path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3"></path>
+                                        <path d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3"></path>
+                                        <path d="M12 3c0 1-1 3-3 3s-3-2-3-3 1-3 3-3 3 2 3 3"></path>
+                                        <path d="M12 21c0-1 1-3 3-3s3 2 3 3-1 3-3 3-3-2-3-3"></path>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <form class="settings-form">
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="two-factor-auth" name="security.twoFactorAuth">
+                                                <span class="checkmark"></span>
+                                                Enable two-factor authentication
+                                            </label>
+                                            <small class="form-help">Require additional verification for login</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="require-2fa-admin" name="security.require2FAAdmin">
+                                                <span class="checkmark"></span>
+                                                Require 2FA for administrators
+                                            </label>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="2fa-method" class="form-label">2FA Method</label>
+                                            <select id="2fa-method" name="security.twoFactorMethod" class="form-select">
+                                                <option value="email">Email</option>
+                                                <option value="sms">SMS</option>
+                                                <option value="app">Authenticator App</option>
+                                            </select>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="tile">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">Data & Backup</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14,2 14,8 20,8"></polyline>
+                                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                                        <polyline points="10,9 9,9 8,9"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <form class="settings-form">
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="auto-backup" name="security.autoBackup" checked>
+                                                <span class="checkmark"></span>
+                                                Enable automatic backups
+                                            </label>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="backup-frequency" class="form-label">Backup Frequency</label>
+                                            <select id="backup-frequency" name="security.backupFrequency" class="form-select">
+                                                <option value="daily" selected>Daily</option>
+                                                <option value="weekly">Weekly</option>
+                                                <option value="monthly">Monthly</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <button type="button" id="create-backup-btn" class="btn btn-secondary">
+                                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                    <polyline points="7,10 12,15 17,10"></polyline>
+                                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                                </svg>
+                                                Create Backup Now
+                                            </button>
+                                            <button type="button" id="restore-backup-btn" class="btn btn-outline">
+                                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                    <polyline points="17,8 12,3 7,8"></polyline>
+                                                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                                                </svg>
+                                                Restore Backup
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Theme Settings -->
+                    <div class="settings-content" id="theme-settings">
+                        <div class="tiles-grid grid-2">
+                            <div class="tile">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">Default Theme</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <form class="settings-form">
+                                        <div class="form-group">
+                                            <label for="default-theme" class="form-label">Default Theme</label>
+                                            <select id="default-theme" name="theme.defaultTheme" class="form-select">
+                                                <option value="light" selected>Light</option>
+                                                <option value="dark">Dark</option>
+                                                <option value="auto">Auto (System)</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="allow-user-themes" name="theme.allowUserThemes" checked>
+                                                <span class="checkmark"></span>
+                                                Allow users to change themes
+                                            </label>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="high-contrast" name="theme.highContrast">
+                                                <span class="checkmark"></span>
+                                                High contrast mode
+                                            </label>
+                                            <small class="form-help">Improve accessibility with higher contrast</small>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="tile">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">Color Customization</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="13.5" cy="6.5" r=".5"></circle>
+                                        <circle cx="17.5" cy="10.5" r=".5"></circle>
+                                        <circle cx="8.5" cy="7.5" r=".5"></circle>
+                                        <circle cx="6.5" cy="12.5" r=".5"></circle>
+                                        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <form class="settings-form">
+                                        <div class="form-group">
+                                            <label for="accent-color" class="form-label">Primary Accent Color</label>
+                                            <input type="color" id="accent-color" name="theme.accentColor" class="form-input" value="#ff9500">
+                                            <small class="form-help">Primary accent color for the interface</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="secondary-color" class="form-label">Secondary Color</label>
+                                            <input type="color" id="secondary-color" name="theme.secondaryColor" class="form-input" value="#007aff">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="success-color" class="form-label">Success Color</label>
+                                            <input type="color" id="success-color" name="theme.successColor" class="form-input" value="#34c759">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="warning-color" class="form-label">Warning Color</label>
+                                            <input type="color" id="warning-color" name="theme.warningColor" class="form-input" value="#ff9500">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="danger-color" class="form-label">Danger Color</label>
+                                            <input type="color" id="danger-color" name="theme.dangerColor" class="form-input" value="#ff3b30">
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="tile tile-large">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">Theme Preview</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <div class="theme-preview">
+                                        <div class="preview-card">
+                                            <div class="preview-header">
+                                                <h4>Sample Interface</h4>
+                                                <div class="preview-actions">
+                                                    <button class="preview-btn preview-btn-primary">Primary</button>
+                                                    <button class="preview-btn preview-btn-secondary">Secondary</button>
+                                                </div>
+                                            </div>
+                                            <div class="preview-content">
+                                                <p class="preview-text">This is how your interface will look with the current theme settings.</p>
+                                                <div class="preview-form">
+                                                    <input type="text" class="preview-input" placeholder="Sample input field">
+                                                    <select class="preview-select">
+                                                        <option>Sample dropdown</option>
+                                                    </select>
+                                                </div>
+                                                <div class="preview-badges">
+                                                    <span class="preview-badge preview-badge-success">Success</span>
+                                                    <span class="preview-badge preview-badge-warning">Warning</span>
+                                                    <span class="preview-badge preview-badge-danger">Danger</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Management Settings -->
+                    <div class="settings-content" id="users-settings">
+                        <div class="tiles-grid grid-2">
+                            <div class="tile">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">User Management</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="9" cy="7" r="4"></circle>
+                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <p>Manage employee accounts, roles, and permissions through the dedicated user management interface.</p>
+                                    
+                                    <div class="user-management-actions">
+                                        <button type="button" class="btn btn-primary" id="add-employee-btn">
+                                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                <circle cx="8.5" cy="7" r="4"></circle>
+                                                <line x1="20" y1="8" x2="20" y2="14"></line>
+                                                <line x1="23" y1="11" x2="17" y2="11"></line>
+                                            </svg>
+                                            Add New Employee
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" id="manage-users-btn">
+                                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                                            </svg>
+                                            Manage All Users
+                                        </button>
+                                    </div>
+
+                                    <div class="quick-actions">
+                                        <h4>Quick Actions</h4>
+                                        <div class="action-buttons">
+                                            <button class="btn btn-sm btn-outline" id="export-users-btn">Export Users</button>
+                                            <button class="btn btn-sm btn-outline" id="import-users-btn">Import Users</button>
+                                            <button class="btn btn-sm btn-outline" id="bulk-password-reset-btn">Bulk Password Reset</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tile">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">User Statistics</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="8.5" cy="7" r="4"></circle>
+                                        <line x1="20" y1="8" x2="20" y2="14"></line>
+                                        <line x1="23" y1="11" x2="17" y2="11"></line>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <div id="user-stats" class="stats-grid">
+                                        <div class="stat-card">
+                                            <div class="stat-value">12</div>
+                                            <div class="stat-label">Total Users</div>
+                                        </div>
+                                        <div class="stat-card">
+                                            <div class="stat-value">10</div>
+                                            <div class="stat-label">Active Users</div>
+                                        </div>
+                                        <div class="stat-card">
+                                            <div class="stat-value">2</div>
+                                            <div class="stat-label">Inactive Users</div>
+                                        </div>
+                                        <div class="stat-card">
+                                            <div class="stat-value">3</div>
+                                            <div class="stat-label">Administrators</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tile">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">Default User Settings</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                        <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1m15.5-3.5L19 4l-1.5 1.5M5 20l1.5-1.5L5 17"></path>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <form class="settings-form">
+                                        <div class="form-group">
+                                            <label for="default-role" class="form-label">Default Role for New Users</label>
+                                            <select id="default-role" name="users.defaultRole" class="form-select">
+                                                <option value="employee" selected>Employee</option>
+                                                <option value="admin">Administrator</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="default-hourly-rate" class="form-label">Default Hourly Rate ($)</label>
+                                            <input type="number" id="default-hourly-rate" name="users.defaultHourlyRate" class="form-input" value="15.00" min="0" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="require-email-verification" name="users.requireEmailVerification">
+                                                <span class="checkmark"></span>
+                                                Require email verification for new accounts
+                                            </label>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="auto-generate-passwords" name="users.autoGeneratePasswords" checked>
+                                                <span class="checkmark"></span>
+                                                Auto-generate secure passwords
+                                            </label>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="tile">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">Account Policies</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14,2 14,8 20,8"></polyline>
+                                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                                        <polyline points="10,9 9,9 8,9"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <form class="settings-form">
+                                        <div class="form-group">
+                                            <label for="account-lockout-attempts" class="form-label">Account Lockout After (failed attempts)</label>
+                                            <input type="number" id="account-lockout-attempts" name="users.lockoutAttempts" class="form-input" value="5" min="3" max="10">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="account-lockout-duration" class="form-label">Lockout Duration (minutes)</label>
+                                            <input type="number" id="account-lockout-duration" name="users.lockoutDuration" class="form-input" value="30" min="5" max="1440">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="auto-deactivate-inactive" name="users.autoDeactivateInactive">
+                                                <span class="checkmark"></span>
+                                                Auto-deactivate inactive accounts
+                                            </label>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="inactive-threshold" class="form-label">Inactive Threshold (days)</label>
+                                            <input type="number" id="inactive-threshold" name="users.inactiveThreshold" class="form-input" value="90" min="30" max="365">
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Footer -->
+                <footer class="settings-footer">
+                    <div class="settings-actions">
+                        <button class="btn btn-secondary" id="reset-settings-btn">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="1,4 1,10 7,10"></polyline>
+                                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                            </svg>
+                            Reset to Defaults
+                        </button>
+                        <div class="save-status">
+                            <span id="save-status-text">All changes saved</span>
+                        </div>
+                    </div>
+                </footer>
+            </div>
+        </main>
+    </div>
+
+    <!-- Mobile Floating Action Button Container -->
+    <div class="mobile-fab-container" id="mobile-fab-container" style="display: none;">
+        <button class="mobile-fab-main" 
+                id="mobile-fab-main" 
+                aria-label="Quick actions menu"
+                aria-expanded="false"
+                aria-haspopup="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+        </button>
+        <div class="mobile-fab-menu" role="menu" aria-label="Quick actions">
+            <button class="mobile-fab-item" 
+                    data-action="clock" 
+                    role="menuitem"
+                    aria-label="Clock in or out"
+                    title="Clock In/Out">
+                <span>🕐</span>
+            </button>
+            <button class="mobile-fab-item" 
+                    data-action="employee" 
+                    role="menuitem"
+                    aria-label="Add new employee"
+                    title="Add Employee">
+                <span>👤</span>
+            </button>
+            <button class="mobile-fab-item" 
+                    data-action="report" 
+                    role="menuitem"
+                    aria-label="Generate report"
+                    title="Generate Report">
+                <span>📊</span>
+            </button>
+            <button class="mobile-fab-item" 
+                    data-action="status" 
+                    role="menuitem"
+                    aria-label="View system status"
+                    title="System Status">
+                <span>❤️</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/utils.js"></script>
+    <script src="js/mock-data.js"></script>
+    <script src="js/data-service.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/theme.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/modals.js"></script>
+    <script src="js/user-management.js"></script>
+    <script src="js/settings.js"></script>
+
+    <style>
+        /* Settings-specific styles */
+        .settings-tabs {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-xl);
+            border-bottom: 1px solid var(--border-color);
+            overflow-x: auto;
+            padding-bottom: var(--spacing-sm);
+        }
+
+        .settings-tab {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-md) var(--spacing-lg);
+            background: none;
+            border: none;
+            border-radius: var(--radius-md) var(--radius-md) 0 0;
+            color: var(--text-secondary);
+            font-weight: var(--font-weight-medium);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            white-space: nowrap;
+            border-bottom: 2px solid transparent;
+        }
+
+        .settings-tab:hover {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .settings-tab.active {
+            background-color: var(--accent-light);
+            color: var(--accent-primary);
+            border-bottom-color: var(--accent-primary);
+        }
+
+        .tab-icon {
+            width: 18px;
+            height: 18px;
+        }
+
+        .settings-container {
+            position: relative;
+        }
+
+        .settings-content {
+            display: none;
+        }
+
+        .settings-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .settings-form {
+            height: 100%;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-lg);
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            cursor: pointer;
+            font-weight: var(--font-weight-medium);
+        }
+
+        .checkmark {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            position: relative;
+            transition: all var(--transition-fast);
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            display: none;
+        }
+
+        .checkbox-label input[type="checkbox"]:checked + .checkmark {
+            background-color: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .checkbox-label input[type="checkbox"]:checked + .checkmark::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .user-management-actions {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .quick-actions h4 {
+            margin-bottom: var(--spacing-md);
+            font-size: var(--font-size-base);
+            color: var(--text-secondary);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: var(--spacing-sm);
+            flex-wrap: wrap;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-md);
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: var(--spacing-md);
+            background-color: var(--bg-secondary);
+            border-radius: var(--radius-md);
+        }
+
+        .stat-value {
+            font-size: var(--font-size-2xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--accent-primary);
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            margin-top: var(--spacing-xs);
+        }
+
+        .theme-preview {
+            padding: var(--spacing-lg);
+            background-color: var(--bg-secondary);
+            border-radius: var(--radius-md);
+        }
+
+        .preview-card {
+            background-color: var(--bg-primary);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            border: 1px solid var(--border-color);
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+            padding-bottom: var(--spacing-md);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .preview-header h4 {
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .preview-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .preview-btn {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-sm);
+            cursor: pointer;
+        }
+
+        .preview-btn-primary {
+            background-color: var(--accent-primary);
+            color: white;
+        }
+
+        .preview-btn-secondary {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .preview-content {
+            color: var(--text-secondary);
+        }
+
+        .preview-text {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .preview-form {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .preview-input,
+        .preview-select {
+            flex: 1;
+            padding: var(--spacing-sm);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .preview-badges {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .preview-badge {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .preview-badge-success {
+            background-color: rgba(52, 199, 89, 0.1);
+            color: #34c759;
+        }
+
+        .preview-badge-warning {
+            background-color: rgba(255, 149, 0, 0.1);
+            color: #ff9500;
+        }
+
+        .preview-badge-danger {
+            background-color: rgba(255, 59, 48, 0.1);
+            color: #ff3b30;
+        }
+
+        .settings-footer {
+            margin-top: var(--spacing-2xl);
+            padding-top: var(--spacing-xl);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .settings-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .save-status {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            color: var(--text-tertiary);
+            font-size: var(--font-size-sm);
+        }
+
+        .field-error {
+            color: #ff3b30;
+            font-size: var(--font-size-sm);
+            margin-top: var(--spacing-xs);
+            display: none;
+        }
+
+        .form-input.error,
+        .form-select.error {
+            border-color: #ff3b30;
+        }
+
+        /* Skip Navigation Links */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 6px;
+            background: var(--accent-primary);
+            color: var(--color-white);
+            padding: 8px;
+            text-decoration: none;
+            border-radius: var(--radius-sm);
+            z-index: 10000;
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            transition: top var(--transition-fast);
+        }
+
+        .skip-link:focus {
+            top: 6px;
+        }
+
+        /* Mobile Floating Action Button */
+        .mobile-fab-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .mobile-fab-main {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+            color: var(--color-white);
+            border: none;
+            box-shadow: var(--shadow-lg);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+            position: relative;
+            z-index: 1001;
+        }
+
+        .mobile-fab-main:hover {
+            background: var(--accent-hover);
+            transform: scale(1.1);
+        }
+
+        .mobile-fab-main:focus {
+            outline: 2px solid var(--color-white);
+            outline-offset: 2px;
+        }
+
+        .mobile-fab-main svg {
+            width: 24px;
+            height: 24px;
+            transition: transform var(--transition-fast);
+        }
+
+        .mobile-fab-container.open .mobile-fab-main svg {
+            transform: rotate(45deg);
+        }
+
+        .mobile-fab-menu {
+            position: absolute;
+            bottom: 70px;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(20px);
+            transition: all var(--transition-normal);
+        }
+
+        .mobile-fab-container.open .mobile-fab-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .mobile-fab-item {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+            font-size: 1.2rem;
+        }
+
+        .mobile-fab-item:hover {
+            background: var(--accent-light);
+            border-color: var(--accent-primary);
+            transform: scale(1.1);
+        }
+
+        .mobile-fab-item:focus {
+            outline: 2px solid var(--accent-primary);
+            outline-offset: 2px;
+        }
+
+        /* Responsive Design Updates */
+        @media (max-width: 1024px) {
+            .tiles-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .settings-tabs {
+                flex-wrap: wrap;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .user-management-actions {
+                flex-direction: column;
+            }
+
+            .preview-form {
+                flex-direction: column;
+            }
+
+            .settings-actions {
+                flex-direction: column;
+                gap: var(--spacing-md);
+                align-items: stretch;
+            }
+
+            /* Adjust theme toggle for mobile */
+            .theme-toggle {
+                top: var(--spacing-md);
+                right: 60px; /* Make room for mobile menu toggle */
+            }
+
+            /* Show mobile FAB when sidebar is collapsed */
+            .mobile-fab-container {
+                display: block;
+            }
+
+            /* Ensure settings content doesn't overlap with mobile elements */
+            .main-content {
+                padding-bottom: 100px; /* Extra space for mobile FAB */
+            }
+
+            /* Adjust page header for mobile */
+            .page-header {
+                flex-direction: column;
+                gap: var(--spacing-md);
+            }
+
+            .page-actions {
+                flex-wrap: wrap;
+                justify-content: flex-start;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .page-actions {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .page-actions .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .settings-tabs {
+                padding: 0 var(--spacing-sm);
+            }
+
+            .settings-tab {
+                padding: var(--spacing-sm) var(--spacing-md);
+                font-size: var(--font-size-sm);
+            }
+
+            .tab-icon {
+                width: 16px;
+                height: 16px;
+            }
+        }
+    </style>
+
+    <!-- Settings Page Initialization Script -->
+    <script>
+        // Initialize settings page when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Settings page DOM loaded, starting initialization...');
+            
+            try {
+                // Initialize data service first
+                if (typeof DataService !== 'undefined' && !window.dataService) {
+                    window.dataService = new DataService();
+                    console.log('✅ DataService initialized');
+                } else if (!window.dataService) {
+                    console.error('❌ DataService class not available');
+                }
+                
+                // Initialize theme manager
+                if (typeof ThemeManager !== 'undefined' && !window.themeManager) {
+                    window.themeManager = new ThemeManager();
+                    console.log('✅ ThemeManager initialized');
+                } else if (!window.themeManager) {
+                    console.warn('⚠️ ThemeManager not available, continuing without it');
+                }
+                
+                // Initialize core components
+                if (typeof SidebarManager !== 'undefined') {
+                    window.sidebarManager = new SidebarManager();
+                    console.log('✅ SidebarManager initialized');
+                } else {
+                    console.warn('⚠️ SidebarManager not available');
+                }
+                
+                // Initialize settings controller
+                if (typeof SettingsController !== 'undefined') {
+                    console.log('🔄 Creating SettingsController...');
+                    window.settingsController = new SettingsController();
+                    console.log('✅ SettingsController initialized');
+                } else {
+                    console.error('❌ SettingsController class not found - check if settings.js is loaded correctly');
+                    // Display error message to user
+                    const mainContent = document.querySelector('.main-content');
+                    if (mainContent) {
+                        mainContent.innerHTML = `
+                            <div style="padding: 2rem; text-align: center; color: #721c24; background: #f8d7da; border-radius: 5px; margin: 2rem;">
+                                <h2>Settings Page Error</h2>
+                                <p>Unable to load the settings controller. Please check the browser console for more details.</p>
+                                <button onclick="location.reload()" style="padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                    Refresh Page
+                                </button>
+                            </div>
+                        `;
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Settings page initialization failed:', error);
+                const mainContent = document.querySelector('.main-content');
+                if (mainContent) {
+                    mainContent.innerHTML = `
+                        <div style="padding: 2rem; text-align: center; color: #721c24; background: #f8d7da; border-radius: 5px; margin: 2rem;">
+                            <h2>Settings Page Error</h2>
+                            <p>Initialization failed: ${error.message}</p>
+                            <p>Please check the browser console for more details.</p>
+                            <button onclick="location.reload()" style="padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                Refresh Page
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+            
+            // Handle mobile hamburger menu
+            const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+            if (mobileMenuToggle) {
+                mobileMenuToggle.addEventListener('click', function() {
+                    if (window.sidebarManager) {
+                        window.sidebarManager.toggleSidebar();
+                        // Update aria-expanded
+                        const isCollapsed = window.sidebarManager.isCollapsed;
+                        mobileMenuToggle.setAttribute('aria-expanded', !isCollapsed);
+                    }
+                });
+            }
+
+            // Handle mobile FAB
+            const mobileFabMain = document.getElementById('mobile-fab-main');
+            const mobileFabContainer = document.getElementById('mobile-fab-container');
+            if (mobileFabMain && mobileFabContainer) {
+                mobileFabMain.addEventListener('click', function() {
+                    const isOpen = mobileFabContainer.classList.contains('open');
+                    mobileFabContainer.classList.toggle('open');
+                    mobileFabMain.setAttribute('aria-expanded', !isOpen);
+                });
+
+                // Handle FAB menu items
+                mobileFabContainer.addEventListener('click', function(e) {
+                    const fabItem = e.target.closest('.mobile-fab-item');
+                    if (fabItem) {
+                        const action = fabItem.dataset.action;
+                        if (window.sidebarManager) {
+                            window.sidebarManager.handleMobileFabAction(action);
+                        }
+                        // Close FAB menu
+                        mobileFabContainer.classList.remove('open');
+                        mobileFabMain.setAttribute('aria-expanded', 'false');
+                    }
+                });
+
+                // Close FAB menu when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!mobileFabContainer.contains(e.target)) {
+                        mobileFabContainer.classList.remove('open');
+                        mobileFabMain.setAttribute('aria-expanded', 'false');
+                    }
+                });
+            }
+
+            // Handle keyboard shortcuts for quick actions
+            document.addEventListener('keydown', function(e) {
+                if (e.altKey) {
+                    switch(e.key.toLowerCase()) {
+                        case 'c':
+                            e.preventDefault();
+                            document.getElementById('quickClockBtn')?.click();
+                            break;
+                        case 'e':
+                            e.preventDefault();
+                            document.getElementById('quickAddEmployeeBtn')?.click();
+                            break;
+                        case 'r':
+                            e.preventDefault();
+                            document.getElementById('quickReportBtn')?.click();
+                            break;
+                        case 's':
+                            e.preventDefault();
+                            document.getElementById('quickStatusBtn')?.click();
+                            break;
+                    }
+                }
+            });
+
+            // Ensure settings forms remain usable when sidebar state changes
+            if (window.sidebarManager) {
+                // Listen for sidebar state changes
+                document.addEventListener('sidebar:toggle', function(e) {
+                    const isCollapsed = e.detail.collapsed;
+                    const mainContent = document.querySelector('.main-content');
+                    
+                    // Adjust main content margin for sidebar state
+                    if (window.innerWidth > 768) {
+                        if (isCollapsed) {
+                            mainContent.style.marginLeft = '0';
+                        } else {
+                            mainContent.style.marginLeft = 'var(--sidebar-width)';
+                        }
+                    }
+                    
+                    // Show/hide mobile FAB based on sidebar state and screen size
+                    const mobileFab = document.getElementById('mobile-fab-container');
+                    if (mobileFab && window.innerWidth <= 768) {
+                        if (isCollapsed) {
+                            mobileFab.style.display = 'block';
+                        } else {
+                            mobileFab.style.display = 'none';
+                        }
+                    }
+                });
+            }
+
+            // Handle window resize for responsive behavior
+            window.addEventListener('resize', function() {
+                const mobileFab = document.getElementById('mobile-fab-container');
+                const mainContent = document.querySelector('.main-content');
+                
+                if (window.innerWidth <= 768) {
+                    // Mobile view
+                    if (mobileFab) {
+                        mobileFab.style.display = 'block';
+                    }
+                    if (mainContent) {
+                        mainContent.style.marginLeft = '0';
+                    }
+                } else {
+                    // Desktop view
+                    if (mobileFab) {
+                        mobileFab.style.display = 'none';
+                    }
+                    if (mainContent && window.sidebarManager && !window.sidebarManager.isCollapsed) {
+                        mainContent.style.marginLeft = 'var(--sidebar-width)';
+                    }
+                }
+            });
+
+            console.log('Settings page initialized with accessibility and responsive features');
+            
+            // Initialize settings controller
+            if (typeof SettingsController !== 'undefined') {
+                window.settingsController = new SettingsController();
+            } else {
+                console.error('SettingsController not found');
+            }
+        });
+    </script>
+</body>
+</html>

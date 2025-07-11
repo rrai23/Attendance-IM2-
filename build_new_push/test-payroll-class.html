@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PayrollController Availability Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .test-result {
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <h1>PayrollController Availability Test</h1>
+    <div id="test-results"></div>
+
+    <!-- Load required dependencies -->
+    <script src="/js/mock-data.js"></script>
+    <script src="/js/data-service.js"></script>
+    <script src="/js/modals.js"></script>
+    <script src="/js/payroll.js"></script>
+
+    <script>
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('test-results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.textContent = message;
+            resultsDiv.appendChild(resultDiv);
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // Run tests immediately
+        function runTests() {
+            addResult('Starting PayrollController availability tests...', 'info');
+
+            // Test 1: Check if PayrollController class is available
+            if (typeof PayrollController === 'undefined') {
+                addResult('❌ PayrollController class is not defined', 'error');
+            } else {
+                addResult('✅ PayrollController class is available', 'success');
+            }
+
+            // Test 2: Check if PayrollController is on window object
+            if (typeof window.PayrollController === 'undefined') {
+                addResult('❌ window.PayrollController is not available', 'error');
+            } else {
+                addResult('✅ window.PayrollController is available', 'success');
+            }
+
+            // Test 3: Check if modalManager is available
+            if (typeof window.modalManager === 'undefined') {
+                addResult('❌ window.modalManager is not available', 'error');
+            } else {
+                addResult('✅ window.modalManager is available', 'success');
+            }
+
+            // Test 4: Try to create PayrollController instance
+            try {
+                const testController = new PayrollController();
+                addResult('✅ PayrollController instance created successfully', 'success');
+
+                // Test 5: Check if showEditWageModal method exists
+                if (typeof testController.showEditWageModal === 'function') {
+                    addResult('✅ showEditWageModal method is available', 'success');
+                } else {
+                    addResult('❌ showEditWageModal method is not available', 'error');
+                }
+
+            } catch (error) {
+                addResult(`❌ Failed to create PayrollController instance: ${error.message}`, 'error');
+            }
+
+            // Test 6: Check existing payrollController instance
+            if (typeof window.payrollController !== 'undefined') {
+                addResult('✅ Global payrollController instance is available', 'success');
+            } else {
+                addResult('⚠️ Global payrollController instance is not yet available', 'info');
+            }
+        }
+
+        // Run tests when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', runTests);
+        } else {
+            runTests();
+        }
+
+        // Also run tests after a delay to check if instance gets created
+        setTimeout(() => {
+            addResult('--- Running delayed tests (after 2 seconds) ---', 'info');
+            
+            // Check if the creation function was called
+            addResult(`Document readyState: ${document.readyState}`, 'info');
+            addResult(`PayrollController class available: ${typeof PayrollController !== 'undefined'}`, 'info');
+            addResult(`window.PayrollController available: ${typeof window.PayrollController !== 'undefined'}`, 'info');
+            
+            if (typeof window.payrollController !== 'undefined') {
+                addResult('✅ Global payrollController instance is now available', 'success');
+                
+                // Test the actual functionality
+                if (typeof window.payrollController.showEditWageModal === 'function') {
+                    addResult('✅ showEditWageModal method is available on global instance', 'success');
+                    
+                    // Test initialization status
+                    if (window.payrollController.isInitialized) {
+                        addResult('✅ PayrollController is fully initialized', 'success');
+                    } else {
+                        addResult('⚠️ PayrollController is not yet fully initialized', 'info');
+                    }
+                } else {
+                    addResult('❌ showEditWageModal method is not available on global instance', 'error');
+                }
+            } else {
+                addResult('❌ Global payrollController instance is still not available', 'error');
+                
+                // Try to create using factory function
+                if (typeof window.createPayrollController === 'function') {
+                    addResult('⚠️ Trying factory function...', 'info');
+                    const factoryInstance = window.createPayrollController();
+                    if (factoryInstance) {
+                        addResult('✅ Factory function creation successful', 'success');
+                    } else {
+                        addResult('❌ Factory function creation failed', 'error');
+                    }
+                } else {
+                    // Try to create manually
+                    try {
+                        const testInstance = new PayrollController();
+                        addResult('✅ Manual PayrollController creation successful', 'success');
+                        window.payrollController = testInstance;
+                        addResult('✅ Manually assigned to window.payrollController', 'success');
+                    } catch (error) {
+                        addResult(`❌ Manual creation failed: ${error.message}`, 'error');
+                    }
+                }
+            }
+        }, 2000);
+
+        // Also run tests after a longer delay
+        setTimeout(() => {
+            addResult('--- Running final tests (after 5 seconds) ---', 'info');
+            
+            if (typeof window.payrollController !== 'undefined') {
+                addResult('✅ Final check: Global payrollController instance is available', 'success');
+                
+                if (window.payrollController.isInitialized) {
+                    addResult('✅ Final check: PayrollController is fully initialized', 'success');
+                } else {
+                    addResult('⚠️ Final check: PayrollController initialization still in progress', 'info');
+                }
+            } else {
+                addResult('❌ Final check: Global payrollController instance is still not available', 'error');
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
