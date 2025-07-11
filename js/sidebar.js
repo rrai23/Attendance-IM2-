@@ -699,14 +699,27 @@ class SidebarManager {
      * Handle logout button click
      */
     handleLogout() {
-        if (typeof authService !== 'undefined') {
-            // Show confirmation if needed
-            if (confirm('Are you sure you want to logout?')) {
-                authService.logout('user_logout');
-            }
+        // Use specialized logout modal
+        if (typeof confirmLogout !== 'undefined') {
+            confirmLogout({
+                onConfirm: () => {
+                    if (typeof authService !== 'undefined') {
+                        authService.logout('user_logout');
+                    } else {
+                        // Fallback logout
+                        window.location.href = '/login.html';
+                    }
+                }
+            });
         } else {
-            // Fallback logout
-            window.location.href = '/login.html';
+            // Fallback to browser confirm if modal system not available
+            if (confirm('Are you sure you want to logout?')) {
+                if (typeof authService !== 'undefined') {
+                    authService.logout('user_logout');
+                } else {
+                    window.location.href = '/login.html';
+                }
+            }
         }
     }
 

@@ -577,12 +577,28 @@ class SettingsPage {
      * Handle logout
      */
     handleLogout() {
-        if (this.unsavedChanges) {
-            const confirmLogout = confirm('You have unsaved changes. Are you sure you want to logout?');
-            if (!confirmLogout) return;
+        // Use specialized logout modal
+        if (typeof confirmLogout !== 'undefined') {
+            confirmLogout({
+                message: this.unsavedChanges 
+                    ? 'Are you sure you want to logout? You will lose any unsaved changes.'
+                    : 'Are you sure you want to logout? You will be redirected to the login page.',
+                unsavedChanges: this.unsavedChanges,
+                onConfirm: () => {
+                    Auth.logout();
+                }
+            });
+        } else {
+            // Fallback to browser confirm if modal system not available
+            if (this.unsavedChanges) {
+                const confirmLogout = confirm('You have unsaved changes. Are you sure you want to logout?');
+                if (!confirmLogout) return;
+            } else {
+                const confirmLogout = confirm('Are you sure you want to logout?');
+                if (!confirmLogout) return;
+            }
+            Auth.logout();
         }
-
-        Auth.logout();
     }
 
     /**
