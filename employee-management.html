@@ -531,6 +531,7 @@
     </div>
 
     <!-- Scripts -->
+    <script src="/js/data-manager.js"></script>
     <script src="/js/data-service.js"></script>
     <script src="/js/theme.js"></script>
     <script src="/js/auth.js"></script>
@@ -544,7 +545,6 @@
                 this.employees = [];
                 this.filteredData = [];
                 
-                console.log('EmployeeManagementPage constructor called');
                 this.init();
             }
 
@@ -553,25 +553,26 @@
                     // Show loading state
                     this.showLoadingState(true);
                     
-                    // Wait for employee attendance manager to be ready
-                    if (window.employeeAttendanceManager) {
-                        // Ensure the attendance manager is properly initialized
-                        if (!window.employeeAttendanceManager.employees.length) {
-                            console.log('Initializing attendance manager...');
-                            await window.employeeAttendanceManager.init();
-                        }
-                        this.employees = window.employeeAttendanceManager.employees;
-                        this.attendanceData = window.employeeAttendanceManager.attendanceRecords;
-                        console.log(`Loaded ${this.employees.length} employees and ${this.attendanceData.length} attendance records from manager`);
+                    // Wait for data manager to be ready
+                    if (window.dataManager) {
+                        await window.dataManager.init();
+                        this.employees = window.dataManager.getEmployees();
+                        this.attendanceData = window.dataManager.getAttendanceRecords();
+                        
+                        // Set up data change listeners
+                        window.dataManager.addEventListener('attendanceUpdate', (data) => {
+                            this.handleDataUpdate(data);
+                        });
+                        
+                        window.dataManager.addEventListener('employeeUpdate', (data) => {
+                            this.employees = window.dataManager.getEmployees();
+                            this.updateEmployeeDropdowns();
+                        });
                     } else {
-                        console.log('Attendance manager not available, loading data directly...');
-                        // Fallback to loading data directly
+                        // Fallback if data manager isn't available
                         await this.loadEmployees();
                         await this.loadAttendanceData();
                     }
-                    
-                    // Initialize filtered data
-                    this.filteredData = [...this.attendanceData];
                     
                     this.setupEventListeners();
                     this.setupFilters();
@@ -581,7 +582,7 @@
                     // Hide loading state
                     this.showLoadingState(false);
                     
-                    console.log('Employee management page initialized successfully');
+                    console.log('Employee management page initialized successfully with data manager');
                 } catch (error) {
                     console.error('Failed to initialize employee management page:', error);
                     this.showLoadingState(false);
@@ -617,32 +618,24 @@
 
             async loadAttendanceData() {
                 try {
-                    console.log('loadAttendanceData called');
                     // If we have the attendance manager, use its data
                     if (window.employeeAttendanceManager && window.employeeAttendanceManager.attendanceRecords.length > 0) {
                         this.attendanceData = window.employeeAttendanceManager.attendanceRecords;
                         console.log(`Using attendance manager data: ${this.attendanceData.length} records`);
-                        console.log('Sample record:', this.attendanceData[0]);
                         return;
                     }
 
-                    console.log('Generating mock attendance data...');
                     // Fallback: Generate mock attendance data
                     const today = new Date();
                     const yesterday = new Date(today);
                     yesterday.setDate(today.getDate() - 1);
-                    const todayStr = today.toISOString().split('T')[0];
-                    const yesterdayStr = yesterday.toISOString().split('T')[0];
-                    
-                    console.log('Today date string:', todayStr);
-                    console.log('Yesterday date string:', yesterdayStr);
                     
                     this.attendanceData = [
                         {
                             id: 1,
                             employeeId: 1,
                             employeeName: 'John Doe',
-                            date: todayStr,
+                            date: today.toISOString().split('T')[0],
                             clockIn: '09:00',
                             clockOut: '17:30',
                             status: 'present',
@@ -653,7 +646,7 @@
                             id: 2,
                             employeeId: 2,
                             employeeName: 'Jane Smith',
-                            date: todayStr,
+                            date: today.toISOString().split('T')[0],
                             clockIn: '09:15',
                             clockOut: '17:45',
                             status: 'late',
@@ -664,7 +657,7 @@
                             id: 3,
                             employeeId: 3,
                             employeeName: 'Bob Johnson',
-                            date: todayStr,
+                            date: today.toISOString().split('T')[0],
                             clockIn: null,
                             clockOut: null,
                             status: 'absent',
@@ -675,7 +668,7 @@
                             id: 4,
                             employeeId: 4,
                             employeeName: 'Alice Brown',
-                            date: todayStr,
+                            date: today.toISOString().split('T')[0],
                             clockIn: '08:45',
                             clockOut: '19:00',
                             status: 'overtime',
@@ -686,7 +679,7 @@
                             id: 5,
                             employeeId: 5,
                             employeeName: 'Charlie Wilson',
-                            date: yesterdayStr,
+                            date: yesterday.toISOString().split('T')[0],
                             clockIn: '09:00',
                             clockOut: '17:00',
                             status: 'present',
@@ -697,7 +690,6 @@
 
                     this.filteredData = [...this.attendanceData];
                     console.log(`Generated mock attendance data: ${this.attendanceData.length} records`);
-                    console.log('Mock data sample:', this.attendanceData[0]);
                 } catch (error) {
                     console.error('Failed to load attendance data:', error);
                     this.attendanceData = [];
@@ -747,7 +739,12 @@
                     try {
                         this.showLoadingState(true);
                         
-                        if (window.employeeAttendanceManager) {
+                        if (window.dataManager) {
+                            // Reload data from data manager
+                            this.attendanceData = window.dataManager.getAttendanceRecords();
+                            this.employees = window.dataManager.getEmployees();
+                            this.updateEmployeeDropdowns();
+                        } else if (window.employeeAttendanceManager) {
                             // Reload data from attendance manager
                             await window.employeeAttendanceManager.loadAttendanceRecords();
                             this.attendanceData = window.employeeAttendanceManager.attendanceRecords;
@@ -782,9 +779,42 @@
             }
 
             setupFilters() {
-                // Don't set a default date filter - show all records initially
-                console.log('Setting up filters...');
+                // Set default date filter to today
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('dateFilter').value = today;
                 this.applyFilters();
+            }
+
+            applyFilters() {
+                const employeeId = document.getElementById('employeeFilter').value;
+                const date = document.getElementById('dateFilter').value;
+                const status = document.getElementById('statusFilter').value;
+                const search = document.getElementById('searchInput').value.toLowerCase();
+
+                this.filteredData = this.attendanceData.filter(record => {
+                    let matches = true;
+
+                    if (employeeId && record.employeeId != employeeId) {
+                        matches = false;
+                    }
+
+                    if (date && record.date !== date) {
+                        matches = false;
+                    }
+
+                    if (status && record.status !== status) {
+                        matches = false;
+                    }
+
+                    if (search && !record.employeeName.toLowerCase().includes(search)) {
+                        matches = false;
+                    }
+
+                    return matches;
+                });
+
+                this.updateStats();
+                this.renderTable();
             }
 
             updateStats() {
@@ -800,6 +830,60 @@
                 document.getElementById('lateCount').textContent = lateCount;
                 document.getElementById('absentCount').textContent = absentCount;
                 document.getElementById('overtimeCount').textContent = overtimeCount;
+            }
+
+            renderTable() {
+                const tbody = document.getElementById('attendanceTableBody');
+                const emptyState = document.getElementById('emptyState');
+
+                if (this.filteredData.length === 0) {
+                    tbody.innerHTML = '';
+                    emptyState.classList.remove('hidden');
+                    return;
+                }
+
+                emptyState.classList.add('hidden');
+
+                tbody.innerHTML = this.filteredData.map(record => `
+                    <tr>
+                        <td>
+                            <div class="employee-info">
+                                <div class="employee-name">${record.employeeName}</div>
+                                <div class="employee-details">
+                                    <span class="employee-id">ID: ${record.employeeCode || record.employeeId}</span>
+                                    ${record.department ? `<span class="employee-dept">${record.department}</span>` : ''}
+                                </div>
+                            </div>
+                        </td>
+                        <td>${this.formatDate(record.date)}</td>
+                        <td>${record.clockIn || '--:--'}</td>
+                        <td>${record.clockOut || '--:--'}</td>
+                        <td>
+                            <span class="status-badge status-${record.status}">
+                                ${this.getStatusIcon(record.status)} ${this.capitalizeFirst(record.status)}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="hours-info">
+                                <span class="regular-hours">${record.hours}h</span>
+                                ${record.overtimeHours > 0 ? `<span class="overtime-hours">+${record.overtimeHours}h OT</span>` : ''}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn btn-sm btn-outline" onclick="employeeManagement.editRecord('${record.id}')" title="Edit">
+                                    <span class="btn-icon">✏️</span>
+                                </button>
+                                <button class="btn btn-sm btn-outline" onclick="employeeManagement.overrideStatus('${record.id}')" title="Override Status">
+                                    <span class="btn-icon">🔄</span>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="employeeManagement.deleteRecord('${record.id}')" title="Delete">
+                                    <span class="btn-icon">🗑️</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
             }
 
             getStatusIcon(status) {
@@ -885,8 +969,11 @@
                         notes: document.getElementById('notes').value
                     };
 
-                    // Use employee attendance manager if available
-                    if (window.employeeAttendanceManager) {
+                    // Use data manager if available
+                    if (window.dataManager) {
+                        const savedRecord = await window.dataManager.saveAttendanceRecord(recordData);
+                        this.attendanceData = window.dataManager.getAttendanceRecords();
+                    } else if (window.employeeAttendanceManager) {
                         const savedRecord = await window.employeeAttendanceManager.saveAttendanceRecord(recordData);
                         this.attendanceData = window.employeeAttendanceManager.attendanceRecords;
                     } else {
@@ -1094,25 +1181,19 @@
             }
 
             renderTable() {
-                console.log('renderTable called, filteredData length:', this.filteredData.length);
                 const tableBody = document.getElementById('attendanceTableBody');
                 const emptyState = document.getElementById('emptyState');
                 const table = document.getElementById('attendanceTable');
 
-                if (!tableBody) {
-                    console.error('Table body element not found!');
-                    return;
-                }
+                if (!tableBody) return;
 
                 if (this.filteredData.length === 0) {
-                    console.log('No filtered data, showing empty state');
                     tableBody.innerHTML = '';
                     table.style.display = 'none';
                     emptyState.style.display = 'block';
                     return;
                 }
 
-                console.log('Rendering table with', this.filteredData.length, 'records');
                 table.style.display = 'table';
                 emptyState.style.display = 'none';
 
@@ -1232,20 +1313,30 @@
                 }
 
                 try {
-                    const updatedRecord = {
-                        ...record,
-                        status: newStatus,
-                        notes: `Status updated from ${record.status} to ${newStatus} on ${new Date().toLocaleString()}`
-                    };
-
-                    if (window.employeeAttendanceManager) {
-                        await window.employeeAttendanceManager.saveAttendanceRecord(updatedRecord);
-                        this.attendanceData = window.employeeAttendanceManager.attendanceRecords;
+                    if (window.dataManager) {
+                        await window.dataManager.updateAttendanceStatus(
+                            record.employeeId, 
+                            record.date, 
+                            newStatus, 
+                            `Status updated from ${record.status} to ${newStatus} on ${new Date().toLocaleString()}`
+                        );
+                        this.attendanceData = window.dataManager.getAttendanceRecords();
                     } else {
-                        // Fallback to local data management
-                        const index = this.attendanceData.findIndex(r => r.id == recordId);
-                        if (index >= 0) {
-                            this.attendanceData[index] = updatedRecord;
+                        const updatedRecord = {
+                            ...record,
+                            status: newStatus,
+                            notes: `Status updated from ${record.status} to ${newStatus} on ${new Date().toLocaleString()}`
+                        };
+
+                        if (window.employeeAttendanceManager) {
+                            await window.employeeAttendanceManager.saveAttendanceRecord(updatedRecord);
+                            this.attendanceData = window.employeeAttendanceManager.attendanceRecords;
+                        } else {
+                            // Fallback to local data management
+                            const index = this.attendanceData.findIndex(r => r.id == recordId);
+                            if (index >= 0) {
+                                this.attendanceData[index] = updatedRecord;
+                            }
                         }
                     }
 
@@ -1257,62 +1348,44 @@
                 }
             }
 
-            editRecord(recordId) {
-                const record = this.attendanceData.find(r => r.id == recordId);
-                if (record) {
-                    this.openModal(record);
+            handleDataUpdate(data) {
+                console.log('Received data update:', data);
+                
+                // Refresh attendance data
+                if (window.dataManager) {
+                    this.attendanceData = window.dataManager.getAttendanceRecords();
+                    this.applyFilters();
+                    this.showSuccess(`Data synchronized: ${data.action} operation completed`);
                 }
             }
 
-            deleteRecord(recordId) {
-                const record = this.attendanceData.find(r => r.id == recordId);
-                if (record && window.employeeAttendanceManager) {
-                    window.employeeAttendanceManager.openDeleteModal(record);
+            updateEmployeeDropdowns() {
+                // Update employee filter dropdown
+                const employeeFilter = document.getElementById('employeeFilter');
+                const employeeSelect = document.getElementById('employeeSelect');
+                
+                if (employeeFilter) {
+                    // Clear existing options except "All Employees"
+                    employeeFilter.innerHTML = '<option value="">All Employees</option>';
+                    
+                    this.employees.forEach(emp => {
+                        const option = new Option(emp.name, emp.id);
+                        employeeFilter.appendChild(option);
+                    });
+                }
+                
+                if (employeeSelect) {
+                    // Clear existing options except "Select Employee"
+                    employeeSelect.innerHTML = '<option value="">Select Employee</option>';
+                    
+                    this.employees.forEach(emp => {
+                        const option = new Option(emp.name, emp.id);
+                        employeeSelect.appendChild(option);
+                    });
                 }
             }
 
-            applyFilters() {
-                console.log('applyFilters called, attendanceData length:', this.attendanceData.length);
-                const employeeFilter = document.getElementById('employeeFilter').value;
-                const dateFilter = document.getElementById('dateFilter').value;
-                const statusFilter = document.getElementById('statusFilter').value;
-                const searchInput = document.getElementById('searchInput').value.toLowerCase();
-
-                console.log('Filter values:', { employeeFilter, dateFilter, statusFilter, searchInput });
-
-                this.filteredData = this.attendanceData.filter(record => {
-                    const matchesEmployee = !employeeFilter || record.employeeId == employeeFilter;
-                    const matchesDate = !dateFilter || record.date === dateFilter;
-                    const matchesStatus = !statusFilter || record.status === statusFilter;
-                    const matchesSearch = !searchInput || 
-                        record.employeeName.toLowerCase().includes(searchInput) ||
-                        record.status.toLowerCase().includes(searchInput);
-
-                    return matchesEmployee && matchesDate && matchesStatus && matchesSearch;
-                });
-
-                console.log('Filtered data length:', this.filteredData.length);
-                this.renderTable();
-                this.updateStats();
-            }
-
-            updateStats() {
-                const totalRecords = this.filteredData.length;
-                const presentCount = this.filteredData.filter(r => r.status === 'present').length;
-                const lateCount = this.filteredData.filter(r => r.status === 'late').length;
-                const absentCount = this.filteredData.filter(r => r.status === 'absent').length;
-
-                // Update stats if elements exist
-                const totalStat = document.getElementById('totalRecords');
-                const presentStat = document.getElementById('presentCount');
-                const lateStat = document.getElementById('lateCount');
-                const absentStat = document.getElementById('absentCount');
-
-                if (totalStat) totalStat.textContent = totalRecords;
-                if (presentStat) presentStat.textContent = presentCount;
-                if (lateStat) lateStat.textContent = lateCount;
-                if (absentStat) absentStat.textContent = absentCount;
-            }
+            // ...existing code...
         }
 
         // Global instance for onclick handlers

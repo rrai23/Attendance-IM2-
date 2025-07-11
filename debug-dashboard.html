@@ -5,49 +5,83 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Debug Test</title>
     <link rel="stylesheet" href="/css/styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts" 
-            onload="console.log('ApexCharts loaded:', typeof ApexCharts);"
-            onerror="console.error('ApexCharts failed to load');"></script>
 </head>
 <body>
     <div style="padding: 20px;">
         <h1>Dashboard Debug Test</h1>
         <div id="status">Loading...</div>
-        <div id="testChart" style="width: 400px; height: 200px; border: 1px solid #ccc; margin: 20px 0;"></div>
-        
+        <div id="results" style="margin-top: 20px; font-family: monospace; white-space: pre-wrap;"></div>
         <div id="errors" style="margin-top: 20px; color: red; font-family: monospace;"></div>
     </div>
 
-    <!-- Load JavaScript files one by one -->
+    <!-- Load JavaScript files -->
     <script>
-        window.addEventListener('error', function(e) {
-            const errorDiv = document.getElementById('errors');
-            errorDiv.innerHTML += '<div>ERROR: ' + e.message + ' (File: ' + e.filename + ', Line: ' + e.lineno + ')</div>';
-            console.error('Global error:', e);
-        });
+        let results = '';
+        
+        function log(message) {
+            results += message + '\n';
+            document.getElementById('results').textContent = results;
+            console.log(message);
+        }
         
         function updateStatus(msg) {
             document.getElementById('status').textContent = msg;
-            console.log('Status:', msg);
+            log('Status: ' + msg);
         }
+        
+        window.addEventListener('error', function(e) {
+            const errorDiv = document.getElementById('errors');
+            const errorMsg = 'ERROR: ' + e.message + ' (File: ' + e.filename + ', Line: ' + e.lineno + ')';
+            errorDiv.innerHTML += '<div>' + errorMsg + '</div>';
+            log(errorMsg);
+        });
         
         updateStatus('Starting tests...');
     </script>
     
-    <script src="/js/mock-data.js" 
-            onload="updateStatus('mock-data.js loaded');"
-            onerror="updateStatus('mock-data.js FAILED');"></script>
+    <script src="/js/data-manager.js" 
+            onload="log('✅ data-manager.js loaded');"
+            onerror="log('❌ data-manager.js FAILED');"></script>
     
-    <script src="/js/data-service.js" 
-            onload="updateStatus('data-service.js loaded');"
-            onerror="updateStatus('data-service.js FAILED');"></script>
-    
-    <script src="/js/auth.js" 
-            onload="updateStatus('auth.js loaded');"
-            onerror="updateStatus('auth.js FAILED');"></script>
-    
-    <script src="/js/theme.js" 
-            onload="updateStatus('theme.js loaded');"
+    <script>
+        setTimeout(async () => {
+            try {
+                updateStatus('Testing data manager...');
+                
+                if (typeof window.dataManager !== 'undefined') {
+                    log('✅ DataManager object exists');
+                    
+                    if (!window.dataManager.initialized) {
+                        log('⏳ Initializing DataManager...');
+                        await window.dataManager.init();
+                    }
+                    
+                    if (window.dataManager.initialized) {
+                        log('✅ DataManager initialized successfully');
+                        log('📊 Employees: ' + window.dataManager.employees.length);
+                        log('📋 Attendance records: ' + window.dataManager.attendanceRecords.length);
+                        
+                        // Test stats
+                        const stats = window.dataManager.getAttendanceStats();
+                        log('📈 Today\'s stats: ' + JSON.stringify(stats, null, 2));
+                        
+                        updateStatus('✅ All tests passed! Data manager is working.');
+                    } else {
+                        log('❌ DataManager failed to initialize');
+                        updateStatus('❌ DataManager initialization failed');
+                    }
+                } else {
+                    log('❌ DataManager object not found');
+                    updateStatus('❌ DataManager not loaded');
+                }
+            } catch (error) {
+                log('❌ Error during testing: ' + error.message);
+                updateStatus('❌ Test failed: ' + error.message);
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
             onerror="updateStatus('theme.js FAILED');"></script>
     
     <script src="/js/modals.js" 

@@ -583,6 +583,7 @@
         });
     </script>
     <script src="/js/mock-data.js" onerror="console.error('Failed to load mock-data.js')"></script>
+    <script src="/js/data-manager.js" onerror="console.error('Failed to load data-manager.js')"></script>
     <script src="/js/data-service.js" onerror="console.error('Failed to load data-service.js')"></script>
     <script src="/js/auth.js" onerror="console.error('Failed to load auth.js')"></script>
     <script src="/js/theme.js" onerror="console.error('Failed to load theme.js')"></script>
@@ -2060,5 +2061,65 @@
             </div>
         </div>
     </div>
+
+    <!-- Dashboard Initialization -->
+    <script>
+        // Global dashboard controller instance
+        let dashboardController;
+
+        // Initialize dashboard when DOM is ready
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                console.log('Initializing dashboard...');
+                
+                // Wait a bit for all scripts to load
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Create and initialize dashboard controller
+                dashboardController = new DashboardController();
+                
+                // Wait for initialization to complete
+                await dashboardController.init();
+                
+                console.log('Dashboard fully initialized');
+            } catch (error) {
+                console.error('Failed to initialize dashboard:', error);
+                
+                // Show error message to user
+                const errorDiv = document.createElement('div');
+                errorDiv.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #ef4444;
+                    color: white;
+                    padding: 16px;
+                    border-radius: 8px;
+                    z-index: 1000;
+                    max-width: 400px;
+                `;
+                errorDiv.innerHTML = `
+                    <strong>Dashboard Loading Error</strong><br>
+                    ${error.message || 'Unknown error occurred'}<br>
+                    <small>Please refresh the page to try again.</small>
+                `;
+                document.body.appendChild(errorDiv);
+                
+                // Auto-remove after 10 seconds
+                setTimeout(() => {
+                    if (errorDiv.parentNode) {
+                        errorDiv.parentNode.removeChild(errorDiv);
+                    }
+                }, 10000);
+            }
+        });
+
+        // Handle window unload
+        window.addEventListener('beforeunload', () => {
+            if (dashboardController && typeof dashboardController.cleanup === 'function') {
+                dashboardController.cleanup();
+            }
+        });
+    </script>
 </body>
 </html>
