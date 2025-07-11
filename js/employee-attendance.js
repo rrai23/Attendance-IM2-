@@ -7,6 +7,7 @@ class EmployeeAttendanceManager {
     constructor() {
         this.attendanceRecords = [];
         this.employees = [];
+        this.currentViewingRecord = null;
         this.statusTypes = {
             present: { label: 'Present', icon: '✅', color: '#22c55e' },
             late: { label: 'Late', icon: '⏰', color: '#f59e0b' },
@@ -280,6 +281,31 @@ class EmployeeAttendanceManager {
     }
 
     /**
+     * Calculate hours worked between clock in and clock out times
+     */
+    calculateHours(clockIn, clockOut) {
+        if (!clockIn || !clockOut) {
+            return '0.0h';
+        }
+
+        try {
+            const start = new Date(`2000-01-01T${clockIn}`);
+            const end = new Date(`2000-01-01T${clockOut}`);
+            const diffMs = end - start;
+            
+            if (diffMs < 0) {
+                return '0.0h'; // Handle cases where clock out is before clock in
+            }
+            
+            const hours = diffMs / (1000 * 60 * 60);
+            return `${hours.toFixed(1)}h`;
+        } catch (error) {
+            console.error('Error calculating hours:', error);
+            return '0.0h';
+        }
+    }
+
+    /**
      * Generate appropriate notes based on status
      */
     generateNotes(status) {
@@ -455,6 +481,37 @@ class EmployeeAttendanceManager {
     }
 
     /**
+     * Override attendance status for a specific employee and date
+     */
+    async overrideStatus(employeeId, date, newStatus, notes = '') {
+        try {
+            const recordIndex = this.attendanceRecords.findIndex(
+                record => record.employeeId === employeeId && record.date === date
+            );
+
+            if (recordIndex === -1) {
+                throw new Error('Attendance record not found');
+            }
+
+            const record = this.attendanceRecords[recordIndex];
+            const oldStatus = record.status;
+            
+            // Update the record
+            record.status = newStatus;
+            record.notes = notes || `Status overridden from ${oldStatus} to ${newStatus} on ${new Date().toLocaleString()}`;
+            record.lastModified = new Date().toISOString();
+            record.modifiedBy = 'Admin';
+
+            console.log('Status overridden:', record);
+            this.broadcastAttendanceUpdate(record);
+            return record;
+        } catch (error) {
+            console.error('Error overriding status:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Get attendance statistics for a date range
      */
     getAttendanceStats(startDate = null, endDate = null) {
@@ -550,6 +607,45 @@ class EmployeeAttendanceManager {
     }
 
     /**
+     * Setup modal event handlers
+     */
+    setupModalEventHandlers() {
+        // View modal close handlers
+        const closeViewModal = document.getElementById('closeViewModal');
+        const closeViewBtn = document.getElementById('closeViewBtn');
+        const editFromViewBtn = document.getElementById('editFromViewBtn');
+
+        if (closeViewModal) {
+            closeViewModal.addEventListener('click', () => this.closeViewModal());
+        }
+
+        if (closeViewBtn) {
+            closeViewBtn.addEventListener('click', () => this.closeViewModal());
+        }
+
+        if (editFromViewBtn) {
+            editFromViewBtn.addEventListener('click', () => {
+                this.closeViewModal();
+                // Get the record ID from the view modal and edit it
+                const recordId = this.currentViewingRecord?.id;
+                if (recordId && window.employeeManagement) {
+                    window.employeeManagement.editRecord(recordId);
+                }
+            });
+        }
+
+        // Close modal on overlay click
+        const viewModal = document.getElementById('viewAttendanceModal');
+        if (viewModal) {
+            viewModal.addEventListener('click', (e) => {
+                if (e.target.classList.contains('modal-overlay')) {
+                    this.closeViewModal();
+                }
+            });
+        }
+    }
+
+    /**
      * Broadcast attendance update event
      */
     broadcastAttendanceUpdate(record) {
@@ -569,6 +665,9 @@ class EmployeeAttendanceManager {
     openViewModal(record) {
         const modal = document.getElementById('viewAttendanceModal');
         if (!modal) return;
+
+        // Store the current record for editing from view modal
+        this.currentViewingRecord = record;
 
         const employee = this.employees.find(emp => emp.id === record.employeeId);
         
@@ -599,6 +698,7 @@ class EmployeeAttendanceManager {
         const modal = document.getElementById('viewAttendanceModal');
         if (modal) {
             modal.classList.add('hidden');
+            this.currentViewingRecord = null;
         }
     }
 
@@ -725,26 +825,43 @@ class EmployeeAttendanceManager {
      * Helper method to format date
      */
     formatDate(dateString) {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                weekday: 'short'
+            });
+        } catch (error) {
+            console.error('Error formatting date:', error);
+            return dateString;
+        }
     }
 
     /**
      * Helper method to calculate hours worked
      */
     calculateHours(clockIn, clockOut) {
-        if (!clockIn || !clockOut) return 'N/A';
-        
-        const startTime = new Date(`2000-01-01 ${clockIn}`);
-        const endTime = new Date(`2000-01-01 ${clockOut}`);
-        const diffMs = endTime - startTime;
-        const hours = diffMs / (1000 * 60 * 60);
-        
-        return `${hours.toFixed(1)} hours`;
+        if (!clockIn || !clockOut) {
+            return '0.0h';
+        }
+
+        try {
+            const start = new Date(`2000-01-01T${clockIn}`);
+            const end = new Date(`2000-01-01T${clockOut}`);
+            const diffMs = end - start;
+            
+            if (diffMs < 0) {
+                return '0.0h'; // Handle cases where clock out is before clock in
+            }
+            
+            const hours = diffMs / (1000 * 60 * 60);
+            return `${hours.toFixed(1)}h`;
+        } catch (error) {
+            console.error('Error calculating hours:', error);
+            return '0.0h';
+        }
     }
 
     /**

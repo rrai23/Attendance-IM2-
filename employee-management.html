@@ -544,28 +544,47 @@
                 this.employees = [];
                 this.filteredData = [];
                 
+                console.log('EmployeeManagementPage constructor called');
                 this.init();
             }
 
             async init() {
                 try {
+                    // Show loading state
+                    this.showLoadingState(true);
+                    
                     // Wait for employee attendance manager to be ready
                     if (window.employeeAttendanceManager) {
-                        await window.employeeAttendanceManager.init();
+                        // Ensure the attendance manager is properly initialized
+                        if (!window.employeeAttendanceManager.employees.length) {
+                            console.log('Initializing attendance manager...');
+                            await window.employeeAttendanceManager.init();
+                        }
                         this.employees = window.employeeAttendanceManager.employees;
                         this.attendanceData = window.employeeAttendanceManager.attendanceRecords;
+                        console.log(`Loaded ${this.employees.length} employees and ${this.attendanceData.length} attendance records from manager`);
                     } else {
+                        console.log('Attendance manager not available, loading data directly...');
                         // Fallback to loading data directly
                         await this.loadEmployees();
                         await this.loadAttendanceData();
                     }
                     
+                    // Initialize filtered data
+                    this.filteredData = [...this.attendanceData];
+                    
                     this.setupEventListeners();
                     this.setupFilters();
                     this.updateStats();
                     this.renderTable();
+                    
+                    // Hide loading state
+                    this.showLoadingState(false);
+                    
+                    console.log('Employee management page initialized successfully');
                 } catch (error) {
                     console.error('Failed to initialize employee management page:', error);
+                    this.showLoadingState(false);
                     this.showError('Failed to load page data');
                 }
             }
@@ -598,17 +617,32 @@
 
             async loadAttendanceData() {
                 try {
-                    // Mock attendance data - in a real app, this would come from an API
+                    console.log('loadAttendanceData called');
+                    // If we have the attendance manager, use its data
+                    if (window.employeeAttendanceManager && window.employeeAttendanceManager.attendanceRecords.length > 0) {
+                        this.attendanceData = window.employeeAttendanceManager.attendanceRecords;
+                        console.log(`Using attendance manager data: ${this.attendanceData.length} records`);
+                        console.log('Sample record:', this.attendanceData[0]);
+                        return;
+                    }
+
+                    console.log('Generating mock attendance data...');
+                    // Fallback: Generate mock attendance data
                     const today = new Date();
                     const yesterday = new Date(today);
                     yesterday.setDate(today.getDate() - 1);
+                    const todayStr = today.toISOString().split('T')[0];
+                    const yesterdayStr = yesterday.toISOString().split('T')[0];
+                    
+                    console.log('Today date string:', todayStr);
+                    console.log('Yesterday date string:', yesterdayStr);
                     
                     this.attendanceData = [
                         {
                             id: 1,
                             employeeId: 1,
                             employeeName: 'John Doe',
-                            date: today.toISOString().split('T')[0],
+                            date: todayStr,
                             clockIn: '09:00',
                             clockOut: '17:30',
                             status: 'present',
@@ -619,7 +653,7 @@
                             id: 2,
                             employeeId: 2,
                             employeeName: 'Jane Smith',
-                            date: today.toISOString().split('T')[0],
+                            date: todayStr,
                             clockIn: '09:15',
                             clockOut: '17:45',
                             status: 'late',
@@ -630,7 +664,7 @@
                             id: 3,
                             employeeId: 3,
                             employeeName: 'Bob Johnson',
-                            date: today.toISOString().split('T')[0],
+                            date: todayStr,
                             clockIn: null,
                             clockOut: null,
                             status: 'absent',
@@ -641,7 +675,7 @@
                             id: 4,
                             employeeId: 4,
                             employeeName: 'Alice Brown',
-                            date: today.toISOString().split('T')[0],
+                            date: todayStr,
                             clockIn: '08:45',
                             clockOut: '19:00',
                             status: 'overtime',
@@ -652,7 +686,7 @@
                             id: 5,
                             employeeId: 5,
                             employeeName: 'Charlie Wilson',
-                            date: yesterday.toISOString().split('T')[0],
+                            date: yesterdayStr,
                             clockIn: '09:00',
                             clockOut: '17:00',
                             status: 'present',
@@ -662,8 +696,12 @@
                     ];
 
                     this.filteredData = [...this.attendanceData];
+                    console.log(`Generated mock attendance data: ${this.attendanceData.length} records`);
+                    console.log('Mock data sample:', this.attendanceData[0]);
                 } catch (error) {
                     console.error('Failed to load attendance data:', error);
+                    this.attendanceData = [];
+                    this.filteredData = [];
                 }
             }
 
@@ -705,16 +743,35 @@
                 });
 
                 // Refresh button
-                document.getElementById('refreshBtn').addEventListener('click', () => {
-                    this.loadAttendanceData();
-                    this.updateStats();
-                    this.renderTable();
+                document.getElementById('refreshBtn').addEventListener('click', async () => {
+                    try {
+                        this.showLoadingState(true);
+                        
+                        if (window.employeeAttendanceManager) {
+                            // Reload data from attendance manager
+                            await window.employeeAttendanceManager.loadAttendanceRecords();
+                            this.attendanceData = window.employeeAttendanceManager.attendanceRecords;
+                        } else {
+                            await this.loadAttendanceData();
+                        }
+                        
+                        this.applyFilters();
+                        this.showLoadingState(false);
+                        this.showSuccess('Data refreshed successfully!');
+                    } catch (error) {
+                        console.error('Failed to refresh data:', error);
+                        this.showLoadingState(false);
+                        this.showError('Failed to refresh data');
+                    }
                 });
 
                 // Export button
-                document.getElementById('exportBtn').addEventListener('click', () => {
-                    this.exportData();
-                });
+                const exportBtn = document.getElementById('exportAttendanceBtn');
+                if (exportBtn) {
+                    exportBtn.addEventListener('click', () => {
+                        this.exportData();
+                    });
+                }
 
                 // Close modal on overlay click
                 document.getElementById('editAttendanceModal').addEventListener('click', (e) => {
@@ -725,42 +782,9 @@
             }
 
             setupFilters() {
-                // Set default date filter to today
-                const today = new Date().toISOString().split('T')[0];
-                document.getElementById('dateFilter').value = today;
+                // Don't set a default date filter - show all records initially
+                console.log('Setting up filters...');
                 this.applyFilters();
-            }
-
-            applyFilters() {
-                const employeeId = document.getElementById('employeeFilter').value;
-                const date = document.getElementById('dateFilter').value;
-                const status = document.getElementById('statusFilter').value;
-                const search = document.getElementById('searchInput').value.toLowerCase();
-
-                this.filteredData = this.attendanceData.filter(record => {
-                    let matches = true;
-
-                    if (employeeId && record.employeeId != employeeId) {
-                        matches = false;
-                    }
-
-                    if (date && record.date !== date) {
-                        matches = false;
-                    }
-
-                    if (status && record.status !== status) {
-                        matches = false;
-                    }
-
-                    if (search && !record.employeeName.toLowerCase().includes(search)) {
-                        matches = false;
-                    }
-
-                    return matches;
-                });
-
-                this.updateStats();
-                this.renderTable();
             }
 
             updateStats() {
@@ -776,60 +800,6 @@
                 document.getElementById('lateCount').textContent = lateCount;
                 document.getElementById('absentCount').textContent = absentCount;
                 document.getElementById('overtimeCount').textContent = overtimeCount;
-            }
-
-            renderTable() {
-                const tbody = document.getElementById('attendanceTableBody');
-                const emptyState = document.getElementById('emptyState');
-
-                if (this.filteredData.length === 0) {
-                    tbody.innerHTML = '';
-                    emptyState.classList.remove('hidden');
-                    return;
-                }
-
-                emptyState.classList.add('hidden');
-
-                tbody.innerHTML = this.filteredData.map(record => `
-                    <tr>
-                        <td>
-                            <div class="employee-info">
-                                <div class="employee-name">${record.employeeName}</div>
-                                <div class="employee-details">
-                                    <span class="employee-id">ID: ${record.employeeCode || record.employeeId}</span>
-                                    ${record.department ? `<span class="employee-dept">${record.department}</span>` : ''}
-                                </div>
-                            </div>
-                        </td>
-                        <td>${this.formatDate(record.date)}</td>
-                        <td>${record.clockIn || '--:--'}</td>
-                        <td>${record.clockOut || '--:--'}</td>
-                        <td>
-                            <span class="status-badge status-${record.status}">
-                                ${this.getStatusIcon(record.status)} ${this.capitalizeFirst(record.status)}
-                            </span>
-                        </td>
-                        <td>
-                            <div class="hours-info">
-                                <span class="regular-hours">${record.hours}h</span>
-                                ${record.overtimeHours > 0 ? `<span class="overtime-hours">+${record.overtimeHours}h OT</span>` : ''}
-                            </div>
-                        </td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn btn-sm btn-outline" onclick="employeeManagement.editRecord('${record.id}')" title="Edit">
-                                    <span class="btn-icon">✏️</span>
-                                </button>
-                                <button class="btn btn-sm btn-outline" onclick="employeeManagement.overrideStatus('${record.id}')" title="Override Status">
-                                    <span class="btn-icon">🔄</span>
-                                </button>
-                                <button class="btn btn-sm btn-danger" onclick="employeeManagement.deleteRecord('${record.id}')" title="Delete">
-                                    <span class="btn-icon">🗑️</span>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `).join('');
             }
 
             getStatusIcon(status) {
@@ -1072,28 +1042,77 @@
 
             showSuccess(message) {
                 // Simple success notification - in a real app, you'd use a proper notification system
-                alert(message);
+                this.showToast(message, 'success');
             }
 
             showError(message) {
                 // Simple error notification - in a real app, you'd use a proper notification system
-                alert(message);
+                this.showToast(message, 'error');
+            }
+
+            showToast(message, type = 'info') {
+                // Create a simple toast notification
+                const toast = document.createElement('div');
+                toast.className = `toast toast-${type}`;
+                toast.innerHTML = `
+                    <div class="toast-content">
+                        <span class="toast-icon">${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span>
+                        <span class="toast-message">${message}</span>
+                    </div>
+                `;
+                
+                // Add to body
+                document.body.appendChild(toast);
+                
+                // Show and auto-remove
+                setTimeout(() => toast.classList.add('show'), 100);
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => document.body.removeChild(toast), 300);
+                }, 3000);
+            }
+
+            showLoadingState(loading) {
+                const loadingElement = document.getElementById('loadingState');
+                const tableContainer = document.querySelector('.table-container');
+                
+                if (loading) {
+                    if (loadingElement) {
+                        loadingElement.classList.remove('hidden');
+                    }
+                    if (tableContainer) {
+                        tableContainer.style.opacity = '0.5';
+                    }
+                } else {
+                    if (loadingElement) {
+                        loadingElement.classList.add('hidden');
+                    }
+                    if (tableContainer) {
+                        tableContainer.style.opacity = '1';
+                    }
+                }
             }
 
             renderTable() {
+                console.log('renderTable called, filteredData length:', this.filteredData.length);
                 const tableBody = document.getElementById('attendanceTableBody');
                 const emptyState = document.getElementById('emptyState');
                 const table = document.getElementById('attendanceTable');
 
-                if (!tableBody) return;
+                if (!tableBody) {
+                    console.error('Table body element not found!');
+                    return;
+                }
 
                 if (this.filteredData.length === 0) {
+                    console.log('No filtered data, showing empty state');
                     tableBody.innerHTML = '';
                     table.style.display = 'none';
                     emptyState.style.display = 'block';
                     return;
                 }
 
+                console.log('Rendering table with', this.filteredData.length, 'records');
                 table.style.display = 'table';
                 emptyState.style.display = 'none';
 
@@ -1130,6 +1149,17 @@
                                     <button class="btn btn-sm btn-primary" onclick="employeeManagement.editRecord(${record.id})" title="Edit Record">
                                         ✏️
                                     </button>
+                                    <div class="status-actions">
+                                        <button class="btn btn-sm btn-success" onclick="employeeManagement.quickStatusUpdate(${record.id}, 'present')" title="Mark Present">
+                                            ✅
+                                        </button>
+                                        <button class="btn btn-sm btn-warning" onclick="employeeManagement.quickStatusUpdate(${record.id}, 'late')" title="Mark Late">
+                                            ⏰
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="employeeManagement.quickStatusUpdate(${record.id}, 'absent')" title="Mark Absent">
+                                            ❌
+                                        </button>
+                                    </div>
                                     <button class="btn btn-sm btn-danger" onclick="employeeManagement.deleteRecord(${record.id})" title="Delete Record">
                                         🗑️
                                     </button>
@@ -1164,8 +1194,66 @@
 
             viewRecord(recordId) {
                 const record = this.attendanceData.find(r => r.id == recordId);
-                if (record && window.employeeAttendanceManager) {
-                    window.employeeAttendanceManager.openViewModal(record);
+                if (record) {
+                    if (window.employeeAttendanceManager) {
+                        window.employeeAttendanceManager.openViewModal(record);
+                    } else {
+                        // Fallback modal display
+                        this.showRecordDetails(record);
+                    }
+                }
+            }
+
+            showRecordDetails(record) {
+                const employee = this.employees.find(emp => emp.id === record.employeeId);
+                const details = `
+                    Employee: ${record.employeeName}
+                    Employee ID: ${employee ? employee.employeeId : record.employeeId}
+                    Date: ${this.formatDate(record.date)}
+                    Status: ${record.status}
+                    Clock In: ${record.clockIn || 'Not clocked in'}
+                    Clock Out: ${record.clockOut || 'Not clocked out'}
+                    Hours: ${record.hours || 0}h
+                    Notes: ${record.notes || 'No notes'}
+                `;
+                alert(details);
+            }
+
+            async quickStatusUpdate(recordId, newStatus) {
+                const record = this.attendanceData.find(r => r.id == recordId);
+                if (!record) {
+                    this.showError('Record not found');
+                    return;
+                }
+
+                if (record.status === newStatus) {
+                    this.showError(`Status is already set to "${newStatus}"`);
+                    return;
+                }
+
+                try {
+                    const updatedRecord = {
+                        ...record,
+                        status: newStatus,
+                        notes: `Status updated from ${record.status} to ${newStatus} on ${new Date().toLocaleString()}`
+                    };
+
+                    if (window.employeeAttendanceManager) {
+                        await window.employeeAttendanceManager.saveAttendanceRecord(updatedRecord);
+                        this.attendanceData = window.employeeAttendanceManager.attendanceRecords;
+                    } else {
+                        // Fallback to local data management
+                        const index = this.attendanceData.findIndex(r => r.id == recordId);
+                        if (index >= 0) {
+                            this.attendanceData[index] = updatedRecord;
+                        }
+                    }
+
+                    this.applyFilters();
+                    this.showSuccess(`Status updated to "${newStatus}" for ${record.employeeName}`);
+                } catch (error) {
+                    console.error('Failed to update status:', error);
+                    this.showError('Failed to update status: ' + error.message);
                 }
             }
 
@@ -1184,10 +1272,13 @@
             }
 
             applyFilters() {
+                console.log('applyFilters called, attendanceData length:', this.attendanceData.length);
                 const employeeFilter = document.getElementById('employeeFilter').value;
                 const dateFilter = document.getElementById('dateFilter').value;
                 const statusFilter = document.getElementById('statusFilter').value;
                 const searchInput = document.getElementById('searchInput').value.toLowerCase();
+
+                console.log('Filter values:', { employeeFilter, dateFilter, statusFilter, searchInput });
 
                 this.filteredData = this.attendanceData.filter(record => {
                     const matchesEmployee = !employeeFilter || record.employeeId == employeeFilter;
@@ -1200,6 +1291,7 @@
                     return matchesEmployee && matchesDate && matchesStatus && matchesSearch;
                 });
 
+                console.log('Filtered data length:', this.filteredData.length);
                 this.renderTable();
                 this.updateStats();
             }
@@ -1227,19 +1319,34 @@
         let employeeManagement;
 
         // Initialize page
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                try {
-                    employeeManagement = new EmployeeManagementPage();
-                    
-                    // Set theme
-                    if (typeof themeManager !== 'undefined') {
-                        themeManager.setPage('employee-management');
-                    }
-                } catch (error) {
-                    console.error('Failed to initialize employee management page:', error);
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                console.log('Initializing employee management page...');
+                
+                // Create instance
+                employeeManagement = new EmployeeManagementPage();
+                
+                // Wait for complete initialization
+                await employeeManagement.init();
+                
+                // Set theme
+                if (typeof themeManager !== 'undefined') {
+                    themeManager.setPage('employee-management');
                 }
-            }, 100);
+                
+                console.log('Employee management page fully initialized');
+            } catch (error) {
+                console.error('Failed to initialize employee management page:', error);
+                
+                // Show error to user
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'alert alert-error';
+                errorDiv.innerHTML = `
+                    <strong>Initialization Error:</strong> Failed to load the attendance management system. 
+                    Please refresh the page to try again.
+                `;
+                document.querySelector('.content-area').prepend(errorDiv);
+            }
         });
     </script>
 
@@ -1297,12 +1404,99 @@
             display: flex;
             gap: var(--spacing-xs);
             align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .status-actions {
+            display: flex;
+            gap: 2px;
+            align-items: center;
+            margin: 0 var(--spacing-xs);
+            padding: 2px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-sm);
         }
 
         .btn-sm {
             padding: var(--spacing-xs) var(--spacing-sm);
             font-size: var(--font-size-sm);
             min-width: auto;
+            border: none;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .btn-success {
+            background: #22c55e;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #16a34a;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            padding: var(--spacing-md);
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: transform var(--transition-fast);
+            max-width: 400px;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.toast-success {
+            border-left-color: #22c55e;
+        }
+
+        .toast.toast-error {
+            border-left-color: #ef4444;
+        }
+
+        .toast-content {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .toast-icon {
+            font-size: 1.2rem;
+        }
+
+        .toast-message {
+            flex: 1;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .alert-error {
+            background: #fef2f2;
+            color: #991b1b;
+            border-color: #ef4444;
+            margin-bottom: var(--spacing-lg);
         }
 
         .hours-info {
