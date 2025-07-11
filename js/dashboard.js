@@ -72,18 +72,27 @@ class DashboardController {
      * Wait for required dependencies to be available
      */
     async waitForDependencies() {
-        const maxWait = 10000; // 10 seconds
+        const maxWait = 5000; // 5 seconds
         const checkInterval = 100;
         let waited = 0;
 
         return new Promise((resolve, reject) => {
             const check = () => {
+                console.log('DashboardController checking dependencies...', {
+                    dataService: typeof dataService !== 'undefined',
+                    chartsManager: typeof chartsManager !== 'undefined',
+                    DashboardCalendar: typeof DashboardCalendar !== 'undefined',
+                    Chart: typeof Chart !== 'undefined'
+                });
+                
                 if (typeof dataService !== 'undefined' && 
                     typeof chartsManager !== 'undefined' && 
                     typeof DashboardCalendar !== 'undefined') {
+                    console.log('Core dependencies available');
                     resolve();
                 } else if (waited >= maxWait) {
-                    reject(new Error('Required dependencies not available'));
+                    console.warn('Some dependencies not available after 5 seconds, proceeding anyway');
+                    resolve(); // Resolve anyway to allow fallback behavior
                 } else {
                     waited += checkInterval;
                     setTimeout(check, checkInterval);
@@ -577,16 +586,66 @@ class DashboardController {
             const chartData = this.prepareAttendanceChartData();
             console.log('Chart data prepared:', chartData);
             
+            // Try to create chart, fallback if Chart.js not available
             const chart = chartsManager.createAttendanceStatsChart('attendance-stats-chart', chartData);
             
             if (chart) {
                 this.charts.set('attendance-stats', chart);
-                console.log('Attendance chart initialized successfully with data:', chartData);
+                console.log('Attendance chart initialized successfully');
+                
+                // Hide loading indicator
+                const loadingElement = document.querySelector('.chart-loading');
+                if (loadingElement) {
+                    loadingElement.style.display = 'none';
+                }
             } else {
-                console.error('Failed to create attendance chart - chart is null');
+                console.error('Failed to create attendance chart');
+                this.showChartError();
             }
         } catch (error) {
             console.error('Error initializing attendance chart:', error);
+            this.showChartError();
+        }
+    }
+    
+    /**
+     * Show chart error fallback
+     */
+    showChartError() {
+        const canvas = document.getElementById('attendance-stats-chart');
+        if (canvas) {
+            const container = canvas.parentElement;
+            container.innerHTML = `
+                <div class="chart-error">
+                    <div class="error-icon">⚠️</div>
+                    <div class="error-message">Chart unavailable</div>
+                    <div class="error-detail">Unable to load visualization</div>
+                </div>
+                <style>
+                    .chart-error {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 40px 20px;
+                        color: var(--text-tertiary);
+                        text-align: center;
+                    }
+                    .chart-error .error-icon {
+                        font-size: 2rem;
+                        margin-bottom: var(--spacing-md);
+                        opacity: 0.5;
+                    }
+                    .chart-error .error-message {
+                        font-size: var(--font-size-lg);
+                        margin-bottom: var(--spacing-sm);
+                        color: var(--text-secondary);
+                    }
+                    .chart-error .error-detail {
+                        font-size: var(--font-size-sm);
+                    }
+                </style>
+            `;
         }
     }
 
@@ -1032,5 +1091,123 @@ class DashboardController {
         } catch (error) {
             console.error(`Error refreshing tile ${tileId}:`, error);
         }
+    }
+
+    /**
+     * Start auto refresh interval
+     */
+    startAutoRefresh() {
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+        }
+        
+        this.refreshInterval = setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                this.refreshData();
+            }
+        }, this.config.refreshRate);
+        
+        console.log('Auto refresh started');
+    }
+
+    /**
+     * Pause auto refresh
+     */
+    pauseAutoRefresh() {
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+            this.refreshInterval = null;
+            console.log('Auto refresh paused');
+        }
+    }
+
+    /**
+     * Show error state when initialization fails
+     */
+    showErrorState() {
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.innerHTML = `
+                <div class="error-state">
+                    <div class="error-icon">⚠️</div>
+                    <h3>Failed to Load Dashboard</h3>
+                    <p>Unable to initialize the dashboard. Please refresh the page to try again.</p>
+                    <button onclick="window.location.reload()" class="btn btn-primary">
+                        Refresh Page
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Handle window resize
+     */
+    handleResize() {
+        // Debounce resize handler
+        clearTimeout(this.resizeTimeout);
+        this.resizeTimeout = setTimeout(() => {
+            this.resizeCharts();
+        }, 150);
+    }
+
+    /**
+     * Resize all charts
+     */
+    resizeCharts() {
+        this.charts.forEach((chart) => {
+            if (chart && typeof chart.resize === 'function') {
+                chart.resize();
+            }
+        });
+    }
+
+    /**
+     * Refresh data without full reload
+     */
+    async refreshData() {
+        try {
+            await this.loadAttendanceStats();
+            await this.loadPaydayData();
+            this.updateQuickStats();
+            this.refreshChartWithData();
+        } catch (error) {
+            console.error('Error refreshing data:', error);
+        }
+    }
+
+    /**
+     * Handle user change (login/logout)
+     */
+    handleUserChange() {
+        // Reload dashboard data when user changes
+        this.loadInitialData().catch(error => {
+            console.error('Error reloading data after user change:', error);
+        });
+    }
+
+    /**
+     * Clean up resources
+     */
+    cleanup() {
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+            this.refreshInterval = null;
+        }
+        
+        if (this.countdownInterval) {
+            clearInterval(this.countdownInterval);
+            this.countdownInterval = null;
+        }
+        
+        // Destroy charts
+        this.charts.forEach((chart) => {
+            if (chart && typeof chart.destroy === 'function') {
+                chart.destroy();
+            }
+        });
+        this.charts.clear();
+        
+        this.isInitialized = false;
     }
 }

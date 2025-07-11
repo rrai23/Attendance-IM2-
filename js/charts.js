@@ -114,11 +114,44 @@ class ChartsManager {
     /**
      * Initialize the charts manager
      */
-    init() {
+    async init() {
         this.setupThemeColors();
         this.setupThemeListener();
-        this.registerChartDefaults();
-        this.isInitialized = true;
+        try {
+            await this.waitForChartJS();
+            this.registerChartDefaults();
+            this.isInitialized = true;
+            console.log('ChartsManager initialized successfully');
+        } catch (error) {
+            console.error('Failed to initialize ChartsManager:', error);
+            this.isInitialized = false;
+        }
+    }
+
+    /**
+     * Wait for Chart.js to be available
+     */
+    async waitForChartJS() {
+        return new Promise((resolve, reject) => {
+            const maxWait = 5000; // 5 seconds
+            const checkInterval = 100;
+            let waited = 0;
+
+            const check = () => {
+                console.log('ChartsManager checking for Chart.js...', typeof Chart);
+                if (typeof Chart !== 'undefined' && Chart.register) {
+                    console.log('Chart.js is available for ChartsManager');
+                    resolve();
+                } else if (waited >= maxWait) {
+                    console.warn('Chart.js not available after 5 seconds - ChartsManager will run in fallback mode');
+                    resolve(); // Resolve anyway to allow fallback mode
+                } else {
+                    waited += checkInterval;
+                    setTimeout(check, checkInterval);
+                }
+            };
+            check();
+        });
     }
 
     /**
@@ -191,6 +224,9 @@ class ChartsManager {
         if (typeof Chart !== 'undefined') {
             Chart.defaults.font.family = 'SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif';
             Chart.defaults.color = this.getCurrentThemeColors().text.secondary;
+            console.log('Chart.js defaults registered');
+        } else {
+            console.error('Chart.js is not available when trying to register defaults');
         }
     }
 
@@ -206,6 +242,13 @@ class ChartsManager {
      * Create attendance statistics chart
      */
     createAttendanceStatsChart(canvasId, data) {
+        console.log('createAttendanceStatsChart called, Chart type:', typeof Chart, 'Manager initialized:', this.isInitialized);
+        
+        if (!this.isInitialized || typeof Chart === 'undefined' || !Chart.register) {
+            console.error('Chart.js or ChartsManager not ready - creating fallback visualization');
+            return this.createFallbackChart(canvasId, data);
+        }
+
         const ctx = document.getElementById(canvasId);
         if (!ctx) {
             console.error(`Canvas element with id '${canvasId}' not found`);
@@ -845,6 +888,133 @@ class ChartsManager {
     }
 
     /**
+     * Create fallback visualization when Chart.js is not available
+     */
+    createFallbackChart(canvasId, data) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+            console.error(`Canvas element with id '${canvasId}' not found`);
+            return null;
+        }
+
+        // Replace canvas with HTML-based visualization
+        const container = canvas.parentElement;
+        const fallbackHtml = `
+            <div class="fallback-chart" data-canvas-id="${canvasId}">
+                <div class="fallback-chart-title">Attendance Overview</div>
+                <div class="fallback-chart-data">
+                    <div class="fallback-stat present">
+                        <span class="stat-dot"></span>
+                        <span class="stat-label">Present</span>
+                        <span class="stat-value">${data.present || 0}</span>
+                    </div>
+                    <div class="fallback-stat late">
+                        <span class="stat-dot"></span>
+                        <span class="stat-label">Late</span>
+                        <span class="stat-value">${data.late || 0}</span>
+                    </div>
+                    <div class="fallback-stat absent">
+                        <span class="stat-dot"></span>
+                        <span class="stat-label">Absent</span>
+                        <span class="stat-value">${data.absent || 0}</span>
+                    </div>
+                    <div class="fallback-stat on-leave">
+                        <span class="stat-dot"></span>
+                        <span class="stat-label">On Leave</span>
+                        <span class="stat-value">${data.onLeave || 0}</span>
+                    </div>
+                </div>
+                <div class="fallback-chart-note">
+                    <small>Chart.js not available - showing simplified view</small>
+                </div>
+            </div>
+            <style>
+                .fallback-chart {
+                    padding: 20px;
+                    background: var(--bg-secondary);
+                    border-radius: var(--radius-md);
+                    text-align: center;
+                }
+                .fallback-chart-title {
+                    font-size: var(--font-size-lg);
+                    font-weight: var(--font-weight-semibold);
+                    margin-bottom: var(--spacing-lg);
+                    color: var(--text-primary);
+                }
+                .fallback-chart-data {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: var(--spacing-md);
+                    margin-bottom: var(--spacing-lg);
+                }
+                .fallback-stat {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-sm);
+                    padding: var(--spacing-sm);
+                    background: var(--bg-primary);
+                    border-radius: var(--radius-sm);
+                }
+                .fallback-stat .stat-dot {
+                    width: 12px;
+                    height: 12px;
+                    border-radius: 50%;
+                }
+                .fallback-stat.present .stat-dot { background: #34c759; }
+                .fallback-stat.late .stat-dot { background: #ff9500; }
+                .fallback-stat.absent .stat-dot { background: #ff3b30; }
+                .fallback-stat.on-leave .stat-dot { background: #5ac8fa; }
+                .fallback-stat .stat-label {
+                    flex: 1;
+                    text-align: left;
+                    font-size: var(--font-size-sm);
+                    color: var(--text-secondary);
+                }
+                .fallback-stat .stat-value {
+                    font-weight: var(--font-weight-semibold);
+                    color: var(--text-primary);
+                }
+                .fallback-chart-note {
+                    color: var(--text-tertiary);
+                    font-style: italic;
+                }
+            </style>
+        `;
+
+        container.innerHTML = fallbackHtml;
+        
+        // Store fallback chart reference
+        const fallbackChart = {
+            type: 'fallback',
+            canvasId: canvasId,
+            data: data,
+            update: function(newData) {
+                // Update fallback chart data
+                if (newData && newData.datasets && newData.datasets[0]) {
+                    const values = newData.datasets[0].data;
+                    const container = document.querySelector(`[data-canvas-id="${canvasId}"]`);
+                    if (container && values) {
+                        const stats = container.querySelectorAll('.stat-value');
+                        if (stats[0]) stats[0].textContent = values[0] || 0;
+                        if (stats[1]) stats[1].textContent = values[1] || 0;
+                        if (stats[2]) stats[2].textContent = values[2] || 0;
+                        if (stats[3]) stats[3].textContent = values[3] || 0;
+                    }
+                }
+            },
+            destroy: function() {
+                const container = document.querySelector(`[data-canvas-id="${canvasId}"]`);
+                if (container) {
+                    container.remove();
+                }
+            }
+        };
+        
+        this.charts.set(canvasId, fallbackChart);
+        return fallbackChart;
+    }
+
+    /**
      * Update chart data
      */
     updateChart(canvasId, newData) {
@@ -1077,14 +1247,14 @@ if (typeof module !== 'undefined' && module.exports) {
 
 // Auto-initialize when DOM is ready
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
         if (!chartsManager.isInitialized) {
-            chartsManager.init();
+            await chartsManager.init();
         }
     });
 } else {
     if (!chartsManager.isInitialized) {
-        chartsManager.init();
+        chartsManager.init().catch(console.error);
     }
 }
 

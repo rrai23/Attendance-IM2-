@@ -9,6 +9,7 @@ class AnalyticsController {
         this.selectedDateRange = 'last30days';
         this.analyticsData = null;
         this.charts = new Map();
+        this.isInitialized = false;
         this.filters = {
             employeeId: null,
             startDate: null,
@@ -19,11 +20,6 @@ class AnalyticsController {
         
         // Chart configurations
         this.chartConfigs = {
-            timePatterns: {
-                canvasId: 'timePatternsChart',
-                type: 'timeTracking',
-                title: 'Daily Time Patterns'
-            },
             tardinessTrends: {
                 canvasId: 'tardinessTrendsChart',
                 type: 'tardinessTrends',
@@ -39,7 +35,7 @@ class AnalyticsController {
                 type: 'presencePatterns',
                 title: 'Weekly Attendance Patterns'
             },
-            performanceRadar: {
+            performance: {
                 canvasId: 'performanceRadarChart',
                 type: 'performance',
                 title: 'Performance Overview'
@@ -51,14 +47,30 @@ class AnalyticsController {
             }
         };
 
-        this.init();
+        // Don't auto-initialize in constructor - wait for dependencies
+        console.log('AnalyticsController created, waiting for initialization...');
     }
 
     /**
      * Initialize the analytics controller
      */
     async init() {
+        if (this.isInitialized) {
+            console.log('AnalyticsController already initialized');
+            return;
+        }
+
         try {
+            console.log('Initializing AnalyticsController...');
+            
+            // Check dependencies
+            if (typeof dataService === 'undefined') {
+                throw new Error('dataService is not available');
+            }
+            if (typeof chartsManager === 'undefined') {
+                console.warn('chartsManager is not available - will use fallback visualizations');
+            }
+
             this.setupEventListeners();
             await this.loadInitialData();
             this.setupFilters();
@@ -68,6 +80,7 @@ class AnalyticsController {
             this.renderCharts();
             this.setupAutoRefresh();
             
+            this.isInitialized = true;
             console.log('Analytics controller initialized successfully');
         } catch (error) {
             console.error('Failed to initialize analytics controller:', error);
@@ -476,7 +489,6 @@ class AnalyticsController {
      */
     processAnalyticsData(attendanceRecords, performanceData, attendanceStats) {
         const data = {
-            timePatterns: this.processTimePatterns(attendanceRecords),
             tardinessTrends: this.processTardinessTrends(attendanceRecords),
             presenceStats: this.processPresenceStats(attendanceRecords, attendanceStats),
             weeklyPatterns: this.processWeeklyPatterns(attendanceRecords),
@@ -486,54 +498,6 @@ class AnalyticsController {
         };
 
         return data;
-    }
-
-    /**
-     * Process time patterns data for chart
-     */
-    processTimePatterns(records) {
-        const patterns = {
-            labels: [],
-            checkinTimes: [],
-            checkoutTimes: []
-        };
-
-        // Group by date and calculate average times
-        const dailyData = {};
-        
-        records.forEach(record => {
-            if (!dailyData[record.date]) {
-                dailyData[record.date] = {
-                    checkins: [],
-                    checkouts: []
-                };
-            }
-            
-            if (record.clockIn) {
-                dailyData[record.date].checkins.push(this.timeToMinutes(record.clockIn));
-            }
-            if (record.clockOut) {
-                dailyData[record.date].checkouts.push(this.timeToMinutes(record.clockOut));
-            }
-        });
-
-        // Calculate averages and prepare chart data
-        Object.keys(dailyData).sort().forEach(date => {
-            const data = dailyData[date];
-            patterns.labels.push(this.formatDateForChart(date));
-            
-            const avgCheckin = data.checkins.length > 0 
-                ? data.checkins.reduce((a, b) => a + b, 0) / data.checkins.length 
-                : null;
-            const avgCheckout = data.checkouts.length > 0 
-                ? data.checkouts.reduce((a, b) => a + b, 0) / data.checkouts.length 
-                : null;
-                
-            patterns.checkinTimes.push(avgCheckin);
-            patterns.checkoutTimes.push(avgCheckout);
-        });
-
-        return patterns;
     }
 
     /**
@@ -561,9 +525,17 @@ class AnalyticsController {
             
             weeklyData[week].total++;
             
-            if (record.status === 'late') {
+            if (record.status === 'tardy' || record.status === 'late') {
                 weeklyData[week].late++;
-                weeklyData[week].totalDelay += record.minutesLate || 0;
+                // Calculate minutes late if not provided
+                let minutesLate = record.minutesLate || 0;
+                if (!minutesLate && record.timeIn) {
+                    // Assume work starts at 8:00 AM
+                    const workStart = new Date(`${record.date}T08:00:00`);
+                    const actualStart = new Date(`${record.date}T${record.timeIn}`);
+                    minutesLate = Math.max(0, (actualStart - workStart) / (1000 * 60));
+                }
+                weeklyData[week].totalDelay += minutesLate;
             }
         });
 
@@ -584,9 +556,9 @@ class AnalyticsController {
     processPresenceStats(records, stats) {
         const totalRecords = records.length;
         const present = records.filter(r => r.status === 'present').length;
-        const late = records.filter(r => r.status === 'late').length;
+        const late = records.filter(r => r.status === 'tardy' || r.status === 'late').length;
         const absent = records.filter(r => r.status === 'absent').length;
-        const onLeave = records.filter(r => r.status === 'on_leave').length;
+        const onLeave = records.filter(r => r.status === 'on_leave' || r.status === 'leave').length;
 
         return {
             present,
@@ -616,6 +588,7 @@ class AnalyticsController {
                 case 'present':
                     patterns.present[adjustedDay]++;
                     break;
+                case 'tardy':
                 case 'late':
                     patterns.late[adjustedDay]++;
                     break;
@@ -789,15 +762,14 @@ class AnalyticsController {
      * Render all charts
      */
     renderCharts() {
-        if (!this.analyticsData) return;
+        if (!this.analyticsData) {
+            console.warn('No analytics data available for chart rendering');
+            return;
+        }
 
-        // Clear existing charts
-        this.destroyAllCharts();
-
-        // Render each chart type
-        Object.keys(this.chartConfigs).forEach(chartKey => {
-            this.renderChart(chartKey);
-        });
+        // Always create fallback charts since Chart.js is problematic
+        console.log('Creating fallback visualizations for analytics');
+        this.createAllFallbackCharts();
     }
 
     /**
@@ -813,12 +785,14 @@ class AnalyticsController {
         }
 
         try {
+            // Destroy existing chart first if it exists
+            if (typeof chartsManager !== 'undefined') {
+                chartsManager.destroyChart(config.canvasId);
+            }
+
             let chart;
             
             switch (config.type) {
-                case 'timeTracking':
-                    chart = chartsManager.createTimeTrackingChart(config.canvasId, data);
-                    break;
                 case 'tardinessTrends':
                     chart = chartsManager.createTardinessTrendsChart(config.canvasId, data);
                     break;
@@ -835,7 +809,8 @@ class AnalyticsController {
                     chart = chartsManager.createMonthlyOverviewChart(config.canvasId, data);
                     break;
                 default:
-                    console.warn(`Unknown chart type: ${config.type}`);
+                    console.warn(`Unknown chart type: ${config.type} for chart: ${chartKey}`);
+                    this.createFallbackChart(config.canvasId, config.title);
                     return;
             }
 
@@ -844,7 +819,276 @@ class AnalyticsController {
             }
         } catch (error) {
             console.error(`Failed to render chart ${chartKey}:`, error);
+            this.createFallbackChart(config.canvasId, `${config.title} (Chart unavailable)`);
         }
+    }
+
+    /**
+     * Create a fallback chart when Chart.js fails
+     */
+    createFallbackChart(canvasId, title) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+
+        const container = canvas.parentElement;
+        if (!container) return;
+
+        const chartKey = Object.keys(this.chartConfigs).find(key => 
+            this.chartConfigs[key].canvasId === canvasId
+        );
+        
+        const data = chartKey ? this.analyticsData[chartKey] : null;
+
+        if (data) {
+            // Create data visualization based on chart type
+            container.innerHTML = this.createDataVisualization(chartKey, data, title);
+        } else {
+            // Generic fallback
+            container.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; color: var(--text-secondary); text-align: center; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-secondary);">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
+                    <div style="font-size: 1.2rem; margin-bottom: 0.5rem; color: var(--text-primary);">${title}</div>
+                    <div style="font-size: 0.9rem;">Data visualization unavailable</div>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Create data visualization without Chart.js
+     */
+    createDataVisualization(chartKey, data, title) {
+        switch (chartKey) {
+            case 'presenceStats':
+                return this.createPresenceStatsVisualization(data, title);
+            case 'tardinessTrends':
+                return this.createTardinessTrendsVisualization(data, title);
+            case 'weeklyPatterns':
+                return this.createWeeklyPatternsVisualization(data, title);
+            case 'performance':
+                return this.createPerformanceVisualization(data, title);
+            case 'monthlyOverview':
+                return this.createMonthlyOverviewVisualization(data, title);
+            default:
+                return this.createGenericVisualization(data, title);
+        }
+    }
+
+    /**
+     * Create presence statistics visualization
+     */
+    createPresenceStatsVisualization(data, title) {
+        const total = data.total || 1;
+        const presentPercent = Math.round((data.present / total) * 100);
+        const latePercent = Math.round((data.late / total) * 100);
+        const absentPercent = Math.round((data.absent / total) * 100);
+        const leavePercent = Math.round((data.onLeave / total) * 100);
+
+        return `
+            <div style="padding: 20px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-primary);">
+                <h3 style="margin: 0 0 20px 0; text-align: center; color: var(--text-primary);">${title}</h3>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                    <div style="text-align: center; padding: 15px; background: var(--bg-secondary); border-radius: 6px;">
+                        <div style="font-size: 2rem; color: #4CAF50; font-weight: bold;">${data.present}</div>
+                        <div style="color: var(--text-secondary); font-size: 0.9rem;">Present (${presentPercent}%)</div>
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: var(--bg-secondary); border-radius: 6px;">
+                        <div style="font-size: 2rem; color: #FF9800; font-weight: bold;">${data.late}</div>
+                        <div style="color: var(--text-secondary); font-size: 0.9rem;">Late (${latePercent}%)</div>
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: var(--bg-secondary); border-radius: 6px;">
+                        <div style="font-size: 2rem; color: #F44336; font-weight: bold;">${data.absent}</div>
+                        <div style="color: var(--text-secondary); font-size: 0.9rem;">Absent (${absentPercent}%)</div>
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: var(--bg-secondary); border-radius: 6px;">
+                        <div style="font-size: 2rem; color: #2196F3; font-weight: bold;">${data.onLeave}</div>
+                        <div style="color: var(--text-secondary); font-size: 0.9rem;">On Leave (${leavePercent}%)</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Create tardiness trends visualization
+     */
+    createTardinessTrendsVisualization(data, title) {
+        const maxLate = Math.max(...data.lateArrivals, 1);
+        const maxDelay = Math.max(...data.averageDelay, 1);
+
+        const barsHtml = data.labels.map((label, index) => {
+            const lateHeight = (data.lateArrivals[index] / maxLate) * 100;
+            const delayHeight = (data.averageDelay[index] / maxDelay) * 100;
+            
+            return `
+                <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
+                    <div style="display: flex; align-items: end; height: 120px; gap: 4px;">
+                        <div style="width: 20px; height: ${lateHeight}%; background: #FF9800; border-radius: 2px 2px 0 0;" title="Late arrivals: ${data.lateArrivals[index]}"></div>
+                        <div style="width: 20px; height: ${delayHeight}%; background: #F44336; border-radius: 2px 2px 0 0;" title="Avg delay: ${Math.round(data.averageDelay[index])} min"></div>
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--text-tertiary); margin-top: 8px; text-align: center;">${label}</div>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div style="padding: 20px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-primary);">
+                <h3 style="margin: 0 0 20px 0; text-align: center; color: var(--text-primary);">${title}</h3>
+                <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                    ${barsHtml}
+                </div>
+                <div style="display: flex; justify-content: center; gap: 20px; font-size: 0.9rem;">
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <div style="width: 12px; height: 12px; background: #FF9800; border-radius: 2px;"></div>
+                        <span style="color: var(--text-secondary);">Late Arrivals</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <div style="width: 12px; height: 12px; background: #F44336; border-radius: 2px;"></div>
+                        <span style="color: var(--text-secondary);">Avg Delay (min)</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Create weekly patterns visualization
+     */
+    createWeeklyPatternsVisualization(data, title) {
+        const maxValue = Math.max(...data.present, ...data.late, ...data.absent, 1);
+
+        const barsHtml = data.labels.map((label, index) => {
+            const presentHeight = (data.present[index] / maxValue) * 100;
+            const lateHeight = (data.late[index] / maxValue) * 100;
+            const absentHeight = (data.absent[index] / maxValue) * 100;
+            
+            return `
+                <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
+                    <div style="display: flex; align-items: end; height: 120px; gap: 2px;">
+                        <div style="width: 15px; height: ${presentHeight}%; background: #4CAF50; border-radius: 2px 2px 0 0;" title="Present: ${data.present[index]}"></div>
+                        <div style="width: 15px; height: ${lateHeight}%; background: #FF9800; border-radius: 2px 2px 0 0;" title="Late: ${data.late[index]}"></div>
+                        <div style="width: 15px; height: ${absentHeight}%; background: #F44336; border-radius: 2px 2px 0 0;" title="Absent: ${data.absent[index]}"></div>
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--text-tertiary); margin-top: 8px; text-align: center;">${label.substring(0, 3)}</div>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div style="padding: 20px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-primary);">
+                <h3 style="margin: 0 0 20px 0; text-align: center; color: var(--text-primary);">${title}</h3>
+                <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                    ${barsHtml}
+                </div>
+                <div style="display: flex; justify-content: center; gap: 15px; font-size: 0.9rem;">
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <div style="width: 12px; height: 12px; background: #4CAF50; border-radius: 2px;"></div>
+                        <span style="color: var(--text-secondary);">Present</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <div style="width: 12px; height: 12px; background: #FF9800; border-radius: 2px;"></div>
+                        <span style="color: var(--text-secondary);">Late</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <div style="width: 12px; height: 12px; background: #F44336; border-radius: 2px;"></div>
+                        <span style="color: var(--text-secondary);">Absent</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Create performance visualization
+     */
+    createPerformanceVisualization(data, title) {
+        const metricsHtml = data.labels.map((label, index) => {
+            const score = data.scores[index];
+            const percentage = Math.min(score, 100);
+            const color = score >= 90 ? '#4CAF50' : score >= 75 ? '#FF9800' : '#F44336';
+            
+            return `
+                <div style="margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span style="color: var(--text-primary); font-size: 0.9rem;">${label}</span>
+                        <span style="color: ${color}; font-weight: bold;">${score}%</span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: var(--bg-tertiary); border-radius: 4px; overflow: hidden;">
+                        <div style="height: 100%; width: ${percentage}%; background: ${color}; border-radius: 4px; transition: width 0.3s ease;"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div style="padding: 20px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-primary);">
+                <h3 style="margin: 0 0 10px 0; text-align: center; color: var(--text-primary);">${title}</h3>
+                <div style="text-align: center; margin-bottom: 20px; color: var(--text-secondary); font-size: 0.9rem;">${data.employeeName}</div>
+                <div style="max-width: 300px; margin: 0 auto;">
+                    ${metricsHtml}
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Create monthly overview visualization
+     */
+    createMonthlyOverviewVisualization(data, title) {
+        const barsHtml = data.labels.map((label, index) => {
+            const rate = data.attendanceRate[index];
+            const target = data.targetRate[index];
+            const height = Math.min(rate, 100);
+            const color = rate >= target ? '#4CAF50' : rate >= 80 ? '#FF9800' : '#F44336';
+            
+            return `
+                <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
+                    <div style="display: flex; align-items: end; height: 120px;">
+                        <div style="width: 30px; height: ${height}%; background: ${color}; border-radius: 2px 2px 0 0;" title="Attendance: ${rate}%"></div>
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--text-tertiary); margin-top: 8px; text-align: center;">${label}</div>
+                    <div style="font-size: 0.7rem; color: ${color}; font-weight: bold;">${rate}%</div>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div style="padding: 20px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-primary);">
+                <h3 style="margin: 0 0 20px 0; text-align: center; color: var(--text-primary);">${title}</h3>
+                <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                    ${barsHtml}
+                </div>
+                <div style="text-align: center; font-size: 0.9rem; color: var(--text-secondary);">
+                    Target: 95% | <span style="color: #4CAF50;">Above target</span> | <span style="color: #FF9800;">Below target</span> | <span style="color: #F44336;">Poor</span>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Create generic visualization
+     */
+    createGenericVisualization(data, title) {
+        return `
+            <div style="padding: 20px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-primary);">
+                <h3 style="margin: 0 0 20px 0; text-align: center; color: var(--text-primary);">${title}</h3>
+                <div style="text-align: center; color: var(--text-secondary);">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
+                    <div>Data visualization available</div>
+                    <div style="font-size: 0.8rem; margin-top: 10px;">Chart fallback mode active</div>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Create fallback charts for all chart configurations
+     */
+    createAllFallbackCharts() {
+        Object.keys(this.chartConfigs).forEach(chartKey => {
+            const config = this.chartConfigs[chartKey];
+            this.createFallbackChart(config.canvasId, config.title);
+        });
     }
 
     /**
@@ -1207,9 +1451,15 @@ class AnalyticsController {
      * Destroy all charts
      */
     destroyAllCharts() {
-        this.charts.forEach((chart, chartKey) => {
-            chartsManager.destroyChart(this.chartConfigs[chartKey].canvasId);
-        });
+        if (typeof chartsManager !== 'undefined') {
+            this.charts.forEach((chart, chartKey) => {
+                try {
+                    chartsManager.destroyChart(this.chartConfigs[chartKey].canvasId);
+                } catch (error) {
+                    console.warn(`Failed to destroy chart ${chartKey}:`, error);
+                }
+            });
+        }
         this.charts.clear();
     }
 
@@ -1332,7 +1582,7 @@ class AnalyticsController {
     }
 }
 
-// Create and export analytics controller instance
+// Create analytics controller instance but don't initialize immediately
 const analyticsController = new AnalyticsController();
 
 // Export for different module systems
@@ -1342,17 +1592,24 @@ if (typeof module !== 'undefined' && module.exports) {
     window.analyticsController = analyticsController;
 }
 
-// Auto-initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
+// Wait for dependencies to be ready before initializing
+function initializeWhenReady() {
+    // Check if required dependencies are available (chartsManager is optional)
+    if (typeof dataService !== 'undefined') {
         if (!analyticsController.isInitialized) {
-            analyticsController.init();
+            analyticsController.init().catch(console.error);
         }
-    });
-} else {
-    if (!analyticsController.isInitialized) {
-        analyticsController.init();
+    } else {
+        console.log('Analytics waiting for dependencies... dataService:', typeof dataService, 'chartsManager:', typeof chartsManager);
+        setTimeout(initializeWhenReady, 100);
     }
+}
+
+// Auto-initialize when DOM is ready and dependencies are available
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeWhenReady);
+} else {
+    initializeWhenReady();
 }
 
 // Export utility functions for easy access

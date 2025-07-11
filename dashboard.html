@@ -15,7 +15,6 @@
     
     <!-- Chart.js for data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     
     <!-- Preload critical resources -->
     <link rel="preload" href="/js/data-service.js" as="script">
@@ -567,15 +566,24 @@
     </div>
 
     <!-- JavaScript Dependencies -->
-    <script src="/js/mock-data.js"></script>
-    <script src="/js/data-service.js"></script>
-    <script src="/js/auth.js"></script>
-    <script src="/js/theme.js"></script>
-    <script src="/js/modals.js"></script>
-    <script src="/js/charts.js"></script>
-    <script src="/js/dashboard-calendar.js"></script>
-    <script src="/js/sidebar.js"></script>
-    <script src="/js/dashboard.js"></script>
+    <script>
+        // Global error handler to catch script loading issues
+        window.addEventListener('error', function(e) {
+            console.error('Script error:', e.error, 'Source:', e.filename, 'Line:', e.lineno);
+            if (e.filename && e.filename.includes('.js')) {
+                console.error('JavaScript file error detected:', e.filename);
+            }
+        });
+    </script>
+    <script src="/js/mock-data.js" onerror="console.error('Failed to load mock-data.js')"></script>
+    <script src="/js/data-service.js" onerror="console.error('Failed to load data-service.js')"></script>
+    <script src="/js/auth.js" onerror="console.error('Failed to load auth.js')"></script>
+    <script src="/js/theme.js" onerror="console.error('Failed to load theme.js')"></script>
+    <script src="/js/modals.js" onerror="console.error('Failed to load modals.js')"></script>
+    <script src="/js/charts.js" onerror="console.error('Failed to load charts.js')"></script>
+    <script src="/js/dashboard-calendar.js" onerror="console.error('Failed to load dashboard-calendar.js')"></script>
+    <script src="/js/sidebar.js" onerror="console.error('Failed to load sidebar.js')"></script>
+    <script src="/js/dashboard.js" onerror="console.error('Failed to load dashboard.js')"></script>
 
     <!-- Dashboard Specific Styles -->
     <style>
@@ -1662,14 +1670,133 @@
     <script>
         // Initialize dashboard when DOM is ready
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize core components
-            if (typeof SidebarManager !== 'undefined') {
-                window.sidebarManager = new SidebarManager();
+            console.log('DOM loaded, checking dependencies...');
+            
+            // Show loading status in UI
+            const loadingOverlay = document.getElementById('loading-overlay');
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'flex';
             }
             
-            if (typeof DashboardController !== 'undefined') {
-                window.dashboardController = new DashboardController();
+            // Wait for Chart.js to be available
+            const waitForChart = () => {
+                if (typeof Chart !== 'undefined' && Chart.register) {
+                    console.log('Chart.js is available, initializing dashboard...');
+                    initializeDashboard();
+                } else {
+                    waitForChart.attempts = (waitForChart.attempts || 0) + 1;
+                    
+                    if (waitForChart.attempts > 30) { // 3 seconds max
+                        console.warn('Chart.js not available after 3 seconds, initializing with fallbacks');
+                        initializeDashboardWithoutCharts();
+                        return;
+                    }
+                    
+                    setTimeout(waitForChart, 100);
+                }
+            };
+            
+            function initializeDashboard() {
+                console.log('Chart.js loaded successfully, initializing dashboard...');
+                console.log('Available globals:', {
+                    Chart: typeof Chart,
+                    SidebarManager: typeof SidebarManager,
+                    DashboardController: typeof DashboardController,
+                    dataService: typeof dataService,
+                    mockData: typeof mockData
+                });
+                
+                try {
+                    // Initialize core components
+                    if (typeof SidebarManager !== 'undefined') {
+                        window.sidebarManager = new SidebarManager();
+                        console.log('SidebarManager initialized');
+                    } else {
+                        console.warn('SidebarManager not available');
+                    }
+                    
+                    if (typeof DashboardController !== 'undefined') {
+                        window.dashboardController = new DashboardController();
+                        console.log('DashboardController initialized');
+                    } else {
+                        console.error('DashboardController not found');
+                    }
+                    
+                    // Hide loading overlay after a brief delay
+                    setTimeout(() => {
+                        const loadingOverlay = document.getElementById('loading-overlay');
+                        if (loadingOverlay) {
+                            loadingOverlay.style.display = 'none';
+                        }
+                    }, 1000);
+                    
+                } catch (error) {
+                    console.error('Error during initialization:', error);
+                    showInitializationError(error);
+                }
             }
+            
+            function initializeDashboardWithoutCharts() {
+                console.log('Initializing dashboard without charts functionality...');
+                
+                try {
+                    // Initialize core components
+                    if (typeof SidebarManager !== 'undefined') {
+                        window.sidebarManager = new SidebarManager();
+                    }
+                    
+                    // Create a fallback dashboard controller that doesn't use charts
+                    if (typeof DashboardController !== 'undefined') {
+                        window.dashboardController = new DashboardController();
+                    } else {
+                        console.error('DashboardController not found');
+                    }
+                    
+                    // Hide chart containers and show fallback
+                    const chartContainers = document.querySelectorAll('.chart-container');
+                    chartContainers.forEach(container => {
+                        container.innerHTML = `
+                            <div style="padding: 40px 20px; text-align: center; color: var(--text-tertiary);">
+                                <div style="font-size: 2rem; margin-bottom: 1rem;">📊</div>
+                                <div style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-secondary);">Chart Unavailable</div>
+                                <div style="font-size: 0.9rem;">External chart library failed to load</div>
+                            </div>
+                        `;
+                    });
+                    
+                    // Hide loading overlay
+                    setTimeout(() => {
+                        const loadingOverlay = document.getElementById('loading-overlay');
+                        if (loadingOverlay) {
+                            loadingOverlay.style.display = 'none';
+                        }
+                    }, 500);
+                    
+                } catch (error) {
+                    console.error('Error during fallback initialization:', error);
+                    showInitializationError(error);
+                }
+            }
+            
+            function showInitializationError(error) {
+                const loadingOverlay = document.getElementById('loading-overlay');
+                if (loadingOverlay) {
+                    loadingOverlay.innerHTML = `
+                        <div class="loading-content" style="background: var(--bg-primary); padding: 2rem; border-radius: 1rem; text-align: center; max-width: 400px;">
+                            <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+                            <h2 style="color: var(--text-primary); margin-bottom: 1rem;">Initialization Error</h2>
+                            <p style="color: var(--text-secondary); margin-bottom: 2rem;">The dashboard failed to load properly.</p>
+                            <button onclick="window.location.reload()" 
+                                    style="background: var(--accent-primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; cursor: pointer;">
+                                Retry
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+            
+            // Start the initialization process
+            setTimeout(waitForChart, 100); // Small delay to ensure all scripts have a chance to load
             
             // Update current time
             function updateCurrentTime() {
