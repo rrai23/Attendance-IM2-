@@ -990,7 +990,7 @@ class DashboardController {
         try {
             if (window.chartsManager && this.currentStats) {
                 const chartData = this.formatChartData(this.currentStats);
-                window.chartsManager.updateChart('attendance-chart', chartData);
+                window.chartsManager.updateChart('attendance-stats-chart', chartData);
             }
         } catch (error) {
             console.error('Error updating charts:', error);
