@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Final CRUD Operations Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .btn-success {
+            background: #28a745;
+        }
+        .btn-warning {
+            background: #ffc107;
+            color: #000;
+        }
+        .btn-danger {
+            background: #dc3545;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .warning {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        .employee-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .employee-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .employee-actions {
+            display: flex;
+            gap: 5px;
+        }
+        .status-badge {
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 0.8em;
+        }
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+        .test-log {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        .form-group {
+            margin: 10px 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Final CRUD Operations Test</h1>
+        <p>This comprehensive test verifies all employee CRUD operations work correctly with the new ID system.</p>
+
+        <div class="test-section">
+            <h3>1. System Status</h3>
+            <button onclick="checkSystemStatus()">Check System Status</button>
+            <button onclick="resetToCleanState()">Reset to Clean State</button>
+            <div id="systemStatus"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Current Employees</h3>
+            <button onclick="refreshEmployeeList()">Refresh List</button>
+            <div id="employeesList"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. Add New Employee Test</h3>
+            <div class="form-group">
+                <label>First Name:</label>
+                <input type="text" id="newFirstName" value="Test" placeholder="Enter first name">
+            </div>
+            <div class="form-group">
+                <label>Last Name:</label>
+                <input type="text" id="newLastName" value="Employee" placeholder="Enter last name">
+            </div>
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" id="newEmail" value="test.employee@company.com" placeholder="Enter email">
+            </div>
+            <button class="btn-success" onclick="testAddEmployee()">Add Test Employee</button>
+            <div id="addResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4. Test Log</h3>
+            <button onclick="clearLog()">Clear Log</button>
+            <div id="testLog" class="test-log"></div>
+        </div>
+    </div>
+
+    <!-- Load required scripts -->
+    <script src="js/utils/id-utility.js"></script>
+    <script src="js/core/local-storage-service.js"></script>
+    <script src="js/unified-employee-manager.js"></script>
+    <script src="js/unified-data-service.js"></script>
+
+    <script>
+        let dataService, unifiedManager;
+        let testLog = [];
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            testLog.push(logEntry);
+            
+            // Update log display
+            const logContainer = document.getElementById('testLog');
+            logContainer.innerHTML = testLog.slice(-50).join('\n');
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            console.log(logEntry);
+        }
+
+        function clearLog() {
+            testLog = [];
+            document.getElementById('testLog').innerHTML = '';
+        }
+
+        // Initialize services
+        async function initializeServices() {
+            try {
+                if (dataService) return true;
+                
+                log('Initializing services...');
+                dataService = new window.UnifiedDataService();
+                await dataService.initialize();
+                unifiedManager = dataService.getUnifiedManager();
+                
+                log('Services initialized successfully', 'success');
+                return true;
+            } catch (error) {
+                log(`Failed to initialize services: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function checkSystemStatus() {
+            const container = document.getElementById('systemStatus');
+            container.innerHTML = '<p>Checking system status...</p>';
+
+            try {
+                const initialized = await initializeServices();
+                if (!initialized) {
+                    container.innerHTML = '<p class="error">❌ System initialization failed</p>';
+                    return;
+                }
+
+                const employees = await dataService.getEmployees();
+                const attendanceRecords = await dataService.getAttendanceRecords();
+
+                // Check ID consistency
+                const employeeIdStats = window.IdUtility.getIdTypeStats(employees, 'id');
+                const attendanceIdStats = window.IdUtility.getIdTypeStats(attendanceRecords, 'employeeId');
+
+                // Check for orphaned records
+                const orphanedRecords = attendanceRecords.filter(record => 
+                    !window.IdUtility.findEmployeeById(employees, record.employeeId)
+                );
+
+                let html = '<h4>System Status Report:</h4>';
+                html += `<p><strong>Employees:</strong> ${employees.length} total</p>`;
+                html += `<p><strong>Attendance Records:</strong> ${attendanceRecords.length} total</p>`;
+                html += `<p><strong>Orphaned Records:</strong> ${orphanedRecords.length}</p>`;
+                
+                html += '<p><strong>Employee ID Formats:</strong></p><ul>';
+                html += `<li>Numeric: ${employeeIdStats.formats.numeric}</li>`;
+                html += `<li>emp_ prefix: ${employeeIdStats.formats.empPrefix}</li>`;
+                html += `<li>Other: ${employeeIdStats.formats.other}</li>`;
+                html += '</ul>';
+
+                html += '<p><strong>Attendance Record Employee ID Formats:</strong></p><ul>';
+                html += `<li>Numeric: ${attendanceIdStats.formats.numeric}</li>`;
+                html += `<li>emp_ prefix: ${attendanceIdStats.formats.empPrefix}</li>`;
+                html += `<li>Other: ${attendanceIdStats.formats.other}</li>`;
+                html += '</ul>';
+
+                if (orphanedRecords.length === 0 && employeeIdStats.formats.empPrefix === employees.length) {
+                    html += '<p class="success">✅ System is in good state</p>';
+                    log('System status check passed', 'success');
+                } else {
+                    html += '<p class="warning">⚠️ System has some inconsistencies</p>';
+                    log('System status check found issues', 'warning');
+                }
+
+                container.innerHTML = html;
+
+            } catch (error) {
+                container.innerHTML = `<p class="error">Status check failed: ${error.message}</p>`;
+                log(`Status check failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function refreshEmployeeList() {
+            const container = document.getElementById('employeesList');
+            container.innerHTML = '<p>Loading employees...</p>';
+
+            try {
+                const initialized = await initializeServices();
+                if (!initialized) {
+                    container.innerHTML = '<p class="error">Failed to initialize services</p>';
+                    return;
+                }
+
+                const employees = await dataService.getEmployees();
+                
+                if (employees.length === 0) {
+                    container.innerHTML = '<p>No employees found.</p>';
+                    return;
+                }
+
+                let html = `<h4>Current Employees (${employees.length}):</h4>`;
+                
+                employees.forEach(emp => {
+                    html += `
+                        <div class="employee-card">
+                            <div class="employee-header">
+                                <div>
+                                    <strong>${emp.firstName} ${emp.lastName}</strong>
+                                    <span class="status-badge status-${emp.status}">${emp.status}</span>
+                                </div>
+                                <div class="employee-actions">
+                                    <button class="btn-warning" onclick="testUpdateEmployee('${emp.id}')">Edit</button>
+                                    <button class="btn-danger" onclick="testDeleteEmployee('${emp.id}', '${emp.firstName} ${emp.lastName}')">Delete</button>
+                                </div>
+                            </div>
+                            <div>
+                                <small><strong>ID:</strong> ${emp.id} (${typeof emp.id}) | <strong>Code:</strong> ${emp.employeeCode || 'N/A'}</small><br>
+                                <small><strong>Email:</strong> ${emp.email} | <strong>Department:</strong> ${emp.department}</small>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+                log(`Loaded ${employees.length} employees`, 'info');
+
+            } catch (error) {
+                container.innerHTML = `<p class="error">Error loading employees: ${error.message}</p>`;
+                log(`Error loading employees: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAddEmployee() {
+            const firstName = document.getElementById('newFirstName').value.trim();
+            const lastName = document.getElementById('newLastName').value.trim();
+            const email = document.getElementById('newEmail').value.trim();
+            const resultContainer = document.getElementById('addResults');
+
+            if (!firstName || !lastName || !email) {
+                resultContainer.innerHTML = '<p class="error">Please fill in all fields</p>';
+                return;
+            }
+
+            try {
+                log(`Adding new employee: ${firstName} ${lastName} (${email})`);
+                
+                const employeeData = {
+                    firstName: firstName,
+                    lastName: lastName,
+                    email: email,
+                    department: 'Testing',
+                    position: 'Test Employee',
+                    status: 'active',
+                    hireDate: new Date().toISOString().split('T')[0],
+                    hourlyRate: 15.00,
+                    salaryType: 'hourly'
+                };
+
+                const newEmployee = await unifiedManager.addEmployee(employeeData);
+                
+                resultContainer.innerHTML = `
+                    <p class="success">✅ Successfully added employee</p>
+                    <p><strong>ID:</strong> ${newEmployee.id} (${typeof newEmployee.id})</p>
+                    <p><strong>Code:</strong> ${newEmployee.employeeCode}</p>
+                `;
+
+                log(`Successfully added employee with ID: ${newEmployee.id}`, 'success');
+                
+                // Clear form
+                document.getElementById('newFirstName').value = '';
+                document.getElementById('newLastName').value = '';
+                document.getElementById('newEmail').value = '';
+                
+                // Refresh employee list
+                await refreshEmployeeList();
+
+            } catch (error) {
+                resultContainer.innerHTML = `<p class="error">❌ Failed to add employee: ${error.message}</p>`;
+                log(`Failed to add employee: ${error.message}`, 'error');
+            }
+        }
+
+        async function testUpdateEmployee(employeeId) {
+            try {
+                log(`Testing update for employee ID: ${employeeId}`);
+                
+                // Get current employee
+                const employee = await unifiedManager.getEmployee(employeeId);
+                if (!employee) {
+                    log(`Employee with ID ${employeeId} not found`, 'error');
+                    return;
+                }
+
+                // Update with new data
+                const updateData = {
+                    firstName: employee.firstName,
+                    lastName: employee.lastName + ' (Updated)',
+                    email: employee.email,
+                    department: employee.department
+                };
+
+                const updatedEmployee = await unifiedManager.updateEmployee(employeeId, updateData);
+                
+                log(`Successfully updated employee: ${updatedEmployee.firstName} ${updatedEmployee.lastName}`, 'success');
+                
+                // Refresh list
+                await refreshEmployeeList();
+
+            } catch (error) {
+                log(`Failed to update employee ${employeeId}: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDeleteEmployee(employeeId, employeeName) {
+            if (!confirm(`Are you sure you want to delete ${employeeName}?`)) {
+                return;
+            }
+
+            try {
+                log(`Testing deletion of employee: ${employeeName} (ID: ${employeeId})`);
+                
+                const deletedEmployee = await unifiedManager.deleteEmployee(employeeId);
+                
+                log(`Successfully deleted employee: ${employeeName}`, 'success');
+                
+                // Refresh list
+                await refreshEmployeeList();
+
+            } catch (error) {
+                log(`Failed to delete employee ${employeeName}: ${error.message}`, 'error');
+            }
+        }
+
+        async function resetToCleanState() {
+            if (!confirm('This will reset all data to a clean state. Continue?')) {
+                return;
+            }
+
+            try {
+                log('Resetting to clean state...');
+                
+                // Clear localStorage
+                localStorage.removeItem('bricks_attendance_data');
+                localStorage.removeItem('employee_data');
+                localStorage.removeItem('attendance_data');
+                
+                // Clear services
+                dataService = null;
+                unifiedManager = null;
+                
+                // Reinitialize
+                await initializeServices();
+                
+                log('Reset completed successfully', 'success');
+                
+                // Refresh displays
+                await checkSystemStatus();
+                await refreshEmployeeList();
+                
+            } catch (error) {
+                log(`Reset failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            log('Application started');
+            await checkSystemStatus();
+            await refreshEmployeeList();
+        });
+    </script>
+</body>
+</html>

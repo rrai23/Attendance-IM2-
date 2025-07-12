@@ -721,7 +721,11 @@ class EmployeesPageManager {
         }
 
         return {
-            employeeCode: document.getElementById('employeeCode')?.value.trim() || '',
+            // Only include employeeCode if it has a real value (not empty or placeholder)
+            employeeCode: (() => {
+                const code = document.getElementById('employeeCode')?.value.trim() || '';
+                return (code && code !== 'Auto-generated') ? code : '';
+            })(),
             firstName: document.getElementById('firstName')?.value.trim() || '',
             lastName: document.getElementById('lastName')?.value.trim() || '',
             email: document.getElementById('email')?.value.trim() || '',

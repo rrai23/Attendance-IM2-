@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix Employee ID Issues</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container my-4">
+        <h1>🔧 Fix Employee ID Issues</h1>
+        <p class="text-warning">This tool will completely reset the data to fix the emp_emp_001 issue</p>
+        
+        <div class="mb-3">
+            <button id="fullReset" class="btn btn-danger">🔄 Complete Reset</button>
+            <button id="testFresh" class="btn btn-success ms-2">✅ Test Fresh Data</button>
+            <button id="addEmployee" class="btn btn-primary ms-2">➕ Add Test Employee</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <!-- Load scripts -->
+    <script src="js/mock-data.js"></script>
+    <script src="js/core/data-service-api.js"></script>
+    <script src="js/core/local-storage-service.js"></script>
+    <script src="js/core/api-service.js"></script>
+    <script src="js/core/data-service-factory.js"></script>
+    <script src="js/unified-data-service.js"></script>
+
+    <script>
+        function addResult(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `alert alert-${type}`;
+            div.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+            document.getElementById('results').appendChild(div);
+        }
+
+        async function fullReset() {
+            addResult('🔄 Starting complete reset...', 'warning');
+            
+            // Clear all localStorage
+            localStorage.clear();
+            addResult('✅ localStorage cleared', 'success');
+            
+            // Create fresh data service
+            const dataService = new LocalStorageDataService();
+            await dataService.initializeData();
+            addResult('✅ Fresh data service initialized', 'success');
+            
+            // Check the employees
+            const employees = await dataService.getEmployees();
+            addResult(`📊 Loaded ${employees.length} fresh employees`, 'info');
+            
+            employees.forEach((emp, index) => {
+                addResult(`👤 Employee ${index + 1}: ${emp.fullName} | Code: ${emp.employeeCode} | ID: ${emp.employeeId || 'N/A'}`, 'info');
+            });
+        }
+
+        async function testFresh() {
+            try {
+                // Get fresh data
+                const dataService = new LocalStorageDataService();
+                await dataService.initializeData();
+                const employees = await dataService.getEmployees();
+                
+                addResult('📊 Current employee data:', 'info');
+                employees.forEach((emp, index) => {
+                    const issues = [];
+                    if (emp.employeeCode?.includes('emp_emp_')) issues.push('DOUBLE PREFIX');
+                    if (!emp.employeeCode) issues.push('NO EMPLOYEE CODE');
+                    if (emp.employeeCode === 'Auto-generated') issues.push('PLACEHOLDER VALUE');
+                    
+                    const status = issues.length > 0 ? 'danger' : 'success';
+                    const issueText = issues.length > 0 ? ` [${issues.join(', ')}]` : ' [OK]';
+                    
+                    addResult(`Employee ${index + 1}: ${emp.fullName} | Code: "${emp.employeeCode}"${issueText}`, status);
+                });
+                
+            } catch (error) {
+                addResult(`❌ Error: ${error.message}`, 'danger');
+            }
+        }
+
+        async function addTestEmployee() {
+            try {
+                const dataService = window.dataService || new LocalStorageDataService();
+                
+                const testEmp = {
+                    firstName: 'Test',
+                    lastName: `User${Date.now().toString().slice(-4)}`,
+                    email: `test${Date.now()}@example.com`,
+                    department: 'Testing',
+                    position: 'Test Engineer',
+                    status: 'active'
+                };
+                
+                addResult('➕ Adding test employee...', 'info');
+                const result = await dataService.addEmployee(testEmp);
+                
+                addResult(`✅ Employee added: ${result.fullName} | Code: "${result.employeeCode}"`, 'success');
+                
+                // Test again to see all employees
+                await testFresh();
+                
+            } catch (error) {
+                addResult(`❌ Error adding employee: ${error.message}`, 'danger');
+            }
+        }
+
+        document.getElementById('fullReset').addEventListener('click', fullReset);
+        document.getElementById('testFresh').addEventListener('click', testFresh);
+        document.getElementById('addEmployee').addEventListener('click', addTestEmployee);
+
+        // Auto-run test on load
+        window.addEventListener('load', () => {
+            setTimeout(testFresh, 1000);
+        });
+    </script>
+</body>
+</html>
