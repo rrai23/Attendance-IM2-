@@ -386,18 +386,6 @@ class PayrollController {
                         <div class="stat-label">Employees</div>
                     </div>
                 </div>
-
-                <div class="summary-actions">
-                    <button class="btn btn-primary process-payroll-btn">
-                        Process Payroll
-                    </button>
-                    <button class="btn btn-secondary export-payroll-btn">
-                        Export Data
-                    </button>
-                    <button class="btn btn-outline payroll-refresh-btn">
-                        Refresh
-                    </button>
-                </div>
             </div>
         `;
     }

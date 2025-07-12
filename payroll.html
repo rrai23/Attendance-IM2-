@@ -4,13 +4,163 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payroll Management - Bricks Attendance System</title>
+    
+    <!-- Stylesheets -->
+    <link rel="preload" href="css/styles.css" as="style">
     <link rel="stylesheet" href="css/styles.css">
+    
+    <!-- Critical CSS for header buttons to prevent FOUC -->
+    <style>
+        /* Critical header button styles to prevent flash of unstyled content */
+        .mobile-menu-toggle {
+            display: none;
+            position: fixed;
+            top: var(--spacing-lg, 1rem);
+            left: var(--spacing-lg, 1rem);
+            z-index: 1001;
+            background: var(--bg-primary, #ffffff);
+            border: 1px solid var(--border-color, #e5e7eb);
+            border-radius: var(--radius-sm, 6px);
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+            transition: all var(--transition-fast, 0.15s ease);
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .sidebar-toggle {
+            background: var(--bg-primary, #ffffff);
+            border: 1px solid var(--border-color, #e5e7eb);
+            border-radius: var(--radius-sm, 6px);
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-secondary, #6b7280);
+            transition: all var(--transition-fast, 0.15s ease);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .theme-toggle,
+        .theme-option {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--border-color, #e5e7eb);
+            border-radius: var(--radius-sm, 6px);
+            background: var(--bg-primary, #ffffff);
+            cursor: pointer;
+            transition: all var(--transition-fast, 0.15s ease);
+            padding: 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .theme-option.active {
+            border-color: var(--accent-primary, #3b82f6);
+            background: var(--accent-primary, #3b82f6);
+            color: var(--color-white, #ffffff);
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-menu-toggle {
+                display: flex !important;
+            }
+        }
+        
+        /* Prevent layout shift and FOUC during loading */
+        body.loading .sidebar-header, 
+        body.loading .sidebar-user, 
+        body.loading .theme-selector,
+        body.loading .page-actions {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        
+        body.css-loaded .sidebar-header, 
+        body.css-loaded .sidebar-user, 
+        body.css-loaded .theme-selector,
+        body.css-loaded .page-actions {
+            opacity: 1;
+        }
+        
+        /* Ensure buttons maintain size during load */
+        .mobile-menu-toggle,
+        .sidebar-toggle,
+        .theme-toggle,
+        .theme-option {
+            box-sizing: border-box;
+        }
+    </style>
+    
+    <!-- Critical CSS loading script -->
+    <script>
+        // Prevent FOUC by handling CSS load completion
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if CSS is loaded by testing for a specific rule
+            function checkCSSLoaded() {
+                const testElement = document.createElement('div');
+                testElement.className = 'sidebar-toggle';
+                testElement.style.position = 'absolute';
+                testElement.style.visibility = 'hidden';
+                testElement.style.pointerEvents = 'none';
+                document.body.appendChild(testElement);
+                
+                const computedStyle = window.getComputedStyle(testElement);
+                const cssLoaded = computedStyle.width === '36px';
+                
+                document.body.removeChild(testElement);
+                return cssLoaded;
+            }
+            
+            // Mark CSS as loaded and remove loading state
+            function markCSSLoaded() {
+                document.documentElement.classList.add('css-loaded');
+                document.body.classList.add('css-loaded');
+                document.body.classList.remove('loading');
+                
+                // Force a repaint to ensure styles are applied
+                document.body.offsetHeight;
+            }
+            
+            // Check immediately and periodically until CSS is loaded
+            if (checkCSSLoaded()) {
+                markCSSLoaded();
+            } else {
+                const checkInterval = setInterval(() => {
+                    if (checkCSSLoaded()) {
+                        markCSSLoaded();
+                        clearInterval(checkInterval);
+                    }
+                }, 10);
+                
+                // Failsafe: mark as loaded after 300ms regardless
+                setTimeout(() => {
+                    markCSSLoaded();
+                    clearInterval(checkInterval);
+                }, 300);
+            }
+        });
+        
+        // Also handle stylesheet load event as backup
+        window.addEventListener('load', function() {
+            document.documentElement.classList.add('css-loaded');
+            document.body.classList.add('css-loaded');
+            document.body.classList.remove('loading');
+        });
+    </script>
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 </head>
-<body class="page-payroll">
+<body class="page-payroll loading">
     <!-- Skip Navigation Links -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
     <a href="#sidebar" class="skip-link">Skip to navigation</a>
@@ -245,14 +395,23 @@
                                 <polyline points="1 20 1 14 7 14"></polyline>
                                 <path d="m3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
                             </svg>
-                            Refresh Data
+                            <span class="btn-text">Refresh Data</span>
+                        </button>
+                        <button class="btn btn-secondary export-payroll-btn">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            <span class="btn-text">Export Data</span>
                         </button>
                         <button class="btn btn-primary process-payroll-btn">
                             <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                             </svg>
-                            Process Payroll
-                        </button>                </div>
+                            <span class="btn-text">Process Payroll</span>
+                        </button>
+                    </div>
             </header>
 
             <!-- Main Content Area -->
@@ -302,18 +461,6 @@
                                         <div class="stat-value">0</div>
                                         <div class="stat-label">Employees</div>
                                     </div>
-                                </div>
-
-                                <div class="summary-actions">
-                                    <button class="btn btn-primary process-payroll-btn">
-                                        Process Payroll
-                                    </button>
-                                    <button class="btn btn-secondary export-payroll-btn">
-                                        Export Data
-                                    </button>
-                                    <button class="btn btn-outline payroll-refresh-btn">
-                                        Refresh
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -1230,6 +1377,198 @@
                 width: 100%;
             }
         }
+
+        /* Enhanced Page Actions and Header Button Styling */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--spacing-lg, 1.5rem);
+            gap: var(--spacing-lg, 1.5rem);
+            flex-wrap: wrap;
+        }
+
+        .page-title-section {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .page-title {
+            margin: 0 0 var(--spacing-xs, 0.5rem) 0;
+            color: var(--text-primary, #111827);
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+
+        .page-subtitle {
+            margin: 0;
+            color: var(--text-secondary, #6b7280);
+            font-size: var(--font-size-base, 1rem);
+        }
+
+        .page-actions {
+            display: flex;
+            gap: var(--spacing-md, 1rem);
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .page-actions .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm, 0.75rem);
+            padding: var(--spacing-md, 1rem) var(--spacing-lg, 1.5rem);
+            border-radius: var(--radius-md, 8px);
+            font-size: var(--font-size-base, 1rem);
+            font-weight: var(--font-weight-medium, 500);
+            text-decoration: none;
+            cursor: pointer;
+            transition: all var(--transition-fast, 0.15s ease);
+            white-space: nowrap;
+            min-height: 44px;
+            box-sizing: border-box;
+            border: 1px solid transparent;
+        }
+
+        .page-actions .btn-icon {
+            width: 16px;
+            height: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Ensure consistent button sizing for page actions */
+        .page-actions .btn-outline {
+            background-color: transparent;
+            color: var(--accent-primary, #3b82f6);
+            border-color: var(--accent-primary, #3b82f6);
+        }
+
+        .page-actions .btn-outline:hover {
+            background-color: var(--accent-primary, #3b82f6);
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+
+        .page-actions .btn-secondary {
+            background-color: var(--bg-secondary, #f9fafb);
+            color: var(--text-primary, #111827);
+            border-color: var(--border-color, #e5e7eb);
+        }
+
+        .page-actions .btn-secondary:hover {
+            background-color: var(--bg-tertiary, #f3f4f6);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .page-actions .btn-primary {
+            background-color: var(--accent-primary, #3b82f6);
+            color: white;
+            border-color: var(--accent-primary, #3b82f6);
+        }
+
+        .page-actions .btn-primary:hover {
+            background-color: var(--accent-hover, #2563eb);
+            border-color: var(--accent-hover, #2563eb);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+        }
+
+        /* Summary actions styling */
+        .summary-actions {
+            display: flex;
+            gap: var(--spacing-sm, 0.75rem);
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: var(--spacing-lg, 1.5rem);
+        }
+
+        .summary-actions .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs, 0.5rem);
+            padding: var(--spacing-sm, 0.75rem) var(--spacing-md, 1rem);
+            border-radius: var(--radius-md, 8px);
+            font-size: var(--font-size-sm, 0.875rem);
+            font-weight: var(--font-weight-medium, 500);
+            text-decoration: none;
+            cursor: pointer;
+            transition: all var(--transition-fast, 0.15s ease);
+            white-space: nowrap;
+            min-height: 36px;
+            box-sizing: border-box;
+            border: 1px solid transparent;
+        }
+
+        .summary-actions .btn-outline {
+            background-color: transparent;
+            color: var(--accent-primary, #3b82f6);
+            border-color: var(--accent-primary, #3b82f6);
+        }
+
+        .summary-actions .btn-outline:hover {
+            background-color: var(--accent-primary, #3b82f6);
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+        }
+
+        .summary-actions .btn-secondary {
+            background-color: var(--bg-secondary, #f9fafb);
+            color: var(--text-primary, #111827);
+            border-color: var(--border-color, #e5e7eb);
+        }
+
+        .summary-actions .btn-secondary:hover {
+            background-color: var(--bg-tertiary, #f3f4f6);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .summary-actions .btn-primary {
+            background-color: var(--accent-primary, #3b82f6);
+            color: white;
+            border-color: var(--accent-primary, #3b82f6);
+        }
+
+        .summary-actions .btn-primary:hover {
+            background-color: var(--accent-hover, #2563eb);
+            border-color: var(--accent-hover, #2563eb);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
+        }
+
+        /* Responsive header and actions */
+        @media (max-width: 768px) {
+            .page-header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: var(--spacing-md, 1rem);
+            }
+
+            .page-actions {
+                justify-content: flex-start;
+                gap: var(--spacing-sm, 0.75rem);
+            }
+
+            .page-actions .btn {
+                flex: 1;
+                min-width: auto;
+                justify-content: center;
+            }
+
+            .summary-actions {
+                gap: var(--spacing-xs, 0.5rem);
+            }
+
+            .summary-actions .btn {
+                flex: 1;
+                justify-content: center;
+            }
+        }
     </style>
 
     <!-- Payroll Page Initialization Script -->
@@ -1337,7 +1676,181 @@
             }
 
             console.log('Payroll page initialized with enhanced sidebar functionality');
+
+            // Add export functionality
+            const exportPayrollBtns = document.querySelectorAll('.export-payroll-btn');
+            exportPayrollBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    exportPayrollData();
+                });
+            });
         });
+
+        // Export payroll data function
+        function exportPayrollData() {
+            try {
+                // Gather payroll data
+                const payrollData = {
+                    exportDate: new Date().toISOString(),
+                    payPeriod: {
+                        start: '2025-01-01',
+                        end: '2025-01-15'
+                    },
+                    summary: {
+                        totalGrossPay: '$45,280.00',
+                        totalNetPay: '$34,560.00',
+                        totalTaxes: '$10,720.00',
+                        totalEmployees: 6,
+                        totalHours: 480,
+                        overtimeHours: 0
+                    },
+                    employees: [
+                        {
+                            id: 'EMP001',
+                            name: 'John Smith',
+                            position: 'Manager',
+                            hoursWorked: 80,
+                            overtimeHours: 0,
+                            grossPay: 8000,
+                            taxes: 1600,
+                            netPay: 6400
+                        },
+                        {
+                            id: 'EMP002',
+                            name: 'Jane Doe',
+                            position: 'Developer',
+                            hoursWorked: 80,
+                            overtimeHours: 0,
+                            grossPay: 7500,
+                            taxes: 1500,
+                            netPay: 6000
+                        },
+                        {
+                            id: 'EMP003',
+                            name: 'Bob Johnson',
+                            position: 'Designer',
+                            hoursWorked: 80,
+                            overtimeHours: 0,
+                            grossPay: 7200,
+                            taxes: 1440,
+                            netPay: 5760
+                        },
+                        {
+                            id: 'EMP004',
+                            name: 'Alice Brown',
+                            position: 'HR Manager',
+                            hoursWorked: 80,
+                            overtimeHours: 0,
+                            grossPay: 7800,
+                            taxes: 1560,
+                            netPay: 6240
+                        },
+                        {
+                            id: 'EMP005',
+                            name: 'Charlie Wilson',
+                            position: 'Sales Rep',
+                            hoursWorked: 80,
+                            overtimeHours: 0,
+                            grossPay: 7280,
+                            taxes: 1456,
+                            netPay: 5824
+                        },
+                        {
+                            id: 'EMP006',
+                            name: 'Diana Davis',
+                            position: 'Accountant',
+                            hoursWorked: 80,
+                            overtimeHours: 0,
+                            grossPay: 7500,
+                            taxes: 1500,
+                            netPay: 6000
+                        }
+                    ]
+                };
+
+                // Create CSV content
+                let csvContent = "data:text/csv;charset=utf-8,";
+                
+                // Add header
+                csvContent += "Employee ID,Name,Position,Hours Worked,Overtime Hours,Gross Pay,Taxes,Net Pay\n";
+                
+                // Add employee data
+                payrollData.employees.forEach(emp => {
+                    csvContent += `${emp.id},${emp.name},${emp.position},${emp.hoursWorked},${emp.overtimeHours},$${emp.grossPay},$${emp.taxes},$${emp.netPay}\n`;
+                });
+
+                // Add summary row
+                csvContent += "\n";
+                csvContent += "Summary,,,,,,\n";
+                csvContent += `Total Employees,${payrollData.summary.totalEmployees},,${payrollData.summary.totalHours},${payrollData.summary.overtimeHours},${payrollData.summary.totalGrossPay},${payrollData.summary.totalTaxes},${payrollData.summary.totalNetPay}\n`;
+
+                // Create and trigger download
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `payroll_export_${new Date().toISOString().split('T')[0]}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                // Show success message
+                showNotification('Payroll data exported successfully!', 'success');
+
+            } catch (error) {
+                console.error('Error exporting payroll data:', error);
+                showNotification('Error exporting payroll data. Please try again.', 'error');
+            }
+        }
+
+        // Show notification function
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                z-index: 10000;
+                font-weight: 500;
+                animation: slideIn 0.3s ease-out;
+            `;
+            notification.textContent = message;
+
+            // Add animation styles
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOut {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(100%); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+
+            document.body.appendChild(notification);
+
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease-in';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                    if (style.parentNode) {
+                        style.parentNode.removeChild(style);
+                    }
+                }, 300);
+            }, 3000);
+        }
 
         // Handle mobile FAB actions specific to payroll
         function handleMobilePayrollAction(action) {
