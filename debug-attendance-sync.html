@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Attendance Data Debug</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .debug-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .data-display {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .warning {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        .count-badge {
+            background: #007bff;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Employee Attendance Data Debug</h1>
+        <p>Debugging why the Employee Attendance page shows only 4 people instead of 6.</p>
+
+        <div class="debug-section">
+            <h2>📊 Data Source Comparison</h2>
+            <button onclick="loadAllData()">🔄 Load All Data Sources</button>
+            <button onclick="compareEmployeeCounts()">📈 Compare Employee Counts</button>
+            <button onclick="testAttendanceManager()">🕐 Test Attendance Manager</button>
+            
+            <div class="comparison-grid">
+                <div>
+                    <h3>Unified Data Service <span id="unifiedCount" class="count-badge">0</span></h3>
+                    <div id="unifiedData" class="data-display">Click "Load All Data Sources" to see data...</div>
+                </div>
+                <div>
+                    <h3>Employee Attendance Manager <span id="attendanceCount" class="count-badge">0</span></h3>
+                    <div id="attendanceData" class="data-display">Click "Test Attendance Manager" to see data...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="debug-section">
+            <h2>🔍 localStorage Investigation</h2>
+            <button onclick="inspectLocalStorage()">🗂️ Inspect localStorage</button>
+            <div id="localStorageData" class="data-display">Click "Inspect localStorage" to see raw data...</div>
+        </div>
+
+        <div class="debug-section">
+            <h2>⚡ Quick Fixes</h2>
+            <button onclick="reinitializeData()">🔄 Reinitialize Data</button>
+            <button onclick="clearAndReload()">🗑️ Clear & Reload Data</button>
+            <button onclick="openEmployeesPage()">👥 Compare with Employees Page</button>
+        </div>
+
+        <div class="debug-section">
+            <h2>📝 Debug Log</h2>
+            <div id="debugLog" class="data-display">Debug information will appear here...</div>
+        </div>
+    </div>
+
+    <!-- Include all necessary scripts -->
+    <script src="js/mock-data.js"></script>
+    <script src="js/utils/id-utility.js"></script>
+    <script src="js/core/data-service-api.js"></script>
+    <script src="js/core/local-storage-service.js"></script>
+    <script src="js/core/api-service.js"></script>
+    <script src="js/core/data-service-factory.js"></script>
+    <script src="js/unified-data-service.js"></script>
+    <script src="js/unified-employee-manager.js"></script>
+    <script src="js/employee-attendance.js"></script>
+
+    <script>
+        let dataService;
+        let attendanceManager;
+        let debugLog = [];
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] [${type.toUpperCase()}] ${message}`;
+            debugLog.push(logEntry);
+            
+            const logDiv = document.getElementById('debugLog');
+            const color = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : type === 'warning' ? '#ffc107' : '#333';
+            logDiv.innerHTML += `<div style="color: ${color}; margin: 2px 0;">${logEntry}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        async function initializeServices() {
+            try {
+                log('Initializing UnifiedDataService...', 'info');
+                dataService = new window.UnifiedDataService();
+                await dataService.initialize();
+                log('✅ UnifiedDataService initialized', 'success');
+
+                log('Initializing EmployeeAttendanceManager...', 'info');
+                attendanceManager = new EmployeeAttendanceManager();
+                await attendanceManager.init();
+                log('✅ EmployeeAttendanceManager initialized', 'success');
+
+                return true;
+            } catch (error) {
+                log(`❌ Failed to initialize services: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function loadAllData() {
+            log('🔄 Loading data from all sources...', 'info');
+            
+            if (!dataService) {
+                const initialized = await initializeServices();
+                if (!initialized) return;
+            }
+
+            try {
+                // Load from Unified Data Service
+                const unifiedEmployees = await dataService.getEmployees();
+                log(`📊 Unified Data Service: ${unifiedEmployees.length} employees`, 'info');
+                
+                document.getElementById('unifiedCount').textContent = unifiedEmployees.length;
+                document.getElementById('unifiedData').innerHTML = `
+                    <h4>Employees from UnifiedDataService:</h4>
+                    ${unifiedEmployees.map((emp, index) => `
+                        <div style="margin: 8px 0; padding: 8px; background: #f8f9fa; border-radius: 4px;">
+                            <strong>${index + 1}. ${emp.firstName} ${emp.lastName}</strong><br>
+                            ID: ${emp.id} | Code: ${emp.employeeCode || 'N/A'}<br>
+                            Department: ${emp.department} | Position: ${emp.position}
+                        </div>
+                    `).join('')}
+                `;
+
+                // Check attendance records
+                const attendanceRecords = await dataService.getAttendanceRecords();
+                log(`📊 Attendance Records: ${attendanceRecords.length} records`, 'info');
+
+            } catch (error) {
+                log(`❌ Error loading unified data: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAttendanceManager() {
+            log('🕐 Testing EmployeeAttendanceManager...', 'info');
+            
+            if (!attendanceManager) {
+                const initialized = await initializeServices();
+                if (!initialized) return;
+            }
+
+            try {
+                // Get employees from attendance manager
+                const attendanceEmployees = attendanceManager.employees;
+                log(`📊 Attendance Manager: ${attendanceEmployees.length} employees`, 'info');
+                
+                document.getElementById('attendanceCount').textContent = attendanceEmployees.length;
+                document.getElementById('attendanceData').innerHTML = `
+                    <h4>Employees from EmployeeAttendanceManager:</h4>
+                    ${attendanceEmployees.map((emp, index) => `
+                        <div style="margin: 8px 0; padding: 8px; background: #f8f9fa; border-radius: 4px;">
+                            <strong>${index + 1}. ${emp.name}</strong><br>
+                            ID: ${emp.id} | Employee ID: ${emp.employeeId}<br>
+                            Department: ${emp.department} | Position: ${emp.position}
+                        </div>
+                    `).join('')}
+                    
+                    <h4>Attendance Records:</h4>
+                    <p>Total Records: ${attendanceManager.attendanceRecords.length}</p>
+                `;
+
+                // Check for data transformation issues
+                if (attendanceEmployees.length !== await dataService.getEmployees().then(e => e.length)) {
+                    log(`⚠️ Mismatch detected! Unified: ${await dataService.getEmployees().then(e => e.length)}, Attendance: ${attendanceEmployees.length}`, 'warning');
+                }
+
+            } catch (error) {
+                log(`❌ Error testing attendance manager: ${error.message}`, 'error');
+            }
+        }
+
+        async function compareEmployeeCounts() {
+            log('📈 Comparing employee counts across sources...', 'info');
+            
+            try {
+                if (!dataService) {
+                    await initializeServices();
+                }
+
+                // Check unified data service
+                const unifiedEmployees = await dataService.getEmployees();
+                log(`Unified Data Service: ${unifiedEmployees.length} employees`, 'info');
+
+                // Check localStorage directly
+                const localStorageData = localStorage.getItem('bricks_attendance_data');
+                if (localStorageData) {
+                    const parsed = JSON.parse(localStorageData);
+                    log(`localStorage direct: ${parsed.employees ? parsed.employees.length : 0} employees`, 'info');
+                }
+
+                // Check attendance manager
+                if (attendanceManager) {
+                    log(`Attendance Manager: ${attendanceManager.employees.length} employees`, 'info');
+                }
+
+                // Summary
+                log('📊 Count comparison completed', 'success');
+
+            } catch (error) {
+                log(`❌ Error comparing counts: ${error.message}`, 'error');
+            }
+        }
+
+        function inspectLocalStorage() {
+            log('🗂️ Inspecting localStorage...', 'info');
+            
+            try {
+                const localStorageData = localStorage.getItem('bricks_attendance_data');
+                if (localStorageData) {
+                    const parsed = JSON.parse(localStorageData);
+                    
+                    document.getElementById('localStorageData').innerHTML = `
+                        <h4>Raw localStorage Data:</h4>
+                        <p><strong>Employees:</strong> ${parsed.employees ? parsed.employees.length : 0}</p>
+                        <p><strong>Attendance Records:</strong> ${parsed.attendanceRecords ? parsed.attendanceRecords.length : 0}</p>
+                        
+                        <h5>Employee Details:</h5>
+                        ${parsed.employees ? parsed.employees.map((emp, index) => `
+                            <div style="margin: 5px 0; padding: 5px; background: #f0f0f0;">
+                                ${index + 1}. ${emp.firstName} ${emp.lastName} (${emp.employeeCode || emp.id})
+                            </div>
+                        `).join('') : 'No employees found'}
+                        
+                        <h5>Raw JSON (first 500 chars):</h5>
+                        <pre style="background: #f8f8f8; padding: 10px; overflow: auto;">${JSON.stringify(parsed, null, 2).substring(0, 500)}...</pre>
+                    `;
+                    
+                    log(`✅ localStorage contains ${parsed.employees ? parsed.employees.length : 0} employees`, 'success');
+                } else {
+                    document.getElementById('localStorageData').innerHTML = '<p class="error">No localStorage data found!</p>';
+                    log('❌ No localStorage data found', 'error');
+                }
+            } catch (error) {
+                log(`❌ Error inspecting localStorage: ${error.message}`, 'error');
+            }
+        }
+
+        async function reinitializeData() {
+            log('🔄 Reinitializing data...', 'info');
+            
+            try {
+                // Force re-initialization
+                dataService = new window.UnifiedDataService();
+                await dataService.initialize();
+                
+                attendanceManager = new EmployeeAttendanceManager();
+                await attendanceManager.init();
+                
+                log('✅ Data reinitialized successfully', 'success');
+                
+                // Reload data displays
+                await loadAllData();
+                await testAttendanceManager();
+                
+            } catch (error) {
+                log(`❌ Error reinitializing data: ${error.message}`, 'error');
+            }
+        }
+
+        async function clearAndReload() {
+            if (confirm('This will clear all localStorage data and reload. Continue?')) {
+                localStorage.clear();
+                log('🗑️ localStorage cleared', 'warning');
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            }
+        }
+
+        function openEmployeesPage() {
+            window.open('employees.html', '_blank');
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', async function() {
+            log('🚀 Debug page initialized', 'info');
+            
+            // Auto-initialize services
+            setTimeout(async () => {
+                await initializeServices();
+                await loadAllData();
+                await testAttendanceManager();
+                await compareEmployeeCounts();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

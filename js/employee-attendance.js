@@ -9,6 +9,8 @@ class EmployeeAttendanceManager {
         this.employees = [];
         this.currentViewingRecord = null;
         this.currentEditingRecord = null;
+        this.dataService = null;
+        this.unifiedManager = null;
         this.statusTypes = {
             present: { label: 'Present', icon: '✅', color: '#22c55e' },
             late: { label: 'Late', icon: '⏰', color: '#f59e0b' },
@@ -32,12 +34,41 @@ class EmployeeAttendanceManager {
      */
     async init() {
         try {
+            console.log('Initializing EmployeeAttendanceManager...');
+            
+            // Initialize unified data service
+            await this.initializeDataService();
+            
             await this.loadEmployees();
             await this.loadAttendanceRecords();
             this.setupEventHandlers();
+            
+            console.log('EmployeeAttendanceManager initialized successfully');
             return true;
         } catch (error) {
             console.error('Failed to initialize employee attendance manager:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Initialize the unified data service
+     */
+    async initializeDataService() {
+        try {
+            if (typeof window.UnifiedDataService !== 'undefined') {
+                this.dataService = new window.UnifiedDataService();
+                await this.dataService.initialize();
+                this.unifiedManager = this.dataService.getUnifiedManager();
+                console.log('Employee Attendance using UnifiedDataService');
+            } else if (typeof dataService !== 'undefined') {
+                this.dataService = dataService;
+                console.log('Employee Attendance using legacy dataService');
+            } else {
+                throw new Error('No data service available');
+            }
+        } catch (error) {
+            console.error('Failed to initialize data service:', error);
             throw error;
         }
     }
@@ -47,68 +78,26 @@ class EmployeeAttendanceManager {
      */
     async loadEmployees() {
         try {
-            // Use unified employee manager if available
-            if (typeof window.unifiedEmployeeManager !== 'undefined' && window.unifiedEmployeeManager.initialized) {
-                const employeesData = window.unifiedEmployeeManager.getEmployees();
-                
-                // Transform data to match the expected format for this module
-                this.employees = employeesData.map(emp => ({
-                    id: emp.id,
-                    employeeId: emp.employeeCode || `emp_${String(emp.id).padStart(3, '0')}`,
-                    name: emp.fullName || `${emp.firstName} ${emp.lastName}`,
-                    department: emp.department,
-                    position: emp.position,
-                    email: emp.email,
-                    phone: emp.phone,
-                    role: emp.role,
-                    schedule: this.getEmployeeSchedule(emp)
-                }));
-                
-                console.log(`Loaded ${this.employees.length} employees from unified manager`);
-                return this.employees;
-            }
-            // Fallback to data service if unified manager is not available
-            else if (typeof dataService !== 'undefined') {
-                const employeesData = await dataService.getEmployees();
-                
-                // Transform data to match the expected format for this module
-                this.employees = employeesData.map(emp => ({
-                    id: emp.id,
-                    employeeId: emp.employeeCode || `emp_${String(emp.id).padStart(3, '0')}`,
-                    name: `${emp.firstName} ${emp.lastName}`,
-                    department: emp.department,
-                    position: emp.position,
-                    email: emp.email,
-                    phone: emp.phone,
-                    role: emp.role,
-                    schedule: this.getEmployeeSchedule(emp)
-                }));
-                
-                console.log(`Loaded ${this.employees.length} employees from data service`);
-                return this.employees;
-            } else {
-                console.warn('Neither unified manager nor dataService available, using fallback data');
-                // Fallback to original hardcoded data if neither service is available
-                this.employees = [
-                    {
-                        id: 1,
-                        employeeId: 'emp_001',
-                        name: 'John Doe',
-                        department: 'Engineering',
-                        position: 'Senior Developer',
-                        email: 'john.doe@company.com',
-                        schedule: {
-                            monday: { start: '09:00', end: '17:00' },
-                            tuesday: { start: '09:00', end: '17:00' },
-                            wednesday: { start: '09:00', end: '17:00' },
-                            thursday: { start: '09:00', end: '17:00' },
-                            friday: { start: '09:00', end: '17:00' }
-                        }
-                    }
-                ];
-                console.log(`Loaded ${this.employees.length} fallback employees`);
-                return this.employees;
-            }
+            console.log('Loading employees from unified data service...');
+            
+            // Get employees from unified data service
+            const employeesData = await this.dataService.getEmployees();
+            
+            // Transform data to match the expected format for this module
+            this.employees = employeesData.map(emp => ({
+                id: emp.id,
+                employeeId: emp.employeeCode || emp.id,
+                name: emp.fullName || `${emp.firstName} ${emp.lastName}`,
+                department: emp.department,
+                position: emp.position,
+                email: emp.email,
+                phone: emp.phone,
+                role: emp.role,
+                schedule: this.getEmployeeSchedule(emp)
+            }));
+            
+            console.log(`Loaded ${this.employees.length} employees from unified data service`);
+            return this.employees;
         } catch (error) {
             console.error('Error loading employees:', error);
             throw new Error('Failed to load employee data');
@@ -142,40 +131,37 @@ class EmployeeAttendanceManager {
      */
     async loadAttendanceRecords() {
         try {
-            // Use centralized data service to get attendance records
-            if (typeof dataService !== 'undefined') {
-                // Get all attendance records from data service
-                const records = await dataService.getAttendanceRecords();
-                
-                // Transform data to match the expected format for this module
-                this.attendanceRecords = records.map(record => ({
-                    id: record.id,
-                    employeeId: record.employeeId,
-                    date: record.date,
-                    clockIn: record.timeIn,
-                    clockOut: record.timeOut,
-                    lunchStart: record.lunchStart,
-                    lunchEnd: record.lunchEnd,
-                    hours: record.hoursWorked || 0,
-                    regularHours: record.regularHours || 0,
-                    overtimeHours: record.overtimeHours || 0,
-                    status: record.status,
-                    notes: record.notes || '',
-                    employee: this.employees.find(emp => emp.id === record.employeeId)
-                }));
-                
-                console.log(`Loaded ${this.attendanceRecords.length} attendance records from data service`);
-                return this.attendanceRecords;
-            } else {
-                console.warn('dataService not available, generating sample attendance data');
-                // Fallback to generating sample data if dataService is not available
-                this.attendanceRecords = this.generateSampleAttendance();
-                console.log(`Generated ${this.attendanceRecords.length} sample attendance records`);
-                return this.attendanceRecords;
-            }
+            console.log('Loading attendance records from unified data service...');
+            
+            // Get all attendance records from unified data service
+            const records = await this.dataService.getAttendanceRecords();
+            
+            // Transform data to match the expected format for this module
+            this.attendanceRecords = records.map(record => ({
+                id: record.id,
+                employeeId: record.employeeId,
+                date: record.date,
+                clockIn: record.timeIn,
+                clockOut: record.timeOut,
+                lunchStart: record.lunchStart,
+                lunchEnd: record.lunchEnd,
+                hours: record.hoursWorked || 0,
+                regularHours: record.regularHours || 0,
+                overtimeHours: record.overtimeHours || 0,
+                status: record.status,
+                notes: record.notes || '',
+                employee: this.employees.find(emp => emp.id === record.employeeId || emp.employeeId === record.employeeId)
+            }));
+            
+            console.log(`Loaded ${this.attendanceRecords.length} attendance records from unified data service`);
+            return this.attendanceRecords;
         } catch (error) {
             console.error('Error loading attendance records:', error);
-            throw new Error('Failed to load attendance data');
+            // Fallback to generating sample data if loading fails
+            console.warn('Generating sample attendance data as fallback');
+            this.attendanceRecords = this.generateSampleAttendance();
+            console.log(`Generated ${this.attendanceRecords.length} sample attendance records`);
+            return this.attendanceRecords;
         }
     }
 
@@ -412,34 +398,54 @@ class EmployeeAttendanceManager {
                 employeeCode: employee.employeeId,
                 department: employee.department,
                 date: recordData.date,
-                clockIn: recordData.clockIn || null,
-                clockOut: recordData.clockOut || null,
+                timeIn: recordData.clockIn || null,
+                timeOut: recordData.clockOut || null,
                 status: recordData.status,
-                hours: hours,
+                hoursWorked: hours,
                 overtimeHours: overtimeHours,
                 notes: recordData.notes || '',
                 lastModified: new Date().toISOString(),
                 modifiedBy: 'Admin' // In a real app, this would be the current user
             };
 
+            // Save to unified data service
+            if (this.dataService && typeof this.dataService.saveAttendanceRecord === 'function') {
+                try {
+                    await this.dataService.saveAttendanceRecord(record);
+                    console.log('Attendance record saved to unified data service');
+                } catch (error) {
+                    console.warn('Failed to save to unified data service:', error);
+                }
+            }
+
+            // Update local records
             if (existingRecordIndex >= 0) {
-                this.attendanceRecords[existingRecordIndex] = record;
+                this.attendanceRecords[existingRecordIndex] = {
+                    ...this.attendanceRecords[existingRecordIndex],
+                    clockIn: record.timeIn,
+                    clockOut: record.timeOut,
+                    hours: record.hoursWorked,
+                    overtimeHours: record.overtimeHours,
+                    status: record.status,
+                    notes: record.notes
+                };
             } else {
-                this.attendanceRecords.push(record);
+                this.attendanceRecords.push({
+                    id: record.id,
+                    employeeId: record.employeeId,
+                    date: record.date,
+                    clockIn: record.timeIn,
+                    clockOut: record.timeOut,
+                    hours: record.hoursWorked,
+                    overtimeHours: record.overtimeHours,
+                    status: record.status,
+                    notes: record.notes,
+                    employee: employee
+                });
             }
 
             // Sort records by date (newest first)
             this.attendanceRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            // Save to unified manager if available
-            if (typeof window.unifiedEmployeeManager !== 'undefined' && window.unifiedEmployeeManager.initialized) {
-                try {
-                    window.unifiedEmployeeManager.saveAttendanceRecord(record);
-                    console.log('Attendance record saved to unified manager');
-                } catch (error) {
-                    console.warn('Failed to save to unified manager:', error);
-                }
-            }
 
             console.log('Attendance record saved:', record);
             return record;
