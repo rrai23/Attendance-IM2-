@@ -504,6 +504,15 @@ class DashboardController {
 
         const stats = this.currentStats?.today || this.getDefaultStats().today;
         
+        // Ensure all values are numbers, not objects
+        const present = Number(stats.present) || 0;
+        const late = Number(stats.late) || 0;
+        const absent = Number(stats.absent) || 0;
+        const total = Number(stats.total) || 0;
+        const attendanceRate = Number(stats.attendanceRate) || 0;
+        
+        console.log('Rendering attendance count tile with values:', { present, late, absent, total, attendanceRate });
+        
         tile.innerHTML = `
             <div class="tile-header">
                 <h3 class="tile-title">${this.tiles.attendanceCount.title}</h3>
@@ -518,20 +527,20 @@ class DashboardController {
             <div class="tile-content">
                 <div class="attendance-overview">
                     <div class="attendance-main-stat">
-                        <div class="stat-number">${stats.present + stats.late}</div>
+                        <div class="stat-number">${present + late}</div>
                         <div class="stat-label">Present Today</div>
-                        <div class="stat-sublabel">out of ${stats.total} employees</div>
+                        <div class="stat-sublabel">out of ${total} employees</div>
                     </div>
                     <div class="attendance-rate">
-                        <div class="rate-circle" data-rate="${stats.attendanceRate}">
+                        <div class="rate-circle" data-rate="${attendanceRate}">
                             <svg viewBox="0 0 36 36" class="circular-chart">
                                 <path class="circle-bg" d="M18 2.0845
                                     a 15.9155 15.9155 0 0 1 0 31.831
                                     a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                <path class="circle" stroke-dasharray="${stats.attendanceRate}, 100" d="M18 2.0845
+                                <path class="circle" stroke-dasharray="${attendanceRate}, 100" d="M18 2.0845
                                     a 15.9155 15.9155 0 0 1 0 31.831
                                     a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                <text x="18" y="20.35" class="percentage">${stats.attendanceRate}%</text>
+                                <text x="18" y="20.35" class="percentage">${attendanceRate}%</text>
                             </svg>
                         </div>
                     </div>
@@ -540,17 +549,17 @@ class DashboardController {
                     <div class="breakdown-item present">
                         <span class="breakdown-dot"></span>
                         <span class="breakdown-label">On Time</span>
-                        <span class="breakdown-value">${stats.present}</span>
+                        <span class="breakdown-value">${present}</span>
                     </div>
                     <div class="breakdown-item late">
                         <span class="breakdown-dot"></span>
                         <span class="breakdown-label">Late</span>
-                        <span class="breakdown-value">${stats.late}</span>
+                        <span class="breakdown-value">${late}</span>
                     </div>
                     <div class="breakdown-item absent">
                         <span class="breakdown-dot"></span>
                         <span class="breakdown-label">Absent</span>
-                        <span class="breakdown-value">${stats.absent}</span>
+                        <span class="breakdown-value">${absent}</span>
                     </div>
                 </div>
             </div>
@@ -954,27 +963,39 @@ class DashboardController {
             const content = tile.querySelector('.tile-content');
             if (!content) return;
 
+            // Use .today stats if available, otherwise fallback to main stats
+            const stats = this.currentStats.today || this.currentStats;
+            
+            // Ensure all values are numbers, not objects
+            const present = Number(stats.present) || 0;
+            const late = Number(stats.late) || 0;
+            const absent = Number(stats.absent) || 0;
+            const overtime = Number(stats.overtime) || 0;
+            const presentPercentage = Number(stats.presentPercentage || stats.attendanceRate) || 0;
+            
+            console.log('Updating attendance count tile with values:', { present, late, absent, overtime, presentPercentage });
+
             content.innerHTML = `
                 <div class="attendance-summary">
                     <div class="stat-item">
-                        <span class="stat-number">${this.currentStats.present || 0}</span>
+                        <span class="stat-number">${present}</span>
                         <span class="stat-label">Present</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number">${this.currentStats.late || 0}</span>
+                        <span class="stat-number">${late}</span>
                         <span class="stat-label">Late</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number">${this.currentStats.absent || 0}</span>
+                        <span class="stat-number">${absent}</span>
                         <span class="stat-label">Absent</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number">${this.currentStats.overtime || 0}</span>
+                        <span class="stat-number">${overtime}</span>
                         <span class="stat-label">Overtime</span>
                     </div>
                 </div>
                 <div class="attendance-percentage">
-                    <span class="percentage-text">${this.currentStats.presentPercentage || 0}%</span>
+                    <span class="percentage-text">${presentPercentage}%</span>
                     <span class="percentage-label">Present Today</span>
                 </div>
             `;
@@ -1570,29 +1591,29 @@ class DashboardController {
         const lateTodayEl = document.getElementById('late-today');
         const attendanceRateEl = document.getElementById('attendance-rate');
         
-        // Use safe fallbacks and ensure numbers are displayed
-        const totalEmployees = stats.total || stats.totalEmployees || 0;
-        const present = stats.present || stats.presentToday || 0;
-        const late = stats.late || stats.tardyToday || 0;
-        const attendanceRate = stats.attendanceRate || stats.presentPercentage || 0;
+        // Use safe fallbacks and ensure numbers are displayed, not objects
+        const totalEmployees = Number(stats.total || stats.totalEmployees) || 0;
+        const present = Number(stats.present || stats.presentToday) || 0;
+        const late = Number(stats.late || stats.tardyToday) || 0;
+        const attendanceRate = Number(stats.attendanceRate || stats.presentPercentage) || 0;
         
         console.log('Values being set:', { totalEmployees, present, late, attendanceRate });
         
         if (totalEmployeesEl) {
-            totalEmployeesEl.textContent = totalEmployees;
+            totalEmployeesEl.textContent = totalEmployees.toString();
             console.log('Set total employees to:', totalEmployees);
         }
         if (presentTodayEl) {
-            presentTodayEl.textContent = present + late;
+            presentTodayEl.textContent = (present + late).toString();
             console.log('Set present today to:', present + late);
         }
         if (lateTodayEl) {
-            lateTodayEl.textContent = late;
+            lateTodayEl.textContent = late.toString();
             console.log('Set late today to:', late);
         }
         if (attendanceRateEl) {
-            attendanceRateEl.textContent = `${attendanceRate}%`;
-            console.log('Set attendance rate to:', `${attendanceRate}%`);
+            attendanceRateEl.textContent = `${attendanceRate.toFixed(1)}%`;
+            console.log('Set attendance rate to:', `${attendanceRate.toFixed(1)}%`);
         }
         
         // Update existing tile elements if they exist (for static HTML)
@@ -1603,31 +1624,31 @@ class DashboardController {
         const absentCountEl = document.getElementById('absent-count');
         
         if (mainAttendanceCountEl) {
-            mainAttendanceCountEl.textContent = present + late;
+            mainAttendanceCountEl.textContent = (present + late).toString();
             console.log('Set main attendance count to:', present + late);
         }
         if (totalEmployeeCountEl) {
-            totalEmployeeCountEl.textContent = totalEmployees;
+            totalEmployeeCountEl.textContent = totalEmployees.toString();
             console.log('Set total employee count to:', totalEmployees);
         }
         if (onTimeCountEl) {
-            onTimeCountEl.textContent = present;
+            onTimeCountEl.textContent = present.toString();
             console.log('Set on time count to:', present);
         }
         if (lateCountEl) {
-            lateCountEl.textContent = late;
+            lateCountEl.textContent = late.toString();
             console.log('Set late count to:', late);
         }
         if (absentCountEl) {
-            const absent = stats.absent || stats.absentToday || (totalEmployees - present - late);
-            absentCountEl.textContent = Math.max(0, absent);
+            const absent = Number(stats.absent || stats.absentToday) || Math.max(0, totalEmployees - present - late);
+            absentCountEl.textContent = Math.max(0, absent).toString();
             console.log('Set absent count to:', Math.max(0, absent));
         }
         
         // Update circular progress if it exists in static HTML
         const rateCircle = document.querySelector('.rate-circle');
         if (rateCircle) {
-            rateCircle.setAttribute('data-rate', attendanceRate);
+            rateCircle.setAttribute('data-rate', attendanceRate.toString());
             const circleElement = rateCircle.querySelector('.circle');
             const percentageElement = rateCircle.querySelector('.percentage');
             
@@ -1635,7 +1656,7 @@ class DashboardController {
                 circleElement.setAttribute('stroke-dasharray', `${attendanceRate}, 100`);
             }
             if (percentageElement) {
-                percentageElement.textContent = `${attendanceRate}%`;
+                percentageElement.textContent = `${attendanceRate.toFixed(1)}%`;
             }
         }
         
