@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Storage Investigation</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .btn-danger {
+            background: #dc3545;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        .btn-success {
+            background: #28a745;
+        }
+        .btn-warning {
+            background: #ffc107;
+            color: #000;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #e9ecef;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 0.9em;
+        }
+        .storage-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #2196f3;
+            margin: 10px 0;
+        }
+        .warning {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #ffc107;
+            color: #856404;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗂️ Data Storage Investigation</h1>
+        <p>This tool shows you exactly where your employee data is stored and how the system works.</p>
+
+        <div class="section">
+            <h3>📍 Data Storage Explanation</h3>
+            <div class="storage-info">
+                <h4>How Data Storage Works in This System:</h4>
+                <ol>
+                    <li><strong>mock/data.json</strong> - This is only used as <em>initial template data</em> when the system starts fresh</li>
+                    <li><strong>localStorage</strong> - This is where all your actual data is stored in the browser</li>
+                    <li><strong>When you add employees</strong> - They are saved to localStorage, NOT to data.json</li>
+                    <li><strong>data.json never changes</strong> - It's a static file that can't be modified by web browsers</li>
+                </ol>
+            </div>
+            <div class="warning">
+                <strong>Important:</strong> Web browsers cannot modify files on your computer for security reasons. 
+                That's why data.json doesn't update - all changes are stored in browser localStorage instead.
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>🔍 Current Data Sources</h3>
+            <button onclick="investigateDataSources()">Investigate Current Data</button>
+            <div id="dataSourcesResult"></div>
+        </div>
+
+        <div class="section">
+            <h3>💾 localStorage Contents</h3>
+            <button onclick="showLocalStorageData()">Show localStorage Data</button>
+            <button onclick="exportLocalStorageData()">Export localStorage to JSON</button>
+            <div id="localStorageResult"></div>
+        </div>
+
+        <div class="section">
+            <h3>📄 data.json Contents</h3>
+            <button onclick="showDataJsonContents()">Show data.json Contents</button>
+            <div id="dataJsonResult"></div>
+        </div>
+
+        <div class="section">
+            <h3>🔄 Data Management</h3>
+            <button class="btn-warning" onclick="copyLocalStorageToClipboard()">Copy localStorage to Clipboard</button>
+            <button class="btn-danger" onclick="clearLocalStorage()">Clear localStorage</button>
+            <button class="btn-success" onclick="loadFromDataJson()">Reset from data.json</button>
+            <div id="managementResult"></div>
+        </div>
+
+        <div class="section">
+            <h3>📊 Storage Statistics</h3>
+            <button onclick="showStorageStats()">Show Storage Statistics</button>
+            <div id="storageStatsResult"></div>
+        </div>
+    </div>
+
+    <!-- Load required scripts -->
+    <script src="js/utils/id-utility.js"></script>
+    <script src="js/core/local-storage-service.js"></script>
+    <script src="js/unified-employee-manager.js"></script>
+    <script src="js/unified-data-service.js"></script>
+
+    <script>
+        let dataService;
+
+        async function initializeServices() {
+            try {
+                if (dataService) return true;
+                
+                dataService = new window.UnifiedDataService();
+                await dataService.initialize();
+                return true;
+            } catch (error) {
+                console.error('Failed to initialize services:', error);
+                return false;
+            }
+        }
+
+        async function investigateDataSources() {
+            const container = document.getElementById('dataSourcesResult');
+            container.innerHTML = '<p>Investigating data sources...</p>';
+
+            try {
+                await initializeServices();
+                
+                // Check localStorage
+                const localStorageData = localStorage.getItem('bricks_attendance_data');
+                const hasLocalStorage = !!localStorageData;
+                
+                // Check if data.json was loaded
+                const employees = await dataService.getEmployees();
+                
+                let html = '<h4>Data Source Analysis:</h4>';
+                html += '<table>';
+                html += '<tr><th>Source</th><th>Status</th><th>Employee Count</th><th>Details</th></tr>';
+                
+                // localStorage row
+                if (hasLocalStorage) {
+                    const localData = JSON.parse(localStorageData);
+                    html += `<tr>
+                        <td><strong>localStorage</strong></td>
+                        <td class="success">✅ Active</td>
+                        <td>${localData.employees ? localData.employees.length : 0}</td>
+                        <td>This is your working data</td>
+                    </tr>`;
+                } else {
+                    html += `<tr>
+                        <td><strong>localStorage</strong></td>
+                        <td class="error">❌ Empty</td>
+                        <td>0</td>
+                        <td>No stored data</td>
+                    </tr>`;
+                }
+                
+                // data.json row (we'll fetch it)
+                html += `<tr>
+                    <td><strong>data.json</strong></td>
+                    <td>📄 Static File</td>
+                    <td>Unknown</td>
+                    <td>Initial template only</td>
+                </tr>`;
+                
+                html += '</table>';
+                
+                html += '<h4>Current System Behavior:</h4>';
+                html += '<ul>';
+                if (hasLocalStorage) {
+                    html += '<li>✅ System is using localStorage data (your changes are saved here)</li>';
+                    html += '<li>📄 data.json is ignored (only used for initial setup)</li>';
+                    html += '<li>💾 All new employees are saved to localStorage</li>';
+                } else {
+                    html += '<li>🆕 System will load initial data from data.json</li>';
+                    html += '<li>💾 Once loaded, all changes will be saved to localStorage</li>';
+                }
+                html += '</ul>';
+                
+                container.innerHTML = html;
+
+            } catch (error) {
+                container.innerHTML = `<p class="error">Investigation failed: ${error.message}</p>`;
+            }
+        }
+
+        async function showLocalStorageData() {
+            const container = document.getElementById('localStorageResult');
+            container.innerHTML = '<p>Reading localStorage...</p>';
+
+            try {
+                const localStorageData = localStorage.getItem('bricks_attendance_data');
+                
+                if (!localStorageData) {
+                    container.innerHTML = '<p class="error">No localStorage data found. System will use data.json as template.</p>';
+                    return;
+                }
+
+                const data = JSON.parse(localStorageData);
+                
+                let html = '<h4>localStorage Contents:</h4>';
+                html += `<p><strong>Storage Key:</strong> bricks_attendance_data</p>`;
+                html += `<p><strong>Data Size:</strong> ${(localStorageData.length / 1024).toFixed(2)} KB</p>`;
+                html += `<p><strong>Employees:</strong> ${data.employees ? data.employees.length : 0}</p>`;
+                html += `<p><strong>Attendance Records:</strong> ${data.attendanceRecords ? data.attendanceRecords.length : 0}</p>`;
+                html += `<p><strong>Last Updated:</strong> ${data.lastUpdated || 'Unknown'}</p>`;
+                
+                html += '<h5>Raw Data (JSON):</h5>';
+                html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                
+                container.innerHTML = html;
+
+            } catch (error) {
+                container.innerHTML = `<p class="error">Failed to read localStorage: ${error.message}</p>`;
+            }
+        }
+
+        async function showDataJsonContents() {
+            const container = document.getElementById('dataJsonResult');
+            container.innerHTML = '<p>Loading data.json...</p>';
+
+            try {
+                const response = await fetch('mock/data.json');
+                const data = await response.json();
+                
+                let html = '<h4>data.json Contents:</h4>';
+                html += `<p><strong>File Location:</strong> mock/data.json</p>`;
+                html += `<p><strong>Employees:</strong> ${data.employees ? data.employees.length : 0}</p>`;
+                html += `<p><strong>Attendance Records:</strong> ${data.attendanceRecords ? data.attendanceRecords.length : 0}</p>`;
+                
+                html += '<h5>Employee List from data.json:</h5>';
+                html += '<table><tr><th>ID</th><th>Code</th><th>Name</th><th>Email</th></tr>';
+                if (data.employees) {
+                    data.employees.forEach(emp => {
+                        html += `<tr>
+                            <td>${emp.id}</td>
+                            <td>${emp.employeeCode || 'N/A'}</td>
+                            <td>${emp.firstName} ${emp.lastName}</td>
+                            <td>${emp.email}</td>
+                        </tr>`;
+                    });
+                }
+                html += '</table>';
+                
+                html += '<h5>Raw data.json (JSON):</h5>';
+                html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                
+                container.innerHTML = html;
+
+            } catch (error) {
+                container.innerHTML = `<p class="error">Failed to load data.json: ${error.message}</p>`;
+            }
+        }
+
+        async function exportLocalStorageData() {
+            try {
+                const localStorageData = localStorage.getItem('bricks_attendance_data');
+                
+                if (!localStorageData) {
+                    alert('No localStorage data to export');
+                    return;
+                }
+
+                const data = JSON.parse(localStorageData);
+                const jsonString = JSON.stringify(data, null, 2);
+                
+                // Create downloadable file
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `bricks_attendance_data_export_${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                alert('localStorage data exported successfully!');
+
+            } catch (error) {
+                alert(`Export failed: ${error.message}`);
+            }
+        }
+
+        async function copyLocalStorageToClipboard() {
+            try {
+                const localStorageData = localStorage.getItem('bricks_attendance_data');
+                
+                if (!localStorageData) {
+                    alert('No localStorage data to copy');
+                    return;
+                }
+
+                await navigator.clipboard.writeText(localStorageData);
+                alert('localStorage data copied to clipboard!');
+
+            } catch (error) {
+                alert(`Copy failed: ${error.message}`);
+            }
+        }
+
+        async function clearLocalStorage() {
+            if (!confirm('This will delete all your current employee data. Are you sure?')) {
+                return;
+            }
+
+            try {
+                localStorage.removeItem('bricks_attendance_data');
+                document.getElementById('managementResult').innerHTML = '<p class="success">✅ localStorage cleared successfully</p>';
+                
+                // Refresh data investigation
+                await investigateDataSources();
+
+            } catch (error) {
+                document.getElementById('managementResult').innerHTML = `<p class="error">Failed to clear localStorage: ${error.message}</p>`;
+            }
+        }
+
+        async function loadFromDataJson() {
+            if (!confirm('This will replace your current data with data from data.json. Continue?')) {
+                return;
+            }
+
+            try {
+                localStorage.removeItem('bricks_attendance_data');
+                
+                // Reinitialize services (will load from data.json)
+                dataService = null;
+                await initializeServices();
+                
+                document.getElementById('managementResult').innerHTML = '<p class="success">✅ Data reset from data.json successfully</p>';
+                
+                // Refresh data investigation
+                await investigateDataSources();
+
+            } catch (error) {
+                document.getElementById('managementResult').innerHTML = `<p class="error">Failed to reset from data.json: ${error.message}</p>`;
+            }
+        }
+
+        async function showStorageStats() {
+            const container = document.getElementById('storageStatsResult');
+            
+            try {
+                // Calculate localStorage usage
+                let totalSize = 0;
+                let itemCount = 0;
+                const items = {};
+                
+                for (let key in localStorage) {
+                    if (localStorage.hasOwnProperty(key)) {
+                        const value = localStorage.getItem(key);
+                        items[key] = {
+                            size: value.length,
+                            preview: value.substring(0, 100) + (value.length > 100 ? '...' : '')
+                        };
+                        totalSize += value.length;
+                        itemCount++;
+                    }
+                }
+                
+                let html = '<h4>Browser Storage Statistics:</h4>';
+                html += `<p><strong>Total localStorage Items:</strong> ${itemCount}</p>`;
+                html += `<p><strong>Total Size:</strong> ${(totalSize / 1024).toFixed(2)} KB</p>`;
+                
+                html += '<h5>localStorage Items:</h5>';
+                html += '<table><tr><th>Key</th><th>Size (bytes)</th><th>Preview</th></tr>';
+                for (const [key, info] of Object.entries(items)) {
+                    html += `<tr>
+                        <td>${key}</td>
+                        <td>${info.size}</td>
+                        <td><code>${info.preview}</code></td>
+                    </tr>`;
+                }
+                html += '</table>';
+                
+                container.innerHTML = html;
+
+            } catch (error) {
+                container.innerHTML = `<p class="error">Failed to get storage stats: ${error.message}</p>`;
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            await investigateDataSources();
+        });
+    </script>
+</body>
+</html>
