@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Employee Manager Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .result { 
+            background: #f5f5f5; 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-radius: 5px; 
+            border-left: 4px solid #007AFF;
+        }
+        button { 
+            background: #007AFF; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            margin: 5px;
+        }
+        pre { background: #fff; padding: 10px; border: 1px solid #ddd; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Simple Employee Manager Test</h1>
+    
+    <button onclick="testBasic()">Test Basic Functionality</button>
+    <button onclick="clearStorage()">Clear Storage</button>
+    <button onclick="forceCreateData()">Force Create Initial Data</button>
+    
+    <div id="results"></div>
+
+    <script src="js/unified-employee-manager.js"></script>
+    
+    <script>
+        function addResult(title, content, isError = false) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = 'result';
+            if (isError) div.style.borderLeftColor = '#ff4444';
+            
+            div.innerHTML = `
+                <h3>${title}</h3>
+                <pre>${typeof content === 'object' ? JSON.stringify(content, null, 2) : content}</pre>
+            `;
+            results.appendChild(div);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        function clearStorage() {
+            localStorage.clear();
+            addResult('Storage Cleared', 'All localStorage data has been cleared');
+        }
+
+        async function forceCreateData() {
+            try {
+                const manager = new UnifiedEmployeeManager();
+                // Force creation of initial data by clearing existing
+                manager.employees = [];
+                manager.attendanceRecords = [];
+                await manager.createInitialData();
+                
+                addResult('Force Create Data', `Created ${manager.employees.length} employees`);
+                addResult('Employee Data', manager.employees);
+                
+            } catch (error) {
+                addResult('Force Create Error', error.message, true);
+            }
+        }
+
+        async function testBasic() {
+            clearResults();
+            
+            try {
+                addResult('Step 1', 'Creating UnifiedEmployeeManager instance...');
+                
+                const manager = new UnifiedEmployeeManager();
+                addResult('Step 2', 'Instance created, initializing...');
+                
+                await manager.init();
+                addResult('Step 3', 'Manager initialized successfully');
+                
+                const employees = manager.getEmployees();
+                addResult('Step 4 - Employee Count', `Found ${employees.length} employees`);
+                
+                if (employees.length > 0) {
+                    addResult('Step 5 - First Employee', employees[0]);
+                    
+                    // Test name variations
+                    const emp = employees[0];
+                    const nameTest = {
+                        fullName: emp.fullName,
+                        name: emp.name,
+                        firstName: emp.firstName,
+                        lastName: emp.lastName,
+                        computedName: `${emp.firstName || ''} ${emp.lastName || ''}`.trim()
+                    };
+                    addResult('Step 6 - Name Properties', nameTest);
+                } else {
+                    addResult('Step 5 - No Employees', 'No employees found, this is the problem!', true);
+                }
+                
+                // Test localStorage content
+                const stored = localStorage.getItem('bricks-unified-employee-data');
+                if (stored) {
+                    const data = JSON.parse(stored);
+                    addResult('Step 7 - localStorage Data', {
+                        employeeCount: data.employees?.length || 0,
+                        lastUpdated: data.lastUpdated,
+                        version: data.version
+                    });
+                } else {
+                    addResult('Step 7 - localStorage', 'No data found in localStorage', true);
+                }
+                
+            } catch (error) {
+                addResult('Error', error.message, true);
+                console.error('Test error:', error);
+            }
+        }
+    </script>
+</body>
+</html>
