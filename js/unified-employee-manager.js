@@ -1060,23 +1060,45 @@ class UnifiedEmployeeManager {
      */
     deleteAttendanceRecordById(recordId) {
         try {
-            console.log(`Attempting to delete attendance record by ID: ${recordId}`);
+            console.log(`Attempting to delete attendance record by ID: ${recordId} (type: ${typeof recordId})`);
+            console.log('Current attendance records count:', this.attendanceRecords.length);
+            console.log('All current record IDs:', this.attendanceRecords.map(r => ({ id: r.id, type: typeof r.id })));
             
-            // Find the record to delete
+            // Find the record to delete with flexible ID comparison
             const recordIndex = this.attendanceRecords.findIndex(record => {
-                return record.id == recordId || String(record.id) === String(recordId);
+                // Compare both strict equality and string equality
+                return record.id === recordId || 
+                       String(record.id) === String(recordId) ||
+                       Number(record.id) === Number(recordId);
             });
             
             if (recordIndex === -1) {
-                throw new Error(`Attendance record not found with ID ${recordId}`);
+                const error = `Attendance record not found with ID ${recordId} (type: ${typeof recordId})`;
+                console.error(error);
+                console.log('Available record IDs for comparison:', this.attendanceRecords.map(r => ({ id: r.id, type: typeof r.id })));
+                throw new Error(error);
             }
             
             // Remove the record
             const deletedRecord = this.attendanceRecords.splice(recordIndex, 1)[0];
-            console.log('Deleted attendance record by ID:', deletedRecord);
+            console.log('Successfully removed attendance record:', deletedRecord);
+            console.log('Attendance records count after deletion:', this.attendanceRecords.length);
             
-            // Save the updated data
+            // Save the updated data synchronously
             this.saveData();
+            console.log('Data saved after deletion');
+            
+            // Verify deletion was successful
+            const stillExists = this.attendanceRecords.find(record => {
+                return record.id === recordId || 
+                       String(record.id) === String(recordId) ||
+                       Number(record.id) === Number(recordId);
+            });
+            
+            if (stillExists) {
+                console.error('CRITICAL: Record still exists after deletion and save!', stillExists);
+                throw new Error('Failed to delete record - still exists after removal and save');
+            }
             
             // Broadcast attendance deletion to all systems
             this.emit('attendanceUpdate', { 
@@ -1097,7 +1119,7 @@ class UnifiedEmployeeManager {
                 timestamp: new Date().toISOString()
             });
             
-            console.log(`Successfully deleted attendance record with ID ${recordId}`);
+            console.log(`Successfully deleted and verified attendance record with ID ${recordId}`);
             return deletedRecord;
             
         } catch (error) {

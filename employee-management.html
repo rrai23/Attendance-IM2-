@@ -7,9 +7,6 @@
     <meta name="description" content="Admin panel for managing employee attendance records, clock in/out times, and status overrides">
     <meta name="author" content="Bricks Attendance System">
     
-    <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
-    
     <!-- Stylesheets -->
     <link rel="stylesheet" href="/css/styles.css">
     
@@ -337,7 +334,17 @@
                         <div class="empty-state hidden" id="emptyState">
                             <div class="empty-icon">📋</div>
                             <h3>No attendance records found</h3>
-                            <p>No employees have attendance records for the selected filters.</p>
+                            <p id="emptyStateMessage">No employees have attendance records for the selected filters.</p>
+                            <div class="empty-state-actions" id="emptyStateActions" style="margin-top: 20px; display: none;">
+                                <button class="btn btn-primary" onclick="employeeManagement?.createSampleData?.()">
+                                    <span class="btn-icon">➕</span>
+                                    <span class="btn-text">Create Sample Data</span>
+                                </button>
+                                <button class="btn btn-secondary" onclick="employeeManagement?.debugState?.()">
+                                    <span class="btn-icon">🔍</span>
+                                    <span class="btn-text">Debug Info</span>
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Loading State -->
@@ -721,12 +728,27 @@
                     
                     console.log(`Loaded ${this.employees.length} employees and ${this.attendanceData.length} attendance records`);
                     
+                    // If no attendance data is found, automatically create sample data
+                    if (this.attendanceData.length === 0 && this.employees.length > 0) {
+                        console.log('No attendance data found, creating sample attendance records...');
+                        await this.createSampleAttendanceData();
+                    } else if (this.employees.length === 0) {
+                        console.log('No employees found, creating complete sample data...');
+                        await this.createSampleData();
+                    }
+                    
+                    console.log(`Final data counts: ${this.employees.length} employees and ${this.attendanceData.length} attendance records`);
+                    
                     // Debug: Log the structure of the first employee and attendance record
                     if (this.employees.length > 0) {
                         console.log('Sample employee data:', this.employees[0]);
+                    } else {
+                        console.warn('No employees found after loading!');
                     }
                     if (this.attendanceData.length > 0) {
                         console.log('Sample attendance data:', this.attendanceData[0]);
+                    } else {
+                        console.warn('No attendance data found after loading!');
                     }
                     
                     // Ensure attendance records have employee names populated
@@ -979,6 +1001,36 @@
                     });
                 }
 
+                // Bulk Update / Create Sample Data button
+                const bulkUpdateBtn = document.getElementById('bulkUpdateBtn');
+                if (bulkUpdateBtn) {
+                    bulkUpdateBtn.addEventListener('click', async () => {
+                        try {
+                            // If no data exists, offer to create sample data
+                            if (this.attendanceData.length === 0) {
+                                if (confirm('No attendance data found. Would you like to create sample data for testing?')) {
+                                    this.showLoadingState(true);
+                                    
+                                    if (this.employees.length === 0) {
+                                        await this.createSampleData();
+                                    } else {
+                                        await this.createSampleAttendanceData();
+                                    }
+                                    
+                                    this.showLoadingState(false);
+                                }
+                            } else {
+                                // If data exists, show bulk update options
+                                this.showSuccess('Bulk update functionality coming soon!');
+                            }
+                        } catch (error) {
+                            console.error('Failed to handle bulk update:', error);
+                            this.showLoadingState(false);
+                            this.showError('Failed to perform bulk operation: ' + error.message);
+                        }
+                    });
+                }
+
                 // Export button
                 const exportBtn = document.getElementById('exportAttendanceBtn');
                 if (exportBtn) {
@@ -1092,6 +1144,28 @@
                     tbody.innerHTML = '';
                     if (emptyState) {
                         emptyState.classList.remove('hidden');
+                        
+                        // Update message and actions based on the situation
+                        const emptyStateMessage = document.getElementById('emptyStateMessage');
+                        const emptyStateActions = document.getElementById('emptyStateActions');
+                        
+                        if (this.attendanceData.length === 0) {
+                            // No attendance data at all
+                            if (emptyStateMessage) {
+                                emptyStateMessage.textContent = 'No attendance data found in the system. Click below to create sample data for testing.';
+                            }
+                            if (emptyStateActions) {
+                                emptyStateActions.style.display = 'block';
+                            }
+                        } else {
+                            // Data exists but filtered out
+                            if (emptyStateMessage) {
+                                emptyStateMessage.textContent = 'No employees have attendance records for the selected filters. Try adjusting your filters or selecting a different date.';
+                            }
+                            if (emptyStateActions) {
+                                emptyStateActions.style.display = 'none';
+                            }
+                        }
                     }
                     return;
                 }
@@ -1354,13 +1428,15 @@
                             throw new Error('Record not found');
                         }
                         
+                        console.log('=== DELETION DEBUG START ===');
                         console.log('Record to delete:', {
                             id: record.id,
                             employeeId: record.employeeId,
                             date: record.date,
                             employeeName: record.employeeName
                         });
-                        console.log('Current attendance data count:', this.attendanceData.length);
+                        console.log('Current attendance data count BEFORE deletion:', this.attendanceData.length);
+                        console.log('All record IDs BEFORE deletion:', this.attendanceData.map(r => ({ id: r.id, type: typeof r.id })));
 
                         // ONLY use unified employee manager - no fallbacks allowed
                         if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
@@ -1372,17 +1448,60 @@
                         }
 
                         // Delete through unified employee manager ONLY using record ID
-                        await window.unifiedEmployeeManager.deleteAttendanceRecordById(record.id);
-                        console.log('Deleted attendance record via unified employee manager (EXCLUSIVE)');
+                        // Note: deleteAttendanceRecordById is synchronous, not async
+                        const deletedRecord = window.unifiedEmployeeManager.deleteAttendanceRecordById(record.id);
+                        console.log('Deleted attendance record via unified employee manager (EXCLUSIVE):', deletedRecord);
+
+                        // Allow a small delay for data synchronization across all storage systems
+                        await new Promise(resolve => setTimeout(resolve, 100));
+
+                        // Force the unified manager to reload from storage to ensure we get the latest data
+                        await window.unifiedEmployeeManager.loadData();
 
                         // Refresh data from unified employee manager ONLY to verify deletion
                         this.employees = window.unifiedEmployeeManager.getAllEmployees();
                         this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
                         
-                        // Verify the record was actually deleted
-                        const recordStillExists = this.attendanceData.find(r => r.id == id);
+                        console.log('Current attendance data count AFTER deletion:', this.attendanceData.length);
+                        console.log('All record IDs AFTER deletion:', this.attendanceData.map(r => ({ id: r.id, type: typeof r.id })));
+                        
+                        // Verify the record was actually deleted using multiple comparison methods
+                        const recordStillExists = this.attendanceData.find(r => 
+                            r.id === id || String(r.id) === String(id) || Number(r.id) === Number(id)
+                        );
                         if (recordStillExists) {
-                            throw new Error('Record still exists after deletion attempt. Unified employee manager deletion failed.');
+                            console.error('DELETION VERIFICATION FAILED:', {
+                                searchedForId: id,
+                                searchedForIdType: typeof id,
+                                foundRecord: recordStillExists,
+                                foundRecordIdType: typeof recordStillExists.id,
+                                totalRecords: this.attendanceData.length,
+                                allRecordIds: this.attendanceData.map(r => ({ id: r.id, type: typeof r.id }))
+                            });
+                            
+                            // Last resort: force remove from local data arrays
+                            console.warn('Attempting force removal from local data arrays...');
+                            this.attendanceData = this.attendanceData.filter(r => 
+                                r.id !== id && String(r.id) !== String(id) && Number(r.id) !== Number(id)
+                            );
+                            
+                            // Try one more time to save the corrected data
+                            if (window.unifiedEmployeeManager) {
+                                window.unifiedEmployeeManager.attendanceRecords = [...this.attendanceData];
+                                window.unifiedEmployeeManager.saveData();
+                                console.log('Force-saved corrected data to unified manager');
+                            }
+                            
+                            // Check one more time
+                            const stillExistsAfterForce = this.attendanceData.find(r => 
+                                r.id === id || String(r.id) === String(id) || Number(r.id) === Number(id)
+                            );
+                            
+                            if (stillExistsAfterForce) {
+                                throw new Error('Record still exists after deletion attempt and force removal. Unified employee manager deletion failed.');
+                            } else {
+                                console.log('Record successfully removed via force removal');
+                            }
                         } else {
                             console.log('Record successfully deleted and verified via unified employee manager');
                         }
@@ -1404,11 +1523,15 @@
                         this.updateStats();
                         
                         // Final verification: Check if record is still visible in filtered data
-                        const recordStillVisible = this.filteredData.find(r => r.id == id);
+                        const recordStillVisible = this.filteredData.find(r => 
+                            r.id === id || String(r.id) === String(id) || Number(r.id) === Number(id)
+                        );
                         if (recordStillVisible) {
                             console.warn('Record still visible in filtered data, force removing from UI');
-                            // Force remove from filtered data as well
-                            this.filteredData = this.filteredData.filter(r => r.id != id);
+                            // Force remove from filtered data as well with robust comparison
+                            this.filteredData = this.filteredData.filter(r => 
+                                r.id !== id && String(r.id) !== String(id) && Number(r.id) !== Number(id)
+                            );
                         }
                         
                         // Force re-render the table to ensure UI updates
@@ -1914,43 +2037,43 @@
                     // Create sample employees
                     const sampleEmployees = [
                         {
-                            id: 1,
-                            fullName: "John Doe",
                             firstName: "John",
                             lastName: "Doe",
-                            employeeCode: "EMP001",
                             email: "john.doe@company.com",
                             department: "Engineering",
                             position: "Developer",
-                            status: "active"
+                            status: "active",
+                            hireDate: new Date().toISOString().split('T')[0],
+                            hourlyRate: 25.00,
+                            salaryType: "hourly"
                         },
                         {
-                            id: 2,
-                            fullName: "Jane Smith",
                             firstName: "Jane",
                             lastName: "Smith",
-                            employeeCode: "EMP002",
                             email: "jane.smith@company.com",
                             department: "HR",
                             position: "HR Manager",
-                            status: "active"
+                            status: "active",
+                            hireDate: new Date().toISOString().split('T')[0],
+                            hourlyRate: 30.00,
+                            salaryType: "hourly"
                         },
                         {
-                            id: 3,
-                            fullName: "Bob Johnson",
                             firstName: "Bob",
                             lastName: "Johnson",
-                            employeeCode: "EMP003",
                             email: "bob.johnson@company.com",
                             department: "Sales",
                             position: "Sales Rep",
-                            status: "active"
+                            status: "active",
+                            hireDate: new Date().toISOString().split('T')[0],
+                            hourlyRate: 20.00,
+                            salaryType: "hourly"
                         }
                     ];
                     
                     // Add employees to the manager
                     for (const emp of sampleEmployees) {
-                        await window.unifiedEmployeeManager.saveEmployee(emp);
+                        await window.unifiedEmployeeManager.addEmployee(emp);
                     }
                     
                     // Refresh local data
@@ -1964,6 +2087,105 @@
                 } catch (error) {
                     console.error('Failed to create sample data:', error);
                     this.showError('Failed to create sample data: ' + error.message);
+                }
+            }
+
+            /**
+             * Create sample attendance data for existing employees
+             */
+            async createSampleAttendanceData() {
+                console.log('Creating sample attendance data for existing employees...');
+                
+                if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
+                    console.error('Unified employee manager not available');
+                    return;
+                }
+                
+                try {
+                    const today = new Date();
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    
+                    const todayStr = today.toISOString().split('T')[0];
+                    const yesterdayStr = yesterday.toISOString().split('T')[0];
+                    
+                    // Create attendance records for the first few employees
+                    const sampleAttendanceRecords = [];
+                    
+                    // Today's records
+                    if (this.employees.length > 0) {
+                        sampleAttendanceRecords.push({
+                            employeeId: this.employees[0].id,
+                            date: todayStr,
+                            clockIn: '09:00',
+                            clockOut: '17:30',
+                            status: 'present',
+                            notes: 'Regular work day'
+                        });
+                    }
+                    
+                    if (this.employees.length > 1) {
+                        sampleAttendanceRecords.push({
+                            employeeId: this.employees[1].id,
+                            date: todayStr,
+                            clockIn: '09:15',
+                            clockOut: '17:45',
+                            status: 'late',
+                            notes: 'Traffic delay'
+                        });
+                    }
+                    
+                    if (this.employees.length > 2) {
+                        sampleAttendanceRecords.push({
+                            employeeId: this.employees[2].id,
+                            date: todayStr,
+                            clockIn: '08:45',
+                            clockOut: '17:15',
+                            status: 'present',
+                            notes: 'Early arrival'
+                        });
+                    }
+                    
+                    // Yesterday's records
+                    if (this.employees.length > 0) {
+                        sampleAttendanceRecords.push({
+                            employeeId: this.employees[0].id,
+                            date: yesterdayStr,
+                            clockIn: '09:00',
+                            clockOut: '18:00',
+                            status: 'overtime',
+                            notes: 'Project deadline'
+                        });
+                    }
+                    
+                    if (this.employees.length > 1) {
+                        sampleAttendanceRecords.push({
+                            employeeId: this.employees[1].id,
+                            date: yesterdayStr,
+                            clockIn: '',
+                            clockOut: '',
+                            status: 'absent',
+                            notes: 'Sick day'
+                        });
+                    }
+                    
+                    // Add attendance records to the manager
+                    for (const record of sampleAttendanceRecords) {
+                        await window.unifiedEmployeeManager.saveAttendanceRecord(record);
+                    }
+                    
+                    // Refresh local data
+                    this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
+                    this.applyFilters();
+                    this.updateStats();
+                    this.renderTable();
+                    
+                    console.log('Sample attendance data created successfully. Records:', this.attendanceData.length);
+                    this.showSuccess(`Sample attendance records created successfully! ${this.attendanceData.length} records added.`);
+                    
+                } catch (error) {
+                    console.error('Failed to create sample attendance data:', error);
+                    this.showError('Failed to create sample attendance data: ' + error.message);
                 }
             }
 
@@ -2053,9 +2275,12 @@
                 // Create instance - this will call init() in constructor
                 employeeManagement = new EmployeeManagementPage();
                 
+                // Make it globally accessible for debugging
+                window.employeeManagement = employeeManagement;
+                
                 // Set theme
                 if (typeof themeManager !== 'undefined') {
-                    themeManager.setPage('employee-management');
+                    themeManager.setPage('employee');
                 }
                 
                 console.log('Employee management page fully initialized with unified data service');

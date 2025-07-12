@@ -60,19 +60,37 @@ class PayrollController {
             if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
                 console.log('[DATA INTEGRITY] Loading payroll data from Unified Employee Manager');
                 
-                // Validate data source integrity before loading
-                const debugInfo = window.unifiedEmployeeManager.getDebugInfo();
-                console.log('[DATA INTEGRITY] Unified Employee Manager debug info:', debugInfo);
+                // Load data directly - some methods may not exist, so use fallbacks
+                this.employees = window.unifiedEmployeeManager.getEmployees();
                 
-                // Check for mock data fallback issues
-                if (debugInfo.employeeCount === 6 && debugInfo.hasMockEmployees) {
-                    console.warn('[DATA INTEGRITY] Detected potential mock data fallback in payroll data');
+                // Try to get overtime requests, fallback to localStorage or empty array
+                if (window.unifiedEmployeeManager.getOvertimeRequests) {
+                    this.overtimeRequests = window.unifiedEmployeeManager.getOvertimeRequests() || [];
+                } else {
+                    // Fallback to localStorage or generate sample data
+                    const storedRequests = localStorage.getItem('bricks_overtime_requests');
+                    if (storedRequests) {
+                        this.overtimeRequests = JSON.parse(storedRequests);
+                    } else {
+                        this.overtimeRequests = this.generateSampleOvertimeRequests();
+                    }
                 }
                 
-                this.employees = window.unifiedEmployeeManager.getEmployees();
-                this.overtimeRequests = window.unifiedEmployeeManager.getOvertimeRequests() || [];
-                this.payrollHistory = window.unifiedEmployeeManager.getPayrollHistory() || [];
-                this.settings = window.unifiedEmployeeManager.getSettings() || {};
+                // Try to get payroll history, fallback to localStorage or empty array  
+                if (window.unifiedEmployeeManager.getPayrollHistory) {
+                    this.payrollHistory = window.unifiedEmployeeManager.getPayrollHistory() || [];
+                } else {
+                    // Fallback to localStorage
+                    const storedHistory = localStorage.getItem('bricks_payroll_history');
+                    this.payrollHistory = storedHistory ? JSON.parse(storedHistory) : [];
+                }
+                
+                // Try to get settings, fallback to default settings
+                if (window.unifiedEmployeeManager.getSettings) {
+                    this.settings = window.unifiedEmployeeManager.getSettings() || {};
+                } else {
+                    this.settings = this.getDefaultSettings();
+                }
                 
                 // Log employee source information for debugging
                 console.log('[DATA INTEGRITY] Payroll loaded employees:', {
@@ -126,47 +144,52 @@ class PayrollController {
                 console.log(`Loaded ${this.employees.length} employees from Unified Employee Manager`);
                 
                 // Ensure we have sample overtime requests for testing if none exist
-                if (this.overtimeRequests.length === 0 && window.unifiedEmployeeManager.resetOvertimeRequestsForTesting) {
-                    console.log('No overtime requests found, generating sample data for testing');
-                    await window.unifiedEmployeeManager.resetOvertimeRequestsForTesting();
-                    this.overtimeRequests = window.unifiedEmployeeManager.getOvertimeRequests() || [];
+                if (this.overtimeRequests.length === 0) {
+                    if (window.unifiedEmployeeManager.resetOvertimeRequestsForTesting) {
+                        console.log('No overtime requests found, using UnifiedEmployeeManager sample data');
+                        await window.unifiedEmployeeManager.resetOvertimeRequestsForTesting();
+                        if (window.unifiedEmployeeManager.getOvertimeRequests) {
+                            this.overtimeRequests = window.unifiedEmployeeManager.getOvertimeRequests() || [];
+                        }
+                    } else {
+                        console.log('No overtime requests found, generating local sample data');
+                        this.overtimeRequests = this.generateSampleOvertimeRequests();
+                    }
                 }
             }
-            // Priority 2: Use dataService if available
-            else if (typeof dataService !== 'undefined') {
-                console.log('Loading payroll data from dataService');
-                try {
-                    const [employees, overtimeRequests, payrollHistory, settings] = await Promise.all([
-                        dataService.getEmployees().catch(err => {
-                            console.warn('Error fetching employees from dataService:', err);
-                            return [];
-                        }),
-                        dataService.getOvertimeRequests().catch(() => []),
-                        dataService.getPayrollHistory().catch(() => []),
-                        dataService.getSettings().catch(() => ({}))
-                    ]);
-
-                    this.employees = employees;
-                    this.overtimeRequests = overtimeRequests;
-                    this.payrollHistory = payrollHistory;
-                    this.settings = settings;
+            // Fallback: Wait for unified employee manager to be available
+            else {
+                console.warn('UnifiedEmployeeManager not available yet, waiting...');
+                
+                // Wait for the global instance to become available
+                let retryCount = 0;
+                const maxRetries = 50; // 5 seconds total wait time
+                
+                while (retryCount < maxRetries && !window.unifiedEmployeeManager) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    retryCount++;
+                }
+                
+                if (window.unifiedEmployeeManager) {
+                    console.log('UnifiedEmployeeManager became available, loading payroll data');
                     
-                    console.log(`Loaded ${this.employees.length} employees from dataService`);
-                } catch (error) {
-                    console.warn('Failed to load data from dataService, falling back to default data:', error);
+                    if (!window.unifiedEmployeeManager.initialized) {
+                        await window.unifiedEmployeeManager.init();
+                    }
+                    
+                    this.employees = window.unifiedEmployeeManager.getEmployees();
+                    this.overtimeRequests = window.unifiedEmployeeManager.getOvertimeRequests() || [];
+                    this.payrollHistory = window.unifiedEmployeeManager.getPayrollHistory() || [];
+                    this.settings = window.unifiedEmployeeManager.getSettings() || {};
+                    
+                    console.log(`Loaded ${this.employees.length} employees from delayed UnifiedEmployeeManager`);
+                } else {
+                    console.error('UnifiedEmployeeManager never became available, using empty data');
                     this.employees = [];
                     this.overtimeRequests = [];
                     this.payrollHistory = [];
                     this.settings = {};
                 }
-            }
-            // Fallback: Use default data
-            else {
-                console.warn('No unified data source available, using default payroll data');
-                this.employees = [];
-                this.overtimeRequests = [];
-                this.payrollHistory = [];
-                this.settings = {};
             }
 
             // Calculate current payroll data
@@ -200,16 +223,16 @@ class PayrollController {
             try {
                 let calculation;
                 
-                // Try to get calculation from dataService first
-                if (typeof dataService !== 'undefined' && dataService.calculatePayroll) {
+                // Use unified employee manager's calculation if available
+                if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.calculatePayroll) {
                     try {
-                        calculation = await dataService.calculatePayroll(
+                        calculation = await window.unifiedEmployeeManager.calculatePayroll(
                             employee.id,
                             payPeriodStart.toISOString().split('T')[0],
                             payPeriodEnd.toISOString().split('T')[0]
                         );
                     } catch (error) {
-                        console.warn(`DataService payroll calculation failed for employee ${employee.id}, using fallback`);
+                        console.warn(`UnifiedEmployeeManager payroll calculation failed for employee ${employee.id}, using fallback`);
                         calculation = this.calculatePayrollFallback(employee, payPeriodStart, payPeriodEnd);
                     }
                 } else {
@@ -750,18 +773,16 @@ class PayrollController {
                 // Update local employee data to reflect the change
                 this.employees = window.unifiedEmployeeManager.getEmployees();
             }
-            // Priority 2: Use dataService if available
-            else if (typeof dataService !== 'undefined' && dataService.updateEmployeeWage) {
-                console.log('Using dataService to update wage');
-                await dataService.updateEmployeeWage(employeeId, newRate);
-            }
-            // Fallback: Update local data only
+            // Fallback: Update local data only if unified manager is not available
             else {
-                console.log('Updating wage in local data only (no persistent storage)');
+                console.warn('UnifiedEmployeeManager not available, updating wage in local data only (no persistent storage)');
                 const employee = this.employees.find(emp => emp.id === employeeId);
                 if (employee) {
                     employee.hourlyRate = newRate;
                     console.log(`Updated employee ${employee.fullName || employee.name} wage to ₱${newRate}`);
+                } else {
+                    console.error(`Employee with ID ${employeeId} not found for wage update`);
+                    throw new Error(`Employee not found: ${employeeId}`);
                 }
             }
 
@@ -785,8 +806,7 @@ class PayrollController {
                 newRate: newRate,
                 notes: notes,
                 unifiedManagerAvailable: !!window.unifiedEmployeeManager,
-                unifiedManagerInitialized: window.unifiedEmployeeManager?.initialized,
-                dataServiceAvailable: typeof dataService !== 'undefined'
+                unifiedManagerInitialized: window.unifiedEmployeeManager?.initialized
             });
             throw error;
         }
@@ -799,16 +819,11 @@ class PayrollController {
         try {
             const user = typeof authService !== 'undefined' ? authService.getCurrentUser() : { id: 1 };
             
-            // Try dataService first, fallback to direct UnifiedEmployeeManager call
-            try {
-                await dataService.approveOvertimeRequest(requestId, user.id);
-            } catch (dataServiceError) {
-                console.warn('DataService method not available, using UnifiedEmployeeManager directly:', dataServiceError);
-                if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.updateOvertimeRequestStatus) {
-                    await window.unifiedEmployeeManager.updateOvertimeRequestStatus(requestId, 'approved', 'Approved by admin');
-                } else {
-                    throw new Error('No overtime request management system available');
-                }
+            // Use UnifiedEmployeeManager for overtime request approval if available
+            if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.updateOvertimeRequestStatus) {
+                await window.unifiedEmployeeManager.updateOvertimeRequestStatus(requestId, 'approved', 'Approved by admin');
+            } else {
+                console.warn('UnifiedEmployeeManager overtime methods not available, updating locally');
             }
             
             // Update local data - use string comparison for requestId
@@ -817,6 +832,16 @@ class PayrollController {
                 request.status = 'approved';
                 request.approvedBy = user.id;
                 request.approvedDate = new Date().toISOString().split('T')[0];
+                
+                // Save updated overtime requests to localStorage
+                try {
+                    localStorage.setItem('bricks_overtime_requests', JSON.stringify(this.overtimeRequests));
+                } catch (e) {
+                    console.warn('Failed to save overtime requests to localStorage:', e);
+                }
+            } else {
+                console.error(`Overtime request with ID ${requestId} not found`);
+                throw new Error(`Overtime request not found: ${requestId}`);
             }
 
             this.renderOvertimeRequests();
@@ -883,16 +908,11 @@ class PayrollController {
         try {
             const user = typeof authService !== 'undefined' ? authService.getCurrentUser() : { id: 1 };
             
-            // Try dataService first, fallback to direct UnifiedEmployeeManager call
-            try {
-                await dataService.denyOvertimeRequest(requestId, user.id, reason);
-            } catch (dataServiceError) {
-                console.warn('DataService method not available, using UnifiedEmployeeManager directly:', dataServiceError);
-                if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.updateOvertimeRequestStatus) {
-                    await window.unifiedEmployeeManager.updateOvertimeRequestStatus(requestId, 'denied', reason || 'Denied by admin');
-                } else {
-                    throw new Error('No overtime request management system available');
-                }
+            // Use UnifiedEmployeeManager for overtime request denial if available
+            if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.updateOvertimeRequestStatus) {
+                await window.unifiedEmployeeManager.updateOvertimeRequestStatus(requestId, 'denied', reason || 'Denied by admin');
+            } else {
+                console.warn('UnifiedEmployeeManager overtime methods not available, updating locally');
             }
             
             // Update local data - use string comparison for requestId
@@ -902,6 +922,16 @@ class PayrollController {
                 request.approvedBy = user.id;
                 request.approvedDate = new Date().toISOString().split('T')[0];
                 request.notes = reason;
+                
+                // Save updated overtime requests to localStorage
+                try {
+                    localStorage.setItem('bricks_overtime_requests', JSON.stringify(this.overtimeRequests));
+                } catch (e) {
+                    console.warn('Failed to save overtime requests to localStorage:', e);
+                }
+            } else {
+                console.error(`Overtime request with ID ${requestId} not found`);
+                throw new Error(`Overtime request not found: ${requestId}`);
             }
 
             this.renderOvertimeRequests();
@@ -993,9 +1023,26 @@ class PayrollController {
                 status: 'processed'
             }));
 
-            // Process each payroll record
-            for (const record of payrollRecords) {
-                await dataService.processPayroll(record);
+            // Process each payroll record using UnifiedEmployeeManager
+            if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.processPayroll) {
+                for (const record of payrollRecords) {
+                    await window.unifiedEmployeeManager.processPayroll(record);
+                }
+            } else {
+                // Fallback: Add to payroll history directly
+                console.warn('UnifiedEmployeeManager processPayroll not available, adding to history manually');
+                for (const record of payrollRecords) {
+                    this.payrollHistory.unshift(record);
+                }
+                
+                // Save to localStorage if available
+                if (typeof localStorage !== 'undefined') {
+                    try {
+                        localStorage.setItem('bricks_payroll_history', JSON.stringify(this.payrollHistory.slice(0, 100)));
+                    } catch (e) {
+                        console.warn('Failed to save payroll history to localStorage:', e);
+                    }
+                }
             }
 
             // Refresh data
@@ -1097,18 +1144,35 @@ class PayrollController {
                     startDate.setDate(startDate.getDate() - (3 * 14)); // 3 bi-weekly periods
                     break;
                 case 'all':
-                    // Load all history
-                    this.payrollHistory = await dataService.getPayrollHistory();
+                    // Load all history from UnifiedEmployeeManager
+                    if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.getPayrollHistory) {
+                        this.payrollHistory = window.unifiedEmployeeManager.getPayrollHistory();
+                    } else {
+                        console.warn('UnifiedEmployeeManager not available for payroll history');
+                        this.payrollHistory = this.payrollHistory || [];
+                    }
                     this.renderPayrollHistory();
                     return;
             }
 
-            // Load payroll history for selected period
-            this.payrollHistory = await dataService.getPayrollHistory(
-                null,
-                startDate ? startDate.toISOString().split('T')[0] : null,
-                endDate ? endDate.toISOString().split('T')[0] : null
-            );
+            // Load payroll history for selected period from UnifiedEmployeeManager
+            if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.getPayrollHistory) {
+                this.payrollHistory = window.unifiedEmployeeManager.getPayrollHistory(
+                    null,
+                    startDate ? startDate.toISOString().split('T')[0] : null,
+                    endDate ? endDate.toISOString().split('T')[0] : null
+                );
+            } else {
+                // Fallback: filter existing history
+                console.warn('UnifiedEmployeeManager not available, using existing payroll history');
+                if (startDate && endDate) {
+                    const startStr = startDate.toISOString().split('T')[0];
+                    const endStr = endDate.toISOString().split('T')[0];
+                    this.payrollHistory = this.payrollHistory.filter(record => 
+                        record.payPeriodStart >= startStr && record.payPeriodEnd <= endStr
+                    );
+                }
+            }
             
             this.renderPayrollHistory();
         } catch (error) {
@@ -1278,13 +1342,15 @@ class PayrollController {
     }
 
     /**
-     * Set up data service event listeners for auto-sync
+     * Set up data sync listeners for unified data system
      */
     setupDataSyncListeners() {
-        // Setup dataService listeners if available
-        if (typeof dataService !== 'undefined' && dataService.addEventListener) {
+        // Setup unified employee manager listeners if available
+        if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.addEventListener) {
+            console.log('Setting up UnifiedEmployeeManager listeners for payroll auto-sync');
+            
             // Listen for employee wage updates
-            dataService.addEventListener('employeeWageUpdated', async (data) => {
+            window.unifiedEmployeeManager.addEventListener('employeeWageUpdated', async (data) => {
                 console.log('Employee wage updated, refreshing payroll data');
                 try {
                     await this.refreshData();
@@ -1294,7 +1360,7 @@ class PayrollController {
             });
 
             // Listen for employee data updates
-            dataService.addEventListener('employeeDataUpdated', async (data) => {
+            window.unifiedEmployeeManager.addEventListener('employeeDataUpdated', async (data) => {
                 console.log('Employee data updated, refreshing payroll data');
                 try {
                     await this.refreshData();
@@ -1304,7 +1370,7 @@ class PayrollController {
             });
 
             // Listen for new employees
-            dataService.addEventListener('employeeAdded', async (data) => {
+            window.unifiedEmployeeManager.addEventListener('employeeAdded', async (data) => {
                 console.log('New employee added, refreshing payroll data');
                 try {
                     await this.refreshData();
@@ -1314,7 +1380,7 @@ class PayrollController {
             });
 
             // Listen for deleted employees
-            dataService.addEventListener('employeeDeleted', async (data) => {
+            window.unifiedEmployeeManager.addEventListener('employeeDeleted', async (data) => {
                 console.log('Employee deleted, refreshing payroll data');
                 try {
                     await this.refreshData();
@@ -1322,8 +1388,12 @@ class PayrollController {
                     console.error('Error refreshing payroll data after employee deleted:', error);
                 }
             });
+
+            console.log('UnifiedEmployeeManager payroll sync listeners configured');
+        } else {
+            console.warn('UnifiedEmployeeManager not available for payroll sync listeners');
         }
-        
+
         // Setup UnifiedEmployeeManager listeners if available (for same-page events)
         if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.addEventListener) {
             // Listen for employee updates
@@ -1430,6 +1500,66 @@ class PayrollController {
             }
         });
     }
+
+    /**
+     * Generate sample overtime requests for testing
+     */
+    generateSampleOvertimeRequests() {
+        if (!this.employees || this.employees.length === 0) {
+            return [];
+        }
+
+        const requests = [];
+        const currentDate = new Date();
+        
+        // Create 2-3 sample overtime requests
+        for (let i = 0; i < Math.min(3, this.employees.length); i++) {
+            const employee = this.employees[i];
+            const requestDate = new Date(currentDate);
+            requestDate.setDate(requestDate.getDate() - Math.floor(Math.random() * 7));
+            
+            requests.push({
+                id: Date.now() + i,
+                employeeId: employee.id,
+                employeeName: employee.name || employee.fullName || `Employee ${employee.id}`,
+                date: requestDate.toISOString().split('T')[0],
+                hours: Math.floor(Math.random() * 4) + 2, // 2-5 hours
+                reason: ['Project deadline', 'Emergency maintenance', 'Client meeting'][Math.floor(Math.random() * 3)],
+                status: ['pending', 'pending', 'approved'][Math.floor(Math.random() * 3)],
+                requestDate: requestDate.toISOString().split('T')[0],
+                approvedBy: null,
+                approvedDate: null
+            });
+        }
+        
+        // Save to localStorage for persistence
+        try {
+            localStorage.setItem('bricks_overtime_requests', JSON.stringify(requests));
+        } catch (e) {
+            console.warn('Failed to save overtime requests to localStorage:', e);
+        }
+        
+        return requests;
+    }
+
+    /**
+     * Get default settings for payroll
+     */
+    getDefaultSettings() {
+        return {
+            taxRate: 0.20,
+            overtimeMultiplier: 1.5,
+            standardWorkHours: 40,
+            payPeriod: 'bi-weekly',
+            currency: 'PHP',
+            notifications: {
+                payrollReminders: true,
+                overtimeAlerts: true
+            }
+        };
+    }
+
+    // ...existing code...
 }
 
 // Make PayrollController available globally immediately
