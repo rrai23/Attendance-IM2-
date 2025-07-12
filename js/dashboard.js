@@ -79,6 +79,8 @@ class DashboardController {
         return new Promise((resolve, reject) => {
             const check = () => {
                 const dependencies = {
+                    // Check for unified employee manager first (newest)
+                    unifiedEmployeeManager: typeof window.unifiedEmployeeManager !== 'undefined' && window.unifiedEmployeeManager.initialized,
                     // Check for unified data service first (preferred)
                     unifiedDataService: typeof window.dataService !== 'undefined' && window.dataService.initialized,
                     // Legacy data sources as fallback
@@ -94,8 +96,8 @@ class DashboardController {
                 console.log('window.dataService:', window.dataService);
                 console.log('dataService global:', typeof dataService !== 'undefined' ? dataService : 'undefined');
                 
-                // Check data sources in priority order: unified service → data manager → original data service
-                const hasDataSource = dependencies.unifiedDataService || dependencies.dataManager || dependencies.dataService;
+                // Check data sources in priority order: unified employee manager → unified service → data manager → original data service
+                const hasDataSource = dependencies.unifiedEmployeeManager || dependencies.unifiedDataService || dependencies.dataManager || dependencies.dataService;
                 
                 console.log('hasDataSource:', hasDataSource);
                 console.log('DashboardCalendar available:', dependencies.DashboardCalendar);
@@ -127,6 +129,29 @@ class DashboardController {
      * Setup event listeners for dashboard interactions
      */
     setupEventListeners() {
+        // Listen for unified employee manager updates (highest priority)
+        if (window.unifiedEmployeeManager) {
+            window.unifiedEmployeeManager.addEventListener('attendanceUpdate', (data) => {
+                console.log('Dashboard received attendance update from unified employee manager:', data);
+                this.handleDataUpdate();
+            });
+            
+            window.unifiedEmployeeManager.addEventListener('employeeUpdate', (data) => {
+                console.log('Dashboard received employee update from unified employee manager:', data);
+                this.handleDataUpdate();
+            });
+            
+            window.unifiedEmployeeManager.addEventListener('employeeDeleted', (data) => {
+                console.log('Dashboard received employee deletion from unified employee manager:', data);
+                this.handleDataUpdate();
+            });
+            
+            window.unifiedEmployeeManager.addEventListener('dataSync', (data) => {
+                console.log('Dashboard received data sync from unified employee manager:', data);
+                this.handleDataUpdate();
+            });
+        }
+        
         // Listen for unified data service updates
         if (window.dataService) {
             window.dataService.addEventListener('attendanceUpdate', (data) => {
@@ -235,8 +260,25 @@ class DashboardController {
             const today = new Date().toISOString().split('T')[0];
             console.log('Loading attendance stats for date:', today);
             
+            // Prioritize the unified employee manager (newest)
+            if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
+                console.log('Loading attendance stats from unified employee manager');
+                
+                // Get attendance stats
+                this.currentStats = window.unifiedEmployeeManager.getAttendanceStats();
+                console.log('Received stats from unified employee manager:', this.currentStats);
+                
+                // Get today's attendance records
+                const todayRecords = window.unifiedEmployeeManager.getAttendanceRecords({ date: today });
+                console.log('Today\'s attendance records:', todayRecords);
+                
+                // Process today's data
+                this.currentStats.today = await this.processTodayAttendance(todayRecords);
+                
+                console.log('Dashboard loaded stats from unified employee manager:', this.currentStats);
+            }
             // Prioritize the unified data service
-            if (window.dataService && window.dataService.initialized) {
+            else if (window.dataService && window.dataService.initialized) {
                 console.log('Loading attendance stats from unified data service');
                 console.log('dataService methods:', Object.getOwnPropertyNames(window.dataService).filter(name => typeof window.dataService[name] === 'function'));
                 

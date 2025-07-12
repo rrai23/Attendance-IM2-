@@ -99,9 +99,29 @@ class DataManager {
         }
         
         // Fallback implementation
+        console.log(`Fallback: Deleting employee with ID: ${id}`);
         const index = this.employees.findIndex(emp => emp.id === id);
         if (index >= 0) {
-            return this.employees.splice(index, 1)[0];
+            const deletedEmployee = this.employees.splice(index, 1)[0];
+            
+            // Also remove their attendance records in fallback mode
+            const initialAttendanceCount = this.attendanceRecords ? this.attendanceRecords.length : 0;
+            if (this.attendanceRecords) {
+                this.attendanceRecords = this.attendanceRecords.filter(record => {
+                    // Use multiple comparison methods for robust matching
+                    if (record.employeeId === deletedEmployee.id) return false;
+                    const numericRecordId = parseInt(record.employeeId);
+                    const numericEmpId = parseInt(deletedEmployee.id);
+                    if (!isNaN(numericRecordId) && !isNaN(numericEmpId)) {
+                        return numericRecordId !== numericEmpId;
+                    }
+                    return String(record.employeeId) !== String(deletedEmployee.id);
+                });
+            }
+            const removedAttendanceCount = initialAttendanceCount - (this.attendanceRecords ? this.attendanceRecords.length : 0);
+            
+            console.log(`Fallback: Deleted employee ${deletedEmployee.name || deletedEmployee.fullName} and ${removedAttendanceCount} attendance records`);
+            return deletedEmployee;
         }
         throw new Error('Employee not found');
     }

@@ -353,7 +353,7 @@
 
     <!-- Edit Attendance Modal -->
     <div class="modal-overlay hidden" id="editAttendanceModal">
-        <div class="modal">
+        <div class="modal modal-attendance">
             <div class="modal-header">
                 <h3 id="modalTitle">Edit Attendance Record</h3>
                 <button class="modal-close" id="closeModal" aria-label="Close modal">
@@ -499,6 +499,35 @@
         </div>
     </div>
 
+    <!-- Logout Confirmation Modal -->
+    <div class="modal-overlay hidden" id="logoutModal">
+        <div class="modal small">
+            <div class="modal-header">
+                <h3>Confirm Logout</h3>
+                <button class="modal-close" id="closeLogoutModal" aria-label="Close modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-content">
+                <div class="logout-confirmation">
+                    <div class="logout-icon-large">🚪</div>
+                    <p>Are you sure you want to sign out?</p>
+                    <p class="logout-note">You will need to log in again to access the system.</p>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelLogoutBtn">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmLogoutBtn">
+                        <span class="btn-text">Sign Out</span>
+                        <span class="btn-loading hidden">
+                            <span class="loading-spinner"></span>
+                            Signing out...
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="js/mock-data.js"></script>
     <script src="js/utils/id-utility.js"></script>
@@ -515,6 +544,150 @@
     <script src="js/sidebar.js"></script>
     <script src="js/employee-attendance.js"></script>
     <script>
+        // Global Logout Confirmation Function
+        // This should be standardized across all pages for consistency
+        function confirmLogout(options = {}) {
+            console.log('confirmLogout called with options:', options);
+            
+            const modal = document.getElementById('logoutModal');
+            const confirmBtn = document.getElementById('confirmLogoutBtn');
+            const cancelBtn = document.getElementById('cancelLogoutBtn');
+            const closeBtn = document.getElementById('closeLogoutModal');
+
+            if (!modal) {
+                console.error('Logout modal not found, falling back to browser confirm');
+                if (confirm('Are you sure you want to logout?')) {
+                    if (options.onConfirm) options.onConfirm();
+                }
+                return;
+            }
+
+            if (!confirmBtn || !cancelBtn || !closeBtn) {
+                console.error('Modal buttons not found, falling back to browser confirm');
+                if (confirm('Are you sure you want to logout?')) {
+                    if (options.onConfirm) options.onConfirm();
+                }
+                return;
+            }
+
+            const btnText = confirmBtn.querySelector('.btn-text');
+            const btnLoading = confirmBtn.querySelector('.btn-loading');
+
+            console.log('Showing logout modal');
+            
+            // Show modal
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            // Reset button state
+            if (btnText) btnText.classList.remove('hidden');
+            if (btnLoading) btnLoading.classList.add('hidden');
+            confirmBtn.disabled = false;
+
+            // Handle confirm
+            const handleConfirm = async (e) => {
+                e.preventDefault();
+                console.log('Logout confirmed');
+                
+                // Show loading state
+                if (btnText) btnText.classList.add('hidden');
+                if (btnLoading) btnLoading.classList.remove('hidden');
+                confirmBtn.disabled = true;
+
+                try {
+                    if (options.onConfirm) {
+                        await options.onConfirm();
+                    }
+                } catch (error) {
+                    console.error('Logout error:', error);
+                    // Reset button state on error
+                    if (btnText) btnText.classList.remove('hidden');
+                    if (btnLoading) btnLoading.classList.add('hidden');
+                    confirmBtn.disabled = false;
+                }
+            };
+
+            // Handle cancel/close
+            const handleCancel = (e) => {
+                e.preventDefault();
+                console.log('Logout cancelled');
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+                cleanup();
+                if (options.onCancel) options.onCancel();
+            };
+
+            // Cleanup function to remove event listeners
+            const cleanup = () => {
+                confirmBtn.removeEventListener('click', handleConfirm);
+                cancelBtn.removeEventListener('click', handleCancel);
+                closeBtn.removeEventListener('click', handleCancel);
+                modal.removeEventListener('click', handleOverlayClick);
+                document.removeEventListener('keydown', handleEscape);
+            };
+
+            // Close on overlay click
+            const handleOverlayClick = (e) => {
+                if (e.target === modal) {
+                    handleCancel(e);
+                }
+            };
+
+            // Close on Escape key
+            const handleEscape = (e) => {
+                if (e.key === 'Escape') {
+                    handleCancel(e);
+                }
+            };
+
+            // Add event listeners
+            confirmBtn.addEventListener('click', handleConfirm);
+            cancelBtn.addEventListener('click', handleCancel);
+            closeBtn.addEventListener('click', handleCancel);
+            modal.addEventListener('click', handleOverlayClick);
+            document.addEventListener('keydown', handleEscape);
+        }
+
+        // Test function to verify logout modal works
+        function testLogoutModal() {
+            console.log('Testing logout modal...');
+            confirmLogout({
+                onConfirm: () => {
+                    console.log('Test logout confirmed');
+                    alert('Logout test confirmed!');
+                },
+                onCancel: () => {
+                    console.log('Test logout cancelled');
+                }
+            });
+        }
+
+        // Make test function available globally for debugging
+        window.testLogoutModal = testLogoutModal;
+
+        // Debug: Check if logout modal elements exist when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('=== LOGOUT MODAL DEBUG ===');
+            const modal = document.getElementById('logoutModal');
+            const confirmBtn = document.getElementById('confirmLogoutBtn');
+            const cancelBtn = document.getElementById('cancelLogoutBtn');
+            const closeBtn = document.getElementById('closeLogoutModal');
+            
+            console.log('Logout modal element:', modal);
+            console.log('Confirm button:', confirmBtn);
+            console.log('Cancel button:', cancelBtn);
+            console.log('Close button:', closeBtn);
+            
+            if (modal) {
+                console.log('Modal classes:', modal.className);
+                console.log('Modal display style:', getComputedStyle(modal).display);
+            }
+            
+            console.log('confirmLogout function available:', typeof confirmLogout);
+            console.log('testLogoutModal function available:', typeof testLogoutModal);
+            console.log('=== END LOGOUT MODAL DEBUG ===');
+        });
+
         // Employee Management Page
         class EmployeeManagementPage {
             constructor() {
@@ -530,29 +703,21 @@
                     // Show loading state
                     this.showLoadingState(true);
                     
-                    // Ensure data manager is available
-                    if (!window.dataManager) {
-                        throw new Error('Unified data manager not available. Cannot initialize employee management page.');
-                    }
-
-                    console.log('Data manager found, checking initialization status...');
-                    
-                    // Initialize unified data manager if not already initialized
-                    if (!window.dataManager.initialized) {
-                        console.log('Initializing data manager...');
-                        await window.dataManager.init();
-                    }
-                    
-                    console.log('Data manager initialized, loading data...');
-                    
-                    // Load data from unified service only
-                    this.employees = window.dataManager.getEmployees ? 
-                        await window.dataManager.getEmployees() : 
-                        window.dataManager.employees || [];
+                    // ONLY use unified employee manager - no fallbacks allowed
+                    if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
+                        console.log('Using unified employee manager for data loading (EXCLUSIVE MODE)');
                         
-                    this.attendanceData = window.dataManager.getAttendanceRecords ? 
-                        await window.dataManager.getAttendanceRecords() : 
-                        window.dataManager.attendanceRecords || [];
+                        this.employees = window.unifiedEmployeeManager.getAllEmployees();
+                        this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
+                        
+                        console.log('Loaded from unified employee manager:', {
+                            employees: this.employees.length,
+                            attendance: this.attendanceData.length
+                        });
+                        
+                    } else {
+                        throw new Error('Unified employee manager not available or not initialized. This page requires the unified data system.');
+                    }
                     
                     console.log(`Loaded ${this.employees.length} employees and ${this.attendanceData.length} attendance records`);
                     
@@ -577,31 +742,106 @@
                         return record;
                     });
                     
-                    // Set up data change listeners for real-time updates
-                    if (window.dataManager.addEventListener) {
-                        window.dataManager.addEventListener('attendanceUpdate', (data) => {
+                    // Set up data change listeners ONLY for unified employee manager
+                    if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
+                        // Use unified employee manager event listeners EXCLUSIVELY
+                        window.unifiedEmployeeManager.addEventListener('attendanceUpdate', (data) => {
                             this.handleDataUpdate(data);
                         });
                         
-                        window.dataManager.addEventListener('employeeUpdate', (data) => {
-                            console.log('Employee data updated:', data);
-                            this.employees = window.dataManager.getEmployees ? 
-                                window.dataManager.getEmployees() : 
-                                window.dataManager.employees || [];
+                        window.unifiedEmployeeManager.addEventListener('employeeUpdate', (data) => {
+                            console.log('Employee data updated (unified):', data);
+                            
+                            if (data.action === 'delete') {
+                                console.log(`Employee deleted: ${data.employee?.name || data.employee?.fullName}. Removed ${data.removedAttendanceRecords || 0} attendance records.`);
+                                this.showSuccess(`Employee deleted successfully. ${data.removedAttendanceRecords || 0} attendance records were also removed.`);
+                            }
+                            
+                            // Refresh data from unified manager ONLY
+                            this.employees = window.unifiedEmployeeManager.getAllEmployees();
+                            this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
+                            
+                            // Ensure attendance records have employee names populated after update
+                            this.attendanceData = this.attendanceData.map(record => {
+                                if (!record.employeeName) {
+                                    const employee = this.employees.find(emp => emp.id == record.employeeId);
+                                    if (employee) {
+                                        record.employeeName = employee.name || employee.fullName || `Employee ${record.employeeId}`;
+                                        record.employeeCode = employee.employeeId || employee.code || `emp_${String(record.employeeId).padStart(3, '0')}`;
+                                        record.department = employee.department || '';
+                                    }
+                                }
+                                return record;
+                            });
+                            
                             this.updateEmployeeDropdowns();
-                            this.applyFilters(); // Refresh display
+                            this.applyFilters();
+                            this.updateStats();
+                            this.renderTable();
                         });
+                        
+                        // Also listen for specific employee deletion events
+                        window.unifiedEmployeeManager.addEventListener('employeeDeleted', (data) => {
+                            console.log('Employee deletion event received (unified):', data);
+                            this.showSuccess(`Employee deleted successfully. ${data.removedAttendanceRecords || 0} attendance records were also removed.`);
+                            
+                            // Force refresh all data from unified manager ONLY
+                            this.employees = window.unifiedEmployeeManager.getAllEmployees();
+                            this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
+                            
+                            // Ensure attendance records have employee names populated after deletion
+                            this.attendanceData = this.attendanceData.map(record => {
+                                if (!record.employeeName) {
+                                    const employee = this.employees.find(emp => emp.id == record.employeeId);
+                                    if (employee) {
+                                        record.employeeName = employee.name || employee.fullName || `Employee ${record.employeeId}`;
+                                        record.employeeCode = employee.employeeId || employee.code || `emp_${String(record.employeeId).padStart(3, '0')}`;
+                                        record.department = employee.department || '';
+                                    }
+                                }
+                                return record;
+                            });
+                            
+                            this.updateEmployeeDropdowns();
+                            this.applyFilters();
+                            this.updateStats();
+                            this.renderTable();
+                        });
+                        
+                    } else {
+                        throw new Error('Unified employee manager not available for event listeners. Cannot setup real-time updates.');
                     }
+                    
+                    // Add storage change listener for cross-tab updates
+                    window.addEventListener('storage', (e) => {
+                        console.log('Storage change detected:', e);
+                        if (e.key === 'employees' || e.key === 'attendanceRecords') {
+                            console.log('Employee or attendance data changed in storage, refreshing...');
+                            // Delay refresh to allow storage to settle
+                            setTimeout(() => {
+                                this.forceRefreshData();
+                            }, 100);
+                        }
+                    });
+                    
+                    // Add custom event listener for cross-tab communication
+                    window.addEventListener('employeeDataChanged', (e) => {
+                        console.log('Employee data changed event received:', e.detail);
+                        setTimeout(() => {
+                            this.forceRefreshData();
+                        }, 100);
+                    });
                     
                     this.setupEventListeners();
                     this.setupFilters();
+                    this.updateEmployeeDropdowns();
                     this.updateStats();
                     this.renderTable();
                     
                     // Hide loading state
                     this.showLoadingState(false);
                     
-                    console.log('Employee management page initialized successfully with unified data service');
+                    console.log('Employee management page initialized successfully with EXCLUSIVE unified employee manager');
                 } catch (error) {
                     console.error('Failed to initialize employee management page:', error);
                     this.showLoadingState(false);
@@ -618,57 +858,36 @@
 
             async loadEmployees() {
                 try {
-                    // Always use the unified data service
-                    if (!window.dataManager) {
-                        console.error('Unified data manager not available');
-                        this.employees = [];
-                        return;
+                    // ONLY use unified employee manager - no fallbacks allowed
+                    if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
+                        throw new Error('Unified employee manager not available or not initialized. Cannot load employees.');
                     }
 
-                    // Handle both async and sync getEmployees methods
-                    if (window.dataManager.getEmployees) {
-                        const result = window.dataManager.getEmployees();
-                        this.employees = result instanceof Promise ? await result : result;
-                    } else if (window.dataManager.employees) {
-                        this.employees = window.dataManager.employees;
-                    } else {
-                        this.employees = [];
-                    }
-
-                    console.log(`Loaded employees from unified data service: ${this.employees.length} employees`);
+                    this.employees = window.unifiedEmployeeManager.getAllEmployees();
+                    console.log(`Loaded employees from unified employee manager (EXCLUSIVE): ${this.employees.length} employees`);
 
                     // Populate employee filter dropdown
                     this.updateEmployeeDropdowns();
                 } catch (error) {
-                    console.error('Failed to load employees:', error);
+                    console.error('Failed to load employees from unified manager:', error);
+                    this.showError('Failed to load employees: ' + error.message);
                     this.employees = [];
                 }
             }
 
             async loadAttendanceData() {
                 try {
-                    // Always use the unified data service first
-                    if (!window.dataManager) {
-                        console.error('Unified data manager not available for attendance data');
-                        this.attendanceData = [];
-                        this.filteredData = [];
-                        return;
+                    // ONLY use unified employee manager - no fallbacks allowed
+                    if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
+                        throw new Error('Unified employee manager not available or not initialized. Cannot load attendance data.');
                     }
 
-                    // Handle both async and sync getAttendanceRecords methods
-                    if (window.dataManager.getAttendanceRecords) {
-                        const result = window.dataManager.getAttendanceRecords();
-                        this.attendanceData = result instanceof Promise ? await result : result;
-                    } else if (window.dataManager.attendanceRecords) {
-                        this.attendanceData = window.dataManager.attendanceRecords;
-                    } else {
-                        this.attendanceData = [];
-                    }
-
+                    this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
                     this.filteredData = [...this.attendanceData];
-                    console.log(`Loaded attendance data from unified data service: ${this.attendanceData.length} records`);
+                    console.log(`Loaded attendance data from unified employee manager (EXCLUSIVE): ${this.attendanceData.length} records`);
                 } catch (error) {
-                    console.error('Failed to load attendance data:', error);
+                    console.error('Failed to load attendance data from unified manager:', error);
+                    this.showError('Failed to load attendance data: ' + error.message);
                     this.attendanceData = [];
                     this.filteredData = [];
                 }
@@ -742,45 +961,16 @@
                         try {
                             this.showLoadingState(true);
                             
-                            // ONLY use unified data manager
-                            if (!window.dataManager) {
-                                throw new Error('Unified data manager not available. Cannot refresh data.');
-                            }
-
-                            // Use refreshData method if available, otherwise reload manually
-                            if (typeof window.dataManager.refreshData === 'function') {
-                                await window.dataManager.refreshData();
-                            } else {
-                                // Fallback: reinitialize the data manager
-                                console.log('refreshData method not available, reinitializing...');
-                                if (typeof window.dataManager.init === 'function') {
-                                    await window.dataManager.init();
-                                }
-                            }
+                            // Use the new force refresh method
+                            const success = await this.forceRefreshData();
                             
-                            // Reload data from unified service
-                            this.attendanceData = window.dataManager.getAttendanceRecords ? 
-                                window.dataManager.getAttendanceRecords() : [];
-                            this.employees = window.dataManager.getEmployees ? 
-                                window.dataManager.getEmployees() : [];
-                            
-                            // Ensure attendance records have employee names populated after refresh
-                            this.attendanceData = this.attendanceData.map(record => {
-                                if (!record.employeeName) {
-                                    const employee = this.employees.find(emp => emp.id == record.employeeId);
-                                    if (employee) {
-                                        record.employeeName = employee.name || employee.fullName || `Employee ${record.employeeId}`;
-                                        record.employeeCode = employee.employeeId || employee.code || `emp_${String(record.employeeId).padStart(3, '0')}`;
-                                        record.department = employee.department || '';
-                                    }
-                                }
-                                return record;
-                            });
-                            
-                            this.updateEmployeeDropdowns();
-                            this.applyFilters();
                             this.showLoadingState(false);
-                            this.showSuccess('Data refreshed successfully from unified data service!');
+                            
+                            if (success) {
+                                this.showSuccess('Data refreshed successfully from unified data service!');
+                            } else {
+                                this.showError('Failed to refresh data completely');
+                            }
                         } catch (error) {
                             console.error('Failed to refresh data:', error);
                             this.showLoadingState(false);
@@ -861,6 +1051,15 @@
                 const presentCount = filteredRecords.filter(r => r.status === 'present').length;
                 const lateCount = filteredRecords.filter(r => r.status === 'late').length;
                 const absentCount = filteredRecords.filter(r => r.status === 'absent').length;
+
+                console.log('Updating stats:', {
+                    totalAttendanceRecords: this.attendanceData.length,
+                    filteredRecords: totalCount,
+                    present: presentCount,
+                    late: lateCount,
+                    absent: absentCount,
+                    employees: this.employees.length
+                });
 
                 // Update all stat elements with error handling
                 const statElements = [
@@ -978,9 +1177,44 @@
             }
 
             openModal(record = null) {
+                console.log('Opening modal for:', record ? 'edit' : 'add new record');
+                
                 const modal = document.getElementById('editAttendanceModal');
                 const form = document.getElementById('attendanceForm');
                 const title = document.getElementById('modalTitle');
+                const employeeSelect = document.getElementById('employeeSelect');
+
+                if (!modal) {
+                    console.error('Modal element not found');
+                    this.showError('Modal not available. Please refresh the page.');
+                    return;
+                }
+
+                if (!form) {
+                    console.error('Form element not found');
+                    this.showError('Form not available. Please refresh the page.');
+                    return;
+                }
+
+                if (!employeeSelect) {
+                    console.error('Employee select element not found');
+                    this.showError('Employee dropdown not available. Please refresh the page.');
+                    return;
+                }
+
+                // Ensure employee dropdown is populated
+                if (employeeSelect.options.length <= 1) {
+                    console.log('Employee dropdown is empty, updating dropdowns...');
+                    this.updateEmployeeDropdowns();
+                }
+
+                // Check if we have employees to work with
+                if (this.employees.length === 0) {
+                    this.showError('No employees found. Please add employees first before creating attendance records.');
+                    return;
+                }
+
+                console.log('Employee dropdown has', employeeSelect.options.length, 'options');
 
                 if (record) {
                     title.textContent = 'Edit Attendance Record';
@@ -990,10 +1224,15 @@
                     form.reset();
                     document.getElementById('recordId').value = '';
                     document.getElementById('attendanceDate').value = new Date().toISOString().split('T')[0];
+                    
+                    // Set default status to 'present'
+                    document.getElementById('attendanceStatus').value = 'present';
                 }
 
                 modal.classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
+                
+                console.log('Modal opened successfully');
             }
 
             closeModal() {
@@ -1037,16 +1276,17 @@
                     // Calculate hours
                     recordData.hours = this.calculateHours(recordData.clockIn, recordData.clockOut);
 
-                    // ONLY use unified data manager - no fallbacks that bypass it
-                    if (!window.dataManager) {
-                        throw new Error('Unified data manager not available. Cannot save attendance record.');
+                    // ONLY use unified employee manager - no fallbacks allowed
+                    if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
+                        throw new Error('Unified employee manager not available or not initialized. Cannot save attendance record.');
                     }
 
-                    // Save through unified data service
-                    const savedRecord = await window.dataManager.saveAttendanceRecord(recordData);
+                    // Save through unified employee manager ONLY
+                    const savedRecord = await window.unifiedEmployeeManager.saveAttendanceRecord(recordData);
                     
-                    // Refresh data from unified service
-                    this.attendanceData = window.dataManager.getAttendanceRecords();
+                    // Refresh data from unified employee manager ONLY
+                    this.employees = window.unifiedEmployeeManager.getAllEmployees();
+                    this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
                     
                     // Ensure attendance records have employee names populated
                     this.attendanceData = this.attendanceData.map(record => {
@@ -1098,34 +1338,54 @@
             async deleteRecord(id) {
                 if (confirm('Are you sure you want to delete this attendance record?')) {
                     try {
-                        // ONLY use unified data manager
-                        if (!window.dataManager) {
-                            throw new Error('Unified data manager not available. Cannot delete attendance record.');
-                        }
-
+                        // Debug: Log available data managers
+                        console.log('=== DELETION DEBUG START ===');
+                        console.log('Available managers:', {
+                            unifiedEmployeeManager: !!window.unifiedEmployeeManager,
+                            unifiedEmployeeManagerInitialized: window.unifiedEmployeeManager?.initialized,
+                            dataManager: !!window.dataManager,
+                            dataManagerInitialized: window.dataManager?.initialized,
+                            unifiedManagerNested: !!window.dataManager?.unifiedManager
+                        });
+                        
                         // Find the record to get employee ID and date
                         const record = this.attendanceData.find(r => r.id == id);
                         if (!record) {
                             throw new Error('Record not found');
                         }
-
-                        // Delete through unified data service
-                        if (typeof window.dataManager.deleteAttendanceRecord === 'function') {
-                            await window.dataManager.deleteAttendanceRecord(record.employeeId, record.date);
-                        } else {
-                            // Fallback: remove from the array and save
-                            const index = this.attendanceData.findIndex(r => r.id == id);
-                            if (index >= 0) {
-                                this.attendanceData.splice(index, 1);
-                                if (typeof window.dataManager.saveToStorage === 'function') {
-                                    window.dataManager.saveToStorage();
-                                }
-                            }
-                        }
                         
-                        // Refresh data from unified service
-                        this.attendanceData = window.dataManager.getAttendanceRecords ? 
-                            window.dataManager.getAttendanceRecords() : this.attendanceData;
+                        console.log('Record to delete:', {
+                            id: record.id,
+                            employeeId: record.employeeId,
+                            date: record.date,
+                            employeeName: record.employeeName
+                        });
+                        console.log('Current attendance data count:', this.attendanceData.length);
+
+                        // ONLY use unified employee manager - no fallbacks allowed
+                        if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
+                            throw new Error('Unified employee manager not available or not initialized. Cannot delete attendance record.');
+                        }
+
+                        if (typeof window.unifiedEmployeeManager.deleteAttendanceRecordById !== 'function') {
+                            throw new Error('Delete attendance record method not available on unified employee manager.');
+                        }
+
+                        // Delete through unified employee manager ONLY using record ID
+                        await window.unifiedEmployeeManager.deleteAttendanceRecordById(record.id);
+                        console.log('Deleted attendance record via unified employee manager (EXCLUSIVE)');
+
+                        // Refresh data from unified employee manager ONLY to verify deletion
+                        this.employees = window.unifiedEmployeeManager.getAllEmployees();
+                        this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
+                        
+                        // Verify the record was actually deleted
+                        const recordStillExists = this.attendanceData.find(r => r.id == id);
+                        if (recordStillExists) {
+                            throw new Error('Record still exists after deletion attempt. Unified employee manager deletion failed.');
+                        } else {
+                            console.log('Record successfully deleted and verified via unified employee manager');
+                        }
                         
                         // Ensure attendance records have employee names populated
                         this.attendanceData = this.attendanceData.map(record => {
@@ -1142,9 +1402,24 @@
                         
                         this.applyFilters();
                         this.updateStats();
+                        
+                        // Final verification: Check if record is still visible in filtered data
+                        const recordStillVisible = this.filteredData.find(r => r.id == id);
+                        if (recordStillVisible) {
+                            console.warn('Record still visible in filtered data, force removing from UI');
+                            // Force remove from filtered data as well
+                            this.filteredData = this.filteredData.filter(r => r.id != id);
+                        }
+                        
+                        // Force re-render the table to ensure UI updates
+                        this.renderTable();
+                        
                         this.showSuccess('Attendance record deleted successfully!');
+                        console.log(`Deletion completed. Records remaining: ${this.attendanceData.length}, Filtered: ${this.filteredData.length}`);
+                        console.log('=== DELETION DEBUG END ===');
                     } catch (error) {
                         console.error('Failed to delete record:', error);
+                        console.log('=== DELETION DEBUG END (ERROR) ===');
                         this.showError('Failed to delete attendance record: ' + error.message);
                     }
                 }
@@ -1170,32 +1445,30 @@
                     const notes = prompt('Add a note for this status override (optional):', '');
 
                     try {
-                        // ONLY use unified data manager
-                        if (!window.dataManager) {
-                            throw new Error('Unified data manager not available. Cannot override status.');
+                        // ONLY use unified employee manager - no fallbacks allowed
+                        if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
+                            throw new Error('Unified employee manager not available or not initialized. Cannot override status.');
                         }
 
-                        // Override status through unified data service
-                        if (typeof window.dataManager.updateAttendanceStatus === 'function') {
-                            await window.dataManager.updateAttendanceStatus(
-                                record.employeeId, 
-                                record.date, 
-                                newStatus.toLowerCase(), 
-                                notes || `Status overridden from ${record.status} to ${newStatus.toLowerCase()}`
-                            );
-                        } else {
-                            // Fallback: update the record directly
-                            record.status = newStatus.toLowerCase();
-                            record.notes = notes || `Status overridden from ${record.status} to ${newStatus.toLowerCase()}`;
-                            record.lastModified = new Date().toISOString();
-                            if (typeof window.dataManager.saveToStorage === 'function') {
-                                window.dataManager.saveToStorage();
-                            }
+                        if (typeof window.unifiedEmployeeManager.overrideStatus !== 'function') {
+                            throw new Error('Override status method not available on unified employee manager.');
                         }
+
+                        // Store the old status before updating
+                        const oldStatus = record.status;
                         
-                        // Refresh data from unified service
-                        this.attendanceData = window.dataManager.getAttendanceRecords ? 
-                            window.dataManager.getAttendanceRecords() : this.attendanceData;
+                        // Override status through unified employee manager ONLY
+                        await window.unifiedEmployeeManager.overrideStatus(
+                            record.employeeId, 
+                            record.date, 
+                            newStatus.toLowerCase(), 
+                            notes || `Status overridden from ${oldStatus} to ${newStatus.toLowerCase()}`
+                        );
+                        console.log('Status updated via unified employee manager (EXCLUSIVE)');
+                        
+                        // Refresh data from unified employee manager ONLY
+                        this.employees = window.unifiedEmployeeManager.getAllEmployees();
+                        this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
 
                         // Ensure attendance records have employee names populated
                         this.attendanceData = this.attendanceData.map(record => {
@@ -1342,32 +1615,30 @@
                 }
 
                 try {
-                    // ONLY use unified data manager
-                    if (!window.dataManager) {
-                        throw new Error('Unified data manager not available. Cannot update status.');
+                    // ONLY use unified employee manager - no fallbacks allowed
+                    if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
+                        throw new Error('Unified employee manager not available or not initialized. Cannot update status.');
                     }
 
-                    // Update status through unified data service
-                    if (typeof window.dataManager.updateAttendanceStatus === 'function') {
-                        await window.dataManager.updateAttendanceStatus(
-                            record.employeeId, 
-                            record.date, 
-                            newStatus, 
-                            `Status updated from ${record.status} to ${newStatus} on ${new Date().toLocaleString()}`
-                        );
-                    } else {
-                        // Fallback: update the record directly
-                        record.status = newStatus;
-                        record.notes = `Status updated from ${record.status} to ${newStatus} on ${new Date().toLocaleString()}`;
-                        record.lastModified = new Date().toISOString();
-                        if (typeof window.dataManager.saveToStorage === 'function') {
-                            window.dataManager.saveToStorage();
-                        }
+                    if (typeof window.unifiedEmployeeManager.overrideStatus !== 'function') {
+                        throw new Error('Override status method not available on unified employee manager.');
                     }
+
+                    // Store the old status before updating
+                    const oldStatus = record.status;
                     
-                    // Refresh data from unified service
-                    this.attendanceData = window.dataManager.getAttendanceRecords ? 
-                        window.dataManager.getAttendanceRecords() : this.attendanceData;
+                    // Update status through unified employee manager ONLY
+                    await window.unifiedEmployeeManager.overrideStatus(
+                        record.employeeId, 
+                        record.date, 
+                        newStatus, 
+                        `Status updated from ${oldStatus} to ${newStatus} on ${new Date().toLocaleString()}`
+                    );
+                    console.log('Quick status updated via unified employee manager (EXCLUSIVE)');
+                    
+                    // Refresh data from unified employee manager ONLY
+                    this.employees = window.unifiedEmployeeManager.getAllEmployees();
+                    this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
 
                     // Ensure attendance records have employee names populated
                     this.attendanceData = this.attendanceData.map(record => {
@@ -1393,16 +1664,15 @@
             handleDataUpdate(data) {
                 console.log('Received unified data update:', data);
                 
-                // Always refresh from unified data service
-                if (!window.dataManager) {
-                    console.error('Unified data manager not available for data update');
-                    return;
-                }
-
                 try {
-                    // Refresh both employee and attendance data
-                    this.attendanceData = window.dataManager.getAttendanceRecords();
-                    this.employees = window.dataManager.getEmployees();
+                    // ONLY use unified employee manager - no fallbacks allowed
+                    if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
+                        throw new Error('Unified employee manager not available for data update. Cannot synchronize data.');
+                    }
+                    
+                    console.log('Refreshing data from unified employee manager (EXCLUSIVE)');
+                    this.employees = window.unifiedEmployeeManager.getAllEmployees();
+                    this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
                     
                     // Ensure attendance records have employee names populated
                     this.attendanceData = this.attendanceData.map(record => {
@@ -1422,15 +1692,17 @@
                     this.applyFilters();
                     this.updateStats();
                     
-                    console.log(`Unified data synchronized: ${data.action || 'update'} operation completed`);
+                    console.log(`Unified data synchronized (EXCLUSIVE): ${data.action || 'update'} operation completed`);
                     console.log(`Current data: ${this.employees.length} employees, ${this.attendanceData.length} attendance records`);
                 } catch (error) {
-                    console.error('Failed to handle data update:', error);
+                    console.error('Failed to handle data update from unified employee manager:', error);
                     this.showError('Failed to synchronize data: ' + error.message);
                 }
             }
 
             updateEmployeeDropdowns() {
+                console.log('Updating employee dropdowns with', this.employees.length, 'employees');
+                
                 // Update employee filter dropdown
                 const employeeFilter = document.getElementById('employeeFilter');
                 const employeeSelect = document.getElementById('employeeSelect');
@@ -1444,6 +1716,10 @@
                         const option = new Option(empName, emp.id);
                         employeeFilter.appendChild(option);
                     });
+                    
+                    console.log('Updated employee filter dropdown with', employeeFilter.options.length, 'options');
+                } else {
+                    console.error('Employee filter dropdown not found');
                 }
                 
                 if (employeeSelect) {
@@ -1455,6 +1731,239 @@
                         const option = new Option(empName, emp.id);
                         employeeSelect.appendChild(option);
                     });
+                    
+                    console.log('Updated employee select dropdown with', employeeSelect.options.length, 'options');
+                } else {
+                    console.error('Employee select dropdown not found');
+                }
+            }
+
+            /**
+             * Force refresh all data from unified manager to ensure sync
+             */
+            async forceRefreshData() {
+                try {
+                    console.log('Force refreshing data from unified employee manager (EXCLUSIVE)...');
+                    
+                    // ONLY use unified employee manager - no fallbacks allowed
+                    if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
+                        throw new Error('Unified employee manager not available or not initialized. Cannot force refresh data.');
+                    }
+                    
+                    // Force reload data from storage if method available
+                    if (typeof window.unifiedEmployeeManager.loadData === 'function') {
+                        await window.unifiedEmployeeManager.loadData();
+                    }
+                    
+                    this.employees = window.unifiedEmployeeManager.getAllEmployees();
+                    this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
+                    
+                    console.log('Force refreshed from unified employee manager (EXCLUSIVE):', {
+                        employees: this.employees.length,
+                        attendance: this.attendanceData.length
+                    });
+                    
+                    // Ensure attendance records have employee names populated
+                    this.attendanceData = this.attendanceData.map(record => {
+                        if (!record.employeeName) {
+                            const employee = this.employees.find(emp => emp.id == record.employeeId);
+                            if (employee) {
+                                record.employeeName = employee.name || employee.fullName || `Employee ${record.employeeId}`;
+                                record.employeeCode = employee.employeeId || employee.code || `emp_${String(record.employeeId).padStart(3, '0')}`;
+                                record.department = employee.department || '';
+                            }
+                        }
+                        return record;
+                    });
+                    
+                    // Update UI components
+                    this.updateEmployeeDropdowns();
+                    this.applyFilters();
+                    this.updateStats();
+                    this.renderTable();
+                    
+                    console.log('Force refresh completed successfully (EXCLUSIVE)');
+                    return true;
+                } catch (error) {
+                    console.error('Failed to force refresh data from unified employee manager:', error);
+                    this.showError('Failed to refresh data: ' + error.message);
+                    return false;
+                }
+            }
+
+            /**
+             * Debug method to check current state - call from browser console
+             */
+            debugState() {
+                console.log('=== EMPLOYEE MANAGEMENT DEBUG STATE (UNIFIED ONLY) ===');
+                console.log('Required manager status:', {
+                    unifiedEmployeeManager: !!window.unifiedEmployeeManager,
+                    unifiedEmployeeManagerInitialized: window.unifiedEmployeeManager?.initialized
+                });
+                
+                console.log('Data counts:', {
+                    localEmployees: this.employees.length,
+                    localAttendance: this.attendanceData.length,
+                    filteredAttendance: this.filteredData.length
+                });
+                
+                if (window.unifiedEmployeeManager) {
+                    console.log('UnifiedEmployeeManager methods:', {
+                        getAllEmployees: typeof window.unifiedEmployeeManager.getAllEmployees,
+                        getAllAttendanceRecords: typeof window.unifiedEmployeeManager.getAllAttendanceRecords,
+                        deleteAttendanceRecord: typeof window.unifiedEmployeeManager.deleteAttendanceRecord,
+                        saveAttendanceRecord: typeof window.unifiedEmployeeManager.saveAttendanceRecord,
+                        overrideStatus: typeof window.unifiedEmployeeManager.overrideStatus,
+                        saveData: typeof window.unifiedEmployeeManager.saveData,
+                        loadData: typeof window.unifiedEmployeeManager.loadData
+                    });
+                    
+                    if (window.unifiedEmployeeManager.getAllAttendanceRecords) {
+                        try {
+                            const currentRecords = window.unifiedEmployeeManager.getAllAttendanceRecords();
+                            console.log('UnifiedEmployeeManager attendance records count:', currentRecords.length);
+                        } catch (error) {
+                            console.error('Error getting records from UnifiedEmployeeManager:', error);
+                        }
+                    }
+                } else {
+                    console.error('UnifiedEmployeeManager NOT AVAILABLE - Page will not function properly');
+                }
+                
+                // Legacy managers (should not be used in exclusive mode)
+                if (window.dataManager) {
+                    console.warn('Legacy dataManager detected (NOT USED IN EXCLUSIVE MODE):', {
+                        initialized: window.dataManager?.initialized
+                    });
+                }
+                
+                console.log('=== END DEBUG STATE ===');
+            }
+
+            /**
+             * Test modal functionality - call from browser console
+             */
+            testModal() {
+                console.log('=== TESTING MODAL FUNCTIONALITY ===');
+                
+                // Check if DOM elements exist
+                const modal = document.getElementById('editAttendanceModal');
+                const addBtn = document.getElementById('addAttendanceBtn');
+                const employeeSelect = document.getElementById('employeeSelect');
+                const form = document.getElementById('attendanceForm');
+                
+                console.log('DOM Elements check:', {
+                    modal: !!modal,
+                    addBtn: !!addBtn,
+                    employeeSelect: !!employeeSelect,
+                    form: !!form
+                });
+                
+                if (modal) {
+                    console.log('Modal classes:', modal.className);
+                    console.log('Modal visibility:', {
+                        hidden: modal.classList.contains('hidden'),
+                        display: window.getComputedStyle(modal).display,
+                        visibility: window.getComputedStyle(modal).visibility
+                    });
+                }
+                
+                if (employeeSelect) {
+                    console.log('Employee select options:', employeeSelect.options.length);
+                    for (let i = 0; i < employeeSelect.options.length; i++) {
+                        console.log(`Option ${i}:`, employeeSelect.options[i].text, '=', employeeSelect.options[i].value);
+                    }
+                }
+                
+                console.log('Employee management instance:', {
+                    employeeManagement: typeof window.employeeManagement,
+                    employees: this.employees?.length || 'N/A',
+                    initialized: !!this.employees
+                });
+                
+                // Test opening modal programmatically
+                try {
+                    console.log('Attempting to open modal...');
+                    this.openModal();
+                    console.log('Modal opened successfully');
+                } catch (error) {
+                    console.error('Error opening modal:', error);
+                }
+                
+                console.log('=== END MODAL TEST ===');
+            }
+
+            /**
+             * Force create sample data if needed - call from browser console
+             */
+            async createSampleData() {
+                console.log('Creating sample data for testing...');
+                
+                if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
+                    console.error('Unified employee manager not available');
+                    return;
+                }
+                
+                // Check if we already have employees
+                if (this.employees.length > 0) {
+                    console.log('Employees already exist:', this.employees.length);
+                    return;
+                }
+                
+                try {
+                    // Create sample employees
+                    const sampleEmployees = [
+                        {
+                            id: 1,
+                            fullName: "John Doe",
+                            firstName: "John",
+                            lastName: "Doe",
+                            employeeCode: "EMP001",
+                            email: "john.doe@company.com",
+                            department: "Engineering",
+                            position: "Developer",
+                            status: "active"
+                        },
+                        {
+                            id: 2,
+                            fullName: "Jane Smith",
+                            firstName: "Jane",
+                            lastName: "Smith",
+                            employeeCode: "EMP002",
+                            email: "jane.smith@company.com",
+                            department: "HR",
+                            position: "HR Manager",
+                            status: "active"
+                        },
+                        {
+                            id: 3,
+                            fullName: "Bob Johnson",
+                            firstName: "Bob",
+                            lastName: "Johnson",
+                            employeeCode: "EMP003",
+                            email: "bob.johnson@company.com",
+                            department: "Sales",
+                            position: "Sales Rep",
+                            status: "active"
+                        }
+                    ];
+                    
+                    // Add employees to the manager
+                    for (const emp of sampleEmployees) {
+                        await window.unifiedEmployeeManager.saveEmployee(emp);
+                    }
+                    
+                    // Refresh local data
+                    this.employees = window.unifiedEmployeeManager.getAllEmployees();
+                    this.updateEmployeeDropdowns();
+                    this.renderTable();
+                    
+                    console.log('Sample data created successfully. Employees:', this.employees.length);
+                    this.showSuccess('Sample employees created successfully!');
+                    
+                } catch (error) {
+                    console.error('Failed to create sample data:', error);
+                    this.showError('Failed to create sample data: ' + error.message);
                 }
             }
 
@@ -1474,19 +1983,32 @@
                 const checkInterval = 100; // Check every 100ms
                 let waitTime = 0;
                 
-                // Check for multiple possible data manager variables
+                // Wait specifically for unifiedEmployeeManager and dataManager
                 while (waitTime < maxWaitTime) {
-                    if (window.dataManager) {
-                        console.log('Found window.dataManager');
+                    if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
+                        console.log('Found initialized window.unifiedEmployeeManager');
                         break;
-                    } else if (window.dataService) {
-                        console.log('Found window.dataService, creating alias as dataManager');
-                        window.dataManager = window.dataService;
+                    } else if (window.dataManager && window.dataManager.initialized) {
+                        console.log('Found initialized window.dataManager');
                         break;
                     } else if (window.unifiedEmployeeManager) {
-                        console.log('Found window.unifiedEmployeeManager, creating alias as dataManager');
-                        window.dataManager = window.unifiedEmployeeManager;
-                        break;
+                        console.log('Found uninitialized window.unifiedEmployeeManager, waiting for initialization...');
+                        try {
+                            await window.unifiedEmployeeManager.init();
+                            console.log('Successfully initialized unifiedEmployeeManager');
+                            break;
+                        } catch (initError) {
+                            console.warn('Failed to initialize unifiedEmployeeManager:', initError);
+                        }
+                    } else if (window.dataManager) {
+                        console.log('Found uninitialized window.dataManager, waiting for initialization...');
+                        try {
+                            await window.dataManager.init();
+                            console.log('Successfully initialized dataManager');
+                            break;
+                        } catch (initError) {
+                            console.warn('Failed to initialize dataManager:', initError);
+                        }
                     }
                     
                     await new Promise(resolve => setTimeout(resolve, checkInterval));
@@ -1496,22 +2018,34 @@
                         console.log(`Still waiting for data manager... (${waitTime/1000}s)`);
                         console.log('Available objects:', {
                             dataManager: typeof window.dataManager,
-                            dataService: typeof window.dataService, 
-                            unifiedEmployeeManager: typeof window.unifiedEmployeeManager
+                            dataManagerInit: window.dataManager?.initialized,
+                            unifiedEmployeeManager: typeof window.unifiedEmployeeManager,
+                            unifiedManagerInit: window.unifiedEmployeeManager?.initialized
                         });
                     }
                 }
                 
-                if (!window.dataManager) {
+                // Verify we have a working data manager
+                const hasWorkingManager = (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) || 
+                                        (window.dataManager && window.dataManager.initialized);
+                
+                if (!hasWorkingManager) {
                     const availableObjects = {
                         dataManager: typeof window.dataManager,
-                        dataService: typeof window.dataService,
+                        dataManagerInit: window.dataManager?.initialized,
                         unifiedEmployeeManager: typeof window.unifiedEmployeeManager,
+                        unifiedManagerInit: window.unifiedEmployeeManager?.initialized,
                         DataServiceFactory: typeof window.DataServiceFactory,
                         LocalStorageDataService: typeof window.LocalStorageDataService
                     };
                     
-                    throw new Error(`Unified data manager failed to load within ${maxWaitTime/1000} seconds. Available objects: ${JSON.stringify(availableObjects, null, 2)}`);
+                    throw new Error(`No initialized data manager found within ${maxWaitTime/1000} seconds. Available objects: ${JSON.stringify(availableObjects, null, 2)}`);
+                }
+                
+                // Ensure dataManager is available for backward compatibility
+                if (!window.dataManager && window.unifiedEmployeeManager) {
+                    console.log('Creating dataManager compatibility layer');
+                    window.dataManager = window.unifiedEmployeeManager;
                 }
                 
                 console.log('Unified data manager found, creating employee management instance...');
@@ -1614,7 +2148,7 @@
         .status-actions {
             display: flex;
             gap: 2px;
-            align-items: center;
+                       align-items: center;
             margin: 0 var(--spacing-xs);
             padding: 2px;
             background: var(--bg-secondary);
@@ -1768,6 +2302,7 @@
         }
 
         .stat-present { border-left: 4px solid #22c55e; }
+       
         .stat-late { border-left: 4px solid #f59e0b; }
         .stat-absent { border-left: 4px solid #ef4444; }
         .stat-overtime { border-left: 4px solid #8b5cf6; }
@@ -1949,9 +2484,119 @@
             .stats-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
+
+            .modal-attendance {
+                width: 95%;
+                max-width: 95%;
+                margin: 10px;
+                max-height: 90vh;
+                min-height: auto;
+            }
+
+            .modal-attendance .modal-content {
+                padding: var(--spacing-lg);
+                max-height: calc(90vh - 60px);
+            }
+
+            .modal-attendance .form-row {
+                grid-template-columns: 1fr;
+                gap: var(--spacing-md);
+            }
+
+            .modal-attendance .form-actions {
+                flex-direction: column-reverse;
+                gap: var(--spacing-sm);
+            }
+
+            .modal-attendance .btn {
+                width: 100%;
+            }
         }
 
         /* Modal styling enhancements */
+        .modal-attendance {
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            min-height: 500px;
+        }
+
+        .modal-attendance .modal-content {
+            padding: var(--spacing-xl);
+            max-height: calc(80vh - 80px);
+            overflow-y: auto;
+        }
+
+        .modal-attendance .form {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-lg);
+        }
+
+        .modal-attendance .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .modal-attendance .form-label {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: var(--font-size-sm);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .modal-attendance .form-input,
+        .modal-attendance .form-input select {
+            padding: var(--spacing-md);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-base);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: border-color var(--transition-fast);
+            min-height: 44px;
+        }
+
+        .modal-attendance .form-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .modal-attendance .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-lg);
+        }
+
+        .modal-attendance .form-actions {
+            display: flex;
+            gap: var(--spacing-md);
+            justify-content: flex-end;
+            padding-top: var(--spacing-lg);
+            border-top: 1px solid var(--border-color);
+            margin-top: var(--spacing-lg);
+        }
+
+        .modal-attendance .btn {
+            padding: var(--spacing-md) var(--spacing-xl);
+            font-size: var(--font-size-base);
+            font-weight: 500;
+            min-width: 120px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-sm);
+        }
+
+        .modal-attendance textarea.form-input {
+            min-height: 80px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
         .detail-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -1998,6 +2643,29 @@
             border-color: #f59e0b;
         }
 
+        /* Logout Modal Styles */
+        .logout-confirmation {
+            text-align: center;
+            padding: var(--spacing-lg) 0;
+        }
+
+        .logout-icon-large {
+            font-size: 3rem;
+            margin-bottom: var(--spacing-md);
+            opacity: 0.8;
+        }
+
+        .logout-confirmation p {
+            margin: var(--spacing-sm) 0;
+            color: var(--text-primary);
+        }
+
+        .logout-note {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
         @media (max-width: 768px) {
             .detail-grid {
                 grid-template-columns: 1fr;
@@ -2008,6 +2676,39 @@
                 width: 95%;
                 max-height: 90vh;
             }
+        }
+
+        /* Modal overlay styles with backdrop blur for entire page including sidebar */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.hidden {
+            display: none;
+            opacity: 0;
+        }
+
+        /* Ensure the modal overlay covers the entire viewport including sidebar */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 10000;
         }
     </style>
 </body>
