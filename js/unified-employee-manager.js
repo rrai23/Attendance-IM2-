@@ -351,24 +351,94 @@ class UnifiedEmployeeManager {
     }
 
     async createInitialData() {
-        console.log('Creating initial employee data from mock data source...');
+        console.log('Creating initial employee data from preferred data source...');
         
-        // Use the original mock data if available
+        // Priority 1: Try to load from data.json if available
+        try {
+            const response = await fetch('./mock/data.json');
+            if (response.ok) {
+                const jsonData = await response.json();
+                console.log('✅ Successfully loaded data.json');
+                console.log('Data.json structure:', {
+                    hasEmployees: jsonData.employees ? true : false,
+                    employeesLength: jsonData.employees ? jsonData.employees.length : 0,
+                    hasAttendance: jsonData.attendance ? true : false,
+                    attendanceLength: jsonData.attendance ? jsonData.attendance.length : 0
+                });
+                
+                if (jsonData.employees && Array.isArray(jsonData.employees) && jsonData.employees.length > 0) {
+                    console.log('Using employees from data.json:', jsonData.employees.length);
+                    console.log('Employee names from data.json:', jsonData.employees.map(e => e.fullName || e.name));
+                    
+                    // Convert data.json structure to our expected format
+                    const convertedEmployees = jsonData.employees.map(emp => ({
+                        ...emp,
+                        name: emp.fullName || emp.name || `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
+                        employeeCode: emp.employeeId || emp.employeeCode || `emp_${String(emp.id).padStart(3, '0')}`,
+                        hireDate: emp.dateHired || emp.hireDate,
+                        hourlyRate: emp.wage || emp.hourlyRate || 25.00
+                    }));
+                    
+                    this.employees = this.normalizeEmployeeData(convertedEmployees);
+                    
+                    // Load attendance if available
+                    if (jsonData.attendance && Array.isArray(jsonData.attendance)) {
+                        console.log('Using attendance from data.json:', jsonData.attendance.length);
+                        const convertedAttendance = jsonData.attendance.map(att => ({
+                            ...att,
+                            clockIn: att.timeIn,
+                            clockOut: att.timeOut,
+                            hours: att.hoursWorked,
+                            employeeName: this.employees.find(e => e.id == att.employeeId)?.fullName || 'Unknown'
+                        }));
+                        this.attendanceRecords = this.normalizeAttendanceData(convertedAttendance);
+                    } else {
+                        this.attendanceRecords = [];
+                    }
+                    
+                    console.log(`✅ Loaded from data.json: ${this.employees.length} employees, ${this.attendanceRecords.length} attendance records`);
+                    console.log('Final employee list from data.json:', this.employees.map(e => `${e.fullName || e.name} (${e.id})`));
+                    this.saveData();
+                    return;
+                }
+            }
+        } catch (error) {
+            console.log('⚠️ Could not load data.json:', error.message);
+        }
+        
+        // Priority 2: Fall back to mock-data.js if available
         if (typeof mockData !== 'undefined') {
+            console.log('Falling back to mock-data.js');
+            console.log('Mock data available?', typeof mockData !== 'undefined');
+            console.log('Mock data structure:', {
+                hasUsers: mockData.users ? true : false,
+                usersLength: mockData.users ? mockData.users.length : 0,
+                hasEmployees: mockData.employees ? true : false,
+                hasAttendance: mockData.attendanceRecords ? true : false
+            });
+            
             let mockEmployees = [];
             let mockAttendanceRecords = [];
             
             // Extract employees from users array if it exists
             if (mockData.users && Array.isArray(mockData.users)) {
                 console.log('Extracting employees from mock data users:', mockData.users.length);
-                mockEmployees = mockData.users
-                    .filter(user => user.employee) // Only users with employee data
-                    .map(user => user.employee);   // Extract the employee object
+                
+                const usersWithEmployees = mockData.users.filter(user => user.employee);
+                console.log('Users with employee data:', usersWithEmployees.length);
+                
+                mockEmployees = usersWithEmployees.map(user => {
+                    console.log('Processing employee:', user.employee.name, 'ID:', user.employee.id);
+                    return user.employee;
+                });
                 
                 console.log('Extracted employees from users:', mockEmployees.length);
+                console.log('Employee names:', mockEmployees.map(e => e.name));
             } else if (mockData.employees && Array.isArray(mockData.employees)) {
                 console.log('Using direct mock data employees:', mockData.employees.length);
                 mockEmployees = mockData.employees;
+            } else {
+                console.log('No employee data found in mock data structure');
             }
             
             // Get attendance records if available
@@ -378,11 +448,13 @@ class UnifiedEmployeeManager {
             }
             
             if (mockEmployees.length > 0) {
+                console.log('Normalizing employee data from mock-data.js...');
                 this.employees = this.normalizeEmployeeData(mockEmployees);
                 this.attendanceRecords = mockAttendanceRecords.length > 0 ? 
                     this.normalizeAttendanceData(mockAttendanceRecords) : [];
                 
                 console.log(`Loaded from mock data: ${this.employees.length} employees, ${this.attendanceRecords.length} attendance records`);
+                console.log('Final employee list:', this.employees.map(e => `${e.fullName || e.name} (${e.id})`));
             } else {
                 console.log('No employee data found in mock data, creating minimal fallback data...');
                 this.createFallbackData();
@@ -1372,11 +1444,24 @@ class UnifiedEmployeeManager {
 // Global instance
 window.unifiedEmployeeManager = new UnifiedEmployeeManager();
 
-// Auto-initialize
+// Auto-initialize with proper timing to ensure mock data is available
+function initializeUnifiedManager() {
+    // Check if mock data is available
+    if (typeof mockData !== 'undefined') {
+        console.log('Mock data available, initializing unified employee manager...');
+        window.unifiedEmployeeManager.init().catch(console.error);
+    } else {
+        console.log('Mock data not yet available, retrying in 100ms...');
+        setTimeout(initializeUnifiedManager, 100);
+    }
+}
+
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        window.unifiedEmployeeManager.init().catch(console.error);
+        // Give a short delay to ensure all scripts are loaded
+        setTimeout(initializeUnifiedManager, 50);
     });
 } else {
-    window.unifiedEmployeeManager.init().catch(console.error);
+    // Give a short delay to ensure all scripts are loaded
+    setTimeout(initializeUnifiedManager, 50);
 }
