@@ -306,27 +306,92 @@ class EmployeesPageManager {
             button.removeEventListener('click', this.handleActionClick);
         });
 
-        // Add event listeners for action buttons
+        // Add event listeners for action buttons with improved error handling
         document.querySelectorAll('.action-edit').forEach(button => {
             button.addEventListener('click', (e) => {
-                const employeeId = parseInt(e.currentTarget.dataset.employeeId);
-                this.editEmployee(employeeId);
+                e.preventDefault();
+                const rawId = e.currentTarget.dataset.employeeId;
+                const employee = this.findEmployeeById(rawId);
+                
+                if (employee) {
+                    console.log('Opening edit modal for employee:', employee.name || employee.fullName);
+                    this.openModal(employee);
+                } else {
+                    console.error('Employee not found for edit action. ID:', rawId, 'Available employees:', this.employees.map(emp => ({id: emp.id, name: emp.name || emp.fullName})));
+                    this.showError(`Employee not found (ID: ${rawId})`);
+                }
             });
         });
 
         document.querySelectorAll('.action-view').forEach(button => {
             button.addEventListener('click', (e) => {
-                const employeeId = parseInt(e.currentTarget.dataset.employeeId);
-                this.viewEmployee(employeeId);
+                e.preventDefault();
+                const rawId = e.currentTarget.dataset.employeeId;
+                const employee = this.findEmployeeById(rawId);
+                
+                if (employee) {
+                    console.log('Opening view modal for employee:', employee.name || employee.fullName);
+                    this.openViewModal(employee);
+                } else {
+                    console.error('Employee not found for view action. ID:', rawId, 'Available employees:', this.employees.map(emp => ({id: emp.id, name: emp.name || emp.fullName})));
+                    this.showError(`Employee not found (ID: ${rawId})`);
+                }
             });
         });
 
         document.querySelectorAll('.action-delete').forEach(button => {
             button.addEventListener('click', (e) => {
-                const employeeId = parseInt(e.currentTarget.dataset.employeeId);
-                this.deleteEmployee(employeeId);
+                e.preventDefault();
+                const rawId = e.currentTarget.dataset.employeeId;
+                const employee = this.findEmployeeById(rawId);
+                
+                if (employee) {
+                    console.log('Opening delete modal for employee:', employee.name || employee.fullName);
+                    this.openDeleteModal(employee);
+                } else {
+                    console.error('Employee not found for delete action. ID:', rawId, 'Available employees:', this.employees.map(emp => ({id: emp.id, name: emp.name || emp.fullName})));
+                    this.showError(`Employee not found (ID: ${rawId})`);
+                }
             });
         });
+    }
+
+    /**
+     * Find employee by ID with robust type handling
+     * @param {string|number} rawId - The employee ID from data attribute or other source
+     * @returns {Object|null} - The employee object or null if not found
+     */
+    findEmployeeById(rawId) {
+        if (!rawId || !this.employees || !Array.isArray(this.employees)) {
+            console.warn('Invalid parameters for findEmployeeById:', { rawId, employeesCount: this.employees?.length });
+            return null;
+        }
+
+        // Try multiple lookup strategies to handle type mismatches
+        const strategies = [
+            // Strategy 1: Direct comparison (handles both string and number)
+            (id) => this.employees.find(emp => emp.id == id),
+            // Strategy 2: Parse as number and compare
+            (id) => {
+                const numId = parseInt(id);
+                return !isNaN(numId) ? this.employees.find(emp => emp.id === numId) : null;
+            },
+            // Strategy 3: Convert both to strings and compare
+            (id) => this.employees.find(emp => String(emp.id) === String(id)),
+            // Strategy 4: Strict equality with original type
+            (id) => this.employees.find(emp => emp.id === id)
+        ];
+
+        for (let i = 0; i < strategies.length; i++) {
+            const result = strategies[i](rawId);
+            if (result) {
+                console.log(`Employee found using strategy ${i + 1}:`, result.name || result.fullName);
+                return result;
+            }
+        }
+
+        console.warn('Employee not found with any strategy. ID:', rawId, 'Type:', typeof rawId);
+        return null;
     }
 
     applyFilters() {

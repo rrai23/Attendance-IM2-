@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Action Buttons Diagnostic</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .diagnostic-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 0.25rem;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        .success-box { background-color: #d1ecf1; border-color: #bee5eb; }
+        .error-box { background-color: #f8d7da; border-color: #f5c6cb; }
+        .warning-box { background-color: #fff3cd; border-color: #ffeaa7; }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Employee Action Buttons Diagnostic</h1>
+        <p>This tool diagnoses the employee action button functionality and fixes the lookup issues.</p>
+        
+        <div id="diagnosticResults"></div>
+        
+        <button class="btn btn-primary" onclick="runDiagnostic()">Run Diagnostic</button>
+        <button class="btn btn-success ms-2" onclick="testButtonClicks()">Test Button Clicks</button>
+        
+        <hr>
+        
+        <div id="employeeTable"></div>
+    </div>
+
+    <!-- Load all necessary scripts -->
+    <script src="js/mock-data.js"></script>
+    <script src="js/core/data-service-api.js"></script>
+    <script src="js/core/local-storage-service.js"></script>
+    <script src="js/core/api-service.js"></script>
+    <script src="js/core/data-service-factory.js"></script>
+    <script src="js/unified-data-service.js"></script>
+    
+    <script>
+        let employees = [];
+        let dataService = null;
+        
+        async function runDiagnostic() {
+            const resultsDiv = document.getElementById('diagnosticResults');
+            let output = '<h3>Diagnostic Results</h3>';
+            
+            try {
+                // Test 1: Check what's available
+                output += '<div class="diagnostic-box">1. Checking available objects...</div>';
+                output += '<div class="diagnostic-box">Available objects:<br>';
+                output += `• window.mockData: ${typeof window.mockData}<br>`;
+                output += `• window.dataService: ${typeof window.dataService}<br>`;
+                output += `• window.DataServiceFactory: ${typeof window.DataServiceFactory}<br>`;
+                output += `• window.LocalStorageDataService: ${typeof window.LocalStorageDataService}<br>`;
+                output += '</div>';
+                
+                // Test 2: Initialize data service
+                output += '<div class="diagnostic-box">2. Initializing data service...</div>';
+                
+                if (window.dataService && window.dataService.initialized) {
+                    output += '<div class="diagnostic-box success-box">✅ Data service already initialized</div>';
+                    dataService = window.dataService;
+                } else if (window.DataServiceFactory) {
+                    output += '<div class="diagnostic-box">Using DataServiceFactory.createBestService()...</div>';
+                    dataService = window.DataServiceFactory.createBestService();
+                    if (dataService.initialize) {
+                        await dataService.initialize();
+                    }
+                    window.dataService = dataService;
+                    output += '<div class="diagnostic-box success-box">✅ Data service created and initialized</div>';
+                } else if (window.LocalStorageDataService) {
+                    output += '<div class="diagnostic-box">Using LocalStorageDataService directly...</div>';
+                    dataService = new window.LocalStorageDataService();
+                    await dataService.initialize();
+                    window.dataService = dataService;
+                    output += '<div class="diagnostic-box success-box">✅ LocalStorageDataService initialized</div>';
+                } else {
+                    output += '<div class="diagnostic-box error-box">❌ No data service available</div>';
+                    resultsDiv.innerHTML = output;
+                    return;
+                }
+                
+                // Test 2: Load employees
+                output += '<div class="diagnostic-box">2. Loading employees...</div>';
+                employees = await dataService.getEmployees();
+                
+                if (employees && employees.length > 0) {
+                    output += `<div class="diagnostic-box success-box">✅ Loaded ${employees.length} employees</div>`;
+                    
+                    // Show employee data types
+                    output += '<div class="diagnostic-box">Employee ID types:<br>';
+                    employees.slice(0, 5).forEach(emp => {
+                        output += `• ID: ${emp.id} (type: ${typeof emp.id}), Name: ${emp.name || emp.fullName}<br>`;
+                    });
+                    output += '</div>';
+                } else {
+                    output += '<div class="diagnostic-box error-box">❌ No employees loaded</div>';
+                }
+                
+                // Test 3: Test findEmployeeById function
+                output += '<div class="diagnostic-box">3. Testing findEmployeeById function...</div>';
+                
+                if (employees.length > 0) {
+                    const testEmployee = employees[0];
+                    const testId = testEmployee.id;
+                    
+                    // Test various ID formats
+                    const testResults = [
+                        { label: 'Original ID', id: testId, result: findEmployeeById(testId) },
+                        { label: 'String ID', id: String(testId), result: findEmployeeById(String(testId)) },
+                        { label: 'Number ID', id: Number(testId), result: findEmployeeById(Number(testId)) },
+                        { label: 'ParseInt ID', id: parseInt(testId), result: findEmployeeById(parseInt(testId)) }
+                    ];
+                    
+                    testResults.forEach(test => {
+                        const found = test.result ? '✅ FOUND' : '❌ NOT FOUND';
+                        output += `<div class="diagnostic-box ${test.result ? 'success-box' : 'error-box'}">
+                            ${test.label}: ${test.id} (${typeof test.id}) → ${found}
+                        </div>`;
+                    });
+                }
+                
+                // Test 4: Create sample table with buttons
+                output += '<div class="diagnostic-box">4. Creating test table with action buttons...</div>';
+                createTestTable();
+                output += '<div class="diagnostic-box success-box">✅ Test table created</div>';
+                
+            } catch (error) {
+                output += `<div class="diagnostic-box error-box">❌ Error: ${error.message}</div>`;
+                console.error('Diagnostic error:', error);
+            }
+            
+            resultsDiv.innerHTML = output;
+        }
+        
+        /**
+         * Enhanced findEmployeeById function with multiple strategies
+         */
+        function findEmployeeById(rawId) {
+            if (!rawId || !employees || !Array.isArray(employees)) {
+                console.warn('Invalid parameters for findEmployeeById:', { rawId, employeesCount: employees?.length });
+                return null;
+            }
+
+            // Try multiple lookup strategies to handle type mismatches
+            const strategies = [
+                // Strategy 1: Direct loose comparison (handles both string and number)
+                (id) => employees.find(emp => emp.id == id),
+                // Strategy 2: Parse as number and compare strictly
+                (id) => {
+                    const numId = parseInt(id);
+                    return !isNaN(numId) ? employees.find(emp => emp.id === numId) : null;
+                },
+                // Strategy 3: Convert both to strings and compare
+                (id) => employees.find(emp => String(emp.id) === String(id)),
+                // Strategy 4: Strict equality with original type
+                (id) => employees.find(emp => emp.id === id)
+            ];
+
+            for (let i = 0; i < strategies.length; i++) {
+                const result = strategies[i](rawId);
+                if (result) {
+                    console.log(`Employee found using strategy ${i + 1}:`, result.name || result.fullName);
+                    return result;
+                }
+            }
+
+            console.warn('Employee not found with any strategy. ID:', rawId, 'Type:', typeof rawId);
+            return null;
+        }
+        
+        function createTestTable() {
+            const tableDiv = document.getElementById('employeeTable');
+            
+            if (employees.length === 0) {
+                tableDiv.innerHTML = '<div class="alert alert-warning">No employees to display</div>';
+                return;
+            }
+            
+            let tableHTML = `
+                <h3>Test Employee Table</h3>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Department</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            employees.slice(0, 3).forEach(emp => {
+                tableHTML += `
+                    <tr>
+                        <td>${emp.id} (${typeof emp.id})</td>
+                        <td>${emp.name || emp.fullName || 'No Name'}</td>
+                        <td>${emp.department || 'No Department'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary test-edit" data-employee-id="${emp.id}">Edit</button>
+                            <button class="btn btn-sm btn-info test-view" data-employee-id="${emp.id}">View</button>
+                            <button class="btn btn-sm btn-danger test-delete" data-employee-id="${emp.id}">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += '</tbody></table>';
+            tableDiv.innerHTML = tableHTML;
+        }
+        
+        function testButtonClicks() {
+            // Add event listeners to test buttons
+            document.querySelectorAll('.test-edit, .test-view, .test-delete').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const rawId = e.currentTarget.dataset.employeeId;
+                    const action = e.currentTarget.className.includes('edit') ? 'EDIT' :
+                                 e.currentTarget.className.includes('view') ? 'VIEW' : 'DELETE';
+                    
+                    const employee = findEmployeeById(rawId);
+                    
+                    const resultsDiv = document.getElementById('diagnosticResults');
+                    const result = employee ? 
+                        `<div class="diagnostic-box success-box">✅ ${action} - Found: ${employee.name || employee.fullName} (ID: ${employee.id})</div>` :
+                        `<div class="diagnostic-box error-box">❌ ${action} - Employee not found (ID: ${rawId})</div>`;
+                    
+                    resultsDiv.innerHTML += result;
+                }, { once: true }); // Only trigger once per button
+            });
+            
+            const resultsDiv = document.getElementById('diagnosticResults');
+            resultsDiv.innerHTML += '<div class="diagnostic-box warning-box">🔧 Click test buttons above to verify functionality</div>';
+        }
+        
+        // Auto-run diagnostic when page loads
+        document.addEventListener('DOMContentLoaded', runDiagnostic);
+    </script>
+</body>
+</html>

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Action Buttons - Employee ID Type Check</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 0.25rem;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        .type-mismatch {
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+        }
+        .type-match {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Debug Action Buttons - Employee ID Type Check</h1>
+        <p>This tool debugs the "employee not found" issue by checking ID types and lookups.</p>
+        
+        <div id="debugOutput"></div>
+        
+        <div class="mt-4">
+            <h3>Test Employees Table</h3>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Department</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="testEmployeesTable">
+                        <!-- Will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div id="actionResults" class="mt-4"></div>
+    </div>
+
+    <!-- Load all necessary scripts -->
+    <script src="js/mock-data.js"></script>
+    <script src="js/core/data-service-api.js"></script>
+    <script src="js/core/local-storage-service.js"></script>
+    <script src="js/core/api-service.js"></script>
+    <script src="js/core/data-service-factory.js"></script>
+    <script src="js/unified-data-service.js"></script>
+    
+    <script>
+        async function debugActionButtons() {
+            const debugOutput = document.getElementById('debugOutput');
+            const tableBody = document.getElementById('testEmployeesTable');
+            const actionResults = document.getElementById('actionResults');
+            
+            let output = '<h3>Debug Information</h3>';
+            
+            try {
+                // Check what's available in the window object
+                output += '<div class="debug-info">Available objects:<br>';
+                output += `• window.mockData: ${typeof window.mockData}<br>`;
+                output += `• window.dataServiceFactory: ${typeof window.dataServiceFactory}<br>`;
+                output += `• window.dataService: ${typeof window.dataService}<br>`;
+                output += `• window.DataServiceFactory: ${typeof window.DataServiceFactory}<br>`;
+                output += `• window.LocalStorageDataService: ${typeof window.LocalStorageDataService}<br>`;
+                output += '</div>';
+                
+                let dataService = null;
+                
+                // Try multiple initialization approaches
+                if (window.dataService && window.dataService.initialized) {
+                    output += '<div class="debug-info type-match">✅ Data service already initialized</div>';
+                    dataService = window.dataService;
+                } else if (window.dataService && !window.dataService.initialized) {
+                    output += '<div class="debug-info">Data service exists but not initialized, attempting initialization...</div>';
+                    if (window.dataService.initialize) {
+                        await window.dataService.initialize();
+                    }
+                    dataService = window.dataService;
+                } else if (window.DataServiceFactory) {
+                    output += '<div class="debug-info">Creating data service using DataServiceFactory...</div>';
+                    dataService = window.DataServiceFactory.createBestService();
+                    if (dataService.initialize) {
+                        await dataService.initialize();
+                    }
+                    window.dataService = dataService;
+                } else if (window.LocalStorageDataService) {
+                    output += '<div class="debug-info">Creating LocalStorageDataService directly...</div>';
+                    dataService = new window.LocalStorageDataService();
+                    await dataService.initialize();
+                    window.dataService = dataService;
+                } else {
+                    throw new Error('No data service initialization method available');
+                }
+                
+                if (!dataService) {
+                    throw new Error('Data service initialization failed');
+                }
+                
+                output += '<div class="debug-info">Data service initialized successfully</div>';
+                
+                // Get employees
+                const employees = await dataService.getEmployees();
+                output += `<div class="debug-info">Found ${employees.length} employees</div>`;
+                
+                // Check employee ID types
+                output += '<h4>Employee ID Type Analysis</h4>';
+                employees.forEach((emp, index) => {
+                    const idType = typeof emp.id;
+                    const idValue = emp.id;
+                    const className = idType === 'number' ? 'type-match' : 'type-mismatch';
+                    
+                    output += `<div class="debug-info ${className}">
+                        Employee ${index + 1}: ID=${idValue} (type: ${idType}), Name=${emp.name || emp.fullName}
+                    </div>`;
+                });
+                
+                // Populate test table
+                employees.forEach(emp => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${emp.id} (${typeof emp.id})</td>
+                        <td>${emp.name || emp.fullName || 'No Name'}</td>
+                        <td>${emp.department || 'No Department'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary action-edit" data-employee-id="${emp.id}">Edit</button>
+                            <button class="btn btn-sm btn-info action-view" data-employee-id="${emp.id}">View</button>
+                            <button class="btn btn-sm btn-danger action-delete" data-employee-id="${emp.id}">Delete</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+                
+                // Add button event listeners with detailed debugging
+                function addDebugButtonListeners() {
+                    document.querySelectorAll('.action-edit, .action-view, .action-delete').forEach(button => {
+                        button.addEventListener('click', (e) => {
+                            const buttonId = e.currentTarget.dataset.employeeId;
+                            const buttonIdType = typeof buttonId;
+                            const buttonIdAsNumber = parseInt(buttonId);
+                            const buttonIdAsString = String(buttonId);
+                            
+                            let result = `<div class="debug-info">
+                                <strong>Button clicked:</strong> ${e.currentTarget.className}<br>
+                                <strong>Button data-employee-id:</strong> "${buttonId}" (type: ${buttonIdType})<br>
+                                <strong>Parsed as number:</strong> ${buttonIdAsNumber} (type: ${typeof buttonIdAsNumber})<br>
+                                <strong>Converted to string:</strong> "${buttonIdAsString}" (type: ${typeof buttonIdAsString})<br>
+                            </div>`;
+                            
+                            // Test different lookup methods
+                            const lookupResults = [];
+                            
+                            // Method 1: Direct comparison (string)
+                            const foundByString = employees.find(emp => emp.id == buttonId);
+                            lookupResults.push(`String comparison (==): ${foundByString ? 'FOUND' : 'NOT FOUND'}`);
+                            
+                            // Method 2: Strict comparison (string)
+                            const foundByStringStrict = employees.find(emp => emp.id === buttonId);
+                            lookupResults.push(`String strict comparison (===): ${foundByStringStrict ? 'FOUND' : 'NOT FOUND'}`);
+                            
+                            // Method 3: Number comparison
+                            const foundByNumber = employees.find(emp => emp.id === buttonIdAsNumber);
+                            lookupResults.push(`Number comparison: ${foundByNumber ? 'FOUND' : 'NOT FOUND'}`);
+                            
+                            // Method 4: Loose comparison with number
+                            const foundByNumberLoose = employees.find(emp => emp.id == buttonIdAsNumber);
+                            lookupResults.push(`Number loose comparison: ${foundByNumberLoose ? 'FOUND' : 'NOT FOUND'}`);
+                            
+                            result += `<div class="debug-info">
+                                <strong>Lookup Results:</strong><br>
+                                ${lookupResults.map(r => `• ${r}`).join('<br>')}
+                            </div>`;
+                            
+                            // Show which employee was found (if any)
+                            const foundEmployee = foundByNumber || foundByString || foundByStringStrict || foundByNumberLoose;
+                            if (foundEmployee) {
+                                result += `<div class="debug-info type-match">
+                                    <strong>Found Employee:</strong> ${foundEmployee.name || foundEmployee.fullName} (ID: ${foundEmployee.id})
+                                </div>`;
+                            } else {
+                                result += `<div class="debug-info type-mismatch">
+                                    <strong>No employee found with any lookup method!</strong>
+                                </div>`;
+                            }
+                            
+                            actionResults.innerHTML = result;
+                        });
+                    });
+                }
+                
+                addDebugButtonListeners();
+                
+            } catch (error) {
+                output += `<div class="debug-info type-mismatch">Error: ${error.message}</div>`;
+                console.error('Debug error:', error);
+            }
+            
+            debugOutput.innerHTML = output;
+        }
+        
+        // Run debug when page loads
+        document.addEventListener('DOMContentLoaded', debugActionButtons);
+    </script>
+</body>
+</html>

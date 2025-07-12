@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Action Buttons Fix</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Test Action Buttons Fix</h1>
+        <p>Testing the improved action button handling with robust employee ID lookup.</p>
+        
+        <div id="status" class="alert alert-info">Initializing...</div>
+        
+        <!-- Employee Management Section -->
+        <div class="card">
+            <div class="card-header">
+                <h5>Employees</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Employee Code</th>
+                                <th>Department</th>
+                                <th>Position</th>
+                                <th>Email</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employeesTableBody">
+                            <!-- Will be populated by EmployeesPageManager -->
+                        </tbody>
+                    </table>
+                    <div id="emptyState" class="text-center py-4 hidden">
+                        <p>No employees found.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Test Results -->
+        <div class="mt-4">
+            <h3>Test Results</h3>
+            <div id="testResults"></div>
+        </div>
+    </div>
+
+    <!-- Include necessary scripts -->
+    <script src="js/mock-data.js"></script>
+    <script src="js/core/data-service-api.js"></script>
+    <script src="js/core/local-storage-service.js"></script>
+    <script src="js/core/api-service.js"></script>
+    <script src="js/core/data-service-factory.js"></script>
+    <script src="js/unified-data-service.js"></script>
+    <script src="js/employees-page.js"></script>
+    
+    <script>
+        let employeesManager;
+        
+        async function testActionButtons() {
+            const statusDiv = document.getElementById('status');
+            const resultsDiv = document.getElementById('testResults');
+            
+            try {
+                statusDiv.textContent = 'Initializing data service...';
+                
+                // Initialize data service
+                await window.dataServiceFactory.initialize();
+                
+                statusDiv.textContent = 'Creating employees manager...';
+                
+                // Create and initialize employees manager
+                employeesManager = new EmployeesPageManager();
+                await employeesManager.init();
+                
+                statusDiv.innerHTML = '<span class="text-success">✅ Ready! Click the action buttons to test.</span>';
+                
+                // Add test result listener
+                document.addEventListener('click', (e) => {
+                    if (e.target.closest('.action-edit, .action-view, .action-delete')) {
+                        const button = e.target.closest('button');
+                        const action = button.classList.contains('action-edit') ? 'edit' :
+                                     button.classList.contains('action-view') ? 'view' : 'delete';
+                        const employeeId = button.dataset.employeeId;
+                        
+                        resultsDiv.innerHTML += `<div class="alert alert-info">
+                            <strong>${action.toUpperCase()} button clicked</strong><br>
+                            Employee ID: ${employeeId} (type: ${typeof employeeId})<br>
+                            Time: ${new Date().toLocaleTimeString()}
+                        </div>`;
+                    }
+                });
+                
+            } catch (error) {
+                console.error('Test error:', error);
+                statusDiv.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
+            }
+        }
+        
+        // Mock modal methods to prevent errors
+        window.EmployeesPageManager = class extends EmployeesPageManager {
+            openModal(employee) {
+                document.getElementById('testResults').innerHTML += `<div class="alert alert-success">
+                    <strong>✅ EDIT Modal opened successfully!</strong><br>
+                    Employee: ${employee.name || employee.fullName}<br>
+                    ID: ${employee.id} (type: ${typeof employee.id})
+                </div>`;
+            }
+            
+            openViewModal(employee) {
+                document.getElementById('testResults').innerHTML += `<div class="alert alert-success">
+                    <strong>✅ VIEW Modal opened successfully!</strong><br>
+                    Employee: ${employee.name || employee.fullName}<br>
+                    ID: ${employee.id} (type: ${typeof employee.id})
+                </div>`;
+            }
+            
+            openDeleteModal(employee) {
+                document.getElementById('testResults').innerHTML += `<div class="alert alert-warning">
+                    <strong>✅ DELETE Modal opened successfully!</strong><br>
+                    Employee: ${employee.name || employee.fullName}<br>
+                    ID: ${employee.id} (type: ${typeof employee.id})
+                </div>`;
+            }
+            
+            showError(message) {
+                document.getElementById('testResults').innerHTML += `<div class="alert alert-danger">
+                    <strong>❌ Error:</strong> ${message}
+                </div>`;
+            }
+        };
+        
+        // Start test when page loads
+        document.addEventListener('DOMContentLoaded', testActionButtons);
+    </script>
+</body>
+</html>
