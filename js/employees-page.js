@@ -37,37 +37,72 @@ class EmployeesPageManager {
         const interval = 100; // Check every 100ms
         let waited = 0;
         
-        // Use the unified data service (prioritize over legacy manager)
-        while (!window.dataService?.initialized && waited < maxWait) {
+        // Priority 1: Use UnifiedEmployeeManager for consistency with payroll
+        while (!window.unifiedEmployeeManager?.initialized && waited < maxWait) {
             await new Promise(resolve => setTimeout(resolve, interval));
             waited += interval;
         }
         
+        if (window.unifiedEmployeeManager?.initialized) {
+            console.log('Using UnifiedEmployeeManager for employees page (consistent with payroll)');
+            this.unifiedManager = window.unifiedEmployeeManager;
+            return;
+        }
+        
+        // Fallback to data service if UnifiedEmployeeManager not available
         if (window.dataService?.initialized) {
-            console.log('Using unified data service for employees page');
+            console.warn('UnifiedEmployeeManager not available, falling back to data service');
             this.unifiedManager = window.dataService;
             return;
         }
         
-        throw new Error('Unified data service not available');
+        throw new Error('No unified data manager available');
     }
 
     async loadEmployees() {
         try {
-            console.log('Loading employees from unified data service...');
+            console.log('Loading employees from unified manager...');
             
-            // Get employees from unified data service (async)
-            this.employees = await this.unifiedManager.getEmployees();
-            this.filteredEmployees = [...this.employees];
-            
-            // Get departments from unified data service or settings
-            if (this.unifiedManager.getDepartments) {
-                // If getDepartments method exists, use it
-                this.departments = await this.unifiedManager.getDepartments();
-            } else {
-                // Extract departments from employee data
+            // Handle different manager types
+            if (this.unifiedManager === window.unifiedEmployeeManager) {
+                // Using UnifiedEmployeeManager - synchronous methods
+                this.employees = this.unifiedManager.getEmployees();
+                this.filteredEmployees = [...this.employees];
+                
+                // Get departments from employee data
                 const departmentSet = new Set(this.employees.map(emp => emp.department).filter(Boolean));
                 this.departments = Array.from(departmentSet);
+                
+                console.log('[DATA INTEGRITY] Employees page using UnifiedEmployeeManager data:', {
+                    count: this.employees.length,
+                    source: 'UnifiedEmployeeManager',
+                    employees: this.employees.map(emp => ({ 
+                        id: emp.id, 
+                        name: emp.fullName || emp.name,
+                        department: emp.department 
+                    }))
+                });
+            } else {
+                // Using data service - async methods
+                this.employees = await this.unifiedManager.getEmployees();
+                this.filteredEmployees = [...this.employees];
+                
+                if (this.unifiedManager.getDepartments) {
+                    this.departments = await this.unifiedManager.getDepartments();
+                } else {
+                    const departmentSet = new Set(this.employees.map(emp => emp.department).filter(Boolean));
+                    this.departments = Array.from(departmentSet);
+                }
+                
+                console.log('[DATA INTEGRITY] Employees page using data service:', {
+                    count: this.employees.length,
+                    source: 'dataService',
+                    employees: this.employees.map(emp => ({ 
+                        id: emp.id, 
+                        name: emp.fullName || emp.name,
+                        department: emp.department 
+                    }))
+                });
             }
             
             console.log('Loaded employees:', this.employees.length);
@@ -604,9 +639,16 @@ class EmployeesPageManager {
             const employeeData = this.getFormData();
             
             if (this.currentEmployee) {
-                // Update existing employee using unified data service
-                const updatedEmployee = await this.unifiedManager.updateEmployee(this.currentEmployee.id, employeeData);
-                console.log('Employee updated:', updatedEmployee);
+                // Update existing employee
+                let updatedEmployee;
+                if (this.unifiedManager === window.unifiedEmployeeManager) {
+                    // Using UnifiedEmployeeManager - direct method call
+                    updatedEmployee = this.unifiedManager.updateEmployee(this.currentEmployee.id, employeeData);
+                } else {
+                    // Using data service - async method call
+                    updatedEmployee = await this.unifiedManager.updateEmployee(this.currentEmployee.id, employeeData);
+                }
+                console.log('[DATA INTEGRITY] Employee updated via', this.unifiedManager === window.unifiedEmployeeManager ? 'UnifiedEmployeeManager' : 'dataService', ':', updatedEmployee);
             } else {
                 // For new employees, don't require employee code - it will be auto-generated
                 if (!employeeData.employeeCode || employeeData.employeeCode.trim() === '') {
@@ -616,12 +658,19 @@ class EmployeesPageManager {
                 // Remove ID field to let the service handle it
                 delete employeeData.id;
                 
-                // Add new employee using unified data service
-                const newEmployee = await this.unifiedManager.addEmployee(employeeData);
-                console.log('Employee added with auto-generated ID:', newEmployee.employeeCode);
+                // Add new employee
+                let newEmployee;
+                if (this.unifiedManager === window.unifiedEmployeeManager) {
+                    // Using UnifiedEmployeeManager - direct method call
+                    newEmployee = this.unifiedManager.addEmployee(employeeData);
+                } else {
+                    // Using data service - async method call
+                    newEmployee = await this.unifiedManager.addEmployee(employeeData);
+                }
+                console.log('[DATA INTEGRITY] Employee added via', this.unifiedManager === window.unifiedEmployeeManager ? 'UnifiedEmployeeManager' : 'dataService', ':', newEmployee.employeeCode);
             }
 
-            // Reload data from unified data service
+            // Reload data from unified manager
             await this.loadEmployees();
             this.applyFilters();
             this.updateStats();
@@ -648,7 +697,16 @@ class EmployeesPageManager {
      */
     async generateNextEmployeeId() {
         try {
-            const employees = await this.unifiedManager.getEmployees();
+            // Get employees from appropriate manager
+            let employees;
+            if (this.unifiedManager === window.unifiedEmployeeManager) {
+                // Using UnifiedEmployeeManager - direct method call
+                employees = this.unifiedManager.getEmployees();
+            } else {
+                // Using data service - async method call
+                employees = await this.unifiedManager.getEmployees();
+            }
+            
             let maxId = 0;
             
             // Find the highest existing employee code number
@@ -847,11 +905,20 @@ class EmployeesPageManager {
         }
 
         try {
-            // Delete employee using unified data service
-            const deletedEmployee = await this.unifiedManager.deleteEmployee(employeeId);
-            const employeeName = deletedEmployee.fullName || 'Employee';
+            // Delete employee using unified manager
+            let deletedEmployee;
+            if (this.unifiedManager === window.unifiedEmployeeManager) {
+                // Using UnifiedEmployeeManager - direct method call
+                deletedEmployee = this.unifiedManager.deleteEmployee(employeeId);
+            } else {
+                // Using data service - async method call
+                deletedEmployee = await this.unifiedManager.deleteEmployee(employeeId);
+            }
             
-            // Reload data from unified data service
+            const employeeName = deletedEmployee.fullName || deletedEmployee.name || 'Employee';
+            console.log('[DATA INTEGRITY] Employee deleted via', this.unifiedManager === window.unifiedEmployeeManager ? 'UnifiedEmployeeManager' : 'dataService', ':', employeeName);
+            
+            // Reload data from unified manager
             await this.loadEmployees();
             this.applyFilters();
             this.updateStats();
@@ -1138,23 +1205,66 @@ class EmployeesPageManager {
      */
     setupDataSyncListeners() {
         if (this.unifiedManager) {
-            // Listen for employee updates from unified manager
-            this.unifiedManager.addEventListener('employeeUpdate', (data) => {
-                console.log('Employee update received:', data);
-                this.refreshData();
-            });
+            console.log('[DATA SYNC] Setting up data sync listeners for employees page');
+            
+            // Handle UnifiedEmployeeManager events
+            if (this.unifiedManager === window.unifiedEmployeeManager) {
+                console.log('[DATA SYNC] Using UnifiedEmployeeManager events');
+                
+                // Listen for employee updates
+                this.unifiedManager.addEventListener('employeeUpdate', (data) => {
+                    console.log('[DATA SYNC] Employee update received:', data);
+                    this.refreshData();
+                });
+
+                // Listen for employee deletions
+                this.unifiedManager.addEventListener('employeeDeleted', (data) => {
+                    console.log('[DATA SYNC] Employee deleted:', data);
+                    this.refreshData();
+                });
+
+                // Listen for employee additions
+                this.unifiedManager.addEventListener('employeeAdded', (data) => {
+                    console.log('[DATA SYNC] Employee added:', data);
+                    this.refreshData();
+                });
+
+                // Listen for general data sync events (cross-tab updates)
+                this.unifiedManager.addEventListener('dataSync', (data) => {
+                    console.log('[DATA SYNC] Data sync event received:', data);
+                    if (data && (data.action === 'delete' || data.action === 'add' || data.action === 'update' || data.action === 'forceCleanup')) {
+                        this.refreshData();
+                    }
+                });
+
+                // Listen for system-wide broadcasts
+                document.addEventListener('bricksSystemUpdate', (event) => {
+                    const { type, data } = event.detail;
+                    console.log('[DATA SYNC] System update received:', type, data);
+                    if (type.includes('employee') || type.includes('Employee')) {
+                        this.refreshData();
+                    }
+                });
+                
+            } else {
+                // Handle data service events
+                console.log('[DATA SYNC] Using data service events');
+                
+                this.unifiedManager.addEventListener('employeeUpdate', (data) => {
+                    console.log('[DATA SYNC] Employee update received from data service:', data);
+                    this.refreshData();
+                });
+
+                this.unifiedManager.addEventListener('dataSync', (data) => {
+                    console.log('[DATA SYNC] Data sync event received from data service:', data);
+                    this.refreshData();
+                });
+            }
 
             // Listen for attendance updates that might affect employee data
             this.unifiedManager.addEventListener('attendanceUpdate', (data) => {
-                console.log('Attendance update received, checking if refresh needed');
-                // Only refresh if we're showing attendance-related data
+                console.log('[DATA SYNC] Attendance update received, updating stats');
                 this.updateStats();
-            });
-
-            // Listen for data sync events (cross-tab updates)
-            this.unifiedManager.addEventListener('dataSync', (data) => {
-                console.log('Data sync event received:', data);
-                this.refreshData();
             });
         }
     }
