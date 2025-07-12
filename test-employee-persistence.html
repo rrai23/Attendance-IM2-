@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Employee Persistence Fix</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .test-result { 
+            border: 1px solid #dee2e6; 
+            border-radius: 0.25rem; 
+            padding: 1rem; 
+            margin: 0.5rem 0; 
+            font-family: monospace; 
+        }
+        .test-success { background-color: #d1ecf1; border-color: #bee5eb; }
+        .test-error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .test-info { background-color: #e2e3e5; border-color: #d6d8db; }
+        .refresh-btn { position: fixed; top: 10px; right: 10px; z-index: 1000; }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>🔧 Employee Persistence & Auto-ID Test</h1>
+        <p>This tool tests the fixes for employee data persistence and auto-increment IDs.</p>
+        
+        <button class="btn btn-warning refresh-btn" onclick="location.reload()">🔄 Refresh Page</button>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <h3>🧪 Add Test Employee</h3>
+                <div class="card">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">First Name</label>
+                            <input type="text" id="testFirstName" class="form-control" value="Test">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Last Name</label>
+                            <input type="text" id="testLastName" class="form-control" value="Employee">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" id="testEmail" class="form-control" value="test@example.com">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Department</label>
+                            <select id="testDepartment" class="form-control">
+                                <option value="Engineering">Engineering</option>
+                                <option value="Marketing">Marketing</option>
+                                <option value="HR">HR</option>
+                                <option value="Construction">Construction</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Position</label>
+                            <input type="text" id="testPosition" class="form-control" value="Test Engineer">
+                        </div>
+                        <button id="addEmployee" class="btn btn-success">➕ Add Employee (Auto-ID)</button>
+                        <button id="testPersistence" class="btn btn-primary ms-2">🔄 Test Persistence</button>
+                    </div>
+                </div>
+                
+                <h3 class="mt-4">🔧 Tools</h3>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button id="clearData" class="btn btn-warning">🗑️ Clear Data</button>
+                    <button id="loadEmployees" class="btn btn-info">📋 Load Employees</button>
+                    <button id="testAutoID" class="btn btn-secondary">🔢 Test Auto-ID</button>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <h3>📊 Results</h3>
+                <div id="results" style="max-height: 400px; overflow-y: auto;"></div>
+                
+                <h3>👥 Current Employees</h3>
+                <div id="employeeList" style="max-height: 300px; overflow-y: auto;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Scripts -->
+    <script src="js/mock-data.js"></script>
+    <script src="js/core/data-service-api.js"></script>
+    <script src="js/core/local-storage-service.js"></script>
+    <script src="js/core/api-service.js"></script>
+    <script src="js/core/data-service-factory.js"></script>
+    <script src="js/unified-data-service.js"></script>
+
+    <script>
+        let dataService;
+        
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result test-${type}`;
+            resultDiv.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+            resultsDiv.appendChild(resultDiv);
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        async function initializeDataService() {
+            try {
+                addResult('Initializing data service...', 'info');
+                
+                if (window.dataService && window.dataService.initialized) {
+                    dataService = window.dataService;
+                    addResult('✅ Using existing window.dataService', 'success');
+                } else if (typeof DataServiceFactory !== 'undefined') {
+                    dataService = DataServiceFactory.createBestService();
+                    if (dataService.initializeData) {
+                        await dataService.initializeData();
+                    }
+                    window.dataService = dataService;
+                    addResult('✅ Created dataService via factory', 'success');
+                } else {
+                    dataService = new LocalStorageDataService();
+                    await dataService.initializeData();
+                    window.dataService = dataService;
+                    addResult('✅ Created LocalStorageDataService directly', 'success');
+                }
+                
+                return true;
+            } catch (error) {
+                addResult(`❌ Error initializing data service: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function displayEmployees() {
+            try {
+                const employees = await dataService.getEmployees();
+                const listDiv = document.getElementById('employeeList');
+                
+                if (employees.length === 0) {
+                    listDiv.innerHTML = '<p class="text-muted">No employees found</p>';
+                    return;
+                }
+                
+                let html = '<div class="list-group">';
+                employees.forEach(emp => {
+                    html += `
+                        <div class="list-group-item">
+                            <strong>${emp.fullName || `${emp.firstName} ${emp.lastName}` || emp.name}</strong><br>
+                            <small>ID: ${emp.employeeCode || emp.id} | ${emp.department} | ${emp.email}</small><br>
+                            <small class="text-muted">Created: ${emp.createdAt ? new Date(emp.createdAt).toLocaleString() : 'Unknown'}</small>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                listDiv.innerHTML = html;
+                
+                addResult(`📋 Displayed ${employees.length} employees`, 'success');
+            } catch (error) {
+                addResult(`❌ Error displaying employees: ${error.message}`, 'error');
+            }
+        }
+
+        async function generateNextEmployeeId() {
+            try {
+                const employees = await dataService.getEmployees();
+                let maxId = 0;
+                
+                employees.forEach(emp => {
+                    if (emp.employeeCode) {
+                        const match = emp.employeeCode.match(/emp_(\d+)/i);
+                        if (match) {
+                            const num = parseInt(match[1]);
+                            if (num > maxId) {
+                                maxId = num;
+                            }
+                        }
+                    }
+                    
+                    if (emp.id && !isNaN(emp.id)) {
+                        const num = parseInt(emp.id);
+                        if (num > maxId) {
+                            maxId = num;
+                        }
+                    }
+                });
+                
+                const nextId = maxId + 1;
+                return `emp_${nextId.toString().padStart(3, '0')}`;
+            } catch (error) {
+                addResult(`❌ Error generating employee ID: ${error.message}`, 'error');
+                return `emp_${Date.now().toString().slice(-6)}`;
+            }
+        }
+
+        // Event Handlers
+        document.getElementById('addEmployee').addEventListener('click', async () => {
+            try {
+                const employeeData = {
+                    firstName: document.getElementById('testFirstName').value,
+                    lastName: document.getElementById('testLastName').value,
+                    email: document.getElementById('testEmail').value,
+                    department: document.getElementById('testDepartment').value,
+                    position: document.getElementById('testPosition').value,
+                    hireDate: new Date().toISOString().split('T')[0],
+                    status: 'active',
+                    role: 'employee'
+                };
+                
+                addResult(`➕ Adding employee: ${employeeData.firstName} ${employeeData.lastName}`, 'info');
+                const newEmployee = await dataService.addEmployee(employeeData);
+                addResult(`✅ Employee added successfully: ${newEmployee.fullName || newEmployee.name} (${newEmployee.employeeCode || newEmployee.id})`, 'success');
+                
+                // Update form with new values for next employee
+                const currentNum = document.getElementById('testFirstName').value.match(/\d+$/);
+                const nextNum = currentNum ? parseInt(currentNum[0]) + 1 : 2;
+                document.getElementById('testFirstName').value = `Test${nextNum}`;
+                document.getElementById('testLastName').value = 'Employee';
+                document.getElementById('testEmail').value = `test${nextNum}@example.com`;
+                
+                await displayEmployees();
+            } catch (error) {
+                addResult(`❌ Error adding employee: ${error.message}`, 'error');
+            }
+        });
+
+        document.getElementById('testPersistence').addEventListener('click', async () => {
+            try {
+                addResult('🔄 Testing persistence...', 'info');
+                
+                // Get current employee count
+                const beforeEmployees = await dataService.getEmployees();
+                const beforeCount = beforeEmployees.length;
+                addResult(`📊 Current employee count: ${beforeCount}`, 'info');
+                
+                // Add a test employee
+                const testEmployee = {
+                    firstName: 'Persistence',
+                    lastName: 'Test',
+                    email: 'persistence@test.com',
+                    department: 'Engineering',
+                    position: 'Test Engineer',
+                    status: 'active',
+                    role: 'employee'
+                };
+                
+                const newEmployee = await dataService.addEmployee(testEmployee);
+                addResult(`✅ Test employee added: ${newEmployee.employeeCode}`, 'success');
+                
+                // Verify it persists
+                const afterEmployees = await dataService.getEmployees();
+                const afterCount = afterEmployees.length;
+                
+                if (afterCount > beforeCount) {
+                    addResult(`✅ PERSISTENCE TEST PASSED! (${beforeCount} → ${afterCount})`, 'success');
+                } else {
+                    addResult(`❌ PERSISTENCE TEST FAILED! (${beforeCount} → ${afterCount})`, 'error');
+                }
+                
+                // Check localStorage directly
+                const storedData = localStorage.getItem('bricks_attendance_data');
+                if (storedData) {
+                    const parsed = JSON.parse(storedData);
+                    const storedCount = parsed.employees ? parsed.employees.length : 0;
+                    addResult(`💾 localStorage employee count: ${storedCount}`, 'info');
+                } else {
+                    addResult(`❌ No data found in localStorage!`, 'error');
+                }
+                
+                await displayEmployees();
+            } catch (error) {
+                addResult(`❌ Error testing persistence: ${error.message}`, 'error');
+            }
+        });
+
+        document.getElementById('clearData').addEventListener('click', async () => {
+            try {
+                // Clear all possible localStorage keys
+                localStorage.removeItem('bricks_attendance_data');
+                localStorage.removeItem('bricks_data'); // Legacy key
+                localStorage.clear(); // Clear everything to be sure
+                addResult('🗑️ All localStorage cleared', 'success');
+                
+                // Reinitialize with fresh data
+                if (dataService.initializeData) {
+                    await dataService.initializeData();
+                    addResult('🔄 Fresh data initialized', 'success');
+                }
+                
+                await displayEmployees();
+            } catch (error) {
+                addResult(`❌ Error clearing data: ${error.message}`, 'error');
+            }
+        });
+
+        document.getElementById('loadEmployees').addEventListener('click', async () => {
+            await displayEmployees();
+        });
+
+        document.getElementById('testAutoID').addEventListener('click', async () => {
+            try {
+                const nextId = await generateNextEmployeeId();
+                addResult(`🔢 Next auto-generated ID: ${nextId}`, 'info');
+                
+                // Verify it's unique
+                const employees = await dataService.getEmployees();
+                const isDuplicate = employees.some(emp => emp.employeeCode === nextId);
+                
+                if (isDuplicate) {
+                    addResult(`❌ Auto-ID collision detected! ${nextId} already exists`, 'error');
+                } else {
+                    addResult(`✅ Auto-ID test passed: ${nextId} is unique`, 'success');
+                }
+            } catch (error) {
+                addResult(`❌ Error testing auto-ID: ${error.message}`, 'error');
+            }
+        });
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            const initialized = await initializeDataService();
+            if (initialized) {
+                await displayEmployees();
+                addResult('🚀 Ready to test employee persistence and auto-IDs!', 'success');
+                
+                // Show current localStorage status
+                const storedData = localStorage.getItem('bricks_attendance_data');
+                if (storedData) {
+                    addResult('💾 Found existing data in localStorage', 'info');
+                } else {
+                    addResult('💾 No existing data in localStorage', 'info');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

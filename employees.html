@@ -393,9 +393,10 @@
                     <div class="form-section">
                         <h4>Employment Information</h4>
                         <div class="form-row">
-                            <div class="form-group">
-                                <label for="employeeCode" class="form-label">Employee ID *</label>
-                                <input type="text" id="employeeCode" class="form-input" required>
+                            <div class="form-group" style="display: none;">
+                                <label for="employeeCode" class="form-label">Employee ID (Auto-generated)</label>
+                                <input type="text" id="employeeCode" class="form-input" readonly placeholder="Auto-generated">
+                                <small class="form-help">Employee ID will be automatically generated (e.g., emp_001, emp_002)</small>
                             </div>
                             <div class="form-group">
                                 <label for="department" class="form-label">Department *</label>

@@ -43,14 +43,7 @@ if (typeof window.dataService === 'undefined') {
         // Register the data service as initialized
         window.dataService.initialized = true;
         
-        // Initialize default data if available
-        if (window.dataService.createDefaultData) {
-            window.dataService.createDefaultData().then(() => {
-                console.log('Default data initialized in unified data service');
-            }).catch(error => {
-                console.warn('Failed to initialize default data:', error);
-            });
-        }
+        // Data service will handle its own initialization automatically
         
         // Emit initialization event
         if (window.dataService.emit) {

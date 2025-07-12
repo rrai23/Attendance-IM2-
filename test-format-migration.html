@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee ID Format Migration Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .test-result {
+            padding: 8px 12px;
+            margin: 4px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        .test-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .test-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .test-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .test-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+    </style>
+</head>
+<body>
+    <div class="container my-4">
+        <h1 class="mb-4">🔄 Employee ID Format Migration Test</h1>
+        <p class="text-muted">Test migration from old "EMP001" format to new "emp_001" format</p>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <h3>🧪 Migration Tests</h3>
+                <div class="d-flex gap-2 flex-wrap mb-3">
+                    <button id="testMigration" class="btn btn-primary">🔄 Test Migration</button>
+                    <button id="testNewFormat" class="btn btn-success">➕ Test New Format</button>
+                    <button id="clearData" class="btn btn-warning">🗑️ Clear Data</button>
+                    <button id="addOldFormatData" class="btn btn-secondary">📝 Add Old Format Data</button>
+                </div>
+                
+                <h4>Legacy Data (Old Format)</h4>
+                <div class="mb-3">
+                    <button id="addLegacyEmployee" class="btn btn-outline-secondary btn-sm">Add Legacy Employee (EMP001)</button>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <h3>📊 Results</h3>
+                <div id="results" style="max-height: 400px; overflow-y: auto;"></div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-12">
+                <h3>👥 Current Employees</h3>
+                <div id="employeeList" style="max-height: 300px; overflow-y: auto;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Scripts -->
+    <script src="js/mock-data.js"></script>
+    <script src="js/core/data-service-api.js"></script>
+    <script src="js/core/local-storage-service.js"></script>
+    <script src="js/core/api-service.js"></script>
+    <script src="js/core/data-service-factory.js"></script>
+    <script src="js/unified-data-service.js"></script>
+
+    <script>
+        let dataService;
+        
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result test-${type}`;
+            resultDiv.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+            resultsDiv.appendChild(resultDiv);
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        async function initializeDataService() {
+            try {
+                addResult('Initializing data service...', 'info');
+                
+                if (typeof DataServiceFactory !== 'undefined') {
+                    dataService = DataServiceFactory.createBestService();
+                    if (dataService.initializeData) {
+                        await dataService.initializeData();
+                    }
+                    addResult('✅ Data service initialized', 'success');
+                } else {
+                    dataService = new LocalStorageDataService();
+                    await dataService.initializeData();
+                    addResult('✅ LocalStorageDataService initialized', 'success');
+                }
+                
+                return true;
+            } catch (error) {
+                addResult(`❌ Error initializing data service: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function displayEmployees() {
+            try {
+                const employees = await dataService.getEmployees();
+                const listDiv = document.getElementById('employeeList');
+                
+                if (employees.length === 0) {
+                    listDiv.innerHTML = '<p class="text-muted">No employees found</p>';
+                    return;
+                }
+                
+                let html = '<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Full Name</th><th>Employee Code</th><th>ID</th><th>Format</th></tr></thead><tbody>';
+                employees.forEach(emp => {
+                    const isNewFormat = emp.employeeCode && emp.employeeCode.match(/^emp_\d{3}$/);
+                    const isOldFormat = emp.employeeCode && emp.employeeCode.match(/^EMP\d{3}$/);
+                    const formatStatus = isNewFormat ? '✅ New Format' : (isOldFormat ? '⚠️ Old Format' : '❓ Unknown');
+                    const formatClass = isNewFormat ? 'text-success' : (isOldFormat ? 'text-warning' : 'text-danger');
+                    
+                    html += `
+                        <tr>
+                            <td><strong>${emp.fullName || `${emp.firstName} ${emp.lastName}` || emp.name}</strong></td>
+                            <td><code>${emp.employeeCode || 'N/A'}</code></td>
+                            <td>${emp.id}</td>
+                            <td class="${formatClass}">${formatStatus}</td>
+                        </tr>
+                    `;
+                });
+                html += '</tbody></table></div>';
+                listDiv.innerHTML = html;
+                
+                addResult(`📋 Displayed ${employees.length} employees`, 'success');
+            } catch (error) {
+                addResult(`❌ Error displaying employees: ${error.message}`, 'error');
+            }
+        }
+
+        // Test migration functionality
+        document.getElementById('testMigration').addEventListener('click', async () => {
+            try {
+                addResult('🔄 Starting migration test...', 'info');
+                
+                // Force re-validation which should trigger migration
+                if (dataService.validateAndCleanData) {
+                    dataService.validateAndCleanData();
+                    addResult('✅ Migration validation completed', 'success');
+                } else {
+                    addResult('⚠️ Migration method not available', 'warning');
+                }
+                
+                await displayEmployees();
+            } catch (error) {
+                addResult(`❌ Migration test failed: ${error.message}`, 'error');
+            }
+        });
+
+        // Test adding new employee with new format
+        document.getElementById('testNewFormat').addEventListener('click', async () => {
+            try {
+                const employeeData = {
+                    firstName: 'New',
+                    lastName: `Employee ${Date.now().toString().slice(-4)}`,
+                    email: `new.employee.${Date.now()}@test.com`,
+                    department: 'Testing',
+                    position: 'Test Engineer',
+                    hireDate: new Date().toISOString().split('T')[0]
+                };
+                
+                const result = await dataService.addEmployee(employeeData);
+                addResult(`✅ Added new employee: ${result.employeeCode}`, 'success');
+                
+                await displayEmployees();
+            } catch (error) {
+                addResult(`❌ Error adding new employee: ${error.message}`, 'error');
+            }
+        });
+
+        // Add old format data for testing migration
+        document.getElementById('addLegacyEmployee').addEventListener('click', async () => {
+            try {
+                // Directly inject old format data into localStorage for testing
+                const currentData = JSON.parse(localStorage.getItem('bricks_attendance_data') || '{"employees": []}');
+                
+                const legacyEmployee = {
+                    id: Date.now(),
+                    employeeCode: `EMP${String(Math.floor(Math.random() * 900) + 100)}`, // EMP123 format
+                    firstName: 'Legacy',
+                    lastName: `Employee ${Date.now().toString().slice(-4)}`,
+                    fullName: `Legacy Employee ${Date.now().toString().slice(-4)}`,
+                    email: `legacy.${Date.now()}@test.com`,
+                    department: 'Legacy',
+                    position: 'Legacy Worker',
+                    hireDate: new Date().toISOString().split('T')[0],
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                
+                currentData.employees.push(legacyEmployee);
+                localStorage.setItem('bricks_attendance_data', JSON.stringify(currentData));
+                
+                // Reload data service to pick up the change
+                await dataService.initializeData();
+                
+                addResult(`✅ Added legacy employee: ${legacyEmployee.employeeCode}`, 'success');
+                await displayEmployees();
+            } catch (error) {
+                addResult(`❌ Error adding legacy employee: ${error.message}`, 'error');
+            }
+        });
+
+        // Clear all data
+        document.getElementById('clearData').addEventListener('click', async () => {
+            try {
+                localStorage.removeItem('bricks_attendance_data');
+                await dataService.initializeData();
+                addResult('🗑️ All data cleared', 'info');
+                await displayEmployees();
+            } catch (error) {
+                addResult(`❌ Error clearing data: ${error.message}`, 'error');
+            }
+        });
+
+        // Initialize on page load
+        window.addEventListener('load', async () => {
+            if (await initializeDataService()) {
+                await displayEmployees();
+                addResult('🚀 Migration test tool ready!', 'success');
+            }
+        });
+    </script>
+</body>
+</html>

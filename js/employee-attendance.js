@@ -54,7 +54,7 @@ class EmployeeAttendanceManager {
                 // Transform data to match the expected format for this module
                 this.employees = employeesData.map(emp => ({
                     id: emp.id,
-                    employeeId: emp.employeeCode || `EMP${String(emp.id).padStart(3, '0')}`,
+                    employeeId: emp.employeeCode || `emp_${String(emp.id).padStart(3, '0')}`,
                     name: emp.fullName || `${emp.firstName} ${emp.lastName}`,
                     department: emp.department,
                     position: emp.position,
@@ -74,7 +74,7 @@ class EmployeeAttendanceManager {
                 // Transform data to match the expected format for this module
                 this.employees = employeesData.map(emp => ({
                     id: emp.id,
-                    employeeId: emp.employeeCode || `EMP${String(emp.id).padStart(3, '0')}`,
+                    employeeId: emp.employeeCode || `emp_${String(emp.id).padStart(3, '0')}`,
                     name: `${emp.firstName} ${emp.lastName}`,
                     department: emp.department,
                     position: emp.position,
@@ -92,7 +92,7 @@ class EmployeeAttendanceManager {
                 this.employees = [
                     {
                         id: 1,
-                        employeeId: 'EMP001',
+                        employeeId: 'emp_001',
                         name: 'John Doe',
                         department: 'Engineering',
                         position: 'Senior Developer',

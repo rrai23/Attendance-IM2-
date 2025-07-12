@@ -128,7 +128,7 @@ class LocalStorageDataService extends DataServiceInterface {
                         
                         // Ensure employeeCode exists
                         if (!employee.employeeCode && employee.id) {
-                            employee.employeeCode = `EMP${String(employee.id).padStart(3, '0')}`;
+                            employee.employeeCode = `emp_${String(employee.id).padStart(3, '0')}`;
                         }
                         
                         // Ensure position exists (map from role if needed)
@@ -153,7 +153,7 @@ class LocalStorageDataService extends DataServiceInterface {
                 
                 // Ensure employeeCode exists
                 if (!emp.employeeCode && emp.id) {
-                    emp.employeeCode = `EMP${String(emp.id).padStart(3, '0')}`;
+                    emp.employeeCode = `emp_${String(emp.id).padStart(3, '0')}`;
                 }
                 
                 return emp;
@@ -481,10 +481,35 @@ class LocalStorageDataService extends DataServiceInterface {
     async addEmployee(employeeData) {
         await this.simulateDelay();
         
+        // Generate numeric ID if not provided
+        let newId = employeeData.id;
+        if (!newId) {
+            const maxId = this.data.employees.length > 0 
+                ? Math.max(...this.data.employees.map(emp => parseInt(emp.id) || 0))
+                : 0;
+            newId = maxId + 1;
+        }
+
+        // Generate employee code if not provided
+        let employeeCode = employeeData.employeeCode;
+        if (!employeeCode) {
+            employeeCode = `emp_${newId.toString().padStart(3, '0')}`;
+        }
+        
+        // Generate fullName if not provided
+        let fullName = employeeData.fullName;
+        if (!fullName && employeeData.firstName && employeeData.lastName) {
+            fullName = `${employeeData.firstName} ${employeeData.lastName}`;
+        }
+        
         const newEmployee = {
             ...employeeData,
-            id: employeeData.id || `emp_${Date.now().toString(36)}`,
+            id: newId,
+            employeeCode: employeeCode,
+            fullName: fullName,
+            name: fullName || employeeData.name, // Backward compatibility
             createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
             status: employeeData.status || 'active'
         };
         
@@ -494,6 +519,7 @@ class LocalStorageDataService extends DataServiceInterface {
         // Emit event for synchronization
         this.emit('employeeAdded', { employee: newEmployee });
         
+        console.log('Employee added with ID:', newEmployee.id, 'Code:', newEmployee.employeeCode);
         return newEmployee;
     }
     
@@ -506,28 +532,42 @@ class LocalStorageDataService extends DataServiceInterface {
     async updateEmployee(id, updates) {
         await this.simulateDelay();
         
-        const index = this.data.employees.findIndex(emp => emp.id === id);
+        const index = this.data.employees.findIndex(emp => emp.id == id); // Use loose equality for ID matching
         if (index === -1) {
             throw new Error(`Employee with ID ${id} not found`);
         }
         
         const oldData = { ...this.data.employees[index] };
+        
+        // Update fullName if firstName or lastName changed
+        if (updates.firstName || updates.lastName) {
+            const firstName = updates.firstName || oldData.firstName;
+            const lastName = updates.lastName || oldData.lastName;
+            if (firstName && lastName) {
+                updates.fullName = `${firstName} ${lastName}`;
+                updates.name = updates.fullName; // Backward compatibility
+            }
+        }
+        
         this.data.employees[index] = { 
             ...oldData, 
             ...updates,
-            lastModified: new Date().toISOString() 
+            id: oldData.id, // Preserve original ID
+            createdAt: oldData.createdAt, // Preserve creation time
+            updatedAt: new Date().toISOString() // Update modification time
         };
         
         this.saveToStorage();
         
         // Emit event for synchronization
         this.emit('employeeUpdated', { 
-            employeeId: id, 
-            oldData, 
-            newData: this.data.employees[index], 
-            changes: updates 
+            employee: this.data.employees[index],
+            oldData,
+            changes: updates
         });
         
+        console.log('Employee updated:', this.data.employees[index].fullName || this.data.employees[index].name);
+        console.log('Employee updated:', this.data.employees[index].fullName || this.data.employees[index].name);
         return this.data.employees[index];
     }
     
@@ -1494,9 +1534,19 @@ class LocalStorageDataService extends DataServiceInterface {
                 if (!emp.fullName && emp.firstName && emp.lastName) {
                     emp.fullName = `${emp.firstName} ${emp.lastName}`;
                 }
-                // Also ensure employeeCode exists
+                
+                // Migrate old employeeCode format (EMP001) to new format (emp_001)
+                if (emp.employeeCode && emp.employeeCode.match(/^EMP\d{3}$/)) {
+                    const match = emp.employeeCode.match(/^EMP(\d{3})$/);
+                    if (match) {
+                        emp.employeeCode = `emp_${match[1]}`;
+                        console.log(`Migrated employee code from ${emp.employeeCode.replace('emp_', 'EMP')} to ${emp.employeeCode}`);
+                    }
+                }
+                
+                // Ensure employeeCode exists with new format
                 if (!emp.employeeCode && emp.id) {
-                    emp.employeeCode = `EMP${String(emp.id).padStart(3, '0')}`;
+                    emp.employeeCode = `emp_${String(emp.id).padStart(3, '0')}`;
                 }
             });
             

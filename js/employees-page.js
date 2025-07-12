@@ -506,6 +506,8 @@ class EmployeesPageManager {
         const modal = document.getElementById('employeeModal');
         const form = document.getElementById('employeeForm');
         const title = document.getElementById('modalTitle');
+        const employeeCodeField = document.getElementById('employeeCode');
+        const employeeCodeGroup = employeeCodeField?.closest('.form-group');
 
         if (!modal || !form || !title) return;
 
@@ -514,10 +516,24 @@ class EmployeesPageManager {
         if (employee) {
             title.textContent = 'Edit Employee';
             this.populateForm(employee);
+            
+            // Show employee code field for editing (but keep it readonly)
+            if (employeeCodeGroup) {
+                employeeCodeGroup.style.display = 'block';
+                employeeCodeField.value = employee.employeeCode || employee.id;
+                employeeCodeField.readOnly = true;
+            }
         } else {
             title.textContent = 'Add Employee';
             form.reset();
             document.getElementById('employeeId').value = '';
+            
+            // Hide employee code field for new employees (will be auto-generated)
+            if (employeeCodeGroup) {
+                employeeCodeGroup.style.display = 'none';
+                employeeCodeField.value = 'Auto-generated';
+            }
+            
             // Set default values
             document.getElementById('hireDate').value = new Date().toISOString().split('T')[0];
             document.getElementById('status').value = 'active';
@@ -592,9 +608,17 @@ class EmployeesPageManager {
                 const updatedEmployee = await this.unifiedManager.updateEmployee(this.currentEmployee.id, employeeData);
                 console.log('Employee updated:', updatedEmployee);
             } else {
+                // For new employees, don't require employee code - it will be auto-generated
+                if (!employeeData.employeeCode || employeeData.employeeCode.trim() === '') {
+                    employeeData.employeeCode = await this.generateNextEmployeeId();
+                }
+                
+                // Remove ID field to let the service handle it
+                delete employeeData.id;
+                
                 // Add new employee using unified data service
                 const newEmployee = await this.unifiedManager.addEmployee(employeeData);
-                console.log('Employee added:', newEmployee);
+                console.log('Employee added with auto-generated ID:', newEmployee.employeeCode);
             }
 
             // Reload data from unified data service
@@ -615,6 +639,47 @@ class EmployeesPageManager {
             btnText?.classList.remove('hidden');
             btnLoading?.classList.add('hidden');
             saveBtn.disabled = false;
+        }
+    }
+
+    /**
+     * Generate the next available employee ID
+     * @returns {Promise<string>} Next employee ID in format emp_001, emp_002, etc.
+     */
+    async generateNextEmployeeId() {
+        try {
+            const employees = await this.unifiedManager.getEmployees();
+            let maxId = 0;
+            
+            // Find the highest existing employee code number
+            employees.forEach(emp => {
+                if (emp.employeeCode) {
+                    const match = emp.employeeCode.match(/emp_(\d+)/i);
+                    if (match) {
+                        const num = parseInt(match[1]);
+                        if (num > maxId) {
+                            maxId = num;
+                        }
+                    }
+                }
+                
+                // Also check numeric IDs as fallback
+                if (emp.id && !isNaN(emp.id)) {
+                    const num = parseInt(emp.id);
+                    if (num > maxId) {
+                        maxId = num;
+                    }
+                }
+            });
+            
+            // Generate next ID with leading zeros
+            const nextId = maxId + 1;
+            return `emp_${nextId.toString().padStart(3, '0')}`;
+            
+        } catch (error) {
+            console.error('Error generating employee ID:', error);
+            // Fallback to timestamp-based ID
+            return `emp_${Date.now().toString().slice(-6)}`;
         }
     }
 

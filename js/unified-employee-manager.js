@@ -116,7 +116,7 @@ class UnifiedEmployeeManager {
     normalizeEmployeeData(employees) {
         return employees.map(emp => ({
             id: emp.id,
-            employeeCode: emp.employeeCode || emp.employeeId || `EMP${String(emp.id).padStart(3, '0')}`,
+            employeeCode: emp.employeeCode || emp.employeeId || `emp_${String(emp.id).padStart(3, '0')}`,
             firstName: emp.firstName || emp.name?.split(' ')[0] || 'Unknown',
             lastName: emp.lastName || emp.name?.split(' ').slice(1).join(' ') || 'Employee',
             fullName: emp.fullName || emp.name || `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
@@ -171,7 +171,7 @@ class UnifiedEmployeeManager {
         this.employees = [
             {
                 id: 1,
-                employeeCode: 'EMP001',
+                employeeCode: 'emp_001',
                 firstName: 'John',
                 lastName: 'Doe',
                 fullName: 'John Doe',
@@ -191,7 +191,7 @@ class UnifiedEmployeeManager {
             },
             {
                 id: 2,
-                employeeCode: 'EMP002',
+                employeeCode: 'emp_002',
                 firstName: 'Jane',
                 lastName: 'Smith',
                 fullName: 'Jane Smith',
@@ -211,7 +211,7 @@ class UnifiedEmployeeManager {
             },
             {
                 id: 3,
-                employeeCode: 'EMP003',
+                employeeCode: 'emp_003',
                 firstName: 'Bob',
                 lastName: 'Johnson',
                 fullName: 'Bob Johnson',
@@ -231,7 +231,7 @@ class UnifiedEmployeeManager {
             },
             {
                 id: 4,
-                employeeCode: 'EMP004',
+                employeeCode: 'emp_004',
                 firstName: 'Alice',
                 lastName: 'Brown',
                 fullName: 'Alice Brown',
@@ -251,7 +251,7 @@ class UnifiedEmployeeManager {
             },
             {
                 id: 5,
-                employeeCode: 'EMP005',
+                employeeCode: 'emp_005',
                 firstName: 'Charlie',
                 lastName: 'Wilson',
                 fullName: 'Charlie Wilson',
@@ -281,7 +281,7 @@ class UnifiedEmployeeManager {
             {
                 id: 1,
                 employeeId: 1,
-                employeeCode: 'EMP001',
+                employeeCode: 'emp_001',
                 employeeName: 'John Doe',
                 department: 'Engineering',
                 date: today,
@@ -295,7 +295,7 @@ class UnifiedEmployeeManager {
             {
                 id: 2,
                 employeeId: 2,
-                employeeCode: 'EMP002',
+                employeeCode: 'emp_002',
                 employeeName: 'Jane Smith',
                 department: 'Marketing',
                 date: today,
@@ -543,7 +543,7 @@ class UnifiedEmployeeManager {
             const newId = this.employees.length > 0 ? Math.max(...this.employees.map(e => e.id)) + 1 : 1;
             const newEmployee = {
                 id: newId,
-                employeeCode: employeeData.employeeCode || `EMP${String(newId).padStart(3, '0')}`,
+                employeeCode: employeeData.employeeCode || `emp_${String(newId).padStart(3, '0')}`,
                 ...employeeData,
                 fullName: `${employeeData.firstName} ${employeeData.lastName}`.trim(),
                 schedule: employeeData.schedule || this.getDefaultSchedule(),

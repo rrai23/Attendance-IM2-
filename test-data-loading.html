@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Loading Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .test-step {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+        }
+        .step-success { border-color: #28a745; background-color: #d4edda; }
+        .step-error { border-color: #dc3545; background-color: #f8d7da; }
+        .step-warning { border-color: #ffc107; background-color: #fff3cd; }
+    </style>
+</head>
+<body>
+    <div class="container my-4">
+        <h1>🔍 Data Loading Investigation</h1>
+        <p>This tool will test exactly what happens during data initialization</p>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <h3>Test Controls</h3>
+                <button id="clearAll" class="btn btn-danger mb-2">🗑️ Clear All Data</button>
+                <button id="testFreshLoad" class="btn btn-primary mb-2">🔄 Test Fresh Load</button>
+                <button id="checkCurrentState" class="btn btn-info mb-2">📊 Check Current State</button>
+            </div>
+            <div class="col-md-6">
+                <h3>Test Results</h3>
+                <div id="testResults"></div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-12">
+                <h3>Current Employee Data</h3>
+                <div id="employeeData"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load core scripts -->
+    <script src="js/mock-data.js"></script>
+    <script src="js/core/data-service-api.js"></script>
+    <script src="js/core/local-storage-service.js"></script>
+    <script src="js/core/api-service.js"></script>
+    <script src="js/core/data-service-factory.js"></script>
+    <script src="js/unified-data-service.js"></script>
+
+    <script>
+        function addTestResult(message, type = 'info') {
+            const container = document.getElementById('testResults');
+            const div = document.createElement('div');
+            div.className = `test-step step-${type}`;
+            div.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function displayEmployees(employees, title) {
+            const container = document.getElementById('employeeData');
+            const section = document.createElement('div');
+            section.innerHTML = `
+                <h4>${title} (${employees.length} employees)</h4>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr><th>ID</th><th>Code</th><th>Name</th><th>Email</th><th>Department</th></tr>
+                        </thead>
+                        <tbody>
+                            ${employees.map(emp => `
+                                <tr>
+                                    <td>${emp.id}</td>
+                                    <td><code>${emp.employeeCode || emp.employeeId || 'N/A'}</code></td>
+                                    <td>${emp.fullName || `${emp.firstName} ${emp.lastName}` || emp.name || 'Unknown'}</td>
+                                    <td>${emp.email || 'N/A'}</td>
+                                    <td>${emp.department || 'N/A'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            container.appendChild(section);
+        }
+
+        async function clearAllData() {
+            addTestResult('🗑️ Clearing all localStorage data...', 'warning');
+            
+            // Clear all possible keys
+            localStorage.clear();
+            
+            // Also clear specific keys
+            ['bricks_attendance_data', 'bricks_data', 'bricks_auth_token'].forEach(key => {
+                localStorage.removeItem(key);
+            });
+            
+            addTestResult('✅ All localStorage cleared', 'success');
+            document.getElementById('employeeData').innerHTML = '';
+        }
+
+        async function testFreshLoad() {
+            addTestResult('🔄 Testing fresh data load...', 'info');
+            
+            try {
+                // Create new LocalStorageDataService instance
+                const service = new LocalStorageDataService();
+                
+                addTestResult('📋 LocalStorageDataService created', 'success');
+                
+                // Initialize data
+                await service.initializeData();
+                addTestResult('🔧 Data initialization completed', 'success');
+                
+                // Get employees
+                const employees = await service.getEmployees();
+                addTestResult(`👥 Retrieved ${employees.length} employees`, 'success');
+                
+                // Display employees
+                displayEmployees(employees, 'Fresh Load Results');
+                
+                // Check what's in localStorage now
+                const stored = localStorage.getItem('bricks_attendance_data');
+                if (stored) {
+                    const data = JSON.parse(stored);
+                    addTestResult(`💾 localStorage now contains ${data.employees?.length || 0} employees`, 'info');
+                } else {
+                    addTestResult('❌ No data saved to localStorage!', 'error');
+                }
+                
+            } catch (error) {
+                addTestResult(`❌ Error during fresh load: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkCurrentState() {
+            addTestResult('📊 Checking current state...', 'info');
+            
+            // Check localStorage
+            const stored = localStorage.getItem('bricks_attendance_data');
+            if (stored) {
+                try {
+                    const data = JSON.parse(stored);
+                    addTestResult(`💾 localStorage contains ${data.employees?.length || 0} employees`, 'info');
+                    displayEmployees(data.employees || [], 'Current localStorage Data');
+                } catch (error) {
+                    addTestResult(`❌ Error parsing localStorage: ${error.message}`, 'error');
+                }
+            } else {
+                addTestResult('💾 No data in localStorage', 'warning');
+            }
+            
+            // Check if window.dataService exists
+            if (window.dataService) {
+                try {
+                    const employees = await window.dataService.getEmployees();
+                    addTestResult(`🌐 window.dataService has ${employees.length} employees`, 'info');
+                    displayEmployees(employees, 'window.dataService Data');
+                } catch (error) {
+                    addTestResult(`❌ Error getting data from window.dataService: ${error.message}`, 'error');
+                }
+            } else {
+                addTestResult('🌐 window.dataService not available', 'warning');
+            }
+            
+            // Check mock data
+            if (typeof window.mockData !== 'undefined') {
+                const mockEmployees = window.mockData.employees || [];
+                addTestResult(`📝 window.mockData has ${mockEmployees.length} employees`, 'info');
+                displayEmployees(mockEmployees, 'window.mockData');
+            } else {
+                addTestResult('📝 window.mockData not available', 'warning');
+            }
+            
+            // Try to fetch data.json directly
+            try {
+                const response = await fetch('/mock/data.json');
+                const jsonData = await response.json();
+                addTestResult(`📄 data.json has ${jsonData.employees?.length || 0} employees`, 'info');
+                displayEmployees(jsonData.employees || [], 'data.json Direct Fetch');
+            } catch (error) {
+                addTestResult(`❌ Error fetching data.json: ${error.message}`, 'error');
+            }
+        }
+
+        // Event listeners
+        document.getElementById('clearAll').addEventListener('click', clearAllData);
+        document.getElementById('testFreshLoad').addEventListener('click', testFreshLoad);
+        document.getElementById('checkCurrentState').addEventListener('click', checkCurrentState);
+
+        // Auto-run check on load
+        window.addEventListener('load', () => {
+            setTimeout(checkCurrentState, 1000);
+        });
+    </script>
+</body>
+</html>
