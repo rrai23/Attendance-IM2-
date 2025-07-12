@@ -38,6 +38,7 @@ class PayrollController {
                 this.renderEmployeeWages();
                 this.renderOvertimeRequests();
                 this.renderPayrollHistory();
+                this.renderDepartmentCosts();
             }
             
             this.isInitialized = true;
@@ -52,152 +53,131 @@ class PayrollController {
     }
 
     /**
-     * Load initial data from unified employee manager
+     * Load initial data from simplified data service
      */
     async loadInitialData() {
         try {
-            // Priority 1: Use Unified Employee Manager if available
-            if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
-                console.log('[DATA INTEGRITY] Loading payroll data from Unified Employee Manager');
+            // Use the new simplified data service
+            if (window.dataService && window.dataService.isInitialized) {
+                console.log('[DATA INTEGRITY] Loading payroll data from Simplified Data Service');
                 
-                // Load data directly - some methods may not exist, so use fallbacks
-                this.employees = window.unifiedEmployeeManager.getEmployees();
+                // Load data from the simplified service
+                this.employees = window.dataService.getAllEmployees();
                 
-                // Try to get overtime requests, fallback to localStorage or empty array
-                if (window.unifiedEmployeeManager.getOvertimeRequests) {
-                    this.overtimeRequests = window.unifiedEmployeeManager.getOvertimeRequests() || [];
+                // Load payroll data from simplified service
+                this.payrollData = window.dataService.getAllPayrollData();
+                
+                // Use existing overtime and history data from local storage as fallback
+                const storedRequests = localStorage.getItem('bricks_overtime_requests');
+                if (storedRequests) {
+                    this.overtimeRequests = JSON.parse(storedRequests);
                 } else {
-                    // Fallback to localStorage or generate sample data
-                    const storedRequests = localStorage.getItem('bricks_overtime_requests');
-                    if (storedRequests) {
-                        this.overtimeRequests = JSON.parse(storedRequests);
-                    } else {
-                        this.overtimeRequests = this.generateSampleOvertimeRequests();
-                    }
+                    this.overtimeRequests = this.generateSampleOvertimeRequests();
                 }
                 
-                // Try to get payroll history, fallback to localStorage or empty array  
-                if (window.unifiedEmployeeManager.getPayrollHistory) {
-                    this.payrollHistory = window.unifiedEmployeeManager.getPayrollHistory() || [];
-                } else {
-                    // Fallback to localStorage
-                    const storedHistory = localStorage.getItem('bricks_payroll_history');
-                    this.payrollHistory = storedHistory ? JSON.parse(storedHistory) : [];
-                }
+                // Load payroll history from local storage
+                const storedHistory = localStorage.getItem('bricks_payroll_history');
+                this.payrollHistory = storedHistory ? JSON.parse(storedHistory) : [];
                 
-                // Try to get settings, fallback to default settings
-                if (window.unifiedEmployeeManager.getSettings) {
-                    this.settings = window.unifiedEmployeeManager.getSettings() || {};
-                } else {
-                    this.settings = this.getDefaultSettings();
-                }
+                // Load settings from simplified service
+                this.settings = window.dataService.getAllSettings() || this.getDefaultSettings();
                 
                 // Log employee source information for debugging
                 console.log('[DATA INTEGRITY] Payroll loaded employees:', {
                     count: this.employees.length,
-                    source: 'unifiedEmployeeManager',
-                    employees: this.employees.map(emp => ({ id: emp.id, name: emp.name }))
+                    source: 'simplifiedDataService',
+                    employees: this.employees.map(emp => ({ id: emp.id, name: emp.name, department: emp.department }))
                 });
                 
-                // Set up listeners for unified data changes
-                window.unifiedEmployeeManager.addEventListener('employeeUpdate', () => {
-                    this.employees = window.unifiedEmployeeManager.getEmployees();
+                // For department costs, prioritize unified employee manager if available
+                if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.getEmployees) {
+                    console.log('[DEPT COSTS] Using unified employee manager for department cost calculations');
+                    const unifiedEmployees = window.unifiedEmployeeManager.getEmployees();
+                    console.log('[DEPT COSTS] Unified employees available:', unifiedEmployees.length);
+                    
+                    // Set up listeners for unified employee manager changes specifically for department costs
+                    if (window.unifiedEmployeeManager.addEventListener) {
+                        window.unifiedEmployeeManager.addEventListener('employeeAdded', () => {
+                            console.log('[DEPT COSTS] Employee added in unified manager, refreshing department costs');
+                            this.renderDepartmentCosts();
+                        });
+                        
+                        window.unifiedEmployeeManager.addEventListener('employeeUpdated', () => {
+                            console.log('[DEPT COSTS] Employee updated in unified manager, refreshing department costs');
+                            this.renderDepartmentCosts();
+                        });
+                        
+                        window.unifiedEmployeeManager.addEventListener('employeeDeleted', () => {
+                            console.log('[DEPT COSTS] Employee deleted in unified manager, refreshing department costs');
+                            this.renderDepartmentCosts();
+                        });
+                    }
+                }
+                
+                // Set up listeners for data changes from simplified service
+                window.dataService.addEventListener('employeeChanged', () => {
+                    this.employees = window.dataService.getAllEmployees();
                     this.refreshPayrollDisplay();
                 });
                 
                 // Listen for employee deletions
-                window.unifiedEmployeeManager.addEventListener('employeeDeleted', () => {
-                    console.log('[DATA INTEGRITY] Employee deleted, refreshing payroll data from Unified Employee Manager');
-                    this.employees = window.unifiedEmployeeManager.getEmployees();
+                window.dataService.addEventListener('employeeDeleted', () => {
+                    console.log('[DATA INTEGRITY] Employee deleted, refreshing payroll data from Simplified Data Service');
+                    this.employees = window.dataService.getAllEmployees();
                     this.refreshPayrollDisplay();
                 });
                 
-                // Listen for employee additions
-                window.unifiedEmployeeManager.addEventListener('employeeAdded', () => {
-                    console.log('[DATA INTEGRITY] Employee added, refreshing payroll data from Unified Employee Manager');
-                    this.employees = window.unifiedEmployeeManager.getEmployees();
+                // Listen for settings changes
+                window.dataService.addEventListener('settingChanged', () => {
+                    console.log('[DATA INTEGRITY] Settings changed, refreshing payroll data');
+                    this.settings = window.dataService.getAllSettings();
                     this.refreshPayrollDisplay();
                 });
                 
-                // Listen for general data sync events
-                window.unifiedEmployeeManager.addEventListener('dataSync', (eventData) => {
-                    if (eventData && (eventData.action === 'delete' || eventData.action === 'add' || eventData.action === 'update')) {
-                        console.log('[DATA INTEGRITY] Data sync event received, refreshing payroll data:', eventData.action);
-                        this.employees = window.unifiedEmployeeManager.getEmployees();
-                        this.refreshPayrollDisplay();
-                    }
-                });
-                
-                // Set up listeners for data consistency events
-                window.unifiedEmployeeManager.addEventListener('dataReset', () => {
-                    console.log('[DATA INTEGRITY] Data reset detected, refreshing payroll data');
-                    this.employees = window.unifiedEmployeeManager.getEmployees();
+                // Listen for payroll data changes
+                window.dataService.addEventListener('payrollChanged', () => {
+                    console.log('[DATA INTEGRITY] Payroll data changed, refreshing display');
+                    this.payrollData = window.dataService.getAllPayrollData();
                     this.refreshPayrollDisplay();
                 });
                 
-                window.unifiedEmployeeManager.addEventListener('forceSync', () => {
-                    console.log('Force sync event detected, refreshing payroll data');
-                    this.employees = window.unifiedEmployeeManager.getEmployees();
-                    this.refreshPayrollDisplay();
-                });
-                
-                console.log(`Loaded ${this.employees.length} employees from Unified Employee Manager`);
+                console.log(`Loaded ${this.employees.length} employees from Simplified Data Service`);
                 
                 // Ensure we have sample overtime requests for testing if none exist
                 if (this.overtimeRequests.length === 0) {
-                    if (window.unifiedEmployeeManager.resetOvertimeRequestsForTesting) {
-                        console.log('No overtime requests found, using UnifiedEmployeeManager sample data');
-                        await window.unifiedEmployeeManager.resetOvertimeRequestsForTesting();
-                        if (window.unifiedEmployeeManager.getOvertimeRequests) {
-                            this.overtimeRequests = window.unifiedEmployeeManager.getOvertimeRequests() || [];
-                        }
-                    } else {
-                        console.log('No overtime requests found, generating local sample data');
-                        this.overtimeRequests = this.generateSampleOvertimeRequests();
-                    }
+                    console.log('No overtime requests found, generating sample data');
+                    this.overtimeRequests = this.generateSampleOvertimeRequests();
+                    localStorage.setItem('bricks_overtime_requests', JSON.stringify(this.overtimeRequests));
                 }
-            }
-            // Fallback: Wait for unified employee manager to be available
-            else {
-                console.warn('UnifiedEmployeeManager not available yet, waiting...');
+            } else {
+                // Fallback: Use localStorage or empty data if simplified data service not available
+                console.warn('SimplifiedDataService not available, using localStorage fallback');
                 
-                // Wait for the global instance to become available
-                let retryCount = 0;
-                const maxRetries = 50; // 5 seconds total wait time
+                // Load employees from localStorage
+                const storedEmployees = localStorage.getItem('employees');
+                this.employees = storedEmployees ? JSON.parse(storedEmployees) : [];
                 
-                while (retryCount < maxRetries && !window.unifiedEmployeeManager) {
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    retryCount++;
-                }
+                // Load overtime requests from localStorage
+                const storedRequests = localStorage.getItem('bricks_overtime_requests');
+                this.overtimeRequests = storedRequests ? JSON.parse(storedRequests) : this.generateSampleOvertimeRequests();
                 
-                if (window.unifiedEmployeeManager) {
-                    console.log('UnifiedEmployeeManager became available, loading payroll data');
-                    
-                    if (!window.unifiedEmployeeManager.initialized) {
-                        await window.unifiedEmployeeManager.init();
-                    }
-                    
-                    this.employees = window.unifiedEmployeeManager.getEmployees();
-                    this.overtimeRequests = window.unifiedEmployeeManager.getOvertimeRequests() || [];
-                    this.payrollHistory = window.unifiedEmployeeManager.getPayrollHistory() || [];
-                    this.settings = window.unifiedEmployeeManager.getSettings() || {};
-                    
-                    console.log(`Loaded ${this.employees.length} employees from delayed UnifiedEmployeeManager`);
-                } else {
-                    console.error('UnifiedEmployeeManager never became available, using empty data');
-                    this.employees = [];
-                    this.overtimeRequests = [];
-                    this.payrollHistory = [];
-                    this.settings = {};
-                }
+                // Load payroll history from localStorage
+                const storedHistory = localStorage.getItem('bricks_payroll_history');
+                this.payrollHistory = storedHistory ? JSON.parse(storedHistory) : [];
+                
+                // Use default settings
+                this.settings = this.getDefaultSettings();
+                
+                console.log(`Loaded ${this.employees.length} employees from localStorage fallback`);
             }
 
             // Calculate current payroll data
             await this.calculateCurrentPayrollData();
             
-            // If no employees were loaded, show a warning
+            // If no employees were loaded, show a warning and generate sample data
             if (this.employees.length === 0) {
-                console.warn('No employees loaded for payroll calculation');
+                console.warn('No employees loaded for payroll calculation, generating sample data for testing');
+                this.initializeSampleData();
             }
         } catch (error) {
             console.error('Error loading payroll data:', error);
@@ -1241,6 +1221,7 @@ class PayrollController {
             this.renderEmployeeWages();
             this.renderOvertimeRequests();
             this.renderPayrollHistory();
+            this.renderDepartmentCosts();
             this.showSuccess('Payroll data refreshed');
         } catch (error) {
             console.error('Error refreshing payroll data:', error);
@@ -1261,6 +1242,7 @@ class PayrollController {
                 this.renderEmployeeWages();
                 this.renderOvertimeRequests();
                 this.renderPayrollHistory();
+                this.renderDepartmentCosts();
             });
         } catch (error) {
             console.error('Error refreshing payroll display:', error);
@@ -1392,165 +1374,57 @@ class PayrollController {
     }
 
     /**
-     * Set up data sync listeners for unified data system
+     * Set up data sync listeners for simplified data system
      */
     setupDataSyncListeners() {
-        // Setup unified employee manager listeners if available
-        if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.addEventListener) {
-            console.log('Setting up UnifiedEmployeeManager listeners for payroll auto-sync');
+        // Setup simplified data service listeners if available
+        if (window.dataService && window.dataService.addEventListener) {
+            console.log('Setting up SimplifiedDataService listeners for payroll auto-sync');
             
-            // Listen for employee wage updates
-            window.unifiedEmployeeManager.addEventListener('employeeWageUpdated', async (data) => {
-                console.log('Employee wage updated, refreshing payroll data');
+            // Listen for employee changes
+            window.dataService.addEventListener('employeeChanged', async (data) => {
+                console.log('Employee data changed, refreshing payroll data');
                 try {
-                    await this.refreshData();
+                    this.employees = window.dataService.getAllEmployees();
+                    await this.calculateCurrentPayrollData();
+                    this.refreshPayrollDisplay();
                 } catch (error) {
-                    console.error('Error refreshing payroll data after wage update:', error);
+                    console.error('Error refreshing payroll data after employee change:', error);
                 }
             });
 
-            // Listen for employee data updates
-            window.unifiedEmployeeManager.addEventListener('employeeDataUpdated', async (data) => {
-                console.log('Employee data updated, refreshing payroll data');
-                try {
-                    await this.refreshData();
-                } catch (error) {
-                    console.error('Error refreshing payroll data after employee update:', error);
-                }
-            });
-
-            // Listen for new employees
-            window.unifiedEmployeeManager.addEventListener('employeeAdded', async (data) => {
-                console.log('New employee added, refreshing payroll data');
-                try {
-                    await this.refreshData();
-                } catch (error) {
-                    console.error('Error refreshing payroll data after employee added:', error);
-                }
-            });
-
-            // Listen for deleted employees
-            window.unifiedEmployeeManager.addEventListener('employeeDeleted', async (data) => {
+            // Listen for employee deletions
+            window.dataService.addEventListener('employeeDeleted', async (data) => {
                 console.log('Employee deleted, refreshing payroll data');
                 try {
-                    await this.refreshData();
+                    this.employees = window.dataService.getAllEmployees();
+                    await this.calculateCurrentPayrollData();
+                    this.refreshPayrollDisplay();
                 } catch (error) {
-                    console.error('Error refreshing payroll data after employee deleted:', error);
+                    console.error('Error refreshing payroll data after employee deletion:', error);
                 }
             });
 
-            console.log('UnifiedEmployeeManager payroll sync listeners configured');
-        } else {
-            console.warn('UnifiedEmployeeManager not available for payroll sync listeners');
-        }
-
-        // Setup UnifiedEmployeeManager listeners if available (for same-page events)
-        if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.addEventListener) {
-            // Listen for employee updates
-            window.unifiedEmployeeManager.addEventListener('employeeUpdated', () => {
-                console.log('Employee updated via UnifiedEmployeeManager, refreshing payroll data');
-                this.employees = window.unifiedEmployeeManager.getEmployees();
-                this.refreshPayrollDisplay();
-            });
-            
-            // Listen for employee deletions
-            window.unifiedEmployeeManager.addEventListener('employeeDeleted', () => {
-                console.log('Employee deleted via UnifiedEmployeeManager, refreshing payroll data');
-                this.employees = window.unifiedEmployeeManager.getEmployees();
-                this.refreshPayrollDisplay();
-            });
-            
-            // Listen for employee additions
-            window.unifiedEmployeeManager.addEventListener('employeeAdded', () => {
-                console.log('Employee added via UnifiedEmployeeManager, refreshing payroll data');
-                this.employees = window.unifiedEmployeeManager.getEmployees();
-                this.refreshPayrollDisplay();
-            });
-        }
-        
-        // Setup cross-tab synchronization using BroadcastChannel
-        if (typeof BroadcastChannel !== 'undefined') {
-            try {
-                this.broadcastChannel = new BroadcastChannel('bricks-attendance-sync');
-                this.broadcastChannel.addEventListener('message', (event) => {
-                    if (event.data.source === 'UnifiedEmployeeManager') {
-                        console.log('Received cross-tab sync event:', event.data.type);
-                        
-                        // Handle different event types
-                        switch (event.data.type) {
-                            case 'employeeDeleted':
-                            case 'employeeAdded':
-                            case 'employeeUpdated':
-                                console.log('Employee data changed in another tab, refreshing payroll data');
-                                // Reload data from UnifiedEmployeeManager if available
-                                if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.getEmployees) {
-                                    this.employees = window.unifiedEmployeeManager.getEmployees();
-                                    this.refreshPayrollDisplay();
-                                } else {
-                                    // Fallback to full refresh
-                                    this.refreshData().catch(console.error);
-                                }
-                                break;
-                        }
-                    }
-                });
-            } catch (error) {
-                console.warn('BroadcastChannel not available for cross-tab sync:', error);
-            }
-        }
-        
-        // Setup localStorage fallback for cross-tab communication
-        window.addEventListener('storage', (event) => {
-            if (event.key === 'bricks-system-event' && event.newValue) {
+            // Listen for payroll data changes
+            window.dataService.addEventListener('payrollChanged', async (data) => {
+                console.log('Payroll data changed, refreshing display');
                 try {
-                    const syncData = JSON.parse(event.newValue);
-                    console.log('Received storage sync event:', syncData.type);
-                    
-                    // Handle employee events
-                    switch (syncData.type) {
-                        case 'employeeDeleted':
-                        case 'employeeAdded':
-                        case 'employeeUpdated':
-                            console.log('Employee data changed in another tab (via storage), refreshing payroll data');
-                            // Reload data from UnifiedEmployeeManager if available
-                            if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.getEmployees) {
-                                this.employees = window.unifiedEmployeeManager.getEmployees();
-                                this.refreshPayrollDisplay();
-                            } else {
-                                // Fallback to full refresh
-                                this.refreshData().catch(console.error);
-                            }
-                            break;
-                    }
+                    this.payrollData = window.dataService.getAllPayrollData();
+                    this.refreshPayrollDisplay();
                 } catch (error) {
-                    console.warn('Failed to parse storage sync data:', error);
+                    console.error('Error refreshing payroll display after payroll change:', error);
                 }
-            }
-        });
-        
-        // Setup DOM custom event listener for same-page component communication
-        document.addEventListener('bricksSystemUpdate', (event) => {
-            const { type, data } = event.detail;
-            console.log('Received DOM custom event:', type);
-            
-            switch (type) {
-                case 'employeeDeleted':
-                case 'employeeAdded':
-                case 'employeeUpdated':
-                    console.log('Employee data changed (via DOM event), refreshing payroll data');
-                    // Reload data from UnifiedEmployeeManager if available
-                    if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.getEmployees) {
-                        this.employees = window.unifiedEmployeeManager.getEmployees();
-                        this.refreshPayrollDisplay();
-                    } else {
-                        // Fallback to full refresh
-                        this.refreshData().catch(console.error);
-                    }
-                    break;
-            }
-        });
+            });
+
+            console.log('SimplifiedDataService payroll sync listeners configured');
+        } else {
+            console.warn('SimplifiedDataService not available for payroll sync listeners');
+        }
     }
 
+    /**
+     * Generate sample overtime requests for testing
+     */
     /**
      * Generate sample overtime requests for testing
      */
@@ -1609,7 +1483,197 @@ class PayrollController {
         };
     }
 
-    // ...existing code...
+    /**
+     * Calculate department costs for current pay period using unified employee manager
+     */
+    calculateDepartmentCosts() {
+        console.log('Calculating department costs using unified employee manager...');
+        
+        // Try to get employees from unified employee manager first
+        let employees = [];
+        if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.getEmployees) {
+            employees = window.unifiedEmployeeManager.getEmployees();
+            console.log('Using employees from unified manager:', employees.length);
+        } else if (this.employees && this.employees.length > 0) {
+            employees = this.employees;
+            console.log('Using fallback employees:', employees.length);
+        } else {
+            console.warn('No employees available for department cost calculation');
+            return {};
+        }
+        
+        const departmentCosts = {};
+        
+        for (const emp of employees) {
+            const dept = emp.department || 'Unassigned';
+            
+            // Calculate gross pay for this employee
+            let grossPay = 0;
+            if (emp.payroll && emp.payroll.grossPay) {
+                grossPay = emp.payroll.grossPay;
+            } else if (emp.baseSalary) {
+                // Calculate bi-weekly pay from annual salary
+                grossPay = emp.baseSalary / 26;
+            } else if (emp.hourlyRate) {
+                // Calculate based on 40 hours per week, 2 weeks
+                grossPay = emp.hourlyRate * 80;
+            } else {
+                // Default calculation
+                grossPay = 50000 / 26; // Default salary assumption
+            }
+            
+            if (!departmentCosts[dept]) {
+                departmentCosts[dept] = 0;
+            }
+            departmentCosts[dept] += grossPay;
+        }
+        
+        console.log('Department costs calculated:', departmentCosts);
+        return departmentCosts;
+    }
+
+    /**
+     * Render department costs tile (sample)
+     */
+    renderDepartmentCosts() {
+        console.log('Rendering department costs...');
+        
+        const container = document.querySelector('.department-costs');
+        if (!container) {
+            console.warn('Department costs container not found (.department-costs)');
+            return;
+        }
+        
+        const costs = this.calculateDepartmentCosts();
+        const departments = Object.keys(costs);
+        
+        console.log('Department costs data:', { costs, departments });
+        
+        if (departments.length === 0) {
+            container.innerHTML = `
+                <div class="no-dept-costs">
+                    <p>No department cost data available.</p>
+                    <p style="font-size: 0.9em; color: #666;">
+                        Ensure employees have department information and payroll data exists.
+                    </p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Calculate total for percentage calculation
+        const totalCosts = Object.values(costs).reduce((sum, cost) => sum + cost, 0);
+        
+        container.innerHTML = `
+            <div class="dept-costs-header">
+                <h3>Department Costs (Current Pay Period)</h3>
+                <p style="font-size: 0.9em; color: #666; margin: 5px 0 15px 0;">
+                    Total: ${this.formatCurrency(totalCosts)} across ${departments.length} departments
+                </p>
+            </div>
+            <div class="dept-costs-list">
+                ${departments.map(dept => {
+                    const cost = costs[dept];
+                    const percentage = totalCosts > 0 ? ((cost / totalCosts) * 100).toFixed(1) : 0;
+                    return `
+                        <div class="dept-cost-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee;">
+                            <span class="dept-name" style="font-weight: 500;">${dept}</span>
+                            <div style="text-align: right;">
+                                <span class="dept-cost" style="font-weight: bold; color: #28a745;">${this.formatCurrency(cost)}</span>
+                                <div style="font-size: 0.8em; color: #666;">${percentage}%</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+        
+        console.log('Department costs rendered successfully');
+    }
+
+    /**
+     * Generate sample department cost data for testing
+     */
+    generateSampleDepartmentCosts() {
+        // Use current employees and payrollData
+        if (!this.employees || this.employees.length === 0) return {};
+        // Simulate payrollData if not present
+        if (!this.payrollData || !this.payrollData.employees) {
+            this.payrollData = { employees: this.employees.map(emp => ({
+                ...emp,
+                payroll: {
+                    grossPay: Math.floor(Math.random() * 20000) + 10000
+                }
+            })) };
+        }
+        return this.calculateDepartmentCosts();
+    }
+
+    /**
+     * Initialize sample data for testing department costs
+     */
+    initializeSampleData() {
+        console.log('Initializing sample data for department costs...');
+        
+        // Generate sample employees if none exist
+        if (!this.employees || this.employees.length === 0) {
+            this.employees = [
+                { 
+                    id: 'EMP001', 
+                    name: 'John Smith', 
+                    department: 'Engineering',
+                    baseSalary: 75000
+                },
+                { 
+                    id: 'EMP002', 
+                    name: 'Sarah Johnson', 
+                    department: 'Marketing',
+                    baseSalary: 65000
+                },
+                { 
+                    id: 'EMP003', 
+                    name: 'Mike Davis', 
+                    department: 'Engineering',
+                    baseSalary: 80000
+                },
+                { 
+                    id: 'EMP004', 
+                    name: 'Lisa Wilson', 
+                    department: 'Sales',
+                    baseSalary: 70000
+                },
+                { 
+                    id: 'EMP005', 
+                    name: 'David Brown', 
+                    department: 'HR',
+                    baseSalary: 60000
+                },
+                { 
+                    id: 'EMP006', 
+                    name: 'Emily Taylor', 
+                    department: 'Marketing',
+                    baseSalary: 55000
+                }
+            ];
+        }
+
+        // Generate sample payroll data
+        this.payrollData = {
+            employees: this.employees.map(emp => ({
+                ...emp,
+                payroll: {
+                    grossPay: emp.baseSalary / 26, // Bi-weekly pay
+                    overtimePay: Math.floor(Math.random() * 500),
+                    totalPay: (emp.baseSalary / 26) + Math.floor(Math.random() * 500)
+                }
+            }))
+        };
+
+        console.log('Sample data initialized:', {
+            employeeCount: this.employees.length,
+            payrollDataCount: this.payrollData.employees.length
+        });
+    }
 }
 
 // Make PayrollController available globally immediately
