@@ -303,7 +303,15 @@ class PayrollController {
         // Employee wage edit buttons
         document.addEventListener('click', (e) => {
             if (e.target.matches('.edit-wage-btn')) {
+                console.log('[WAGE EDIT] Edit wage button clicked:', e.target);
                 const employeeId = parseInt(e.target.dataset.employeeId);
+                console.log('[WAGE EDIT] Employee ID from dataset:', employeeId);
+                
+                if (isNaN(employeeId)) {
+                    console.error('[WAGE EDIT] Invalid employee ID:', e.target.dataset.employeeId);
+                    return;
+                }
+                
                 this.showEditWageModal(employeeId);
             }
         });
@@ -691,71 +699,98 @@ class PayrollController {
      * Show edit wage modal
      */
     async showEditWageModal(employeeId) {
-        // Check if modalManager is available
-        if (typeof modalManager === 'undefined' && typeof window.modalManager === 'undefined') {
-            console.error('modalManager is not available');
-            return;
-        }
-        
-        const manager = typeof modalManager !== 'undefined' ? modalManager : window.modalManager;
-        
-        const employee = this.employees.find(emp => emp.id === employeeId);
-        if (!employee) {
-            console.warn(`Employee with ID ${employeeId} not found`);
-            return;
-        }
+        try {
+            console.log('[WAGE EDIT] Attempting to show edit wage modal for employee ID:', employeeId);
+            
+            // Check if modalManager is available
+            if (typeof modalManager === 'undefined' && typeof window.modalManager === 'undefined') {
+                console.error('[WAGE EDIT] modalManager is not available');
+                this.showError('Modal system not available. Please refresh the page.');
+                return;
+            }
+            
+            const manager = typeof modalManager !== 'undefined' ? modalManager : window.modalManager;
+            console.log('[WAGE EDIT] Using modalManager:', typeof manager);
+            
+            const employee = this.employees.find(emp => {
+                // Handle different ID types (string vs number)
+                return emp.id === employeeId || 
+                       parseInt(emp.id) === employeeId ||
+                       String(emp.id) === String(employeeId);
+            });
+            
+            if (!employee) {
+                console.warn(`[WAGE EDIT] Employee with ID ${employeeId} not found in:`, this.employees.map(e => ({ 
+                    id: e.id, 
+                    idType: typeof e.id,
+                    name: e.fullName || e.name 
+                })));
+                this.showError(`Employee not found (ID: ${employeeId})`);
+                return;
+            }
 
-        // Handle different name property variations
-        const employeeName = employee.fullName || 
-                           employee.name || 
-                           `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 
-                           'Unknown Employee';
+            // Handle different name property variations
+            const employeeName = employee.fullName || 
+                               employee.name || 
+                               `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 
+                               'Unknown Employee';
 
-        const modalId = manager.create({
-            title: `Edit Wage - ${employeeName}`,
-            form: {
-                fields: [
+            console.log('[WAGE EDIT] Creating modal for employee:', { id: employeeId, name: employeeName, currentRate: employee.hourlyRate });
+
+            const modalId = manager.create({
+                title: `Edit Wage - ${employeeName}`,
+                form: {
+                    fields: [
+                        {
+                            type: 'number',
+                            name: 'hourlyRate',
+                            label: 'Hourly Rate (₱)',
+                            value: employee.hourlyRate || 25.00,
+                            required: true,
+                            step: '0.01',
+                            min: '0'
+                        },
+                        {
+                            type: 'textarea',
+                            name: 'notes',
+                            label: 'Notes (optional)',
+                            placeholder: 'Reason for wage change...',
+                            rows: 3
+                        }
+                    ]
+                },
+                buttons: [
                     {
-                        type: 'number',
-                        name: 'hourlyRate',
-                        label: 'Hourly Rate (₱)',
-                        value: employee.hourlyRate || 25.00,
-                        required: true,
-                        step: '0.01',
-                        min: '0'
+                        text: 'Cancel',
+                        class: 'btn-secondary',
+                        action: 'cancel'
                     },
                     {
-                        type: 'textarea',
-                        name: 'notes',
-                        label: 'Notes (optional)',
-                        placeholder: 'Reason for wage change...',
-                        rows: 3
+                        text: 'Update Wage',
+                        class: 'btn-primary',
+                        action: 'submit'
                     }
-                ]
-            },
-            buttons: [
-                {
-                    text: 'Cancel',
-                    class: 'btn-secondary',
-                    action: 'cancel'
-                },
-                {
-                    text: 'Update Wage',
-                    class: 'btn-primary',
-                    action: 'submit'
+                ],
+                onSubmit: async (data) => {
+                    try {
+                        console.log('[WAGE EDIT] Modal submitted with data:', data);
+                        await this.updateEmployeeWage(employeeId, parseFloat(data.hourlyRate), data.notes);
+                        this.showSuccess('Employee wage updated successfully');
+                        return true;
+                    } catch (error) {
+                        console.error('[WAGE EDIT] Error updating wage:', error);
+                        this.showError('Failed to update employee wage: ' + error.message);
+                        return false;
+                    }
                 }
-            ],
-            onSubmit: async (data) => {
-                try {
-                    await this.updateEmployeeWage(employeeId, parseFloat(data.hourlyRate), data.notes);
-                    this.showSuccess('Employee wage updated successfully');
-                    return true;
-                } catch (error) {
-                    this.showError('Failed to update employee wage');
-                    return false;
-                }
-            }
-        });
+            });
+            
+            console.log('[WAGE EDIT] Modal created with ID:', modalId);
+            
+        } catch (error) {
+            console.error('[WAGE EDIT] Error showing edit wage modal:', error);
+            this.showError('Failed to open wage edit dialog: ' + error.message);
+        }
     }
 
     /**
@@ -767,8 +802,15 @@ class PayrollController {
             
             // Priority 1: Use Unified Employee Manager if available
             if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
-                console.log('Using Unified Employee Manager to update wage');
-                window.unifiedEmployeeManager.updateEmployeeWage(employeeId, { hourlyRate: newRate });
+                console.log('[DATA INTEGRITY] Using Unified Employee Manager to update wage');
+                
+                // Use the correct updateEmployee method with the wage data
+                const updatedEmployee = window.unifiedEmployeeManager.updateEmployee(employeeId, { 
+                    hourlyRate: parseFloat(newRate),
+                    updatedAt: new Date().toISOString()
+                });
+                
+                console.log('[DATA INTEGRITY] Employee wage updated via UnifiedEmployeeManager:', updatedEmployee);
                 
                 // Update local employee data to reflect the change
                 this.employees = window.unifiedEmployeeManager.getEmployees();
@@ -776,9 +818,16 @@ class PayrollController {
             // Fallback: Update local data only if unified manager is not available
             else {
                 console.warn('UnifiedEmployeeManager not available, updating wage in local data only (no persistent storage)');
-                const employee = this.employees.find(emp => emp.id === employeeId);
+                const employee = this.employees.find(emp => {
+                    // Handle different ID types (string vs number)
+                    return emp.id === employeeId || 
+                           parseInt(emp.id) === employeeId ||
+                           String(emp.id) === String(employeeId);
+                });
+                
                 if (employee) {
                     employee.hourlyRate = newRate;
+                    employee.updatedAt = new Date().toISOString();
                     console.log(`Updated employee ${employee.fullName || employee.name} wage to ₱${newRate}`);
                 } else {
                     console.error(`Employee with ID ${employeeId} not found for wage update`);
@@ -796,6 +845,7 @@ class PayrollController {
             // Log the change if notes provided
             if (notes) {
                 console.log(`Wage change note for employee ${employeeId}: ${notes}`);
+                // TODO: Store wage change history with notes if needed
             }
             
             console.log('Wage update completed successfully');

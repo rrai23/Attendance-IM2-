@@ -131,54 +131,76 @@ class DashboardController {
     setupEventListeners() {
         // Listen for unified employee manager updates (highest priority)
         if (window.unifiedEmployeeManager) {
+            console.log('[DATA SYNC] Dashboard setting up UnifiedEmployeeManager event listeners');
+            
             window.unifiedEmployeeManager.addEventListener('attendanceUpdate', (data) => {
-                console.log('Dashboard received attendance update from unified employee manager:', data);
+                console.log('[DATA SYNC] Dashboard received attendance update from unified employee manager:', data);
                 this.handleDataUpdate();
             });
             
             window.unifiedEmployeeManager.addEventListener('employeeUpdate', (data) => {
-                console.log('Dashboard received employee update from unified employee manager:', data);
+                console.log('[DATA SYNC] Dashboard received employee update from unified employee manager:', data);
                 this.handleDataUpdate();
             });
             
             window.unifiedEmployeeManager.addEventListener('employeeDeleted', (data) => {
-                console.log('Dashboard received employee deletion from unified employee manager:', data);
+                console.log('[DATA SYNC] Dashboard received employee deletion from unified employee manager:', data);
+                this.handleDataUpdate();
+            });
+            
+            window.unifiedEmployeeManager.addEventListener('employeeAdded', (data) => {
+                console.log('[DATA SYNC] Dashboard received employee addition from unified employee manager:', data);
                 this.handleDataUpdate();
             });
             
             window.unifiedEmployeeManager.addEventListener('dataSync', (data) => {
-                console.log('Dashboard received data sync from unified employee manager:', data);
-                this.handleDataUpdate();
+                console.log('[DATA SYNC] Dashboard received data sync from unified employee manager:', data);
+                if (data && (data.action === 'delete' || data.action === 'add' || data.action === 'update' || data.action === 'forceCleanup')) {
+                    this.handleDataUpdate();
+                }
+            });
+            
+            // Listen for system-wide broadcasts
+            document.addEventListener('bricksSystemUpdate', (event) => {
+                const { type, data } = event.detail;
+                console.log('[DATA SYNC] Dashboard received system update:', type, data);
+                if (type.includes('employee') || type.includes('Employee') || type.includes('attendance') || type.includes('Attendance')) {
+                    this.handleDataUpdate();
+                }
             });
         }
         
         // Listen for unified data service updates
         if (window.dataService) {
+            console.log('[DATA SYNC] Dashboard setting up dataService event listeners');
+            
             window.dataService.addEventListener('attendanceUpdate', (data) => {
-                console.log('Dashboard received attendance update from unified service:', data);
+                console.log('[DATA SYNC] Dashboard received attendance update from unified service:', data);
                 this.handleDataUpdate();
             });
             
             window.dataService.addEventListener('dataChange', (data) => {
-                console.log('Dashboard received data change from unified service:', data);
+                console.log('[DATA SYNC] Dashboard received data change from unified service:', data);
                 this.handleDataUpdate();
             });
             
             window.dataService.addEventListener('employeeUpdate', (data) => {
-                console.log('Dashboard received employee update from unified service:', data);
+                console.log('[DATA SYNC] Dashboard received employee update from unified service:', data);
                 this.handleDataUpdate();
             });
         }
         
         // Also listen for legacy data manager updates for backwards compatibility
         if (window.dataManager) {
+            console.log('[DATA SYNC] Dashboard setting up legacy dataManager event listeners');
+            
             window.dataManager.addEventListener('attendanceUpdate', (data) => {
-                console.log('Dashboard received attendance update from legacy manager:', data);
+                console.log('[DATA SYNC] Dashboard received attendance update from legacy manager:', data);
                 this.handleDataUpdate();
             });
             
             window.dataManager.addEventListener('dataSync', (data) => {
-                console.log('Dashboard received data sync from legacy manager:', data);
+                console.log('[DATA SYNC] Dashboard received data sync from legacy manager:', data);
                 this.handleDataUpdate();
             });
         }
@@ -381,15 +403,23 @@ class DashboardController {
      */
     async processTodayAttendance(records) {
         try {
-            // Get total number of active employees from the data service
+            // Get total number of active employees - prioritize unified employee manager
             let totalEmployees = 0;
             
-            if (window.dataService && window.dataService.getEmployees) {
+            if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
+                // Use UnifiedEmployeeManager for consistency with employees page
+                const employees = window.unifiedEmployeeManager.getEmployees();
+                totalEmployees = employees.filter(emp => emp.status === 'active').length;
+                console.log('[DATA INTEGRITY] Dashboard using UnifiedEmployeeManager for employee count:', totalEmployees);
+            } else if (window.dataService && window.dataService.getEmployees) {
+                // Fallback to data service if UnifiedEmployeeManager not available
                 const employees = await window.dataService.getEmployees();
                 totalEmployees = employees.filter(emp => emp.status === 'active').length;
+                console.log('[DATA INTEGRITY] Dashboard falling back to dataService for employee count:', totalEmployees);
             } else {
                 // Fallback: assume a reasonable number if we can't get the actual count
                 totalEmployees = Math.max(6, records.length);
+                console.warn('[DATA INTEGRITY] Dashboard using fallback employee count:', totalEmployees);
             }
             
             let present = 0;
