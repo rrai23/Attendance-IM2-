@@ -1106,6 +1106,19 @@ function createPayrollController() {
         if (typeof window !== 'undefined') {
             window.payrollController = payrollController;
             console.log('Global payrollController instance created and available');
+            
+            // Register with global synchronization system
+            setTimeout(() => {
+                if (window.globalSystemSync && window.globalSystemSync.initialized) {
+                    window.globalSystemSync.registerComponent('payrollController', payrollController, {
+                        refreshData: 'refreshData',
+                        updateEmployeeList: 'loadEmployees',
+                        recalculatePayroll: 'calculatePayroll',
+                        loadEmployees: 'loadEmployees'
+                    });
+                    console.log('Payroll controller registered with global sync');
+                }
+            }, 500);
         }
         return payrollController;
     } catch (error) {

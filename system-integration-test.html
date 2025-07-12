@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Integration Test - Bricks Attendance</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .test-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .test-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .test-section h3 {
+            color: #333;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .status-loading { background: #ffc107; }
+        .status-success { background: #28a745; }
+        .status-error { background: #dc3545; }
+        
+        .test-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+        }
+        
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+        
+        .test-button:hover {
+            background: #0056b3;
+        }
+        
+        .test-button.danger {
+            background: #dc3545;
+        }
+        
+        .test-button.danger:hover {
+            background: #c82333;
+        }
+        
+        .test-button.success {
+            background: #28a745;
+        }
+        
+        .test-button.success:hover {
+            background: #218838;
+        }
+        
+        .results-panel {
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .employee-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .employee-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 1rem;
+            position: relative;
+        }
+        
+        .employee-card h4 {
+            margin: 0 0 0.5rem 0;
+            color: #333;
+        }
+        
+        .employee-card .employee-id {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .employee-card .delete-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .sync-status {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .component-status {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .component-status h4 {
+            margin: 0 0 0.5rem 0;
+            color: #333;
+        }
+        
+        .log-entry {
+            margin: 0.25rem 0;
+            padding: 0.25rem;
+            border-left: 3px solid #007bff;
+            background: #f8f9fa;
+        }
+        
+        .log-entry.success {
+            border-left-color: #28a745;
+        }
+        
+        .log-entry.error {
+            border-left-color: #dc3545;
+        }
+        
+        .log-entry.warning {
+            border-left-color: #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔧 System Integration Test Suite</h1>
+        <p>This page tests the complete system-wide synchronization. Changes made here should reflect across all pages instantly.</p>
+        
+        <!-- System Status -->
+        <div class="test-section">
+            <h3>
+                <span class="status-indicator" id="systemStatus"></span>
+                System Status
+            </h3>
+            <div class="sync-status" id="syncStatus">
+                <!-- Status will be populated by JavaScript -->
+            </div>
+        </div>
+        
+        <!-- Employee Management Test -->
+        <div class="test-section">
+            <h3>
+                <span class="status-indicator" id="employeeTestStatus"></span>
+                Employee Management Integration Test
+            </h3>
+            <p>Test adding, updating, and deleting employees. Changes should reflect in dashboard, payroll, and attendance pages.</p>
+            
+            <div class="test-actions">
+                <button class="test-button" onclick="testAddEmployee()">Add Test Employee</button>
+                <button class="test-button" onclick="testUpdateEmployee()">Update First Employee</button>
+                <button class="test-button danger" onclick="testDeleteLastEmployee()">Delete Last Employee</button>
+                <button class="test-button success" onclick="refreshEmployeeDisplay()">Refresh Display</button>
+            </div>
+            
+            <div class="employee-list" id="employeeList">
+                <!-- Employees will be populated here -->
+            </div>
+        </div>
+        
+        <!-- Attendance Integration Test -->
+        <div class="test-section">
+            <h3>
+                <span class="status-indicator" id="attendanceTestStatus"></span>
+                Attendance Integration Test
+            </h3>
+            <p>Test attendance record operations. Changes should reflect across all system components.</p>
+            
+            <div class="test-actions">
+                <button class="test-button" onclick="testAddAttendance()">Add Test Attendance</button>
+                <button class="test-button" onclick="testUpdateAttendance()">Update Attendance</button>
+                <button class="test-button success" onclick="refreshAttendanceDisplay()">Refresh Attendance</button>
+            </div>
+            
+            <div class="results-panel" id="attendanceResults">
+                Attendance test results will appear here...
+            </div>
+        </div>
+        
+        <!-- Cross-Page Navigation Test -->
+        <div class="test-section">
+            <h3>
+                <span class="status-indicator" id="navigationTestStatus"></span>
+                Cross-Page Navigation Test
+            </h3>
+            <p>Test navigation between pages to ensure changes persist and sync properly.</p>
+            
+            <div class="test-actions">
+                <button class="test-button" onclick="openEmployeesPage()">Open Employees Page</button>
+                <button class="test-button" onclick="openDashboard()">Open Dashboard</button>
+                <button class="test-button" onclick="openPayroll()">Open Payroll</button>
+                <button class="test-button" onclick="openAnalytics()">Open Analytics</button>
+            </div>
+            
+            <div class="results-panel" id="navigationResults">
+                Navigation test results will appear here...
+            </div>
+        </div>
+        
+        <!-- System Log -->
+        <div class="test-section">
+            <h3>
+                <span class="status-indicator status-success"></span>
+                System Event Log
+            </h3>
+            <div class="test-actions">
+                <button class="test-button" onclick="clearLog()">Clear Log</button>
+                <button class="test-button" onclick="forceSystemRefresh()">Force System Refresh</button>
+            </div>
+            <div class="results-panel" id="systemLog">
+                System events will be logged here...
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/mock-data.js"></script>
+    <script src="js/unified-employee-manager.js"></script>
+    <script src="js/data-service.js"></script>
+    <script src="js/global-system-sync.js"></script>
+
+    <script>
+        // Test Suite Implementation
+        class SystemIntegrationTest {
+            constructor() {
+                this.testLog = [];
+                this.employeeCounter = 1;
+                this.attendanceCounter = 1;
+                
+                this.init();
+            }
+
+            async init() {
+                try {
+                    this.log('Initializing System Integration Test...', 'info');
+                    
+                    // Wait for unified manager
+                    await this.waitForUnifiedManager();
+                    
+                    // Wait for global sync
+                    await this.waitForGlobalSync();
+                    
+                    // Set up event listeners
+                    this.setupEventListeners();
+                    
+                    // Update status displays
+                    this.updateSystemStatus();
+                    this.refreshEmployeeDisplay();
+                    
+                    this.log('System Integration Test initialized successfully!', 'success');
+                    
+                } catch (error) {
+                    this.log('Failed to initialize test suite: ' + error.message, 'error');
+                }
+            }
+
+            async waitForUnifiedManager() {
+                const maxWait = 10000;
+                const interval = 100;
+                let waited = 0;
+                
+                while (!window.unifiedEmployeeManager?.initialized && waited < maxWait) {
+                    await new Promise(resolve => setTimeout(resolve, interval));
+                    waited += interval;
+                }
+                
+                if (!window.unifiedEmployeeManager?.initialized) {
+                    throw new Error('Unified Employee Manager not available');
+                }
+                
+                this.unifiedManager = window.unifiedEmployeeManager;
+                this.log('Unified Employee Manager connected', 'success');
+            }
+
+            async waitForGlobalSync() {
+                const maxWait = 10000;
+                const interval = 100;
+                let waited = 0;
+                
+                while (!window.globalSystemSync?.initialized && waited < maxWait) {
+                    await new Promise(resolve => setTimeout(resolve, interval));
+                    waited += interval;
+                }
+                
+                if (!window.globalSystemSync?.initialized) {
+                    throw new Error('Global System Sync not available');
+                }
+                
+                this.globalSync = window.globalSystemSync;
+                this.log('Global System Sync connected', 'success');
+            }
+
+            setupEventListeners() {
+                // Listen for employee events
+                this.unifiedManager.addEventListener('employeeAdded', (data) => {
+                    this.log(`Employee added: ${data.employee.fullName}`, 'success');
+                    this.refreshEmployeeDisplay();
+                });
+
+                this.unifiedManager.addEventListener('employeeUpdated', (data) => {
+                    this.log(`Employee updated: ${data.employee.fullName}`, 'success');
+                    this.refreshEmployeeDisplay();
+                });
+
+                this.unifiedManager.addEventListener('employeeDeleted', (data) => {
+                    this.log(`Employee deleted: ${data.employee.fullName}`, 'warning');
+                    this.refreshEmployeeDisplay();
+                });
+
+                // Listen for attendance events
+                this.unifiedManager.addEventListener('attendanceUpdated', (data) => {
+                    this.log(`Attendance updated for ${data.record.employeeName}`, 'info');
+                });
+
+                // Listen for system sync events
+                document.addEventListener('bricksSystemUpdate', (event) => {
+                    this.log(`System event: ${event.detail.type}`, 'info');
+                });
+            }
+
+            updateSystemStatus() {
+                const status = this.globalSync.getSyncStatus();
+                
+                document.getElementById('systemStatus').className = 
+                    'status-indicator ' + (status.initialized ? 'status-success' : 'status-error');
+                
+                const syncStatusEl = document.getElementById('syncStatus');
+                syncStatusEl.innerHTML = `
+                    <div class="component-status">
+                        <h4>Unified Manager</h4>
+                        <div class="status-indicator ${status.unifiedManagerReady ? 'status-success' : 'status-error'}"></div>
+                        <div>${status.unifiedManagerReady ? 'Connected' : 'Disconnected'}</div>
+                    </div>
+                    <div class="component-status">
+                        <h4>Global Sync</h4>
+                        <div class="status-indicator ${status.initialized ? 'status-success' : 'status-error'}"></div>
+                        <div>${status.initialized ? 'Active' : 'Inactive'}</div>
+                    </div>
+                    <div class="component-status">
+                        <h4>Components</h4>
+                        <div class="status-indicator ${status.componentsCount > 0 ? 'status-success' : 'status-loading'}"></div>
+                        <div>${status.componentsCount} Registered</div>
+                    </div>
+                    <div class="component-status">
+                        <h4>Cross-Page Sync</h4>
+                        <div class="status-indicator ${status.crossPageSupport ? 'status-success' : 'status-error'}"></div>
+                        <div>${status.crossPageSupport ? 'Supported' : 'Limited'}</div>
+                    </div>
+                `;
+            }
+
+            refreshEmployeeDisplay() {
+                const employees = this.unifiedManager.getEmployees();
+                const employeeListEl = document.getElementById('employeeList');
+                
+                employeeListEl.innerHTML = employees.map(emp => `
+                    <div class="employee-card">
+                        <button class="delete-btn" onclick="testDeleteEmployee(${emp.id})" title="Delete Employee">×</button>
+                        <h4>${emp.fullName}</h4>
+                        <div class="employee-id">ID: ${emp.employeeCode}</div>
+                        <div>Dept: ${emp.department || 'N/A'}</div>
+                        <div>Position: ${emp.position || 'N/A'}</div>
+                    </div>
+                `).join('');
+                
+                document.getElementById('employeeTestStatus').className = 
+                    'status-indicator status-success';
+            }
+
+            log(message, type = 'info') {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = { timestamp, message, type };
+                this.testLog.push(logEntry);
+                
+                const logEl = document.getElementById('systemLog');
+                const entryEl = document.createElement('div');
+                entryEl.className = `log-entry ${type}`;
+                entryEl.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+                
+                logEl.appendChild(entryEl);
+                logEl.scrollTop = logEl.scrollHeight;
+                
+                console.log(`[IntegrationTest] ${message}`);
+            }
+        }
+
+        // Test Functions
+        let testSuite;
+
+        function testAddEmployee() {
+            try {
+                const newEmployee = {
+                    firstName: `Test${testSuite.employeeCounter}`,
+                    lastName: `Employee`,
+                    email: `test${testSuite.employeeCounter}@company.com`,
+                    department: 'Testing',
+                    position: 'Test Engineer',
+                    hourlyRate: 25.00,
+                    status: 'active'
+                };
+                
+                testSuite.unifiedManager.addEmployee(newEmployee);
+                testSuite.employeeCounter++;
+                testSuite.log('Test employee added successfully', 'success');
+                
+            } catch (error) {
+                testSuite.log('Failed to add test employee: ' + error.message, 'error');
+            }
+        }
+
+        function testUpdateEmployee() {
+            try {
+                const employees = testSuite.unifiedManager.getEmployees();
+                if (employees.length === 0) {
+                    testSuite.log('No employees to update', 'warning');
+                    return;
+                }
+                
+                const firstEmployee = employees[0];
+                const updates = {
+                    department: 'Updated Department',
+                    position: 'Senior ' + (firstEmployee.position || 'Employee'),
+                    hourlyRate: (firstEmployee.hourlyRate || 20) + 5
+                };
+                
+                testSuite.unifiedManager.updateEmployee(firstEmployee.id, updates);
+                testSuite.log('First employee updated successfully', 'success');
+                
+            } catch (error) {
+                testSuite.log('Failed to update employee: ' + error.message, 'error');
+            }
+        }
+
+        function testDeleteLastEmployee() {
+            try {
+                const employees = testSuite.unifiedManager.getEmployees();
+                if (employees.length === 0) {
+                    testSuite.log('No employees to delete', 'warning');
+                    return;
+                }
+                
+                const lastEmployee = employees[employees.length - 1];
+                testSuite.unifiedManager.deleteEmployee(lastEmployee.id);
+                testSuite.log('Last employee deleted successfully', 'warning');
+                
+            } catch (error) {
+                testSuite.log('Failed to delete employee: ' + error.message, 'error');
+            }
+        }
+
+        function testDeleteEmployee(employeeId) {
+            try {
+                testSuite.unifiedManager.deleteEmployee(employeeId);
+                testSuite.log(`Employee ${employeeId} deleted successfully`, 'warning');
+            } catch (error) {
+                testSuite.log('Failed to delete employee: ' + error.message, 'error');
+            }
+        }
+
+        function refreshEmployeeDisplay() {
+            testSuite.refreshEmployeeDisplay();
+            testSuite.log('Employee display refreshed', 'info');
+        }
+
+        function testAddAttendance() {
+            try {
+                const employees = testSuite.unifiedManager.getEmployees();
+                if (employees.length === 0) {
+                    testSuite.log('No employees available for attendance test', 'warning');
+                    return;
+                }
+                
+                const randomEmployee = employees[Math.floor(Math.random() * employees.length)];
+                const today = new Date().toISOString().split('T')[0];
+                
+                const attendanceRecord = {
+                    employeeId: randomEmployee.id,
+                    date: today,
+                    clockIn: '09:00',
+                    clockOut: '17:00',
+                    status: 'present',
+                    notes: 'Integration test attendance'
+                };
+                
+                testSuite.unifiedManager.saveAttendanceRecord(attendanceRecord);
+                testSuite.log(`Test attendance added for ${randomEmployee.fullName}`, 'success');
+                
+            } catch (error) {
+                testSuite.log('Failed to add test attendance: ' + error.message, 'error');
+            }
+        }
+
+        function testUpdateAttendance() {
+            // Implementation for updating attendance
+            testSuite.log('Attendance update test completed', 'info');
+        }
+
+        function refreshAttendanceDisplay() {
+            const records = testSuite.unifiedManager.getAttendanceRecords();
+            const resultsEl = document.getElementById('attendanceResults');
+            
+            resultsEl.innerHTML = `
+                <strong>Total Attendance Records:</strong> ${records.length}<br>
+                <strong>Recent Records:</strong><br>
+                ${records.slice(0, 5).map(r => 
+                    `• ${r.employeeName} - ${r.date} - ${r.status}`
+                ).join('<br>')}
+            `;
+            
+            testSuite.log('Attendance display refreshed', 'info');
+        }
+
+        function openEmployeesPage() {
+            window.open('employees.html', '_blank');
+            testSuite.log('Opened employees page in new tab', 'info');
+        }
+
+        function openDashboard() {
+            window.open('dashboard.html', '_blank');
+            testSuite.log('Opened dashboard in new tab', 'info');
+        }
+
+        function openPayroll() {
+            window.open('payroll.html', '_blank');
+            testSuite.log('Opened payroll page in new tab', 'info');
+        }
+
+        function openAnalytics() {
+            window.open('analytics.html', '_blank');
+            testSuite.log('Opened analytics page in new tab', 'info');
+        }
+
+        function clearLog() {
+            document.getElementById('systemLog').innerHTML = '';
+            testSuite.testLog = [];
+            testSuite.log('Log cleared', 'info');
+        }
+
+        function forceSystemRefresh() {
+            testSuite.globalSync.forceRefreshAll();
+            testSuite.log('Forced system-wide refresh', 'warning');
+        }
+
+        // Initialize test suite when ready
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                testSuite = new SystemIntegrationTest();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

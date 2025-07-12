@@ -8,6 +8,7 @@ class EmployeeAttendanceManager {
         this.attendanceRecords = [];
         this.employees = [];
         this.currentViewingRecord = null;
+        this.currentEditingRecord = null;
         this.statusTypes = {
             present: { label: 'Present', icon: '✅', color: '#22c55e' },
             late: { label: 'Late', icon: '⏰', color: '#f59e0b' },
@@ -46,8 +47,28 @@ class EmployeeAttendanceManager {
      */
     async loadEmployees() {
         try {
-            // Use centralized data service to get employee data
-            if (typeof dataService !== 'undefined') {
+            // Use unified employee manager if available
+            if (typeof window.unifiedEmployeeManager !== 'undefined' && window.unifiedEmployeeManager.initialized) {
+                const employeesData = window.unifiedEmployeeManager.getEmployees();
+                
+                // Transform data to match the expected format for this module
+                this.employees = employeesData.map(emp => ({
+                    id: emp.id,
+                    employeeId: emp.employeeCode || `EMP${String(emp.id).padStart(3, '0')}`,
+                    name: emp.fullName || `${emp.firstName} ${emp.lastName}`,
+                    department: emp.department,
+                    position: emp.position,
+                    email: emp.email,
+                    phone: emp.phone,
+                    role: emp.role,
+                    schedule: this.getEmployeeSchedule(emp)
+                }));
+                
+                console.log(`Loaded ${this.employees.length} employees from unified manager`);
+                return this.employees;
+            }
+            // Fallback to data service if unified manager is not available
+            else if (typeof dataService !== 'undefined') {
                 const employeesData = await dataService.getEmployees();
                 
                 // Transform data to match the expected format for this module
@@ -66,8 +87,8 @@ class EmployeeAttendanceManager {
                 console.log(`Loaded ${this.employees.length} employees from data service`);
                 return this.employees;
             } else {
-                console.warn('dataService not available, using fallback data');
-                // Fallback to original hardcoded data if dataService is not available
+                console.warn('Neither unified manager nor dataService available, using fallback data');
+                // Fallback to original hardcoded data if neither service is available
                 this.employees = [
                     {
                         id: 1,
@@ -410,6 +431,16 @@ class EmployeeAttendanceManager {
             // Sort records by date (newest first)
             this.attendanceRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
 
+            // Save to unified manager if available
+            if (typeof window.unifiedEmployeeManager !== 'undefined' && window.unifiedEmployeeManager.initialized) {
+                try {
+                    window.unifiedEmployeeManager.saveAttendanceRecord(record);
+                    console.log('Attendance record saved to unified manager');
+                } catch (error) {
+                    console.warn('Failed to save to unified manager:', error);
+                }
+            }
+
             console.log('Attendance record saved:', record);
             return record;
         } catch (error) {
@@ -614,6 +645,12 @@ class EmployeeAttendanceManager {
 
         // Setup modal event handlers
         this.setupModalEventHandlers();
+
+        // Add Entry button handler
+        const addAttendanceBtn = document.getElementById('addAttendanceBtn');
+        if (addAttendanceBtn) {
+            addAttendanceBtn.addEventListener('click', () => this.openModal());
+        }
     }
 
     /**
@@ -650,6 +687,36 @@ class EmployeeAttendanceManager {
             viewModal.addEventListener('click', (e) => {
                 if (e.target.classList.contains('modal-overlay')) {
                     this.closeViewModal();
+                }
+            });
+        }
+
+        // Edit/Add modal handlers
+        const closeEditModal = document.getElementById('closeModal');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const attendanceForm = document.getElementById('attendanceForm');
+
+        if (closeEditModal) {
+            closeEditModal.addEventListener('click', () => this.closeModal());
+        }
+
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => this.closeModal());
+        }
+
+        if (attendanceForm) {
+            attendanceForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.saveAttendance();
+            });
+        }
+
+        // Close modals on overlay click
+        const editModal = document.getElementById('editAttendanceModal');
+        if (editModal) {
+            editModal.addEventListener('click', (e) => {
+                if (e.target.classList.contains('modal-overlay')) {
+                    this.closeModal();
                 }
             });
         }
@@ -775,59 +842,190 @@ class EmployeeAttendanceManager {
     }
 
     /**
-     * Setup event handlers for modals
+     * Open modal for adding/editing attendance record
      */
-    setupModalEventHandlers() {
-        // View modal handlers
-        const closeViewModal = document.getElementById('closeViewModal');
-        const closeViewBtn = document.getElementById('closeViewBtn');
-        const editFromViewBtn = document.getElementById('editFromViewBtn');
-        
-        if (closeViewModal) closeViewModal.addEventListener('click', () => this.closeViewModal());
-        if (closeViewBtn) closeViewBtn.addEventListener('click', () => this.closeViewModal());
-        if (editFromViewBtn) {
-            editFromViewBtn.addEventListener('click', () => {
-                this.closeViewModal();
-                // Open edit modal - this would need the record data
-                // Implementation depends on how the main page handles editing
-            });
+    openModal(record = null) {
+        const modal = document.getElementById('editAttendanceModal');
+        if (!modal) {
+            console.error('Edit attendance modal not found');
+            return;
         }
 
-        // Delete modal handlers
-        const closeDeleteModal = document.getElementById('closeDeleteModal');
-        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
-        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-        
-        if (closeDeleteModal) closeDeleteModal.addEventListener('click', () => this.closeDeleteModal());
-        if (cancelDeleteBtn) cancelDeleteBtn.addEventListener('click', () => this.closeDeleteModal());
-        if (confirmDeleteBtn) {
-            confirmDeleteBtn.addEventListener('click', () => {
-                const modal = document.getElementById('deleteAttendanceModal');
-                const recordId = modal?.dataset.recordId;
-                if (recordId) {
-                    this.deleteAttendanceRecord(parseInt(recordId));
-                }
-            });
+        // Store current record being edited (null for new entry)
+        this.currentEditingRecord = record;
+
+        // Update modal title
+        const titleElement = document.getElementById('modalTitle');
+        if (titleElement) {
+            titleElement.textContent = record ? 'Edit Attendance Record' : 'Add Attendance Entry';
         }
 
-        // Close modals on overlay click
-        const viewModal = document.getElementById('viewAttendanceModal');
-        const deleteModal = document.getElementById('deleteAttendanceModal');
-        
-        if (viewModal) {
-            viewModal.addEventListener('click', (e) => {
-                if (e.target.classList.contains('modal-overlay')) {
-                    this.closeViewModal();
-                }
-            });
+        // Populate employee dropdown
+        this.populateEmployeeDropdown();
+
+        if (record) {
+            // Editing existing record - populate form with current data
+            this.populateFormWithRecord(record);
+        } else {
+            // Adding new record - clear form and set defaults
+            this.clearForm();
+            this.setDefaultFormValues();
         }
+
+        // Show the modal
+        modal.classList.remove('hidden');
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    /**
+     * Populate employee dropdown in the modal
+     */
+    populateEmployeeDropdown() {
+        const employeeSelect = document.getElementById('employeeSelect');
+        if (!employeeSelect) return;
+
+        // Clear existing options
+        employeeSelect.innerHTML = '<option value="">Select Employee</option>';
+
+        // Add employee options
+        this.employees.forEach(employee => {
+            const option = document.createElement('option');
+            option.value = employee.id;
+            option.textContent = `${employee.name} (${employee.employeeId})`;
+            employeeSelect.appendChild(option);
+        });
+    }
+
+    /**
+     * Populate form with existing record data
+     */
+    populateFormWithRecord(record) {
+        const form = document.getElementById('attendanceForm');
+        if (!form) return;
+
+        // Set form values
+        this.setFormValue('employeeSelect', record.employeeId);
+        this.setFormValue('attendanceDate', record.date);
+        this.setFormValue('clockInTime', record.clockIn || '');
+        this.setFormValue('clockOutTime', record.clockOut || '');
+        this.setFormValue('attendanceStatus', record.status);
+        this.setFormValue('notes', record.notes || '');
+    }
+
+    /**
+     * Clear form and set default values for new entry
+     */
+    clearForm() {
+        const form = document.getElementById('attendanceForm');
+        if (!form) return;
+
+        form.reset();
+    }
+
+    /**
+     * Set default form values for new entry
+     */
+    setDefaultFormValues() {
+        // Set default date to today
+        const today = new Date().toISOString().split('T')[0];
+        this.setFormValue('attendanceDate', today);
         
-        if (deleteModal) {
-            deleteModal.addEventListener('click', (e) => {
-                if (e.target.classList.contains('modal-overlay')) {
-                    this.closeDeleteModal();
-                }
-            });
+        // Set default status to present
+        this.setFormValue('attendanceStatus', 'present');
+    }
+
+    /**
+     * Helper method to set form value
+     */
+    setFormValue(elementId, value) {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.value = value;
+        }
+    }
+
+    /**
+     * Close the edit/add modal
+     */
+    closeModal() {
+        const modal = document.getElementById('editAttendanceModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+        this.currentEditingRecord = null;
+    }
+
+    /**
+     * Save attendance from form
+     */
+    async saveAttendance() {
+        try {
+            const form = document.getElementById('attendanceForm');
+            if (!form) {
+                throw new Error('Form not found');
+            }
+
+            // Get form data
+            const formData = new FormData(form);
+            const employeeId = parseInt(formData.get('employeeSelect'));
+            const date = formData.get('attendanceDate');
+            const clockIn = formData.get('clockInTime') || null;
+            const clockOut = formData.get('clockOutTime') || null;
+            const status = formData.get('attendanceStatus');
+            const notes = document.getElementById('notes')?.value || '';
+
+            // Validate required fields
+            if (!employeeId) {
+                throw new Error('Please select an employee');
+            }
+            if (!date) {
+                throw new Error('Please select a date');
+            }
+            if (!status) {
+                throw new Error('Please select a status');
+            }
+
+            // Validate clock times if both are provided
+            if (clockIn && clockOut && clockIn >= clockOut) {
+                throw new Error('Clock out time must be after clock in time');
+            }
+
+            // Prepare record data
+            const recordData = {
+                employeeId: employeeId,
+                date: date,
+                clockIn: clockIn,
+                clockOut: clockOut,
+                status: status,
+                notes: notes
+            };
+
+            // If editing existing record, include the ID
+            if (this.currentEditingRecord) {
+                recordData.id = this.currentEditingRecord.id;
+            }
+
+            // Save the record
+            const savedRecord = await this.saveAttendanceRecord(recordData);
+
+            // Close modal and refresh display
+            this.closeModal();
+            this.renderAttendanceRecords();
+            
+            // Show success message
+            this.showToast(
+                this.currentEditingRecord ? 'Attendance record updated successfully!' : 'Attendance entry added successfully!',
+                'success'
+            );
+
+            console.log('Attendance saved:', savedRecord);
+
+        } catch (error) {
+            console.error('Error saving attendance:', error);
+            this.showToast('Error: ' + error.message, 'error');
         }
     }
 
@@ -846,31 +1044,6 @@ class EmployeeAttendanceManager {
         } catch (error) {
             console.error('Error formatting date:', error);
             return dateString;
-        }
-    }
-
-    /**
-     * Helper method to calculate hours worked
-     */
-    calculateHours(clockIn, clockOut) {
-        if (!clockIn || !clockOut) {
-            return '0.0h';
-        }
-
-        try {
-            const start = new Date(`2000-01-01T${clockIn}`);
-            const end = new Date(`2000-01-01T${clockOut}`);
-            const diffMs = end - start;
-            
-            if (diffMs < 0) {
-                return '0.0h'; // Handle cases where clock out is before clock in
-            }
-            
-            const hours = diffMs / (1000 * 60 * 60);
-            return `${hours.toFixed(1)}h`;
-        } catch (error) {
-            console.error('Error calculating hours:', error);
-            return '0.0h';
         }
     }
 
@@ -927,8 +1100,34 @@ window.employeeAttendanceManager = new EmployeeAttendanceManager();
 // Auto-initialize if DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        window.employeeAttendanceManager.init().catch(console.error);
+        window.employeeAttendanceManager.init().then(() => {
+            // Register with global synchronization system
+            setTimeout(() => {
+                if (window.globalSystemSync && window.globalSystemSync.initialized) {
+                    window.globalSystemSync.registerComponent('attendanceManager', window.employeeAttendanceManager, {
+                        refreshData: 'loadEmployees',
+                        renderRecords: 'renderAttendanceRecords',
+                        updateDropdowns: 'updateEmployeeDropdowns',
+                        loadEmployees: 'loadEmployees'
+                    });
+                    console.log('Employee attendance manager registered with global sync');
+                }
+            }, 500);
+        }).catch(console.error);
     });
 } else {
-    window.employeeAttendanceManager.init().catch(console.error);
+    window.employeeAttendanceManager.init().then(() => {
+        // Register with global synchronization system
+        setTimeout(() => {
+            if (window.globalSystemSync && window.globalSystemSync.initialized) {
+                window.globalSystemSync.registerComponent('attendanceManager', window.employeeAttendanceManager, {
+                    refreshData: 'loadEmployees',
+                    renderRecords: 'renderAttendanceRecords',
+                    updateDropdowns: 'updateEmployeeDropdowns',
+                    loadEmployees: 'loadEmployees'
+                });
+                console.log('Employee attendance manager registered with global sync');
+            }
+        }, 500);
+    }).catch(console.error);
 }

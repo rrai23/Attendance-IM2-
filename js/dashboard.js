@@ -1813,6 +1813,20 @@ async function initializeDashboard() {
         // Create dashboard controller instance
         window.dashboardController = new DashboardController();
         
+        // Register with global synchronization system
+        setTimeout(() => {
+            if (window.globalSystemSync && window.globalSystemSync.initialized) {
+                window.globalSystemSync.registerComponent('dashboardController', window.dashboardController, {
+                    refreshData: 'loadDashboardData',
+                    updateStats: 'updateEmployeeStats',
+                    updateCharts: 'updateAttendanceChart',
+                    loadEmployees: 'loadEmployees',
+                    updateAttendance: 'updateTodayAttendance'
+                });
+                console.log('Dashboard registered with global sync');
+            }
+        }, 500);
+        
         console.log('Dashboard initialization completed');
     } catch (error) {
         console.error('Dashboard initialization failed:', error);

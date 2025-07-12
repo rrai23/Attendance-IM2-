@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Attendance Add Entry</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .test-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin: 0.5rem;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .status {
+            padding: 0.5rem;
+            margin: 0.5rem 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Attendance Add Entry Test</h1>
+        
+        <div class="test-section">
+            <h3>Test Add Entry Functionality</h3>
+            <p>Click the button below to test the Add Entry modal:</p>
+            <button id="addAttendanceBtn" class="test-button">Add Entry</button>
+            <div id="testStatus"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Current Test Data</h3>
+            <div id="employeeList"></div>
+            <div id="attendanceRecords"></div>
+        </div>
+    </div>
+
+    <!-- Include the modal from employee-management.html -->
+    <!-- Edit Attendance Modal -->
+    <div class="modal-overlay hidden" id="editAttendanceModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Add Attendance Record</h3>
+                <button class="modal-close" id="closeModal" aria-label="Close modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-content">
+                <form id="attendanceForm" class="form">
+                    <input type="hidden" id="recordId">
+                    
+                    <div class="form-group">
+                        <label for="employeeSelect" class="form-label">Employee</label>
+                        <select id="employeeSelect" class="form-input" required>
+                            <option value="">Select Employee</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="attendanceDate" class="form-label">Date</label>
+                        <input type="date" id="attendanceDate" class="form-input" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="clockInTime" class="form-label">Clock In Time</label>
+                            <input type="time" id="clockInTime" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="clockOutTime" class="form-label">Clock Out Time</label>
+                            <input type="time" id="clockOutTime" class="form-input">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="attendanceStatus" class="form-label">Status</label>
+                        <select id="attendanceStatus" class="form-input" required>
+                            <option value="present">Present</option>
+                            <option value="late">Late</option>
+                            <option value="absent">Absent</option>
+                            <option value="overtime">Overtime</option>
+                            <option value="sick">Sick Leave</option>
+                            <option value="vacation">Vacation</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="notes" class="form-label">Notes (Optional)</label>
+                        <textarea id="notes" class="form-input" rows="3" placeholder="Add any notes or comments..."></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="saveBtn">
+                            <span class="btn-text">Save Changes</span>
+                            <span class="btn-loading hidden">
+                                <span class="loading-spinner"></span>
+                                Saving...
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Include required JavaScript files -->
+    <script src="js/unified-employee-manager.js"></script>
+    <script src="js/data-service.js"></script>
+    <script src="js/employee-attendance.js"></script>
+
+    <script>
+        // Test script
+        document.addEventListener('DOMContentLoaded', function() {
+            const statusDiv = document.getElementById('testStatus');
+            
+            function showStatus(message, type = 'success') {
+                statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+            }
+
+            // Test that the attendance manager is loaded
+            if (typeof EmployeeAttendanceManager !== 'undefined') {
+                showStatus('✓ EmployeeAttendanceManager loaded successfully');
+                
+                // Initialize the attendance manager
+                try {
+                    window.attendanceManager = new EmployeeAttendanceManager();
+                    showStatus('✓ EmployeeAttendanceManager initialized successfully');
+                    
+                    // Test that the Add Entry button works
+                    const addBtn = document.getElementById('addAttendanceBtn');
+                    if (addBtn) {
+                        addBtn.addEventListener('click', () => {
+                            try {
+                                window.attendanceManager.openModal();
+                                showStatus('✓ Add Entry modal opened successfully');
+                            } catch (error) {
+                                showStatus('✗ Error opening modal: ' + error.message, 'error');
+                                console.error('Modal error:', error);
+                            }
+                        });
+                    }
+                    
+                } catch (error) {
+                    showStatus('✗ Error initializing EmployeeAttendanceManager: ' + error.message, 'error');
+                    console.error('Initialization error:', error);
+                }
+            } else {
+                showStatus('✗ EmployeeAttendanceManager not found', 'error');
+            }
+
+            // Display some test data
+            const employeeListDiv = document.getElementById('employeeList');
+            const recordsDiv = document.getElementById('attendanceRecords');
+            
+            setTimeout(() => {
+                if (window.attendanceManager) {
+                    employeeListDiv.innerHTML = '<h4>Employee List will be populated when modal opens</h4>';
+                    recordsDiv.innerHTML = '<h4>Attendance records will appear here after adding entries</h4>';
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

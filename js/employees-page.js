@@ -1,6 +1,6 @@
 /**
  * Employees Page Management Module for Bricks Attendance System
- * Handles employee CRUD operations, modals, and table management
+ * Uses Unified Employee Manager for consistent data across the system
  */
 
 class EmployeesPageManager {
@@ -11,12 +11,15 @@ class EmployeesPageManager {
         this.currentEmployee = null;
         this.currentViewEmployee = null;
         this.currentDeleteEmployee = null;
+        this.unifiedManager = null;
         
         // Don't auto-initialize - will be called manually
     }
 
     async init() {
         try {
+            // Wait for unified manager to be ready
+            await this.waitForUnifiedManager();
             await this.loadEmployees();
             this.setupEventListeners();
             this.updateStats();
@@ -29,198 +32,44 @@ class EmployeesPageManager {
         }
     }
 
+    async waitForUnifiedManager() {
+        const maxWait = 5000; // 5 seconds
+        const interval = 100; // Check every 100ms
+        let waited = 0;
+        
+        while (!window.unifiedEmployeeManager?.initialized && waited < maxWait) {
+            await new Promise(resolve => setTimeout(resolve, interval));
+            waited += interval;
+        }
+        
+        if (!window.unifiedEmployeeManager?.initialized) {
+            throw new Error('Unified Employee Manager not available');
+        }
+        
+        this.unifiedManager = window.unifiedEmployeeManager;
+    }
+
     async loadEmployees() {
         try {
-            // Use centralized data service to get employee data
-            if (typeof dataService !== 'undefined') {
-                console.log('Getting employees from data service...');
-                const employeesData = await dataService.getEmployees();
-                console.log('Received employee data:', employeesData);
-                
-                // Transform data to match the employees page format expectations
-                this.employees = employeesData.map(emp => ({
-                    id: emp.id,
-                    employeeCode: emp.employeeCode || `EMP${String(emp.id).padStart(3, '0')}`,
-                    firstName: emp.firstName || emp.name?.split(' ')[0] || 'Unknown',
-                    lastName: emp.lastName || emp.name?.split(' ').slice(1).join(' ') || 'Employee',
-                    email: emp.email,
-                    phone: emp.phone,
-                    department: emp.department,
-                    position: emp.position,
-                    manager: emp.manager,
-                    hireDate: emp.hireDate,
-                    hourlyRate: emp.hourlyRate,
-                    salaryType: emp.salaryType || 'hourly',
-                    salary: emp.salary || (emp.hourlyRate * 40 * 52), // Calculate annual salary from hourly
-                    role: emp.role,
-                    status: emp.status,
-                    schedule: emp.schedule || {
-                        monday: { active: true, start: '09:00', end: '17:00' },
-                        tuesday: { active: true, start: '09:00', end: '17:00' },
-                        wednesday: { active: true, start: '09:00', end: '17:00' },
-                        thursday: { active: true, start: '09:00', end: '17:00' },
-                        friday: { active: true, start: '09:00', end: '17:00' }
-                    }
-                }));
-                
-                console.log(`Loaded ${this.employees.length} employees from data service`);
-            } else {
-                console.warn('dataService not available, using fallback data');
-                // Fallback to basic mock data if data service isn't available
-                this.employees = [
-                    {
-                        id: 1,
-                        employeeCode: 'EMP001',
-                        firstName: 'John',
-                        lastName: 'Doe',
-                        email: 'john.doe@company.com',
-                        phone: '+1-555-0101',
-                        department: 'Engineering',
-                        position: 'Senior Developer',
-                        manager: 'Charlie Wilson',
-                        hireDate: '2023-01-15',
-                        hourlyRate: 40.87,
-                        salaryType: 'hourly',
-                        salary: 85000,
-                        role: 'employee',
-                        status: 'active',
-                        schedule: {
-                            monday: { active: true, start: '09:00', end: '17:00' },
-                            tuesday: { active: true, start: '09:00', end: '17:00' },
-                            wednesday: { active: true, start: '09:00', end: '17:00' },
-                            thursday: { active: true, start: '09:00', end: '17:00' },
-                            friday: { active: true, start: '09:00', end: '17:00' }
-                        }
-                    },
-                    {
-                        id: 2,
-                        employeeCode: 'EMP002',
-                        firstName: 'Jane',
-                        lastName: 'Smith',
-                        email: 'jane.smith@company.com',
-                        phone: '+1-555-0102',
-                        department: 'Marketing',
-                        position: 'Marketing Manager',
-                        manager: null,
-                        hireDate: '2022-06-10',
-                        hourlyRate: 36.06,
-                        salaryType: 'hourly',
-                        salary: 75000,
-                        role: 'manager',
-                        status: 'active',
-                        schedule: {
-                            monday: { active: true, start: '08:30', end: '16:30' },
-                            tuesday: { active: true, start: '08:30', end: '16:30' },
-                            wednesday: { active: true, start: '08:30', end: '16:30' },
-                            thursday: { active: true, start: '08:30', end: '16:30' },
-                            friday: { active: true, start: '08:30', end: '16:30' }
-                        }
-                    },
-                    {
-                        id: 3,
-                        employeeCode: 'EMP003',
-                        firstName: 'Bob',
-                        lastName: 'Johnson',
-                        email: 'bob.johnson@company.com',
-                        phone: '+1-555-0103',
-                        department: 'Sales',
-                        position: 'Sales Representative',
-                        manager: 'Jane Smith',
-                        hireDate: '2023-03-20',
-                        hourlyRate: 26.44,
-                        salaryType: 'hourly',
-                        salary: 55000,
-                        role: 'employee',
-                        status: 'active',
-                        schedule: {
-                            monday: { active: true, start: '09:00', end: '17:00' },
-                            tuesday: { active: true, start: '09:00', end: '17:00' },
-                            wednesday: { active: true, start: '09:00', end: '17:00' },
-                            thursday: { active: true, start: '09:00', end: '17:00' },
-                            friday: { active: true, start: '09:00', end: '17:00' }
-                        }
-                    },
-                {
-                    id: 4,
-                    employeeCode: 'EMP004',
-                    firstName: 'Alice',
-                    lastName: 'Brown',
-                    email: 'alice.brown@company.com',
-                    phone: '+1-555-0104',
-                    department: 'HR',
-                    position: 'HR Coordinator',
-                    manager: 'Jane Smith',
-                    hireDate: '2022-11-08',
-                    hourlyRate: 28.85,
-                    salaryType: 'hourly',
-                    salary: 60000,
-                    role: 'employee',
-                    status: 'active',
-                    schedule: {
-                        monday: { active: true, start: '08:00', end: '16:00' },
-                        tuesday: { active: true, start: '08:00', end: '16:00' },
-                        wednesday: { active: true, start: '08:00', end: '16:00' },
-                        thursday: { active: true, start: '08:00', end: '16:00' },
-                        friday: { active: true, start: '08:00', end: '16:00' }
-                    }
-                },
-                {
-                    id: 5,
-                    employeeCode: 'EMP005',
-                    firstName: 'Charlie',
-                    lastName: 'Wilson',
-                    email: 'charlie.wilson@company.com',
-                    phone: '+1-555-0105',
-                    department: 'Engineering',
-                    position: 'Engineering Manager',
-                    manager: null,
-                    hireDate: '2021-04-12',
-                    hourlyRate: 45.67,
-                    salaryType: 'hourly',
-                    salary: 95000,
-                    role: 'manager',
-                    status: 'active',
-                    schedule: {
-                        monday: { active: true, start: '08:00', end: '17:00' },
-                        tuesday: { active: true, start: '08:00', end: '17:00' },
-                        wednesday: { active: true, start: '08:00', end: '17:00' },
-                        thursday: { active: true, start: '08:00', end: '17:00' },
-                        friday: { active: true, start: '08:00', end: '16:00' }
-                    }
-                },
-                {
-                    id: 6,
-                    employeeCode: 'EMP006',
-                    firstName: 'Diana',
-                    lastName: 'Martinez',
-                    email: 'diana.martinez@company.com',
-                    phone: '+1-555-0106',
-                    department: 'Finance',
-                    position: 'Financial Analyst',
-                    manager: 'John Doe',
-                    hireDate: '2023-07-03',
-                    hourlyRate: 27.88,
-                    salaryType: 'hourly',
-                    salary: 58000,
-                    role: 'employee',
-                    status: 'inactive',
-                    schedule: {
-                        monday: { active: true, start: '09:00', end: '17:00' },
-                        tuesday: { active: true, start: '09:00', end: '17:00' },
-                        wednesday: { active: true, start: '09:00', end: '17:00' },
-                        thursday: { active: true, start: '09:00', end: '17:00' },
-                        friday: { active: true, start: '09:00', end: '17:00' }
-                    }
-                }
-            ];
-            }
-
-            // Extract departments
-            this.departments = [...new Set(this.employees.map(emp => emp.department))];
+            console.log('Loading employees from Unified Manager...');
+            
+            // Get employees from unified manager
+            this.employees = this.unifiedManager.getEmployees();
             this.filteredEmployees = [...this.employees];
+            
+            // Get departments
+            this.departments = this.unifiedManager.getDepartments();
+            
+            console.log('Loaded employees:', this.employees.length);
+            console.log('Departments:', this.departments);
+            
         } catch (error) {
             console.error('Failed to load employees:', error);
-            throw error;
+            this.showError('Failed to load employee data');
+            // Set empty arrays as fallback
+            this.employees = [];
+            this.filteredEmployees = [];
+            this.departments = [];
         }
     }
 
@@ -664,32 +513,28 @@ class EmployeesPageManager {
             const employeeData = this.getFormData();
             
             if (this.currentEmployee) {
-                // Update existing employee
-                const index = this.employees.findIndex(emp => emp.id === this.currentEmployee.id);
-                if (index !== -1) {
-                    this.employees[index] = { ...employeeData, id: this.currentEmployee.id };
-                }
+                // Update existing employee using unified manager
+                const updatedEmployee = this.unifiedManager.updateEmployee(this.currentEmployee.id, employeeData);
+                console.log('Employee updated:', updatedEmployee);
             } else {
-                // Add new employee
-                employeeData.id = Date.now();
-                this.employees.push(employeeData);
+                // Add new employee using unified manager
+                const newEmployee = this.unifiedManager.addEmployee(employeeData);
+                console.log('Employee added:', newEmployee);
             }
 
-            // Update departments if new one was added
-            if (!this.departments.includes(employeeData.department)) {
-                this.departments.push(employeeData.department);
-            }
-
+            // Reload data from unified manager
+            await this.loadEmployees();
             this.applyFilters();
             this.updateStats();
             this.renderTable();
+            this.populateFilters();
             this.closeModal();
             
             this.showSuccess(this.currentEmployee ? 'Employee updated successfully!' : 'Employee added successfully!');
 
         } catch (error) {
             console.error('Failed to save employee:', error);
-            this.showError('Failed to save employee. Please try again.');
+            this.showError('Failed to save employee: ' + error.message);
         } finally {
             // Reset button state
             btnText?.classList.remove('hidden');
@@ -857,19 +702,13 @@ class EmployeesPageManager {
             return;
         }
 
-        const employeeIndex = this.employees.findIndex(emp => emp.id == employeeId);
-        
-        if (employeeIndex !== -1) {
-            const employee = this.employees[employeeIndex];
-            const employeeName = `${employee.firstName} ${employee.lastName}`;
+        try {
+            // Delete employee using unified manager
+            const deletedEmployee = this.unifiedManager.deleteEmployee(parseInt(employeeId));
+            const employeeName = deletedEmployee.fullName;
             
-            // Remove employee from array
-            this.employees.splice(employeeIndex, 1);
-            
-            // Update departments list if this was the only employee in a department
-            this.departments = [...new Set(this.employees.map(emp => emp.department))];
-            
-            // Update filtered employees
+            // Reload data from unified manager
+            this.loadEmployees();
             this.applyFilters();
             this.updateStats();
             this.renderTable();
@@ -878,8 +717,10 @@ class EmployeesPageManager {
             // Close modal and show success
             this.closeDeleteModal();
             this.showSuccess(`${employeeName} has been successfully deleted from the system.`);
-        } else {
-            this.showError('Employee not found');
+            
+        } catch (error) {
+            console.error('Failed to delete employee:', error);
+            this.showError('Failed to delete employee: ' + error.message);
         }
     }
 
@@ -1152,28 +993,23 @@ class EmployeesPageManager {
      * Set up data service event listeners for auto-sync
      */
     setupDataSyncListeners() {
-        if (typeof dataService !== 'undefined' && dataService.addEventListener) {
-            // Listen for employee wage updates
-            dataService.addEventListener('employeeWageUpdated', (data) => {
-                console.log('Employee wage updated, refreshing employees page data');
+        if (this.unifiedManager) {
+            // Listen for employee updates from unified manager
+            this.unifiedManager.addEventListener('employeeUpdate', (data) => {
+                console.log('Employee update received:', data);
                 this.refreshData();
             });
 
-            // Listen for employee data updates
-            dataService.addEventListener('employeeDataUpdated', (data) => {
-                console.log('Employee data updated, refreshing employees page data');
-                this.refreshData();
+            // Listen for attendance updates that might affect employee data
+            this.unifiedManager.addEventListener('attendanceUpdate', (data) => {
+                console.log('Attendance update received, checking if refresh needed');
+                // Only refresh if we're showing attendance-related data
+                this.updateStats();
             });
 
-            // Listen for new employees
-            dataService.addEventListener('employeeAdded', (data) => {
-                console.log('New employee added, refreshing employees page data');
-                this.refreshData();
-            });
-
-            // Listen for deleted employees
-            dataService.addEventListener('employeeDeleted', (data) => {
-                console.log('Employee deleted, refreshing employees page data');
+            // Listen for data sync events (cross-tab updates)
+            this.unifiedManager.addEventListener('dataSync', (data) => {
+                console.log('Data sync event received:', data);
                 this.refreshData();
             });
         }
@@ -1318,6 +1154,20 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 window.employeesPageManager = new EmployeesPageManager();
                 window.employeesPageManager.init();
+                
+                // Register with global synchronization system
+                setTimeout(() => {
+                    if (window.globalSystemSync && window.globalSystemSync.initialized) {
+                        window.globalSystemSync.registerComponent('employeesPageManager', window.employeesPageManager, {
+                            refreshData: 'refreshData',
+                            updateStats: 'updateStats',
+                            renderTable: 'renderTable',
+                            populateFilters: 'populateFilters',
+                            applyFilters: 'applyFilters'
+                        });
+                        console.log('Employees page registered with global sync');
+                    }
+                }, 500);
                 
                 // Set theme if available
                 if (typeof themeManager !== 'undefined') {
