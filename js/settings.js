@@ -2228,20 +2228,21 @@ Are you absolutely sure you want to proceed?`;
             
             console.log('📋 Found localStorage keys:', keysToRemove);
 
-            // Clear unified employee manager data first
-            if (this.unifiedEmployeeManager) {
-                console.log('🔄 Clearing unified employee manager data...');
-                this.unifiedEmployeeManager.employees = [];
-                this.unifiedEmployeeManager.attendanceRecords = [];
-                this.unifiedEmployeeManager.clearAllData();
-            }
-
-            // Clear all localStorage data
+            // Clear all localStorage data first
             console.log('🗑️ Clearing all localStorage data...');
             localStorage.clear();
 
             // Verify localStorage is empty
             console.log('✅ localStorage cleared. Remaining items:', localStorage.length);
+
+            // Clear unified employee manager data and set initialized flag to false to force proper re-initialization
+            if (this.unifiedEmployeeManager) {
+                console.log('🔄 Clearing unified employee manager data...');
+                this.unifiedEmployeeManager.employees = [];
+                this.unifiedEmployeeManager.attendanceRecords = [];
+                this.unifiedEmployeeManager.initialized = false; // Force re-initialization
+                this.unifiedEmployeeManager.clearAllData();
+            }
 
             // Reset current settings to defaults
             console.log('🔄 Resetting settings to defaults...');
@@ -2254,9 +2255,9 @@ Are you absolutely sure you want to proceed?`;
             if (window.bricksEmployees) window.bricksEmployees = [];
             if (window.bricksAttendanceRecords) window.bricksAttendanceRecords = [];
 
-            // Re-initialize unified employee manager with clean state
+            // Re-initialize unified employee manager with clean state - this will restore original mock data
             if (this.unifiedEmployeeManager) {
-                console.log('🔄 Reinitializing unified employee manager...');
+                console.log('🔄 Reinitializing unified employee manager with original mock data...');
                 await this.unifiedEmployeeManager.init();
             }
 
