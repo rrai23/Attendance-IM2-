@@ -528,11 +528,18 @@
             try {
                 console.log('Initializing unified data integration for payroll...');
                 
-                // Initialize unified employee manager if not already done
-                if (typeof UnifiedEmployeeManager !== 'undefined') {
+                // Wait for unified employee manager if not already initialized
+                if (window.unifiedEmployeeManager) {
+                    // Use existing global instance
+                    if (!window.unifiedEmployeeManager.initialized) {
+                        await window.unifiedEmployeeManager.init();
+                    }
+                    console.log('Unified Employee Manager ready for payroll');
+                } else if (typeof UnifiedEmployeeManager !== 'undefined') {
+                    // Fallback: create instance if global one doesn't exist
                     window.unifiedEmployeeManager = new UnifiedEmployeeManager();
                     await window.unifiedEmployeeManager.init();
-                    console.log('Unified Employee Manager ready for payroll');
+                    console.log('Unified Employee Manager initialized for payroll');
                 } else {
                     console.warn('UnifiedEmployeeManager not available, payroll will use fallback data');
                 }
@@ -548,8 +555,45 @@
                 
             } catch (error) {
                 console.error('Error initializing unified payroll integration:', error);
+                
+                // Show user-friendly error message
+                if (document.querySelector('.main-content')) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'error-message';
+                    errorDiv.innerHTML = `
+                        <div style="background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 5px; margin: 20px;">
+                            <h4>Initialization Error</h4>
+                            <p>There was an issue loading the payroll system. Please refresh the page or contact support if the problem persists.</p>
+                            <details style="margin-top: 10px;">
+                                <summary>Technical Details</summary>
+                                <pre style="margin-top: 10px; font-size: 12px;">${error.message}</pre>
+                            </details>
+                        </div>
+                    `;
+                    document.querySelector('.main-content').prepend(errorDiv);
+                }
             }
         });
+
+        // Debug function for manual overtime request reset
+        if (typeof window !== 'undefined') {
+            window.resetOvertimeRequestsForTesting = function() {
+                if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.resetOvertimeRequestsForTesting) {
+                    const requests = window.unifiedEmployeeManager.resetOvertimeRequestsForTesting();
+                    console.log('Manually reset overtime requests:', requests);
+                    
+                    // Refresh payroll display if controller is available
+                    if (window.payrollController && window.payrollController.renderOvertimeRequests) {
+                        window.payrollController.renderOvertimeRequests();
+                    }
+                    
+                    return requests;
+                } else {
+                    console.error('UnifiedEmployeeManager not available for overtime reset');
+                    return [];
+                }
+            };
+        }
     </script>
 
     <!-- Additional Payroll-specific Styles -->
