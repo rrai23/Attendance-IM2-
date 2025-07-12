@@ -1302,7 +1302,33 @@ class SettingsController {
         const saveBtn = document.getElementById('save-settings-btn');
         if (saveBtn) {
             saveBtn.disabled = !this.isDirty || Object.keys(this.validationErrors).length > 0;
-            saveBtn.textContent = this.isDirty ? 'Save Changes' : 'Saved';
+            
+            // Find the text node after the SVG icon
+            const textNodes = [...saveBtn.childNodes].filter(node => 
+                node.nodeType === Node.TEXT_NODE && node.textContent.trim()
+            );
+            
+            if (textNodes.length > 0) {
+                // Update the last text node (after the icon)
+                textNodes[textNodes.length - 1].textContent = this.isDirty ? ' Save Changes' : ' Saved';
+            } else {
+                // Fallback: update innerHTML while preserving the icon
+                const iconSVG = saveBtn.querySelector('svg');
+                if (iconSVG) {
+                    saveBtn.innerHTML = iconSVG.outerHTML + (this.isDirty ? ' Save Changes' : ' Saved');
+                } else {
+                    saveBtn.textContent = this.isDirty ? 'Save Changes' : 'Saved';
+                }
+            }
+            
+            // Add visual feedback
+            if (this.isDirty) {
+                saveBtn.classList.add('btn-primary');
+                saveBtn.classList.remove('btn-secondary');
+            } else {
+                saveBtn.classList.add('btn-secondary');
+                saveBtn.classList.remove('btn-primary');
+            }
         }
     }
 
@@ -1358,22 +1384,28 @@ class SettingsController {
      */
     async saveSettings(silent = false) {
         try {
+            console.log('Saving settings...', { silent, isDirty: this.isDirty });
+            
             // Validate all forms
             if (!this.validateAllForms()) {
                 if (!silent) {
                     this.showErrorMessage('Please fix validation errors before saving');
                 }
+                console.log('Validation failed, not saving');
                 return false;
             }
 
             // Collect form data
             const formData = this.collectFormData();
+            console.log('Collected form data:', formData);
             
             // Merge with current settings
             const updatedSettings = this.deepMerge(this.currentSettings, formData);
+            console.log('Updated settings:', updatedSettings);
 
             // Save to data service
-            await this.dataService.updateSettings(updatedSettings);
+            await this.dataService.saveSettings(updatedSettings);
+            console.log('Settings saved successfully to data service');
 
             // Update local settings
             this.currentSettings = updatedSettings;
@@ -1392,7 +1424,7 @@ class SettingsController {
         } catch (error) {
             console.error('Failed to save settings:', error);
             if (!silent) {
-                this.showErrorMessage('Failed to save settings');
+                this.showErrorMessage('Failed to save settings: ' + error.message);
             }
             return false;
         }
@@ -1669,6 +1701,8 @@ class SettingsController {
         // Create notification element
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(100%)';
         notification.innerHTML = `
             <div class="notification-content">
                 <svg class="notification-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1679,7 +1713,7 @@ class SettingsController {
                         '<circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path>'
                     }
                 </svg>
-                <span>${message}</span>
+                <span class="notification-message">${message}</span>
             </div>
             <button class="notification-close" aria-label="Close">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1689,25 +1723,67 @@ class SettingsController {
             </button>
         `;
 
-        // Add to page
-        const container = document.getElementById('notification-container') || document.body;
+        // Find or create notification container
+        let container = document.getElementById('notification-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'notification-container';
+            container.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 1000;
+                pointer-events: none;
+            `;
+            document.body.appendChild(container);
+        }
+
+        // Allow pointer events on the notification itself
+        notification.style.pointerEvents = 'auto';
+
+        // Calculate position based on existing notifications
+        const existingNotifications = container.querySelectorAll('.notification');
+        let topOffset = 0;
+        existingNotifications.forEach(existing => {
+            topOffset += existing.offsetHeight + 8; // 8px gap between notifications
+        });
+        
+        notification.style.position = 'relative';
+        notification.style.top = topOffset + 'px';
+        notification.style.marginTop = existingNotifications.length > 0 ? '8px' : '0';
+
+        // Add to container
         container.appendChild(notification);
 
         // Bind close event
         notification.querySelector('.notification-close').addEventListener('click', () => {
-            notification.remove();
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 300);
         });
 
-        // Auto-remove after 5 seconds
+        // Auto-remove after 4 seconds (reduced from 5)
         setTimeout(() => {
             if (notification.parentNode) {
-                notification.remove();
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 300);
             }
-        }, 5000);
+        }, 4000);
 
         // Animate in
         requestAnimationFrame(() => {
-            notification.classList.add('notification-show');
+            notification.style.opacity = '1';
+            notification.style.transform = 'translateX(0)';
+            notification.style.transition = 'all 0.3s ease-out';
         });
     }
 

@@ -4,8 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings - Bricks Attendance System</title>
+    <meta name="description" content="System configuration and user management for Bricks Attendance System">
+    <meta name="author" content="Bricks Attendance System">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
+    
+    <!-- Stylesheets -->
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="icon" type="image/x-icon" href="assets/icons/favicon.ico">
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="/js/data-service.js" as="script">
+    <link rel="preload" href="/js/auth.js" as="script">
+    <link rel="preload" href="/js/theme.js" as="script">
 </head>
 <body>
     <!-- Skip Navigation Links -->
@@ -21,240 +32,52 @@
         </svg>
     </button>
 
-    <!-- Notification Container -->
-    <div id="notification-container"></div>
+    <!-- Theme Toggle -->
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+        <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+    </button>
 
+    <!-- App Container -->
     <div class="app-container">
-        <!-- Sidebar Navigation -->
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <div class="sidebar-brand">
-                    <div class="brand-icon">🧱</div>
-                    <div class="brand-text">
-                        <h2>Bricks</h2>
-                        <span>Attendance System</span>
-                    </div>
-                </div>
-                <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">
-                    <span class="toggle-icon">‹</span>
-                </button>
-            </div>
-
-            <div class="sidebar-user">
-                <div class="user-avatar">
-                    <span id="user-avatar-text">A</span>
-                </div>
-                <div class="user-info">
-                    <div class="user-name" id="user-name">Administrator</div>
-                    <div class="user-role" id="user-role">Admin</div>
-                </div>
-                <div class="theme-selector">
-                    <button class="theme-option active" data-theme="light" title="Light Mode">
-                        <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="5"></circle>
-                            <line x1="12" y1="1" x2="12" y2="3"></line>
-                            <line x1="12" y1="21" x2="12" y2="23"></line>
-                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                            <line x1="1" y1="12" x2="3" y2="12"></line>
-                            <line x1="21" y1="12" x2="23" y2="12"></line>
-                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                        </svg>
-                    </button>
-                    <button class="theme-option" data-theme="dark" title="Dark Mode">
-                        <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <nav class="sidebar-nav">
-                <ul class="nav-list">
-                    <li class="nav-item">
-                        <a href="/dashboard.html" class="nav-link" data-page="dashboard" title="Overview and statistics">
-                            <span class="nav-icon">📊</span>
-                            <span class="nav-text">Dashboard</span>
-                            <span class="nav-indicator"></span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="/employees.html" class="nav-link" data-page="employees" title="Employee management">
-                            <span class="nav-icon">👥</span>
-                            <span class="nav-text">Employees</span>
-                            <span class="nav-indicator"></span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="/employee-management.html" class="nav-link" data-page="employee-management" title="Manage employee attendance">
-                            <span class="nav-icon">🕐</span>
-                            <span class="nav-text">Attendance</span>
-                            <span class="nav-indicator"></span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="/analytics.html" class="nav-link" data-page="analytics" title="Detailed attendance analytics">
-                            <span class="nav-icon">📈</span>
-                            <span class="nav-text">Analytics</span>
-                            <span class="nav-indicator"></span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="/payroll.html" class="nav-link" data-page="payroll" title="Payroll management">
-                            <span class="nav-icon">💰</span>
-                            <span class="nav-text">Payroll</span>
-                            <span class="nav-indicator"></span>
-                        </a>
-                    </li>
-                    <li class="nav-item nav-item-dropdown" id="reportsDropdown">
-                        <a href="#" class="nav-link nav-dropdown-toggle" 
-                           title="Reports and documents"
-                           role="button"
-                           aria-haspopup="true"
-                           aria-expanded="false"
-                           tabindex="0">
-                            <span class="nav-icon">📋</span>
-                            <span class="nav-text">Reports</span>
-                            <span class="nav-dropdown-arrow">▼</span>
-                            <span class="nav-indicator"></span>
-                        </a>
-                        <ul class="nav-dropdown-menu">
-                            <li><a href="/reports/attendance.html" class="nav-dropdown-link">Attendance Reports</a></li>
-                            <li><a href="/reports/payroll.html" class="nav-dropdown-link">Payroll Reports</a></li>
-                            <li><a href="/reports/analytics.html" class="nav-dropdown-link">Analytics Reports</a></li>
-                            <li><a href="/reports/export.html" class="nav-dropdown-link">Export Data</a></li>
-                        </ul>
-                    </li>
-                    <li class="nav-item nav-item-dropdown" id="toolsDropdown">
-                        <a href="#" class="nav-link nav-dropdown-toggle" 
-                           title="System tools"
-                           role="button"
-                           aria-haspopup="true"
-                           aria-expanded="false"
-                           tabindex="0">
-                            <span class="nav-icon">🔧</span>
-                            <span class="nav-text">Tools</span>
-                            <span class="nav-dropdown-arrow">▼</span>
-                            <span class="nav-indicator"></span>
-                        </a>
-                        <ul class="nav-dropdown-menu">
-                            <li><a href="/tools/backup.html" class="nav-dropdown-link">Backup & Restore</a></li>
-                            <li><a href="/tools/import.html" class="nav-dropdown-link">Import Data</a></li>
-                            <li><a href="/tools/logs.html" class="nav-dropdown-link">System Logs</a></li>
-                            <li><a href="/tools/maintenance.html" class="nav-dropdown-link">Maintenance</a></li>
-                        </ul>
-                    </li>
-                    <li class="nav-item">
-                        <a href="/settings.html" class="nav-link active" data-page="settings" title="System configuration">
-                            <span class="nav-icon">⚙️</span>
-                            <span class="nav-text">Settings</span>
-                            <span class="nav-indicator"></span>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-
-            <!-- Quick Actions Section -->
-            <div class="sidebar-quick-actions">
-                <div class="quick-actions-header">
-                    <h4>Quick Actions</h4>
-                </div>
-                <div class="quick-actions-grid" role="group" aria-label="Quick action buttons">
-                    <button class="quick-action-btn" 
-                            title="Clock In/Out (Alt+C)" 
-                            id="quickClockBtn"
-                            aria-label="Clock In or Clock Out"
-                            data-shortcut="Alt+C">
-                        <span class="quick-action-icon">🕐</span>
-                        <span class="quick-action-text">Clock In/Out</span>
-                    </button>
-                    <button class="quick-action-btn" 
-                            title="Add Employee (Alt+E)" 
-                            id="quickAddEmployeeBtn"
-                            aria-label="Add new employee"
-                            data-shortcut="Alt+E">
-                        <span class="quick-action-icon">👤</span>
-                        <span class="quick-action-text">Add Employee</span>
-                    </button>
-                    <button class="quick-action-btn" 
-                            title="Generate Report (Alt+R)" 
-                            id="quickReportBtn"
-                            aria-label="Generate attendance report"
-                            data-shortcut="Alt+R">
-                        <span class="quick-action-icon">📊</span>
-                        <span class="quick-action-text">Report</span>
-                    </button>
-                    <button class="quick-action-btn" 
-                            title="System Status (Alt+S)" 
-                            id="quickStatusBtn"
-                            aria-label="View system status"
-                            data-shortcut="Alt+S">
-                        <span class="quick-action-icon">❤️</span>
-                        <span class="quick-action-text">Status</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- System Status Section -->
-            <div class="sidebar-status">
-                <div class="status-header">
-                    <h4>System Status</h4>
-                </div>
-                <div class="status-indicators">
-                    <div class="status-item">
-                        <span class="status-indicator status-online"></span>
-                        <span class="status-text">Server Online</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-indicator status-online"></span>
-                        <span class="status-text">Database Connected</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-indicator status-online"></span>
-                        <span class="status-text">Backup System</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="sidebar-footer">
-                <button class="logout-btn" id="logout-btn" title="Logout">
-                    <span class="logout-icon">🚪</span>
-                    <span class="logout-text">Logout</span>
-                </button>
-                <div class="sidebar-version">
-                    <small>v1.0.0</small>
-                </div>
-            </div>
-        </aside>
+        <!-- Sidebar will be injected by sidebar.js -->
         
         <!-- Main Content -->
         <main class="main-content" id="main-content">
-            <div class="container">
-                <!-- Page Header -->
-                <header class="page-header">
-                    <div class="page-title-section">
-                        <h1 class="page-title">Settings</h1>
-                        <p class="page-subtitle">Configure system preferences and manage user accounts</p>
+            <!-- Page Header -->
+            <header class="page-header">
+                <div class="header-content">
+                    <div class="header-title">
+                        <h1>Settings</h1>
+                        <p>Configure system preferences and manage user accounts</p>
                     </div>
-                    <div class="page-actions">
-                        <button class="btn btn-secondary" id="export-settings-btn">
+                    <div class="header-actions">
+                        <button class="btn btn-outline" id="export-settings-btn" title="Export Settings" aria-label="Export system settings">
                             <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                 <polyline points="7,10 12,15 17,10"></polyline>
                                 <line x1="12" y1="15" x2="12" y2="3"></line>
                             </svg>
-                            Export Settings
+                            Export
                         </button>
-                        <button class="btn btn-outline" id="import-settings-btn">
+                        <button class="btn btn-outline" id="import-settings-btn" title="Import Settings" aria-label="Import system settings">
                             <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                 <polyline points="17,8 12,3 7,8"></polyline>
                                 <line x1="12" y1="3" x2="12" y2="15"></line>
                             </svg>
-                            Import Settings
+                            Import
                         </button>
-                        <button class="btn btn-primary" id="save-settings-btn" disabled>
+                        <button class="btn btn-primary" id="save-settings-btn" title="Save Changes" aria-label="Save all settings changes" disabled>
                             <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
                                 <polyline points="17,21 17,13 7,13 7,21"></polyline>
@@ -263,7 +86,8 @@
                             Save Changes
                         </button>
                     </div>
-                </header>
+                </div>
+            </header>
 
                 <!-- Settings Navigation Tabs -->
                 <nav class="settings-tabs">
@@ -1222,6 +1046,18 @@
                     </div>
                 </footer>
             </div>
+
+            <!-- Loading State -->
+            <div class="loading-overlay" id="settingsLoading" style="display: none;">
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <p>Loading settings...</p>
+                </div>
+            </div>
+
+            <!-- Error/Success Messages -->
+            <div class="alert alert-danger" id="settingsError" style="display: none;"></div>
+            <div class="alert alert-success" id="settingsSuccess" style="display: none;"></div>
         </main>
     </div>
 
@@ -1239,49 +1075,53 @@
         </button>
         <div class="mobile-fab-menu" role="menu" aria-label="Quick actions">
             <button class="mobile-fab-item" 
-                    data-action="clock" 
+                    data-action="save" 
                     role="menuitem"
-                    aria-label="Clock in or out"
-                    title="Clock In/Out">
-                <span>🕐</span>
+                    aria-label="Save settings"
+                    title="Save Settings">
+                <span>💾</span>
             </button>
             <button class="mobile-fab-item" 
-                    data-action="employee" 
+                    data-action="export" 
                     role="menuitem"
-                    aria-label="Add new employee"
-                    title="Add Employee">
-                <span>👤</span>
+                    aria-label="Export settings"
+                    title="Export">
+                <span>📤</span>
             </button>
             <button class="mobile-fab-item" 
-                    data-action="report" 
+                    data-action="import" 
                     role="menuitem"
-                    aria-label="Generate report"
-                    title="Generate Report">
-                <span>📊</span>
+                    aria-label="Import settings"
+                    title="Import">
+                <span>📥</span>
             </button>
             <button class="mobile-fab-item" 
-                    data-action="status" 
+                    data-action="reset" 
                     role="menuitem"
-                    aria-label="View system status"
-                    title="System Status">
-                <span>❤️</span>
+                    aria-label="Reset to defaults"
+                    title="Reset">
+                <span>�</span>
             </button>
         </div>
     </div>
 
     <!-- Scripts -->
-    <script src="js/utils.js"></script>
     <script src="js/mock-data.js"></script>
     <script src="js/data-service.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/theme.js"></script>
-    <script src="js/sidebar.js"></script>
     <script src="js/modals.js"></script>
-    <script src="js/user-management.js"></script>
+    <script src="js/sidebar.js"></script>
     <script src="js/settings.js"></script>
 
     <style>
         /* Settings-specific styles */
+        .page-settings {
+            --accent-primary: var(--accent-settings);
+            --accent-light: rgba(142, 142, 147, 0.1);
+            --accent-hover: rgba(142, 142, 147, 0.8);
+        }
+
         .settings-tabs {
             display: flex;
             gap: var(--spacing-sm);
@@ -1339,6 +1179,265 @@
         .settings-form {
             height: 100%;
         }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--overlay-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1500;
+        }
+
+        .loading-spinner {
+            background-color: var(--bg-primary);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-xl);
+            text-align: center;
+            box-shadow: var(--shadow-xl);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto var(--spacing-md);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .page-header {
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: var(--spacing-lg);
+        }
+
+        .header-title h1 {
+            margin-bottom: var(--spacing-sm);
+            color: var(--text-primary);
+        }
+
+        .header-title p {
+            color: var(--text-secondary);
+            margin-bottom: 0;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: var(--spacing-md);
+            flex-shrink: 0;
+        }
+
+        /* Skip Navigation Links */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 6px;
+            background: var(--accent-primary);
+            color: var(--color-white);
+            padding: 8px;
+            text-decoration: none;
+            border-radius: var(--radius-sm);
+            z-index: 10000;
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            transition: top var(--transition-fast);
+        }
+
+        .skip-link:focus {
+            top: 6px;
+        }
+
+        /* Mobile Floating Action Button */
+        .mobile-fab-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .mobile-fab-main {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+            color: var(--color-white);
+            border: none;
+            box-shadow: var(--shadow-lg);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+            position: relative;
+            z-index: 1001;
+        }
+
+        .mobile-fab-main:hover {
+            background: var(--accent-hover);
+            transform: scale(1.1);
+        }
+
+        .mobile-fab-main:focus {
+            outline: 2px solid var(--color-white);
+            outline-offset: 2px;
+        }
+
+        .mobile-fab-main svg {
+            width: 24px;
+            height: 24px;
+            transition: transform var(--transition-fast);
+        }
+
+        .mobile-fab-container.open .mobile-fab-main svg {
+            transform: rotate(45deg);
+        }
+
+        .mobile-fab-menu {
+            position: absolute;
+            bottom: 70px;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(20px);
+            transition: all var(--transition-normal);
+        }
+
+        .mobile-fab-container.open .mobile-fab-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .mobile-fab-item {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+            font-size: 1.2rem;
+        }
+
+        .mobile-fab-item:hover {
+            background: var(--accent-light);
+            border-color: var(--accent-primary);
+            transform: scale(1.1);
+        }
+
+        .mobile-fab-item:focus {
+            outline: 2px solid var(--accent-primary);
+            outline-offset: 2px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .header-actions {
+                justify-content: flex-start;
+                flex-wrap: wrap;
+            }
+
+            .settings-tabs {
+                flex-wrap: wrap;
+            }
+
+            /* Adjust theme toggle for mobile */
+            .theme-toggle {
+                top: var(--spacing-md);
+                right: 60px; /* Make room for mobile menu toggle */
+            }
+
+            /* Show mobile FAB when sidebar is collapsed */
+            .mobile-fab-container {
+                display: block;
+            }
+
+            /* Ensure main content doesn't overlap with mobile controls */
+            .main-content {
+                padding-top: 60px; /* Account for mobile menu toggle */
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header-actions .btn {
+                padding: var(--spacing-sm);
+                font-size: var(--font-size-sm);
+            }
+
+            .header-actions .btn-icon {
+                margin-right: var(--spacing-xs);
+            }
+
+            .main-content {
+                padding: var(--spacing-md);
+                padding-top: 60px;
+            }
+
+            .settings-tabs {
+                gap: var(--spacing-xs);
+            }
+
+            .settings-tab {
+                padding: var(--spacing-sm) var(--spacing-md);
+            }
+        }
+
+        /* Accessibility improvements */
+        .btn:focus,
+        .form-select:focus,
+        .form-input:focus {
+            outline: 2px solid var(--accent-primary);
+            outline-offset: 2px;
+        }
+
+        /* Print styles */
+        @media print {
+            .theme-toggle,
+            .header-actions,
+            .loading-overlay,
+            .mobile-fab-container {
+                display: none !important;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .tile {
+                break-inside: avoid;
+                margin-bottom: var(--spacing-lg);
+            }
+        }
+
+        /* Remaining existing styles... */
 
         .form-grid {
             display: grid;
@@ -1856,9 +1955,7 @@
                     const fabItem = e.target.closest('.mobile-fab-item');
                     if (fabItem) {
                         const action = fabItem.dataset.action;
-                        if (window.sidebarManager) {
-                            window.sidebarManager.handleMobileFabAction(action);
-                        }
+                        handleMobileFabAction(action);
                         // Close FAB menu
                         mobileFabContainer.classList.remove('open');
                         mobileFabMain.setAttribute('aria-expanded', 'false');
@@ -1874,25 +1971,43 @@
                 });
             }
 
-            // Handle keyboard shortcuts for quick actions
+            // Handle mobile FAB actions
+            function handleMobileFabAction(action) {
+                switch (action) {
+                    case 'save':
+                        document.getElementById('save-settings-btn')?.click();
+                        break;
+                    case 'export':
+                        document.getElementById('export-settings-btn')?.click();
+                        break;
+                    case 'import':
+                        document.getElementById('import-settings-btn')?.click();
+                        break;
+                    case 'reset':
+                        document.getElementById('reset-settings-btn')?.click();
+                        break;
+                }
+            }
+
+            // Handle keyboard shortcuts for settings actions
             document.addEventListener('keydown', function(e) {
                 if (e.altKey) {
                     switch(e.key.toLowerCase()) {
-                        case 'c':
+                        case 's':
                             e.preventDefault();
-                            document.getElementById('quickClockBtn')?.click();
+                            document.getElementById('save-settings-btn')?.click();
                             break;
                         case 'e':
                             e.preventDefault();
-                            document.getElementById('quickAddEmployeeBtn')?.click();
+                            document.getElementById('export-settings-btn')?.click();
+                            break;
+                        case 'i':
+                            e.preventDefault();
+                            document.getElementById('import-settings-btn')?.click();
                             break;
                         case 'r':
                             e.preventDefault();
-                            document.getElementById('quickReportBtn')?.click();
-                            break;
-                        case 's':
-                            e.preventDefault();
-                            document.getElementById('quickStatusBtn')?.click();
+                            document.getElementById('reset-settings-btn')?.click();
                             break;
                     }
                 }
@@ -1950,14 +2065,7 @@
                 }
             });
 
-            console.log('Settings page initialized with accessibility and responsive features');
-            
-            // Initialize settings controller
-            if (typeof SettingsController !== 'undefined') {
-                window.settingsController = new SettingsController();
-            } else {
-                console.error('SettingsController not found');
-            }
+            console.log('Settings page initialized');
         });
     </script>
 </body>
