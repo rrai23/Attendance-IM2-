@@ -1431,6 +1431,126 @@ class LocalStorageDataService extends DataServiceInterface {
         if (!this.data.settings) this.data.settings = {};
         if (!this.data.analytics) this.data.analytics = {};
     }
+    
+    /**
+     * Get Philippines holidays for calendar display
+     * @param {number} year - Optional year, defaults to current year
+     * @returns {Promise<Array>} Array of holiday objects
+     */
+    async getPhilippineHolidays(year = null) {
+        await this.simulateDelay();
+        
+        const targetYear = year || new Date().getFullYear();
+        
+        try {
+            // Try to fetch holidays from JSON file
+            const response = await fetch('/mock/philippines-holidays.json');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const holidaysData = await response.json();
+            const yearData = holidaysData[targetYear.toString()];
+            
+            if (!yearData) {
+                console.warn(`No holiday data found for year ${targetYear}`);
+                return [];
+            }
+            
+            // Convert to array format expected by calendar
+            const holidays = [];
+            Object.entries(yearData).forEach(([dateKey, holiday]) => {
+                holidays.push({
+                    date: `${targetYear}-${dateKey}`,
+                    name: holiday.name,
+                    type: holiday.type,
+                    description: holiday.description || holiday.name
+                });
+            });
+            
+            return holidays;
+            
+        } catch (error) {
+            console.warn('Failed to load Philippines holidays from JSON file:', error);
+            
+            // Fallback to hardcoded holidays for current year
+            return this.getFallbackHolidays(targetYear);
+        }
+    }
+    
+    /**
+     * Get fallback holidays if JSON file is not available
+     * @param {number} year - Year for holidays
+     * @returns {Array} Array of holiday objects
+     */
+    getFallbackHolidays(year = 2025) {
+        return [
+            { date: `${year}-01-01`, name: "New Year's Day", type: "regular" },
+            { date: `${year}-02-25`, name: "EDSA People Power Revolution Anniversary", type: "regular" },
+            { date: `${year}-04-17`, name: "Maundy Thursday", type: "regular" },
+            { date: `${year}-04-18`, name: "Good Friday", type: "regular" },
+            { date: `${year}-04-09`, name: "Araw ng Kagitingan (Day of Valor)", type: "regular" },
+            { date: `${year}-05-01`, name: "Labor Day", type: "regular" },
+            { date: `${year}-06-12`, name: "Independence Day", type: "regular" },
+            { date: `${year}-08-25`, name: "National Heroes Day", type: "regular" },
+            { date: `${year}-11-01`, name: "All Saints Day", type: "regular" },
+            { date: `${year}-11-30`, name: "Bonifacio Day", type: "regular" },
+            { date: `${year}-12-25`, name: "Christmas Day", type: "regular" },
+            { date: `${year}-12-30`, name: "Rizal Day", type: "regular" }
+        ];
+    }
+
+    /**
+     * Get attendance overview data for a date range
+     * @param {string} startDate - Start date (YYYY-MM-DD)
+     * @param {string} endDate - End date (YYYY-MM-DD)
+     * @returns {Promise<Array>} Array of attendance overview data
+     */
+    async getAttendanceOverview(startDate, endDate) {
+        await this.simulateDelay();
+        
+        try {
+            const filters = {};
+            if (startDate) filters.startDate = startDate;
+            if (endDate) filters.endDate = endDate;
+            
+            const records = await this.getAttendanceRecords(filters);
+            const overview = {};
+            
+            records.forEach(record => {
+                const date = record.date;
+                if (!overview[date]) {
+                    overview[date] = {
+                        date: date,
+                        present: 0,
+                        absent: 0,
+                        late: 0,
+                        total: 0
+                    };
+                }
+                
+                overview[date].total++;
+                
+                if (record.status === 'present') {
+                    overview[date].present++;
+                    
+                    // Check if late (after 9:00 AM)
+                    if (record.timeIn && record.timeIn > '09:00') {
+                        overview[date].late++;
+                    }
+                } else if (record.status === 'absent') {
+                    overview[date].absent++;
+                }
+            });
+            
+            return Object.values(overview);
+        } catch (error) {
+            console.error('Error getting attendance overview:', error);
+            return [];
+        }
+    }
+
+    // ...existing code...
 }
 
 // Export the class for use by the unified data service

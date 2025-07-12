@@ -32,7 +32,9 @@ if (typeof window.dataService === 'undefined') {
                 emit: function() {},
                 getEmployees: async function() { return []; },
                 getAttendanceRecords: async function() { return []; },
+                getAttendanceOverview: async function() { return []; },
                 getSettings: async function() { return {}; },
+                getPhilippineHolidays: async function() { return []; },
                 getAuthToken: function() { return localStorage.getItem('bricks_auth_token'); },
                 setAuthToken: function(token) { localStorage.setItem('bricks_auth_token', token); }
             };
@@ -67,7 +69,9 @@ if (typeof window.dataService === 'undefined') {
             emit: function() {},
             getEmployees: async function() { return []; },
             getAttendanceRecords: async function() { return []; },
+            getAttendanceOverview: async function() { return []; },
             getSettings: async function() { return {}; },
+            getPhilippineHolidays: async function() { return []; },
             getAuthToken: function() { return localStorage.getItem('bricks_auth_token'); },
             setAuthToken: function(token) { localStorage.setItem('bricks_auth_token', token); }
         };

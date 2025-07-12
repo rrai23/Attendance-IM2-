@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Global DataService</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        .result { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Debug Global DataService</h1>
+    <div id="results"></div>
+
+    <!-- Load data service scripts in order -->
+    <script src="js/mock-data.js" onerror="logError('mock-data.js failed to load')"></script>
+    <script src="js/core/data-service-api.js" onerror="logError('data-service-api.js failed to load')"></script>
+    <script src="js/core/local-storage-service.js" onerror="logError('local-storage-service.js failed to load')"></script>
+    <script src="js/core/api-service.js" onerror="logError('api-service.js failed to load')"></script>
+    <script src="js/core/data-service-factory.js" onerror="logError('data-service-factory.js failed to load')"></script>
+    <script src="js/unified-data-service.js" onerror="logError('unified-data-service.js failed to load')"></script>
+    <script src="js/data-service.js" onerror="logError('data-service.js failed to load')"></script>
+
+    <script>
+        const results = document.getElementById('results');
+        
+        function addResult(title, content, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `<h3>${title}</h3><pre>${content}</pre>`;
+            results.appendChild(div);
+        }
+
+        function logError(message) {
+            addResult('Script Loading Error', message, 'error');
+        }
+
+        function checkDataService() {
+            // Check if window.dataService exists
+            if (typeof window.dataService === 'undefined') {
+                addResult('Global DataService', 'window.dataService is undefined', 'error');
+                return;
+            }
+
+            if (!window.dataService) {
+                addResult('Global DataService', 'window.dataService is null/falsy', 'error');
+                return;
+            }
+
+            // Check dataService properties
+            const info = {
+                exists: true,
+                constructor: window.dataService.constructor.name,
+                initialized: window.dataService.initialized,
+                hasGetPhilippineHolidays: typeof window.dataService.getPhilippineHolidays === 'function'
+            };
+
+            addResult('Global DataService', JSON.stringify(info, null, 2), 'success');
+
+            // Test the method
+            if (typeof window.dataService.getPhilippineHolidays === 'function') {
+                testGetPhilippineHolidays();
+            }
+        }
+
+        async function testGetPhilippineHolidays() {
+            try {
+                const holidays = await window.dataService.getPhilippineHolidays(2024);
+                addResult('getPhilippineHolidays Test', 
+                    `Successfully loaded ${holidays.length} holidays:\n${JSON.stringify(holidays.slice(0, 3), null, 2)}`, 
+                    'success');
+            } catch (error) {
+                addResult('getPhilippineHolidays Test', 
+                    `Error: ${error.message}\nStack: ${error.stack}`, 
+                    'error');
+            }
+        }
+
+        function checkClasses() {
+            const classes = [
+                'LocalStorageDataService',
+                'ApiDataService', 
+                'DataServiceFactory',
+                'DataServiceInterface'
+            ];
+
+            classes.forEach(className => {
+                const available = typeof window[className] !== 'undefined';
+                addResult(`Class ${className}`, 
+                    available ? 'Available' : 'Not available', 
+                    available ? 'success' : 'error');
+            });
+        }
+
+        // Run tests after a delay to ensure scripts are loaded
+        setTimeout(() => {
+            addResult('Page Load', 'Starting checks...', 'info');
+            checkClasses();
+            checkDataService();
+        }, 1000);
+    </script>
+</body>
+</html>

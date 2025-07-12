@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Dashboard Calendar Holidays</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        #calendar-container {
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Dashboard Calendar Holidays</h1>
+    <p>This page tests the dashboard calendar holiday functionality.</p>
+    
+    <div id="status" class="test-section info">
+        <h3>Loading Status</h3>
+        <p>Loading calendar components...</p>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test Actions</h3>
+        <button onclick="testDataService()">Test Data Service</button>
+        <button onclick="testCalendarClass()">Test Calendar Class</button>
+        <button onclick="testHolidayLoading()">Test Holiday Loading</button>
+        <button onclick="initializeCalendar()">Initialize Calendar</button>
+        <button onclick="checkHolidaysInCalendar()">Check Holidays in Calendar</button>
+    </div>
+    
+    <div id="results" class="test-section">
+        <h3>Test Results</h3>
+        <div id="output"></div>
+    </div>
+
+    <div id="calendar-container">
+        <h3>Calendar Display</h3>
+        <div id="calendar" class="calendar-widget"></div>
+    </div>
+
+    <!-- Load required CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+
+    <!-- Load all the required scripts -->
+    <script src="js/mock-data.js" onerror="console.error('Failed to load mock-data.js')"></script>
+    <script src="js/core/data-service-api.js" onerror="console.error('Failed to load data-service-api.js')"></script>
+    <script src="js/core/local-storage-service.js" onerror="console.error('Failed to load local-storage-service.js')"></script>
+    <script src="js/core/api-service.js" onerror="console.error('Failed to load api-service.js')"></script>
+    <script src="js/core/data-service-factory.js" onerror="console.error('Failed to load data-service-factory.js')"></script>
+    <script src="js/unified-data-service.js" onerror="console.error('Failed to load unified-data-service.js')"></script>
+    <script src="js/data-service.js" onerror="console.error('Failed to load data-service.js')"></script>
+    <script src="js/dashboard-calendar.js" onerror="console.error('Failed to load dashboard-calendar.js')"></script>
+
+    <script>
+        let calendarWidget = null;
+
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `test-section ${type}`;
+            statusDiv.innerHTML = `<h3>Status</h3><p>${message}</p>`;
+        }
+
+        function addResult(title, content, type = 'info') {
+            const output = document.getElementById('output');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-section ${type}`;
+            resultDiv.innerHTML = `
+                <h4>${title}</h4>
+                <pre>${content}</pre>
+            `;
+            output.appendChild(resultDiv);
+        }
+
+        function testDataService() {
+            try {
+                if (typeof dataService === 'undefined') {
+                    addResult('Data Service Test', 'dataService is not defined', 'error');
+                    return;
+                }
+
+                const hasMethod = typeof dataService.getPhilippineHolidays === 'function';
+                const info = {
+                    available: true,
+                    initialized: dataService.initialized,
+                    constructor: dataService.constructor.name,
+                    hasGetPhilippineHolidays: hasMethod
+                };
+
+                addResult('Data Service Test', JSON.stringify(info, null, 2), hasMethod ? 'success' : 'error');
+            } catch (error) {
+                addResult('Data Service Test', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        function testCalendarClass() {
+            try {
+                if (typeof DashboardCalendar === 'undefined') {
+                    addResult('Calendar Class Test', 'DashboardCalendar is not defined', 'error');
+                    return;
+                }
+
+                const info = {
+                    available: true,
+                    constructor: DashboardCalendar.name,
+                    prototype: Object.getOwnPropertyNames(DashboardCalendar.prototype)
+                };
+
+                addResult('Calendar Class Test', JSON.stringify(info, null, 2), 'success');
+            } catch (error) {
+                addResult('Calendar Class Test', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testHolidayLoading() {
+            try {
+                if (typeof dataService === 'undefined' || typeof dataService.getPhilippineHolidays !== 'function') {
+                    addResult('Holiday Loading Test', 'dataService.getPhilippineHolidays not available', 'error');
+                    return;
+                }
+
+                updateStatus('Testing holiday loading...', 'info');
+                const holidays = await dataService.getPhilippineHolidays();
+                
+                addResult('Holiday Loading Test', 
+                    `Success! Loaded ${holidays.length} holidays:\n${JSON.stringify(holidays.slice(0, 5), null, 2)}`, 
+                    'success');
+
+                updateStatus('Holiday loading test completed', 'success');
+            } catch (error) {
+                addResult('Holiday Loading Test', `Error: ${error.message}\nStack: ${error.stack}`, 'error');
+                updateStatus('Holiday loading test failed', 'error');
+            }
+        }
+
+        async function initializeCalendar() {
+            try {
+                if (typeof DashboardCalendar === 'undefined') {
+                    addResult('Calendar Initialization', 'DashboardCalendar class not available', 'error');
+                    return;
+                }
+
+                const calendarElement = document.getElementById('calendar');
+                if (!calendarElement) {
+                    addResult('Calendar Initialization', 'Calendar element not found', 'error');
+                    return;
+                }
+
+                updateStatus('Initializing calendar...', 'info');
+
+                calendarWidget = new DashboardCalendar(calendarElement);
+                await calendarWidget.initialize();
+
+                addResult('Calendar Initialization', 'Calendar initialized successfully', 'success');
+                updateStatus('Calendar initialized', 'success');
+
+            } catch (error) {
+                addResult('Calendar Initialization', `Error: ${error.message}\nStack: ${error.stack}`, 'error');
+                updateStatus('Calendar initialization failed', 'error');
+            }
+        }
+
+        async function checkHolidaysInCalendar() {
+            try {
+                if (!calendarWidget) {
+                    addResult('Calendar Holidays Check', 'Calendar not initialized. Please initialize first.', 'error');
+                    return;
+                }
+
+                const holidayInfo = {
+                    totalHolidays: calendarWidget.holidays.size,
+                    sampleHolidays: []
+                };
+
+                // Get first 5 holidays as samples
+                let count = 0;
+                for (let [key, value] of calendarWidget.holidays) {
+                    if (count < 5) {
+                        holidayInfo.sampleHolidays.push({ dateKey: key, holiday: value });
+                        count++;
+                    }
+                }
+
+                addResult('Calendar Holidays Check', JSON.stringify(holidayInfo, null, 2), 
+                    holidayInfo.totalHolidays > 0 ? 'success' : 'error');
+
+            } catch (error) {
+                addResult('Calendar Holidays Check', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                updateStatus('Components loaded, ready for testing', 'success');
+                testDataService();
+                testCalendarClass();
+            }, 1000); // Give time for scripts to load
+        });
+    </script>
+</body>
+</html>

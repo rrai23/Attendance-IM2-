@@ -459,6 +459,64 @@ class ApiDataService extends DataServiceInterface {
             };
         }
     }
+    
+    /**
+     * Get Philippines holidays for calendar display
+     * @param {number} year - Optional year, defaults to current year
+     * @returns {Promise<Array>} Array of holiday objects
+     */
+    async getPhilippineHolidays(year = null) {
+        const targetYear = year || new Date().getFullYear();
+        
+        try {
+            return await this.apiCall(`/holidays/philippines/${targetYear}`);
+        } catch (error) {
+            console.warn('API holidays not available, using fallback:', error);
+            
+            // Fallback to hardcoded holidays
+            return [
+                { date: `${targetYear}-01-01`, name: "New Year's Day", type: "regular" },
+                { date: `${targetYear}-02-25`, name: "EDSA People Power Revolution Anniversary", type: "regular" },
+                { date: `${targetYear}-04-17`, name: "Maundy Thursday", type: "regular" },
+                { date: `${targetYear}-04-18`, name: "Good Friday", type: "regular" },
+                { date: `${targetYear}-04-09`, name: "Araw ng Kagitingan (Day of Valor)", type: "regular" },
+                { date: `${targetYear}-05-01`, name: "Labor Day", type: "regular" },
+                { date: `${targetYear}-06-12`, name: "Independence Day", type: "regular" },
+                { date: `${targetYear}-08-25`, name: "National Heroes Day", type: "regular" },
+                { date: `${targetYear}-11-01`, name: "All Saints Day", type: "regular" },
+                { date: `${targetYear}-11-30`, name: "Bonifacio Day", type: "regular" },
+                { date: `${targetYear}-12-25`, name: "Christmas Day", type: "regular" },
+                { date: `${targetYear}-12-30`, name: "Rizal Day", type: "regular" }
+            ];
+        }
+    }
+
+    /**
+     * Get attendance overview data for a date range
+     * @param {string} startDate - Start date (YYYY-MM-DD)
+     * @param {string} endDate - End date (YYYY-MM-DD)
+     * @returns {Promise<Array>} Array of attendance overview data
+     */
+    async getAttendanceOverview(startDate, endDate) {
+        await this.simulateDelay();
+        
+        try {
+            // Build query parameters
+            const params = new URLSearchParams();
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
+            
+            const queryString = params.toString();
+            const url = `/attendance/overview${queryString ? '?' + queryString : ''}`;
+            
+            const response = await this.request(url);
+            return response || [];
+        } catch (error) {
+            console.error('Error getting attendance overview from API:', error);
+            // Return fallback data
+            return [];
+        }
+    }
 }
 
 // Don't create an instance by default - this will be instantiated when needed

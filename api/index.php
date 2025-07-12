@@ -227,6 +227,12 @@ try {
         getSystemStatus();
     }
     
+    // Philippines holidays route
+    elseif (preg_match('#^/holidays/philippines/(\d{4})$#', $endpoint, $matches)) {
+        $year = intval($matches[1]);
+        getPhilippineHolidays($year);
+    }
+    
     // 404 Not Found
     else {
         respondWithError('Endpoint not found', 404);
@@ -1035,4 +1041,87 @@ function getMockSettings() {
         ],
         'lastUpdated' => date('c')
     ];
+}
+
+/**
+ * Get Philippine holidays
+ */
+function getPhilippineHolidays($year) {
+    // In a real implementation, fetch from database or external API
+    
+    // Mock data
+    $holidays = [
+        [
+            'date' => "{$year}-01-01",
+            'name' => 'New Year\'s Day',
+            'type' => 'regular'
+        ],
+        [
+            'date' => "{$year}-04-09",
+            'name' => 'Araw ng Kagitingan',
+            'type' => 'regular'
+        ],
+        [
+            'date' => "{$year}-05-01",
+            'name' => 'Labor Day',
+            'type' => 'regular'
+        ],
+        [
+            'date' => "{$year}-06-12",
+            'name' => 'Independence Day',
+            'type' => 'regular'
+        ],
+        [
+            'date' => "{$year}-08-28",
+            'name' => 'National Heroes Day',
+            'type' => 'regular'
+        ],
+        [
+            'date' => "{$year}-11-30",
+            'name' => 'Bonifacio Day',
+            'type' => 'regular'
+        ],
+        [
+            'date' => "{$year}-12-25",
+            'name' => 'Christmas Day',
+            'type' => 'regular'
+        ],
+        [
+            'date' => "{$year}-12-30",
+            'name' => 'Rizal Day',
+            'type' => 'regular'
+        ],
+        [
+            'date' => "{$year}-02-25",
+            'name' => 'EDSA People Power Revolution Anniversary',
+            'type' => 'special'
+        ],
+        [
+            'date' => "{$year}-04-14",
+            'name' => 'Black Saturday',
+            'type' => 'special'
+        ],
+        [
+            'date' => "{$year}-04-15",
+            'name' => 'Easter Sunday',
+            'type' => 'special'
+        ],
+        [
+            'date' => "{$year}-11-01",
+            'name' => 'All Saints\' Day',
+            'type' => 'special'
+        ],
+        [
+            'date' => "{$year}-11-02",
+            'name' => 'All Souls\' Day',
+            'type' => 'special'
+        ],
+        [
+            'date' => "{$year}-12-31",
+            'name' => 'New Year\'s Eve',
+            'type' => 'special'
+        ]
+    ];
+    
+    respondWithData($holidays);
 }

@@ -152,9 +152,11 @@ class DashboardCalendar {
             });
 
             // Also check if dataService is available for additional holidays
-            if (typeof dataService !== 'undefined') {
+            if (typeof dataService !== 'undefined' && dataService) {
                 try {
-                    const additionalHolidays = await dataService.getPhilippineHolidays();
+                    console.log('Loading additional holidays from data service...');
+                    const additionalHolidays = await dataService.getPhilippineHolidays(currentYear);
+                    console.log(`Loaded ${additionalHolidays.length} additional holidays from data service`);
                     additionalHolidays.forEach(holiday => {
                         const dateKey = this.formatDateKey(new Date(holiday.date));
                         this.holidays.set(dateKey, holiday);
@@ -162,6 +164,8 @@ class DashboardCalendar {
                 } catch (serviceError) {
                     console.warn('Data service holidays not available:', serviceError);
                 }
+            } else {
+                console.warn('Data service not available for loading additional holidays');
             }
         } catch (error) {
             console.error('Error loading holidays:', error);

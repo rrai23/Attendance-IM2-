@@ -62,6 +62,16 @@ class DataServiceInterface {
     }
     
     /**
+     * Get attendance overview data for a date range
+     * @param {string} startDate - Start date (YYYY-MM-DD)
+     * @param {string} endDate - End date (YYYY-MM-DD)
+     * @returns {Promise<Array>} Array of attendance overview data
+     */
+    async getAttendanceOverview(startDate, endDate) {
+        throw new Error('Method not implemented');
+    }
+    
+    /**
      * Add a new attendance record
      * @param {Object} record - Attendance record data
      * @returns {Promise<Object>} Created attendance record
@@ -247,6 +257,15 @@ class DataServiceInterface {
      * @returns {Promise<Object>} Payday information
      */
     async getNextPayday() {
+        throw new Error('Method not implemented');
+    }
+    
+    /**
+     * Get Philippines holidays for calendar display
+     * @param {number} year - Optional year, defaults to current year
+     * @returns {Promise<Array>} Array of holiday objects
+     */
+    async getPhilippineHolidays(year = null) {
         throw new Error('Method not implemented');
     }
 }

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Holidays Data Service</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Holidays Data Service</h1>
+    <p>This page tests the dataService.getPhilippineHolidays() method.</p>
+    
+    <div id="status" class="test-section info">
+        <h3>Loading Status</h3>
+        <p>Loading data service...</p>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test Actions</h3>
+        <button onclick="testDataServiceAvailable()">Check Data Service Available</button>
+        <button onclick="testGetPhilippineHolidays()">Test getPhilippineHolidays()</button>
+        <button onclick="testHolidaysWithYear()">Test getPhilippineHolidays(2024)</button>
+        <button onclick="showAllMethods()">Show All Data Service Methods</button>
+    </div>
+    
+    <div id="results" class="test-section">
+        <h3>Test Results</h3>
+        <div id="output"></div>
+    </div>
+
+    <!-- Load all the data service components -->
+    <script src="js/mock-data.js" onerror="console.error('Failed to load mock-data.js')"></script>
+    <script src="js/core/data-service-api.js" onerror="console.error('Failed to load data-service-api.js')"></script>
+    <script src="js/core/local-storage-service.js" onerror="console.error('Failed to load local-storage-service.js')"></script>
+    <script src="js/core/api-service.js" onerror="console.error('Failed to load api-service.js')"></script>
+    <script src="js/core/data-service-factory.js" onerror="console.error('Failed to load data-service-factory.js')"></script>
+    <script src="js/unified-data-service.js" onerror="console.error('Failed to load unified-data-service.js')"></script>
+    <script src="js/data-service.js" onerror="console.error('Failed to load data-service.js')"></script>
+
+    <script>
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `test-section ${type}`;
+            statusDiv.innerHTML = `<h3>Status</h3><p>${message}</p>`;
+        }
+
+        function addResult(title, content, type = 'info') {
+            const output = document.getElementById('output');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-section ${type}`;
+            resultDiv.innerHTML = `
+                <h4>${title}</h4>
+                <pre>${content}</pre>
+            `;
+            output.appendChild(resultDiv);
+        }
+
+        function testDataServiceAvailable() {
+            try {
+                if (typeof dataService === 'undefined') {
+                    addResult('Data Service Check', 'dataService is not defined', 'error');
+                    return;
+                }
+
+                if (!dataService) {
+                    addResult('Data Service Check', 'dataService is null/falsy', 'error');
+                    return;
+                }
+
+                const info = {
+                    available: true,
+                    initialized: dataService.initialized,
+                    constructor: dataService.constructor.name,
+                    hasGetPhilippineHolidays: typeof dataService.getPhilippineHolidays === 'function'
+                };
+
+                addResult('Data Service Check', JSON.stringify(info, null, 2), 'success');
+            } catch (error) {
+                addResult('Data Service Check', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testGetPhilippineHolidays() {
+            try {
+                if (typeof dataService === 'undefined' || !dataService) {
+                    addResult('getPhilippineHolidays Test', 'dataService not available', 'error');
+                    return;
+                }
+
+                if (typeof dataService.getPhilippineHolidays !== 'function') {
+                    addResult('getPhilippineHolidays Test', 'getPhilippineHolidays method not found', 'error');
+                    return;
+                }
+
+                updateStatus('Testing getPhilippineHolidays()...', 'info');
+                const holidays = await dataService.getPhilippineHolidays();
+                
+                addResult('getPhilippineHolidays Test', 
+                    `Success! Found ${holidays.length} holidays:\n${JSON.stringify(holidays, null, 2)}`, 
+                    'success');
+
+                updateStatus('getPhilippineHolidays() test completed', 'success');
+            } catch (error) {
+                addResult('getPhilippineHolidays Test', `Error: ${error.message}\nStack: ${error.stack}`, 'error');
+                updateStatus('getPhilippineHolidays() test failed', 'error');
+            }
+        }
+
+        async function testHolidaysWithYear() {
+            try {
+                if (typeof dataService === 'undefined' || !dataService) {
+                    addResult('getPhilippineHolidays(2024) Test', 'dataService not available', 'error');
+                    return;
+                }
+
+                if (typeof dataService.getPhilippineHolidays !== 'function') {
+                    addResult('getPhilippineHolidays(2024) Test', 'getPhilippineHolidays method not found', 'error');
+                    return;
+                }
+
+                updateStatus('Testing getPhilippineHolidays(2024)...', 'info');
+                const holidays = await dataService.getPhilippineHolidays(2024);
+                
+                addResult('getPhilippineHolidays(2024) Test', 
+                    `Success! Found ${holidays.length} holidays for 2024:\n${JSON.stringify(holidays, null, 2)}`, 
+                    'success');
+
+                updateStatus('getPhilippineHolidays(2024) test completed', 'success');
+            } catch (error) {
+                addResult('getPhilippineHolidays(2024) Test', `Error: ${error.message}\nStack: ${error.stack}`, 'error');
+                updateStatus('getPhilippineHolidays(2024) test failed', 'error');
+            }
+        }
+
+        function showAllMethods() {
+            try {
+                if (typeof dataService === 'undefined' || !dataService) {
+                    addResult('Data Service Methods', 'dataService not available', 'error');
+                    return;
+                }
+
+                const methods = [];
+                for (let prop in dataService) {
+                    if (typeof dataService[prop] === 'function') {
+                        methods.push(prop);
+                    }
+                }
+
+                const properties = [];
+                for (let prop in dataService) {
+                    if (typeof dataService[prop] !== 'function') {
+                        properties.push(`${prop}: ${typeof dataService[prop]}`);
+                    }
+                }
+
+                const info = {
+                    methods: methods.sort(),
+                    properties: properties.sort(),
+                    prototype: Object.getPrototypeOf(dataService).constructor.name
+                };
+
+                addResult('Data Service Methods & Properties', JSON.stringify(info, null, 2), 'info');
+            } catch (error) {
+                addResult('Data Service Methods', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                if (typeof dataService !== 'undefined' && dataService) {
+                    updateStatus(`Data service loaded successfully (${dataService.constructor.name})`, 'success');
+                    testDataServiceAvailable();
+                } else {
+                    updateStatus('Data service failed to load or is not available', 'error');
+                }
+            }, 1000); // Give time for scripts to load
+        });
+    </script>
+</body>
+</html>
