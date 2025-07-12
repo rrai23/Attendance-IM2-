@@ -452,6 +452,21 @@ class ChartsManager {
         });
     }
 
+    /**
+     * Resize all charts - useful for window resize events
+     */
+    resizeAllCharts() {
+        this.charts.forEach((chart, containerId) => {
+            try {
+                if (chart && typeof chart.resize === 'function') {
+                    chart.resize();
+                }
+            } catch (error) {
+                console.warn(`Failed to resize chart ${containerId}:`, error);
+            }
+        });
+    }
+
     onThemeChange() {
         this.updateThemeColors();
         

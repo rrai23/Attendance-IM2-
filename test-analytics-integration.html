@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Data Integration Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .warning {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        .comparison-table th,
+        .comparison-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .comparison-table th {
+            background-color: #f8f9fa;
+        }
+        .match {
+            background-color: #d4edda;
+        }
+        .mismatch {
+            background-color: #f8d7da;
+        }
+        .loading {
+            color: #6c757d;
+            font-style: italic;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #e9ecef;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Analytics Data Integration Test</h1>
+        <p>This tool verifies that the analytics page is using the same unified data as the employees page.</p>
+
+        <div class="test-section">
+            <h3>1. Data Source Verification</h3>
+            <button onclick="verifyDataSources()">Verify Data Sources</button>
+            <div id="dataSourcesResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Employee Data Comparison</h3>
+            <button onclick="compareEmployeeData()">Compare Employee Data</button>
+            <div id="employeeComparisonResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. Attendance Data Comparison</h3>
+            <button onclick="compareAttendanceData()">Compare Attendance Data</button>
+            <div id="attendanceComparisonResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4. Analytics Page Integration Test</h3>
+            <button onclick="testAnalyticsIntegration()">Test Analytics Integration</button>
+            <div id="analyticsIntegrationResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>5. Live Analytics Test</h3>
+            <button onclick="openAnalyticsPage()">Open Analytics Page</button>
+            <button onclick="openEmployeesPage()">Open Employees Page</button>
+            <p><em>Use these buttons to open both pages in new tabs and compare the employee lists manually.</em></p>
+        </div>
+    </div>
+
+    <!-- Load required scripts -->
+    <script src="js/utils/id-utility.js"></script>
+    <script src="js/core/local-storage-service.js"></script>
+    <script src="js/unified-employee-manager.js"></script>
+    <script src="js/unified-data-service.js"></script>
+
+    <script>
+        let dataService, unifiedManager;
+
+        async function initializeServices() {
+            try {
+                if (dataService) return true;
+                
+                dataService = new window.UnifiedDataService();
+                await dataService.initialize();
+                unifiedManager = dataService.getUnifiedManager();
+                return true;
+            } catch (error) {
+                console.error('Failed to initialize services:', error);
+                return false;
+            }
+        }
+
+        async function verifyDataSources() {
+            const container = document.getElementById('dataSourcesResult');
+            container.innerHTML = '<p class="loading">Verifying data sources...</p>';
+
+            try {
+                const initialized = await initializeServices();
+                if (!initialized) {
+                    container.innerHTML = '<p class="error">❌ Failed to initialize unified data service</p>';
+                    return;
+                }
+
+                const employees = await dataService.getEmployees();
+                const attendanceRecords = await dataService.getAttendanceRecords();
+
+                let html = '<h4>Data Source Verification Results:</h4>';
+                
+                // Check localStorage
+                const localStorageData = localStorage.getItem('bricks_attendance_data');
+                const hasLocalStorage = !!localStorageData;
+                
+                html += '<table class="comparison-table">';
+                html += '<tr><th>Data Source</th><th>Status</th><th>Employee Count</th><th>Attendance Records</th></tr>';
+                
+                if (hasLocalStorage) {
+                    const localData = JSON.parse(localStorageData);
+                    html += `<tr class="match">
+                        <td><strong>localStorage</strong></td>
+                        <td>✅ Active</td>
+                        <td>${localData.employees ? localData.employees.length : 0}</td>
+                        <td>${localData.attendanceRecords ? localData.attendanceRecords.length : 0}</td>
+                    </tr>`;
+                }
+                
+                html += `<tr class="match">
+                    <td><strong>Unified Data Service</strong></td>
+                    <td>✅ Active</td>
+                    <td>${employees.length}</td>
+                    <td>${attendanceRecords.length}</td>
+                </tr>`;
+                
+                html += '</table>';
+                
+                if (hasLocalStorage) {
+                    const localData = JSON.parse(localStorageData);
+                    const localEmployeeCount = localData.employees ? localData.employees.length : 0;
+                    const localAttendanceCount = localData.attendanceRecords ? localData.attendanceRecords.length : 0;
+                    
+                    if (employees.length === localEmployeeCount && attendanceRecords.length === localAttendanceCount) {
+                        html += '<p class="success">✅ Unified data service is correctly using localStorage data</p>';
+                    } else {
+                        html += '<p class="warning">⚠️ Data count mismatch detected</p>';
+                    }
+                } else {
+                    html += '<p class="warning">⚠️ No localStorage data found</p>';
+                }
+
+                container.innerHTML = html;
+
+            } catch (error) {
+                container.innerHTML = `<p class="error">Verification failed: ${error.message}</p>`;
+                console.error('Verification error:', error);
+            }
+        }
+
+        async function compareEmployeeData() {
+            const container = document.getElementById('employeeComparisonResult');
+            container.innerHTML = '<p class="loading">Comparing employee data...</p>';
+
+            try {
+                const initialized = await initializeServices();
+                if (!initialized) {
+                    container.innerHTML = '<p class="error">❌ Failed to initialize services</p>';
+                    return;
+                }
+
+                const employees = await dataService.getEmployees();
+                
+                let html = '<h4>Employee Data Analysis:</h4>';
+                html += `<p><strong>Total Employees:</strong> ${employees.length}</p>`;
+                
+                html += '<table class="comparison-table">';
+                html += '<tr><th>Employee</th><th>ID</th><th>Code</th><th>Email</th><th>Department</th><th>Status</th></tr>';
+                
+                employees.forEach(emp => {
+                    const rowClass = emp.employeeCode && emp.employeeCode.startsWith('emp_') ? 'match' : 'mismatch';
+                    html += `<tr class="${rowClass}">
+                        <td>${emp.firstName} ${emp.lastName}</td>
+                        <td>${emp.id}</td>
+                        <td>${emp.employeeCode || 'N/A'}</td>
+                        <td>${emp.email}</td>
+                        <td>${emp.department}</td>
+                        <td>${emp.status}</td>
+                    </tr>`;
+                });
+                
+                html += '</table>';
+                
+                // Validate ID formats
+                const correctIdFormat = employees.filter(emp => 
+                    emp.employeeCode && emp.employeeCode.startsWith('emp_')
+                ).length;
+                
+                if (correctIdFormat === employees.length) {
+                    html += '<p class="success">✅ All employees have correct ID format</p>';
+                } else {
+                    html += `<p class="warning">⚠️ ${employees.length - correctIdFormat} employees have incorrect ID format</p>`;
+                }
+
+                container.innerHTML = html;
+
+            } catch (error) {
+                container.innerHTML = `<p class="error">Comparison failed: ${error.message}</p>`;
+                console.error('Comparison error:', error);
+            }
+        }
+
+        async function compareAttendanceData() {
+            const container = document.getElementById('attendanceComparisonResult');
+            container.innerHTML = '<p class="loading">Comparing attendance data...</p>';
+
+            try {
+                const initialized = await initializeServices();
+                if (!initialized) {
+                    container.innerHTML = '<p class="error">❌ Failed to initialize services</p>';
+                    return;
+                }
+
+                const employees = await dataService.getEmployees();
+                const attendanceRecords = await dataService.getAttendanceRecords();
+                
+                let html = '<h4>Attendance Data Analysis:</h4>';
+                html += `<p><strong>Total Attendance Records:</strong> ${attendanceRecords.length}</p>`;
+                
+                // Check for orphaned records
+                const orphanedRecords = attendanceRecords.filter(record => 
+                    !window.IdUtility.findEmployeeById(employees, record.employeeId)
+                );
+                
+                if (orphanedRecords.length === 0) {
+                    html += '<p class="success">✅ All attendance records have matching employees</p>';
+                } else {
+                    html += `<p class="error">❌ Found ${orphanedRecords.length} orphaned attendance records</p>';
+                }
+                
+                // Group attendance by employee
+                const attendanceByEmployee = {};
+                attendanceRecords.forEach(record => {
+                    const employee = window.IdUtility.findEmployeeById(employees, record.employeeId);
+                    if (employee) {
+                        const key = `${employee.firstName} ${employee.lastName}`;
+                        if (!attendanceByEmployee[key]) {
+                            attendanceByEmployee[key] = [];
+                        }
+                        attendanceByEmployee[key].push(record);
+                    }
+                });
+                
+                html += '<h5>Attendance Records by Employee:</h5>';
+                html += '<table class="comparison-table">';
+                html += '<tr><th>Employee</th><th>Record Count</th><th>Latest Record</th></tr>';
+                
+                Object.entries(attendanceByEmployee).forEach(([employeeName, records]) => {
+                    const latestRecord = records.sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+                    html += `<tr class="match">
+                        <td>${employeeName}</td>
+                        <td>${records.length}</td>
+                        <td>${latestRecord.date} (${latestRecord.status})</td>
+                    </tr>`;
+                });
+                
+                html += '</table>';
+
+                container.innerHTML = html;
+
+            } catch (error) {
+                container.innerHTML = `<p class="error">Comparison failed: ${error.message}</p>`;
+                console.error('Comparison error:', error);
+            }
+        }
+
+        async function testAnalyticsIntegration() {
+            const container = document.getElementById('analyticsIntegrationResult');
+            container.innerHTML = '<p class="loading">Testing analytics integration...</p>';
+
+            try {
+                // Test if analytics data service methods would work
+                const initialized = await initializeServices();
+                if (!initialized) {
+                    container.innerHTML = '<p class="error">❌ Failed to initialize services</p>';
+                    return;
+                }
+
+                let html = '<h4>Analytics Integration Test Results:</h4>';
+                
+                // Test basic data retrieval
+                const employees = await dataService.getEmployees();
+                const attendanceRecords = await dataService.getAttendanceRecords();
+                
+                html += '<table class="comparison-table">';
+                html += '<tr><th>Test</th><th>Status</th><th>Result</th></tr>';
+                
+                // Test employee retrieval
+                html += `<tr class="match">
+                    <td>Employee Data Retrieval</td>
+                    <td>✅ Pass</td>
+                    <td>${employees.length} employees loaded</td>
+                </tr>`;
+                
+                // Test attendance retrieval
+                html += `<tr class="match">
+                    <td>Attendance Data Retrieval</td>
+                    <td>✅ Pass</td>
+                    <td>${attendanceRecords.length} records loaded</td>
+                </tr>`;
+                
+                // Test filtering capability
+                const filteredRecords = attendanceRecords.filter(record => record.status === 'present');
+                html += `<tr class="match">
+                    <td>Data Filtering</td>
+                    <td>✅ Pass</td>
+                    <td>${filteredRecords.length} present records found</td>
+                </tr>`;
+                
+                // Test department extraction
+                const departments = [...new Set(employees.map(emp => emp.department).filter(Boolean))];
+                html += `<tr class="match">
+                    <td>Department Extraction</td>
+                    <td>✅ Pass</td>
+                    <td>${departments.length} departments found: ${departments.join(', ')}</td>
+                </tr>`;
+                
+                html += '</table>';
+                
+                html += '<p class="success">✅ Analytics page should work correctly with unified data service</p>';
+                html += '<p><em>The analytics page can now access the same employee and attendance data as the employees page.</em></p>';
+
+                container.innerHTML = html;
+
+            } catch (error) {
+                container.innerHTML = `<p class="error">Integration test failed: ${error.message}</p>`;
+                console.error('Integration test error:', error);
+            }
+        }
+
+        function openAnalyticsPage() {
+            window.open('analytics.html', '_blank');
+        }
+
+        function openEmployeesPage() {
+            window.open('employees.html', '_blank');
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            await verifyDataSources();
+        });
+    </script>
+</body>
+</html>

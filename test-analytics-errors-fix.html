@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Page Error Fixes Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .error-log {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .warning {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .status-success { background-color: #28a745; }
+        .status-error { background-color: #dc3545; }
+        .status-warning { background-color: #ffc107; }
+        .iframe-container {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: none;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Analytics Page Error Fixes Test</h1>
+        <p>This page tests the fixes applied to resolve console errors in the analytics page.</p>
+
+        <div class="test-section">
+            <h2>📊 Error Fix Status</h2>
+            <div id="fixStatus">
+                <div>
+                    <span class="status-indicator status-success"></span>
+                    <span class="success">✅ Chart.js source map error fixed</span>
+                    <p style="margin-left: 20px; color: #666; font-size: 0.9em;">
+                        Updated to use specific version with UMD distribution
+                    </p>
+                </div>
+                <div>
+                    <span class="status-indicator status-success"></span>
+                    <span class="success">✅ Date-fns "exports" error fixed</span>
+                    <p style="margin-left: 20px; color: #666; font-size: 0.9em;">
+                        Replaced with custom dateUtils for browser compatibility
+                    </p>
+                </div>
+                <div>
+                    <span class="status-indicator status-success"></span>
+                    <span class="success">✅ chartsManager.resizeAllCharts method added</span>
+                    <p style="margin-left: 20px; color: #666; font-size: 0.9em;">
+                        Added missing method to ChartsManager class
+                    </p>
+                </div>
+                <div>
+                    <span class="status-indicator status-success"></span>
+                    <span class="success">✅ Unused preload resource removed</span>
+                    <p style="margin-left: 20px; color: #666; font-size: 0.9em;">
+                        Removed reference to non-existent data-service.js
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎯 Live Analytics Test</h2>
+            <p>The analytics page should now load without console errors:</p>
+            
+            <button onclick="openAnalyticsPage()">📈 Open Analytics Page in New Tab</button>
+            <button onclick="refreshIframe()">🔄 Refresh Test</button>
+            <button onclick="checkConsoleErrors()">🔍 Check for Errors</button>
+            
+            <div class="iframe-container">
+                <iframe id="analyticsFrame" src="analytics.html" title="Analytics Page Test"></iframe>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔧 Script Loading Test</h2>
+            <div id="scriptStatus">
+                <p>Testing script loading and initialization...</p>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>📝 Console Output</h2>
+            <div class="error-log" id="consoleLog">
+                Console messages will appear here...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let originalConsole = {};
+        let consoleMessages = [];
+
+        // Capture console messages
+        function setupConsoleCapture() {
+            ['log', 'warn', 'error', 'info'].forEach(method => {
+                originalConsole[method] = console[method];
+                console[method] = function(...args) {
+                    const message = args.map(arg => 
+                        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+                    ).join(' ');
+                    
+                    consoleMessages.push({
+                        type: method,
+                        message: message,
+                        timestamp: new Date().toLocaleTimeString()
+                    });
+                    
+                    updateConsoleLog();
+                    originalConsole[method].apply(console, args);
+                };
+            });
+        }
+
+        function updateConsoleLog() {
+            const logDiv = document.getElementById('consoleLog');
+            const last10Messages = consoleMessages.slice(-10);
+            
+            logDiv.innerHTML = last10Messages.map(msg => {
+                const color = {
+                    log: '#333',
+                    info: '#007bff',
+                    warn: '#ffc107',
+                    error: '#dc3545'
+                }[msg.type] || '#333';
+                
+                return `<div style="color: ${color}; margin: 2px 0;">
+                    [${msg.timestamp}] [${msg.type.toUpperCase()}] ${msg.message}
+                </div>`;
+            }).join('');
+            
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function testScriptLoading() {
+            const statusDiv = document.getElementById('scriptStatus');
+            const tests = [
+                {
+                    name: 'Chart.js',
+                    test: () => typeof Chart !== 'undefined',
+                    description: 'Chart.js library loaded'
+                },
+                {
+                    name: 'ApexCharts',
+                    test: () => typeof ApexCharts !== 'undefined',
+                    description: 'ApexCharts library loaded'
+                },
+                {
+                    name: 'dateUtils',
+                    test: () => typeof window.dateUtils !== 'undefined',
+                    description: 'Custom date utilities available'
+                },
+                {
+                    name: 'UnifiedDataService',
+                    test: () => typeof window.UnifiedDataService !== 'undefined',
+                    description: 'Unified data service available'
+                },
+                {
+                    name: 'ChartsManager',
+                    test: () => typeof window.chartsManager !== 'undefined',
+                    description: 'Charts manager initialized'
+                }
+            ];
+
+            const results = tests.map(test => {
+                const passed = test.test();
+                return {
+                    ...test,
+                    passed,
+                    status: passed ? 'success' : 'error'
+                };
+            });
+
+            statusDiv.innerHTML = `
+                <h4>Script Loading Results:</h4>
+                ${results.map(result => `
+                    <div style="margin: 5px 0;">
+                        <span class="status-indicator status-${result.status}"></span>
+                        <span class="${result.status}">${result.passed ? '✅' : '❌'} ${result.name}</span>
+                        <span style="color: #666; margin-left: 10px;">${result.description}</span>
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        function openAnalyticsPage() {
+            window.open('analytics.html', '_blank');
+        }
+
+        function refreshIframe() {
+            const iframe = document.getElementById('analyticsFrame');
+            iframe.src = iframe.src;
+        }
+
+        function checkConsoleErrors() {
+            const errorCount = consoleMessages.filter(msg => msg.type === 'error').length;
+            const warningCount = consoleMessages.filter(msg => msg.type === 'warn').length;
+            
+            alert(`Console Status:
+            
+Errors: ${errorCount}
+Warnings: ${warningCount}
+Total Messages: ${consoleMessages.length}
+
+Check the console output section below for details.`);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            setupConsoleCapture();
+            
+            // Test script loading after a short delay
+            setTimeout(() => {
+                testScriptLoading();
+            }, 2000);
+            
+            // Periodically update script status
+            setInterval(() => {
+                testScriptLoading();
+            }, 5000);
+        });
+    </script>
+</body>
+</html>

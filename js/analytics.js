@@ -10,6 +10,8 @@ class AnalyticsController {
         this.analyticsData = null;
         this.charts = new Map();
         this.isInitialized = false;
+        this.dataService = null;
+        this.unifiedManager = null;
         this.filters = {
             employeeId: null,
             startDate: null,
@@ -63,10 +65,9 @@ class AnalyticsController {
         try {
             console.log('Initializing AnalyticsController...');
             
-            // Check dependencies
-            if (typeof dataService === 'undefined') {
-                throw new Error('dataService is not available');
-            }
+            // Initialize unified data service
+            await this.initializeDataService();
+            
             if (typeof chartsManager === 'undefined') {
                 console.warn('chartsManager is not available - will use fallback visualizations');
             }
@@ -85,6 +86,28 @@ class AnalyticsController {
         } catch (error) {
             console.error('Failed to initialize analytics controller:', error);
             this.showError('Failed to load analytics data. Please refresh the page.');
+        }
+    }
+
+    /**
+     * Initialize the unified data service
+     */
+    async initializeDataService() {
+        try {
+            if (typeof window.UnifiedDataService !== 'undefined') {
+                this.dataService = new window.UnifiedDataService();
+                await this.dataService.initialize();
+                this.unifiedManager = this.dataService.getUnifiedManager();
+                console.log('Analytics using UnifiedDataService');
+            } else if (typeof dataService !== 'undefined') {
+                this.dataService = dataService;
+                console.log('Analytics using legacy dataService');
+            } else {
+                throw new Error('No data service available');
+            }
+        } catch (error) {
+            console.error('Failed to initialize data service:', error);
+            throw error;
         }
     }
 
@@ -160,12 +183,18 @@ class AnalyticsController {
     async loadInitialData() {
         try {
             // Load employees for dropdown
-            const employees = await dataService.getEmployees();
+            const employees = await this.dataService.getEmployees();
             this.populateEmployeeDropdown(employees);
 
-            // Load departments for filter
-            const departments = await dataService.getDepartments();
-            this.populateDepartmentFilter(departments);
+            // Load departments for filter (if method exists)
+            if (this.dataService.getDepartments) {
+                const departments = await this.dataService.getDepartments();
+                this.populateDepartmentFilter(departments);
+            } else {
+                // Extract departments from employees
+                const departments = [...new Set(employees.map(emp => emp.department).filter(Boolean))];
+                this.populateDepartmentFilter(departments.map(dept => ({ name: dept, id: dept })));
+            }
 
             // Set default employee (all employees)
             this.currentEmployee = null;
@@ -366,9 +395,19 @@ class AnalyticsController {
      * Filter employees dropdown by department
      */
     async filterEmployeesByDepartment(departmentId) {
-        const employees = departmentId 
-            ? await dataService.getEmployeesByDepartment(departmentId)
-            : await dataService.getEmployees();
+        let employees;
+        if (departmentId) {
+            // If using unified data service, filter employees by department
+            if (this.dataService.getEmployeesByDepartment) {
+                employees = await this.dataService.getEmployeesByDepartment(departmentId);
+            } else {
+                // Fallback: get all employees and filter by department
+                const allEmployees = await this.dataService.getEmployees();
+                employees = allEmployees.filter(emp => emp.department === departmentId);
+            }
+        } else {
+            employees = await this.dataService.getEmployees();
+        }
             
         this.populateEmployeeDropdown(employees);
         
@@ -462,17 +501,31 @@ class AnalyticsController {
     async loadAnalyticsData() {
         try {
             // Get attendance records based on filters
-            const attendanceRecords = await dataService.getAttendanceRecords(
-                this.filters.employeeId,
-                this.filters.startDate,
-                this.filters.endDate
+            const attendanceRecords = await this.dataService.getAttendanceRecords(
+                this.filters.employeeId ? {
+                    employeeId: this.filters.employeeId,
+                    startDate: this.filters.startDate,
+                    endDate: this.filters.endDate
+                } : {
+                    startDate: this.filters.startDate,
+                    endDate: this.filters.endDate
+                }
             );
 
-            // Get employee performance data
-            const performanceData = await dataService.getEmployeePerformance(this.filters.employeeId);
+            // Get employee performance data (if method exists)
+            let performanceData = null;
+            if (this.dataService.getEmployeePerformance) {
+                performanceData = await this.dataService.getEmployeePerformance(this.filters.employeeId);
+            }
 
-            // Get attendance statistics
-            const attendanceStats = await dataService.getAttendanceStats();
+            // Get attendance statistics (if method exists)
+            let attendanceStats = null;
+            if (this.dataService.getAttendanceStats) {
+                attendanceStats = await this.dataService.getAttendanceStats();
+            } else {
+                // Calculate basic stats from attendance records
+                attendanceStats = this.calculateBasicAttendanceStats(attendanceRecords);
+            }
 
             // Process and structure the data for charts
             this.analyticsData = this.processAnalyticsData(attendanceRecords, performanceData, attendanceStats);
@@ -482,6 +535,53 @@ class AnalyticsController {
             console.error('Failed to load analytics data:', error);
             throw error;
         }
+    }
+
+    /**
+     * Calculate basic attendance statistics from records
+     */
+    calculateBasicAttendanceStats(attendanceRecords) {
+        const stats = {
+            totalRecords: attendanceRecords.length,
+            presentCount: 0,
+            absentCount: 0,
+            lateCount: 0,
+            earlyDepartures: 0,
+            averageHours: 0,
+            attendanceRate: 0
+        };
+
+        let totalHours = 0;
+
+        attendanceRecords.forEach(record => {
+            switch (record.status) {
+                case 'present':
+                    stats.presentCount++;
+                    break;
+                case 'absent':
+                    stats.absentCount++;
+                    break;
+                case 'late':
+                    stats.lateCount++;
+                    stats.presentCount++; // Late is still present
+                    break;
+                case 'early':
+                    stats.earlyDepartures++;
+                    stats.presentCount++; // Early departure is still present
+                    break;
+            }
+
+            if (record.hours) {
+                totalHours += record.hours;
+            }
+        });
+
+        if (attendanceRecords.length > 0) {
+            stats.averageHours = totalHours / attendanceRecords.length;
+            stats.attendanceRate = (stats.presentCount / attendanceRecords.length) * 100;
+        }
+
+        return stats;
     }
 
     /**
@@ -1399,8 +1499,17 @@ class AnalyticsController {
      */
     handleResize() {
         // Resize all charts
-        if (typeof chartsManager !== 'undefined') {
+        if (typeof chartsManager !== 'undefined' && chartsManager && typeof chartsManager.resizeAllCharts === 'function') {
             chartsManager.resizeAllCharts();
+        }
+        
+        // Also handle Chart.js charts if they exist
+        if (typeof Chart !== 'undefined' && Chart.instances) {
+            Object.values(Chart.instances).forEach(chart => {
+                if (chart && typeof chart.resize === 'function') {
+                    chart.resize();
+                }
+            });
         }
     }
 
@@ -1594,13 +1703,13 @@ if (typeof module !== 'undefined' && module.exports) {
 
 // Wait for dependencies to be ready before initializing
 function initializeWhenReady() {
-    // Check if required dependencies are available (chartsManager is optional)
-    if (typeof dataService !== 'undefined') {
+    // Check if unified data service is available, or fallback to legacy dataService
+    if (typeof window.UnifiedDataService !== 'undefined' || typeof dataService !== 'undefined') {
         if (!analyticsController.isInitialized) {
             analyticsController.init().catch(console.error);
         }
     } else {
-        console.log('Analytics waiting for dependencies... dataService:', typeof dataService, 'chartsManager:', typeof chartsManager);
+        console.log('Analytics waiting for dependencies... UnifiedDataService:', typeof window.UnifiedDataService, 'dataService:', typeof dataService);
         setTimeout(initializeWhenReady, 100);
     }
 }

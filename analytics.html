@@ -14,15 +14,48 @@
     <link rel="stylesheet" href="css/styles.css">
     
     <!-- Chart.js for data visualization -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <!-- ApexCharts for data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <!-- Date utility functions (alternative to date-fns) -->
+    <script>
+        // Simple date utility functions to replace date-fns
+        window.dateUtils = {
+            format: function(date, format) {
+                if (typeof date === 'string') date = new Date(date);
+                const d = date.getDate().toString().padStart(2, '0');
+                const m = (date.getMonth() + 1).toString().padStart(2, '0');
+                const y = date.getFullYear();
+                return format.replace('dd', d).replace('MM', m).replace('yyyy', y);
+            },
+            subDays: function(date, days) {
+                const result = new Date(date);
+                result.setDate(result.getDate() - days);
+                return result;
+            },
+            addDays: function(date, days) {
+                const result = new Date(date);
+                result.setDate(result.getDate() + days);
+                return result;
+            },
+            startOfWeek: function(date) {
+                const result = new Date(date);
+                const day = result.getDay();
+                const diff = result.getDate() - day;
+                return new Date(result.setDate(diff));
+            },
+            endOfWeek: function(date) {
+                const result = new Date(date);
+                const day = result.getDay();
+                const diff = result.getDate() + (6 - day);
+                return new Date(result.setDate(diff));
+            }
+        };
+    </script>
     
     <!-- Preload critical resources -->
-    <link rel="preload" href="/js/data-service.js" as="script">
-    <link rel="preload" href="/js/auth.js" as="script">
-    <link rel="preload" href="/js/theme.js" as="script">
+    <link rel="preload" href="js/auth.js" as="script">
+    <link rel="preload" href="js/theme.js" as="script">
 </head>
 <body>
     <!-- Skip Navigation Links -->
@@ -416,8 +449,13 @@
 
     <!-- Scripts -->
     <script src="js/mock-data.js"></script>
+    <script src="js/utils/id-utility.js"></script>
+    <script src="js/core/data-service-api.js"></script>
+    <script src="js/core/local-storage-service.js"></script>
+    <script src="js/core/api-service.js"></script>
+    <script src="js/core/data-service-factory.js"></script>
+    <script src="js/unified-data-service.js"></script>
     <script src="js/unified-employee-manager.js"></script>
-    <script src="js/data-service.js"></script>
     <script src="js/global-system-sync.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/theme.js"></script>
