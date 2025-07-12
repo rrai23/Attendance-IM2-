@@ -119,9 +119,9 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/js/data-service.js"></script>
-    <script src="/js/theme.js"></script>
-    <script src="/js/auth.js"></script>
+    <script src="js/data-service.js"></script>
+    <script src="js/theme.js"></script>
+    <script src="js/auth.js"></script>
     <script>
         // Login page specific functionality
         class LoginPage {
@@ -137,7 +137,13 @@
                 
                 this.isLoading = false;
                 
-                this.init();
+                // Check if authService is available, if not wait for it
+                if (typeof authService === 'undefined') {
+                    console.warn('authService not available yet, deferring initialization...');
+                    setTimeout(() => this.init(), 100);
+                } else {
+                    this.init();
+                }
             }
 
             init() {
@@ -576,28 +582,36 @@
 
         // Initialize login page when DOM is loaded
         document.addEventListener('DOMContentLoaded', () => {
-            // Wait a bit for scripts to load in Live Server environment
-            setTimeout(() => {
-                try {
-                    console.log('Initializing login page...');
-                    console.log('Available services:', {
-                        dataService: typeof dataService !== 'undefined',
-                        themeManager: typeof themeManager !== 'undefined',
-                        authService: typeof authService !== 'undefined'
-                    });
-                    
-                    new LoginPage();
-                } catch (error) {
-                    console.error('Failed to initialize login page:', error);
-                    // Show basic error message
-                    const alert = document.getElementById('loginAlert');
-                    const message = document.getElementById('loginAlertMessage');
-                    if (alert && message) {
-                        alert.classList.remove('hidden');
-                        message.textContent = 'Page initialization failed. Scripts may not have loaded properly.';
+            // Function to check if required services are available
+            function checkServicesAndInitialize() {
+                if (typeof authService !== 'undefined') {
+                    try {
+                        console.log('Initializing login page...');
+                        console.log('Available services:', {
+                            dataService: typeof dataService !== 'undefined',
+                            themeManager: typeof themeManager !== 'undefined',
+                            authService: typeof authService !== 'undefined'
+                        });
+                        
+                        new LoginPage();
+                    } catch (error) {
+                        console.error('Failed to initialize login page:', error);
+                        // Show basic error message
+                        const alert = document.getElementById('loginAlert');
+                        const message = document.getElementById('loginAlertMessage');
+                        if (alert && message) {
+                            alert.classList.remove('hidden');
+                            message.textContent = 'Page initialization failed. Scripts may not have loaded properly.';
+                        }
                     }
+                } else {
+                    // If authService is not available yet, wait a bit more
+                    setTimeout(checkServicesAndInitialize, 50);
                 }
-            }, 100); // Small delay to ensure scripts are loaded
+            }
+            
+            // Start checking after a small delay
+            setTimeout(checkServicesAndInitialize, 100);
         });
 
         // Set page theme

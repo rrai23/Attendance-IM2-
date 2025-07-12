@@ -1317,6 +1317,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             try {
                 window.employeesPageManager = new EmployeesPageManager();
+                window.employeesPageManager.init();
                 
                 // Set theme if available
                 if (typeof themeManager !== 'undefined') {

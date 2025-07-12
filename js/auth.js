@@ -20,8 +20,35 @@ class AuthService {
 
     // Initialize authentication service
     init() {
+        // Clear any corrupted session data first
+        this.validateAndCleanSession();
         this.checkSessionValidity();
         this.setupAutoLogout();
+    }
+
+    // Validate and clean corrupted session data
+    validateAndCleanSession() {
+        try {
+            const token = localStorage.getItem(this.storageKey);
+            const expiry = localStorage.getItem(this.tokenExpiryKey);
+            const userData = localStorage.getItem(this.userKey);
+
+            // Check if session data is valid
+            if (token && expiry && userData) {
+                // Try to parse user data
+                JSON.parse(userData);
+                // Check if expiry is a valid number
+                const expiryTime = parseInt(expiry);
+                if (isNaN(expiryTime)) {
+                    throw new Error('Invalid expiry time');
+                }
+            }
+        } catch (error) {
+            console.warn('Corrupted session data detected, clearing...', error);
+            localStorage.removeItem(this.storageKey);
+            localStorage.removeItem(this.tokenExpiryKey);
+            localStorage.removeItem(this.userKey);
+        }
     }
 
     // Generate a mock JWT-like token for development
@@ -174,7 +201,14 @@ class AuthService {
 
     // Logout function
     logout(reason = 'user_logout') {
-        const user = this.getCurrentUser();
+        // Get user data before clearing (avoid circular dependency)
+        let user = null;
+        try {
+            const userData = localStorage.getItem(this.userKey);
+            user = userData ? JSON.parse(userData) : null;
+        } catch (error) {
+            console.error('Error getting user data for logout:', error);
+        }
         
         // Clear all authentication data
         localStorage.removeItem(this.storageKey);
@@ -189,9 +223,9 @@ class AuthService {
         // Trigger logout event
         this.triggerAuthEvent('logout', { user, reason });
 
-        // Redirect to login page
-        if (typeof window !== 'undefined' && window.location) {
-            window.location.href = '/login.html';
+        // Redirect to login page only if we're not already on it
+        if (typeof window !== 'undefined' && window.location && !window.location.pathname.includes('login.html')) {
+            window.location.href = 'login.html';
         }
     }
 
@@ -206,7 +240,11 @@ class AuthService {
 
         // Check if token is expired
         if (Date.now() > parseInt(expiry)) {
-            this.logout('session_expired');
+            // Don't call logout here to avoid circular dependency
+            // Just clear the data silently
+            localStorage.removeItem(this.storageKey);
+            localStorage.removeItem(this.tokenExpiryKey);
+            localStorage.removeItem(this.userKey);
             return false;
         }
 
@@ -224,7 +262,11 @@ class AuthService {
             return userData ? JSON.parse(userData) : null;
         } catch (error) {
             console.error('Error parsing user data:', error);
-            this.logout('invalid_session');
+            // Don't call logout here to avoid circular dependency
+            // Just clear the invalid data
+            localStorage.removeItem(this.storageKey);
+            localStorage.removeItem(this.tokenExpiryKey);
+            localStorage.removeItem(this.userKey);
             return null;
         }
     }
@@ -296,7 +338,8 @@ class AuthService {
             if (typeof window !== 'undefined' && window.location && 
                 !window.location.pathname.includes('login.html') &&
                 !window.location.pathname.includes('index.html')) {
-                this.logout('no_session');
+                // Don't call logout to avoid circular dependency, just redirect
+                window.location.href = 'login.html';
             }
         }
     }
