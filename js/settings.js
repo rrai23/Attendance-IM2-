@@ -5,12 +5,20 @@
 
 class SettingsController {
     constructor() {
-        // Initialize data service if not available
-        if (!window.dataService) {
-            console.log('Initializing DataService for settings...');
-            window.dataService = new DataService();
+        // Initialize unified employee manager if not available (EXCLUSIVE MODE)
+        if (!window.unifiedEmployeeManager) {
+            console.error('UnifiedEmployeeManager not available - settings page requires unified data system');
+            throw new Error('UnifiedEmployeeManager not available');
         }
-        this.dataService = window.dataService;
+        
+        // Wait for unified employee manager initialization
+        if (!window.unifiedEmployeeManager.initialized) {
+            console.log('Waiting for UnifiedEmployeeManager initialization...');
+            this.initializeWhenReady();
+            return;
+        }
+        
+        this.unifiedEmployeeManager = window.unifiedEmployeeManager;
         
         // Initialize other managers with fallbacks
         this.userManager = window.userManager || null;
@@ -27,14 +35,40 @@ class SettingsController {
     }
 
     /**
+     * Wait for UnifiedEmployeeManager to be ready
+     */
+    async initializeWhenReady() {
+        const maxWaitTime = 10000; // 10 seconds
+        const checkInterval = 100; // Check every 100ms
+        let waitTime = 0;
+        
+        while (waitTime < maxWaitTime) {
+            if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
+                console.log('UnifiedEmployeeManager is now ready');
+                this.unifiedEmployeeManager = window.unifiedEmployeeManager;
+                this.init();
+                return;
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, checkInterval));
+            waitTime += checkInterval;
+        }
+        
+        console.error('Timeout waiting for UnifiedEmployeeManager initialization');
+        throw new Error('UnifiedEmployeeManager initialization timeout');
+    }
+
+    /**
      * Initialize the settings controller
      */
     async init() {
         try {
-            console.log('Initializing Settings Controller...');
+            console.log('Initializing Settings Controller with unified data integration...');
             await this.loadSettings();
             this.setupTabs();
             this.setupEventListeners();
+            this.setupUnifiedDataListeners(); // Add unified data listeners
+            this.handleUserManagementActions(); // Setup user management actions
             
             // Use hybrid approach: populate existing static fields and enhance where needed
             this.populateExistingForms();
@@ -45,7 +79,11 @@ class SettingsController {
             
             this.setupFormValidation();
             this.setupAutoSave();
-            console.log('Settings Controller initialized successfully');
+            
+            // Load user stats from unified data
+            await this.loadUserStats();
+            
+            console.log('Settings Controller initialized successfully with unified data integration');
         } catch (error) {
             console.error('Failed to initialize settings controller:', error);
             this.showErrorMessage('Failed to load settings. Please refresh the page.');
@@ -77,13 +115,24 @@ class SettingsController {
     }
 
     /**
-     * Load all settings from data service
+     * Load all settings from unified data system
      */
     async loadSettings() {
         try {
-            this.currentSettings = await this.dataService.getSettings();
+            // Get settings from unified employee manager or create defaults
+            let savedSettings = {};
             
-            // Ensure all required sections exist
+            try {
+                // Check if unified manager has settings stored
+                const settingsData = localStorage.getItem('bricks-unified-settings');
+                if (settingsData) {
+                    savedSettings = JSON.parse(settingsData);
+                }
+            } catch (error) {
+                console.warn('Failed to load saved settings, using defaults:', error);
+                savedSettings = {};
+            }
+            
             this.currentSettings = {
                 general: {
                     companyName: 'Bricks Company',
@@ -92,7 +141,7 @@ class SettingsController {
                     timeFormat: '12',
                     currency: 'PHP',
                     language: 'en',
-                    ...this.currentSettings.general
+                    ...savedSettings.general
                 },
                 payroll: {
                     payPeriod: 'weekly',
@@ -101,7 +150,7 @@ class SettingsController {
                     overtimeThreshold: 40,
                     roundingRules: 'nearest_quarter',
                     autoCalculate: true,
-                    ...this.currentSettings.payroll
+                    ...savedSettings.payroll
                 },
                 attendance: {
                     clockInGrace: 5,
@@ -110,7 +159,7 @@ class SettingsController {
                     autoClockOut: false,
                     autoClockOutTime: '18:00',
                     requireNotes: false,
-                    ...this.currentSettings.attendance
+                    ...savedSettings.attendance
                 },
                 notifications: {
                     emailNotifications: true,
@@ -118,7 +167,7 @@ class SettingsController {
                     overtimeAlerts: true,
                     payrollReminders: true,
                     systemUpdates: true,
-                    ...this.currentSettings.notifications
+                    ...savedSettings.notifications
                 },
                 security: {
                     sessionTimeout: 480,
@@ -126,15 +175,26 @@ class SettingsController {
                     requirePasswordChange: false,
                     passwordChangeInterval: 90,
                     twoFactorAuth: false,
-                    ...this.currentSettings.security
+                    ...savedSettings.security
                 },
                 theme: {
                     defaultTheme: 'light',
                     allowUserThemes: true,
                     accentColor: '#007aff',
-                    ...this.currentSettings.theme
+                    ...savedSettings.theme
                 },
-                ...this.currentSettings
+                users: {
+                    defaultRole: 'employee',
+                    defaultHourlyRate: 15.00,
+                    autoEnableAccounts: true,
+                    requireEmailVerification: false,
+                    lockoutAttempts: 5,
+                    lockoutDuration: 30,
+                    autoInactivate: false,
+                    inactiveThreshold: 90,
+                    ...savedSettings.users
+                },
+                ...savedSettings
             };
         } catch (error) {
             console.error('Failed to load settings:', error);
@@ -254,6 +314,12 @@ class SettingsController {
         const restoreBtn = document.getElementById('restore-backup-btn');
         if (restoreBtn) {
             restoreBtn.addEventListener('click', () => this.restoreBackup());
+        }
+
+        // Reset local storage button
+        const resetLocalStorageBtn = document.getElementById('reset-localstorage-btn');
+        if (resetLocalStorageBtn) {
+            resetLocalStorageBtn.addEventListener('click', () => this.resetLocalStorage());
         }
 
         // Listen for hash changes
@@ -1088,17 +1154,24 @@ class SettingsController {
     }
 
     /**
-     * Load and display user statistics
+     * Load and display user statistics from unified employee manager
      */
     async loadUserStats() {
         try {
-            const employees = await this.dataService.getEmployees();
+            // Get employees from unified employee manager (EXCLUSIVE MODE)
+            if (!this.unifiedEmployeeManager || !this.unifiedEmployeeManager.initialized) {
+                throw new Error('UnifiedEmployeeManager not available for user stats');
+            }
+            
+            const employees = this.unifiedEmployeeManager.getAllEmployees();
             const stats = {
                 total: employees.length,
                 active: employees.filter(emp => emp.status === 'active').length,
                 inactive: employees.filter(emp => emp.status === 'inactive').length,
                 admins: employees.filter(emp => emp.role === 'admin').length
             };
+
+            console.log('User stats loaded from unified employee manager:', stats);
 
             const container = document.getElementById('user-stats');
             if (container) {
@@ -1121,9 +1194,49 @@ class SettingsController {
                     </div>
                 `;
             }
+
+            // Update any other stat displays that might exist
+            this.updateAdditionalStats(stats);
+
         } catch (error) {
-            console.error('Failed to load user stats:', error);
+            console.error('Failed to load user stats from unified employee manager:', error);
+            this.showErrorMessage('Failed to load user statistics: ' + error.message);
+            
+            // Show fallback stats
+            const container = document.getElementById('user-stats');
+            if (container) {
+                container.innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-value">--</div>
+                        <div class="stat-label">Total Users</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">--</div>
+                        <div class="stat-label">Active Users</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">--</div>
+                        <div class="stat-label">Inactive Users</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">--</div>
+                        <div class="stat-label">Administrators</div>
+                    </div>
+                `;
+            }
         }
+    }
+
+    /**
+     * Update additional statistics displays
+     */
+    updateAdditionalStats(stats) {
+        // Update any additional stat elements that might be added dynamically
+        const totalUsersElements = document.querySelectorAll('[data-stat="total-users"]');
+        const activeUsersElements = document.querySelectorAll('[data-stat="active-users"]');
+        
+        totalUsersElements.forEach(el => el.textContent = stats.total);
+        activeUsersElements.forEach(el => el.textContent = stats.active);
     }
 
     /**
@@ -1380,11 +1493,11 @@ class SettingsController {
     }
 
     /**
-     * Save settings
+     * Save settings to unified data system
      */
     async saveSettings(silent = false) {
         try {
-            console.log('Saving settings...', { silent, isDirty: this.isDirty });
+            console.log('Saving settings to unified data system...', { silent, isDirty: this.isDirty });
             
             // Validate all forms
             if (!this.validateAllForms()) {
@@ -1403,9 +1516,14 @@ class SettingsController {
             const updatedSettings = this.deepMerge(this.currentSettings, formData);
             console.log('Updated settings:', updatedSettings);
 
-            // Save to data service
-            await this.dataService.saveSettings(updatedSettings);
-            console.log('Settings saved successfully to data service');
+            // Save to unified data system
+            try {
+                localStorage.setItem('bricks-unified-settings', JSON.stringify(updatedSettings));
+                console.log('Settings saved successfully to unified data system');
+            } catch (error) {
+                console.error('Failed to save settings to unified data system:', error);
+                throw error;
+            }
 
             // Update local settings
             this.currentSettings = updatedSettings;
@@ -1414,6 +1532,14 @@ class SettingsController {
             // Apply theme changes if needed
             if (formData.theme) {
                 this.applyThemeChanges(formData.theme);
+            }
+
+            // Broadcast settings update to other components
+            if (this.unifiedEmployeeManager) {
+                this.unifiedEmployeeManager.emit('settingsUpdated', {
+                    settings: updatedSettings,
+                    timestamp: new Date().toISOString()
+                });
             }
 
             if (!silent) {
@@ -1591,18 +1717,29 @@ class SettingsController {
     }
 
     /**
-     * Create backup
+     * Create backup using unified data system
      */
     async createBackup() {
         try {
+            // Get all data from unified employee manager (EXCLUSIVE MODE)
+            if (!this.unifiedEmployeeManager || !this.unifiedEmployeeManager.initialized) {
+                throw new Error('UnifiedEmployeeManager not available for backup');
+            }
+            
             const backupData = {
                 settings: this.currentSettings,
-                employees: await this.dataService.getEmployees(),
-                attendanceRecords: await this.dataService.getAttendanceRecords(),
-                payrollHistory: await this.dataService.getPayrollHistory(),
+                employees: this.unifiedEmployeeManager.getAllEmployees(),
+                attendanceRecords: this.unifiedEmployeeManager.getAllAttendanceRecords(),
                 backupDate: new Date().toISOString(),
-                version: '1.0.0'
+                version: '2.0.0',
+                source: 'unified-data-system'
             };
+
+            console.log('Creating backup with unified data:', {
+                settingsKeys: Object.keys(backupData.settings),
+                employeeCount: backupData.employees.length,
+                attendanceCount: backupData.attendanceRecords.length
+            });
 
             const blob = new Blob([JSON.stringify(backupData, null, 2)], {
                 type: 'application/json'
@@ -1611,21 +1748,21 @@ class SettingsController {
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `brix-backup-${new Date().toISOString().split('T')[0]}.json`;
+            link.download = `brix-backup-unified-${new Date().toISOString().split('T')[0]}.json`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
 
-            this.showSuccessMessage('Backup created successfully');
+            this.showSuccessMessage('Backup created successfully from unified data system');
         } catch (error) {
-            console.error('Failed to create backup:', error);
-            this.showErrorMessage('Failed to create backup');
+            console.error('Failed to create backup from unified data system:', error);
+            this.showErrorMessage('Failed to create backup: ' + error.message);
         }
     }
 
     /**
-     * Restore backup
+     * Restore backup to unified data system
      */
     restoreBackup() {
         if (!confirm('Are you sure you want to restore from backup? This will overwrite all current data.')) {
@@ -1648,15 +1785,63 @@ class SettingsController {
                     throw new Error('Invalid backup file format');
                 }
 
+                console.log('Restoring backup to unified data system:', {
+                    version: backupData.version,
+                    source: backupData.source,
+                    employeeCount: backupData.employees.length,
+                    attendanceCount: backupData.attendanceRecords?.length || 0
+                });
+
+                // Ensure unified employee manager is available
+                if (!this.unifiedEmployeeManager || !this.unifiedEmployeeManager.initialized) {
+                    throw new Error('UnifiedEmployeeManager not available for restore');
+                }
+
                 // Restore settings
                 this.currentSettings = backupData.settings;
                 await this.saveSettings(true);
-                this.renderAllSections();
 
-                this.showSuccessMessage('Backup restored successfully');
+                // Restore employees to unified data system
+                if (backupData.employees && backupData.employees.length > 0) {
+                    // Clear existing employees
+                    this.unifiedEmployeeManager.employees = [];
+                    
+                    // Add restored employees
+                    for (const employee of backupData.employees) {
+                        this.unifiedEmployeeManager.employees.push(employee);
+                    }
+                }
+
+                // Restore attendance records to unified data system
+                if (backupData.attendanceRecords && backupData.attendanceRecords.length > 0) {
+                    // Clear existing attendance records
+                    this.unifiedEmployeeManager.attendanceRecords = [];
+                    
+                    // Add restored attendance records
+                    for (const record of backupData.attendanceRecords) {
+                        this.unifiedEmployeeManager.attendanceRecords.push(record);
+                    }
+                }
+
+                // Save all restored data
+                this.unifiedEmployeeManager.saveData();
+
+                // Re-render settings interface
+                this.renderAllSections();
+                
+                // Update user stats
+                await this.loadUserStats();
+
+                this.showSuccessMessage('Backup restored successfully to unified data system');
+                
+                console.log('Backup restore completed. Current state:', {
+                    employees: this.unifiedEmployeeManager.employees.length,
+                    attendance: this.unifiedEmployeeManager.attendanceRecords.length
+                });
+                
             } catch (error) {
-                console.error('Failed to restore backup:', error);
-                this.showErrorMessage('Failed to restore backup');
+                console.error('Failed to restore backup to unified data system:', error);
+                this.showErrorMessage('Failed to restore backup: ' + error.message);
             }
         };
 
@@ -1817,6 +2002,307 @@ class SettingsController {
             }
         });
     }
+
+    /**
+     * Initialize event listeners for unified data integration
+     */
+    setupUnifiedDataListeners() {
+        // Listen for employee updates from unified manager
+        if (this.unifiedEmployeeManager) {
+            this.unifiedEmployeeManager.addEventListener('employeeUpdate', (data) => {
+                console.log('Employee update received in settings:', data);
+                this.loadUserStats(); // Refresh user stats when employees change
+            });
+
+            this.unifiedEmployeeManager.addEventListener('dataSync', (data) => {
+                console.log('Data sync received in settings:', data);
+                if (data.action === 'initialized' || data.action === 'update') {
+                    this.loadUserStats(); // Refresh stats on data sync
+                }
+            });
+        }
+    }
+
+    /**
+     * Get employee management statistics from unified data
+     */
+    getEmployeeManagementStats() {
+        if (!this.unifiedEmployeeManager || !this.unifiedEmployeeManager.initialized) {
+            return {
+                total: 0,
+                active: 0,
+                inactive: 0,
+                departments: 0,
+                recentHires: 0
+            };
+        }
+
+        const employees = this.unifiedEmployeeManager.getAllEmployees();
+        const attendanceRecords = this.unifiedEmployeeManager.getAllAttendanceRecords();
+        
+        // Calculate recent hires (last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const recentHires = employees.filter(emp => {
+            const hireDate = new Date(emp.hireDate);
+            return hireDate >= thirtyDaysAgo;
+        }).length;
+
+        // Get unique departments
+        const departments = [...new Set(employees.map(emp => emp.department))].length;
+
+        return {
+            total: employees.length,
+            active: employees.filter(emp => emp.status === 'active').length,
+            inactive: employees.filter(emp => emp.status === 'inactive').length,
+            departments: departments,
+            recentHires: recentHires,
+            attendanceRecords: attendanceRecords.length
+        };
+    }
+
+    /**
+     * Handle user management actions (redirect to employee management page)
+     */
+    handleUserManagementActions() {
+        // Add Employee button
+        const addEmployeeBtn = document.getElementById('add-employee-btn');
+        if (addEmployeeBtn) {
+            addEmployeeBtn.addEventListener('click', () => {
+                window.location.href = 'employees.html';
+            });
+        }
+
+        // Manage Users button
+        const manageUsersBtn = document.getElementById('manage-users-btn');
+        if (manageUsersBtn) {
+            manageUsersBtn.addEventListener('click', () => {
+                window.location.href = 'employee-management.html';
+            });
+        }
+
+        // Export Users button
+        const exportUsersBtn = document.getElementById('export-users-btn');
+        if (exportUsersBtn) {
+            exportUsersBtn.addEventListener('click', () => {
+                this.exportUsers();
+            });
+        }
+
+        // Import Users button
+        const importUsersBtn = document.getElementById('import-users-btn');
+        if (importUsersBtn) {
+            importUsersBtn.addEventListener('click', () => {
+                this.importUsers();
+            });
+        }
+    }
+
+    /**
+     * Export users data from unified employee manager
+     */
+    async exportUsers() {
+        try {
+            if (!this.unifiedEmployeeManager || !this.unifiedEmployeeManager.initialized) {
+                throw new Error('UnifiedEmployeeManager not available for user export');
+            }
+
+            const employees = this.unifiedEmployeeManager.getAllEmployees();
+            const exportData = {
+                employees: employees,
+                exportDate: new Date().toISOString(),
+                source: 'unified-employee-manager',
+                version: '2.0.0'
+            };
+
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+                type: 'application/json'
+            });
+
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `employees-export-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            this.showSuccessMessage(`Successfully exported ${employees.length} employees`);
+        } catch (error) {
+            console.error('Failed to export users:', error);
+            this.showErrorMessage('Failed to export users: ' + error.message);
+        }
+    }
+
+    /**
+     * Import users data to unified employee manager
+     */
+    importUsers() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                if (!this.unifiedEmployeeManager || !this.unifiedEmployeeManager.initialized) {
+                    throw new Error('UnifiedEmployeeManager not available for user import');
+                }
+
+                const text = await file.text();
+                const importData = JSON.parse(text);
+
+                if (!importData.employees || !Array.isArray(importData.employees)) {
+                    throw new Error('Invalid import file format');
+                }
+
+                let importedCount = 0;
+                for (const employee of importData.employees) {
+                    try {
+                        await this.unifiedEmployeeManager.addEmployee(employee);
+                        importedCount++;
+                    } catch (error) {
+                        console.warn('Failed to import employee:', employee, error);
+                    }
+                }
+
+                await this.loadUserStats(); // Refresh stats
+                this.showSuccessMessage(`Successfully imported ${importedCount} employees`);
+                
+            } catch (error) {
+                console.error('Failed to import users:', error);
+                this.showErrorMessage('Failed to import users: ' + error.message);
+            }
+        };
+
+        input.click();
+    }
+
+    /**
+     * Reset all local storage data
+     */
+    async resetLocalStorage() {
+        const confirmMessage = `⚠️ WARNING: This will permanently delete ALL stored data including:
+
+• All employee records
+• All attendance data  
+• All settings
+• All cached data
+
+This action CANNOT be undone!
+
+Are you absolutely sure you want to proceed?`;
+
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+
+        // Second confirmation for safety
+        const secondConfirm = confirm('This is your FINAL warning. All data will be permanently lost. Click OK to proceed or Cancel to abort.');
+        if (!secondConfirm) {
+            return;
+        }
+
+        try {
+            console.log('🗑️ Starting complete local storage reset...');
+            
+            // Show loading state
+            const resetBtn = document.getElementById('reset-localstorage-btn');
+                       const originalText = resetBtn.innerHTML;
+            resetBtn.disabled = true;
+            resetBtn.innerHTML = `
+                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                </svg>
+                Resetting...
+            `;
+
+            // Get all localStorage keys before clearing
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                keysToRemove.push(localStorage.key(i));
+            }
+            
+            console.log('📋 Found localStorage keys:', keysToRemove);
+
+            // Clear unified employee manager data first
+            if (this.unifiedEmployeeManager) {
+                console.log('🔄 Clearing unified employee manager data...');
+                this.unifiedEmployeeManager.employees = [];
+                this.unifiedEmployeeManager.attendanceRecords = [];
+                this.unifiedEmployeeManager.clearAllData();
+            }
+
+            // Clear all localStorage data
+            console.log('🗑️ Clearing all localStorage data...');
+            localStorage.clear();
+
+            // Verify localStorage is empty
+            console.log('✅ localStorage cleared. Remaining items:', localStorage.length);
+
+            // Reset current settings to defaults
+            console.log('🔄 Resetting settings to defaults...');
+            this.currentSettings = {};
+            await this.loadSettings(); // This will load defaults
+
+            // Clear any cached data in memory
+            if (window.employees) window.employees = [];
+            if (window.attendanceRecords) window.attendanceRecords = [];
+            if (window.bricksEmployees) window.bricksEmployees = [];
+            if (window.bricksAttendanceRecords) window.bricksAttendanceRecords = [];
+
+            // Re-initialize unified employee manager with clean state
+            if (this.unifiedEmployeeManager) {
+                console.log('🔄 Reinitializing unified employee manager...');
+                await this.unifiedEmployeeManager.init();
+            }
+
+            // Refresh all UI components
+            console.log('🔄 Refreshing UI components...');
+            this.renderAllSections();
+            await this.loadUserStats();
+
+            // Reset button state
+            resetBtn.disabled = false;
+            resetBtn.innerHTML = originalText;
+
+            // Show success message
+            this.showSuccessMessage('✅ Local storage reset successfully! All data has been cleared and defaults restored.');
+
+            console.log('✅ Local storage reset completed successfully');
+
+            // Optional: Reload page after a short delay to ensure clean state
+            setTimeout(() => {
+                if (confirm('Would you like to reload the page to ensure a completely clean state?')) {
+                    window.location.reload();
+                }
+            }, 2000);
+
+        } catch (error) {
+            console.error('❌ Failed to reset local storage:', error);
+            this.showErrorMessage('Failed to reset local storage: ' + error.message);
+
+            // Reset button state on error
+            const resetBtn = document.getElementById('reset-localstorage-btn');
+            if (resetBtn) {
+                resetBtn.disabled = false;
+                resetBtn.innerHTML = originalText || `
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3,6 5,6 21,6"></polyline>
+                        <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                    </svg>
+                    Reset Local Storage
+                `;
+            }
+        }
+    }
+
+    // ...existing code...
 }
 
 // Initialize settings controller when DOM is loaded
