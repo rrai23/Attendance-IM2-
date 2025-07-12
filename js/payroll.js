@@ -53,131 +53,85 @@ class PayrollController {
     }
 
     /**
-     * Load initial data from simplified data service
+     * Load initial data from unified employee manager
      */
     async loadInitialData() {
         try {
-            // Use the new simplified data service
-            if (window.dataService && window.dataService.isInitialized) {
-                console.log('[DATA INTEGRITY] Loading payroll data from Simplified Data Service');
-                
-                // Load data from the simplified service
-                this.employees = window.dataService.getAllEmployees();
-                
-                // Load payroll data from simplified service
-                this.payrollData = window.dataService.getAllPayrollData();
-                
-                // Use existing overtime and history data from local storage as fallback
-                const storedRequests = localStorage.getItem('bricks_overtime_requests');
-                if (storedRequests) {
-                    this.overtimeRequests = JSON.parse(storedRequests);
-                } else {
-                    this.overtimeRequests = this.generateSampleOvertimeRequests();
-                }
-                
-                // Load payroll history from local storage
-                const storedHistory = localStorage.getItem('bricks_payroll_history');
-                this.payrollHistory = storedHistory ? JSON.parse(storedHistory) : [];
-                
-                // Load settings from simplified service
-                this.settings = window.dataService.getAllSettings() || this.getDefaultSettings();
-                
-                // Log employee source information for debugging
-                console.log('[DATA INTEGRITY] Payroll loaded employees:', {
-                    count: this.employees.length,
-                    source: 'simplifiedDataService',
-                    employees: this.employees.map(emp => ({ id: emp.id, name: emp.name, department: emp.department }))
-                });
-                
-                // For department costs, prioritize unified employee manager if available
-                if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.getEmployees) {
-                    console.log('[DEPT COSTS] Using unified employee manager for department cost calculations');
-                    const unifiedEmployees = window.unifiedEmployeeManager.getEmployees();
-                    console.log('[DEPT COSTS] Unified employees available:', unifiedEmployees.length);
-                    
-                    // Set up listeners for unified employee manager changes specifically for department costs
-                    if (window.unifiedEmployeeManager.addEventListener) {
-                        window.unifiedEmployeeManager.addEventListener('employeeAdded', () => {
-                            console.log('[DEPT COSTS] Employee added in unified manager, refreshing department costs');
-                            this.renderDepartmentCosts();
-                        });
-                        
-                        window.unifiedEmployeeManager.addEventListener('employeeUpdated', () => {
-                            console.log('[DEPT COSTS] Employee updated in unified manager, refreshing department costs');
-                            this.renderDepartmentCosts();
-                        });
-                        
-                        window.unifiedEmployeeManager.addEventListener('employeeDeleted', () => {
-                            console.log('[DEPT COSTS] Employee deleted in unified manager, refreshing department costs');
-                            this.renderDepartmentCosts();
-                        });
-                    }
-                }
-                
-                // Set up listeners for data changes from simplified service
-                window.dataService.addEventListener('employeeChanged', () => {
-                    this.employees = window.dataService.getAllEmployees();
-                    this.refreshPayrollDisplay();
-                });
-                
-                // Listen for employee deletions
-                window.dataService.addEventListener('employeeDeleted', () => {
-                    console.log('[DATA INTEGRITY] Employee deleted, refreshing payroll data from Simplified Data Service');
-                    this.employees = window.dataService.getAllEmployees();
-                    this.refreshPayrollDisplay();
-                });
-                
-                // Listen for settings changes
-                window.dataService.addEventListener('settingChanged', () => {
-                    console.log('[DATA INTEGRITY] Settings changed, refreshing payroll data');
-                    this.settings = window.dataService.getAllSettings();
-                    this.refreshPayrollDisplay();
-                });
-                
-                // Listen for payroll data changes
-                window.dataService.addEventListener('payrollChanged', () => {
-                    console.log('[DATA INTEGRITY] Payroll data changed, refreshing display');
-                    this.payrollData = window.dataService.getAllPayrollData();
-                    this.refreshPayrollDisplay();
-                });
-                
-                console.log(`Loaded ${this.employees.length} employees from Simplified Data Service`);
-                
-                // Ensure we have sample overtime requests for testing if none exist
-                if (this.overtimeRequests.length === 0) {
-                    console.log('No overtime requests found, generating sample data');
-                    this.overtimeRequests = this.generateSampleOvertimeRequests();
-                    localStorage.setItem('bricks_overtime_requests', JSON.stringify(this.overtimeRequests));
-                }
+            // ONLY use unified employee manager - no fallbacks allowed
+            if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
+                throw new Error('Unified employee manager not available or not initialized. Cannot load payroll data.');
+            }
+
+            console.log('[PAYROLL] Loading data from Unified Employee Manager (EXCLUSIVE MODE)');
+            
+            // Load data from the unified employee manager ONLY
+            this.employees = window.unifiedEmployeeManager.getAllEmployees();
+            
+            // Load overtime requests from localStorage as fallback for now
+            const storedRequests = localStorage.getItem('bricks_overtime_requests');
+            if (storedRequests) {
+                this.overtimeRequests = JSON.parse(storedRequests);
             } else {
-                // Fallback: Use localStorage or empty data if simplified data service not available
-                console.warn('SimplifiedDataService not available, using localStorage fallback');
+                this.overtimeRequests = this.generateSampleOvertimeRequests();
+            }
+            
+            // Load payroll history from localStorage
+            const storedHistory = localStorage.getItem('bricks_payroll_history');
+            this.payrollHistory = storedHistory ? JSON.parse(storedHistory) : [];
+            
+            // Load settings from localStorage or use defaults
+            const storedSettings = localStorage.getItem('bricks_settings');
+            this.settings = storedSettings ? JSON.parse(storedSettings) : this.getDefaultSettings();
+            
+            // Log employee source information for debugging
+            console.log('[PAYROLL] Loaded employees from Unified Employee Manager:', {
+                count: this.employees.length,
+                source: 'unifiedEmployeeManager',
+                employees: this.employees.map(emp => ({ id: emp.id, name: emp.name, department: emp.department }))
+            });
+            
+            // Set up listeners for unified employee manager changes
+            if (window.unifiedEmployeeManager.addEventListener) {
+                window.unifiedEmployeeManager.addEventListener('employeeUpdate', (data) => {
+                    console.log('[PAYROLL] Employee updated in unified manager, refreshing payroll data');
+                    this.employees = window.unifiedEmployeeManager.getAllEmployees();
+                    this.refreshPayrollDisplay();
+                });
                 
-                // Load employees from localStorage
-                const storedEmployees = localStorage.getItem('employees');
-                this.employees = storedEmployees ? JSON.parse(storedEmployees) : [];
+                window.unifiedEmployeeManager.addEventListener('employeeAdded', (data) => {
+                    console.log('[PAYROLL] Employee added in unified manager, refreshing payroll data');
+                    this.employees = window.unifiedEmployeeManager.getAllEmployees();
+                    this.refreshPayrollDisplay();
+                });
                 
-                // Load overtime requests from localStorage
-                const storedRequests = localStorage.getItem('bricks_overtime_requests');
-                this.overtimeRequests = storedRequests ? JSON.parse(storedRequests) : this.generateSampleOvertimeRequests();
+                window.unifiedEmployeeManager.addEventListener('employeeDeleted', (data) => {
+                    console.log('[PAYROLL] Employee deleted in unified manager, refreshing payroll data');
+                    this.employees = window.unifiedEmployeeManager.getAllEmployees();
+                    this.refreshPayrollDisplay();
+                });
                 
-                // Load payroll history from localStorage
-                const storedHistory = localStorage.getItem('bricks_payroll_history');
-                this.payrollHistory = storedHistory ? JSON.parse(storedHistory) : [];
-                
-                // Use default settings
-                this.settings = this.getDefaultSettings();
-                
-                console.log(`Loaded ${this.employees.length} employees from localStorage fallback`);
+                window.unifiedEmployeeManager.addEventListener('attendanceUpdate', (data) => {
+                    console.log('[PAYROLL] Attendance updated in unified manager, refreshing payroll calculations');
+                    this.refreshPayrollDisplay();
+                });
+            }
+            
+            console.log(`[PAYROLL] Loaded ${this.employees.length} employees from Unified Employee Manager`);
+            
+            // Ensure we have sample overtime requests for testing if none exist
+            if (this.overtimeRequests.length === 0) {
+                console.log('No overtime requests found, generating sample data');
+                this.overtimeRequests = this.generateSampleOvertimeRequests();
+                localStorage.setItem('bricks_overtime_requests', JSON.stringify(this.overtimeRequests));
             }
 
             // Calculate current payroll data
             await this.calculateCurrentPayrollData();
             
-            // If no employees were loaded, show a warning and generate sample data
+            // If no employees were loaded, show a warning
             if (this.employees.length === 0) {
-                console.warn('No employees loaded for payroll calculation, generating sample data for testing');
-                this.initializeSampleData();
+                console.warn('No employees loaded for payroll calculation');
+                this.showError('No employees found. Please add employees to calculate payroll.');
             }
         } catch (error) {
             console.error('Error loading payroll data:', error);
@@ -1374,18 +1328,18 @@ class PayrollController {
     }
 
     /**
-     * Set up data sync listeners for simplified data system
+     * Set up data sync listeners for unified employee manager
      */
     setupDataSyncListeners() {
-        // Setup simplified data service listeners if available
-        if (window.dataService && window.dataService.addEventListener) {
-            console.log('Setting up SimplifiedDataService listeners for payroll auto-sync');
+        // Setup unified employee manager listeners ONLY
+        if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.addEventListener) {
+            console.log('Setting up Unified Employee Manager listeners for payroll auto-sync');
             
             // Listen for employee changes
-            window.dataService.addEventListener('employeeChanged', async (data) => {
+            window.unifiedEmployeeManager.addEventListener('employeeUpdate', async (data) => {
                 console.log('Employee data changed, refreshing payroll data');
                 try {
-                    this.employees = window.dataService.getAllEmployees();
+                    this.employees = window.unifiedEmployeeManager.getAllEmployees();
                     await this.calculateCurrentPayrollData();
                     this.refreshPayrollDisplay();
                 } catch (error) {
@@ -1394,10 +1348,10 @@ class PayrollController {
             });
 
             // Listen for employee deletions
-            window.dataService.addEventListener('employeeDeleted', async (data) => {
+            window.unifiedEmployeeManager.addEventListener('employeeDeleted', async (data) => {
                 console.log('Employee deleted, refreshing payroll data');
                 try {
-                    this.employees = window.dataService.getAllEmployees();
+                    this.employees = window.unifiedEmployeeManager.getAllEmployees();
                     await this.calculateCurrentPayrollData();
                     this.refreshPayrollDisplay();
                 } catch (error) {
@@ -1405,20 +1359,32 @@ class PayrollController {
                 }
             });
 
-            // Listen for payroll data changes
-            window.dataService.addEventListener('payrollChanged', async (data) => {
-                console.log('Payroll data changed, refreshing display');
+            // Listen for employee additions
+            window.unifiedEmployeeManager.addEventListener('employeeAdded', async (data) => {
+                console.log('Employee added, refreshing payroll data');
                 try {
-                    this.payrollData = window.dataService.getAllPayrollData();
+                    this.employees = window.unifiedEmployeeManager.getAllEmployees();
+                    await this.calculateCurrentPayrollData();
                     this.refreshPayrollDisplay();
                 } catch (error) {
-                    console.error('Error refreshing payroll display after payroll change:', error);
+                    console.error('Error refreshing payroll data after employee addition:', error);
                 }
             });
 
-            console.log('SimplifiedDataService payroll sync listeners configured');
+            // Listen for attendance updates (affects payroll calculations)
+            window.unifiedEmployeeManager.addEventListener('attendanceUpdate', async (data) => {
+                console.log('Attendance data changed, refreshing payroll calculations');
+                try {
+                    await this.calculateCurrentPayrollData();
+                    this.refreshPayrollDisplay();
+                } catch (error) {
+                    console.error('Error refreshing payroll data after attendance change:', error);
+                }
+            });
+
+            console.log('Unified Employee Manager payroll sync listeners configured');
         } else {
-            console.warn('SimplifiedDataService not available for payroll sync listeners');
+            console.warn('Unified Employee Manager not available for payroll sync listeners');
         }
     }
 

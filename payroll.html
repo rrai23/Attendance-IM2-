@@ -511,8 +511,14 @@
 
     <!-- Scripts -->
     <script src="js/mock-data.js"></script>
+    <script src="js/utils/id-utility.js"></script>
+    <script src="js/core/data-service-api.js"></script>
+    <script src="js/core/local-storage-service.js"></script>
+    <script src="js/core/api-service.js"></script>
+    <script src="js/core/data-service-factory.js"></script>
+    <script src="js/unified-data-service.js"></script>
     <script src="js/unified-employee-manager.js"></script>
-    <script src="js/data-service.js"></script>
+    <script src="js/data-manager.js"></script>
     <script src="js/global-system-sync.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/theme.js"></script>
@@ -528,27 +534,27 @@
             try {
                 console.log('Initializing unified data integration for payroll...');
                 
-                // Wait for unified employee manager if not already initialized
+                // ONLY use unified employee manager - no fallbacks allowed
                 if (window.unifiedEmployeeManager) {
                     // Use existing global instance
                     if (!window.unifiedEmployeeManager.initialized) {
                         await window.unifiedEmployeeManager.init();
                     }
-                    console.log('Unified Employee Manager ready for payroll');
+                    console.log('Unified Employee Manager ready for payroll (EXCLUSIVE MODE)');
                 } else if (typeof UnifiedEmployeeManager !== 'undefined') {
-                    // Fallback: create instance if global one doesn't exist
+                    // Create instance if global one doesn't exist
                     window.unifiedEmployeeManager = new UnifiedEmployeeManager();
                     await window.unifiedEmployeeManager.init();
-                    console.log('Unified Employee Manager initialized for payroll');
+                    console.log('Unified Employee Manager initialized for payroll (EXCLUSIVE MODE)');
                 } else {
-                    console.warn('UnifiedEmployeeManager not available, payroll will use fallback data');
+                    throw new Error('UnifiedEmployeeManager not available, payroll cannot function without unified data');
                 }
                 
-                // Initialize payroll controller
+                // Initialize payroll controller with unified employee manager ONLY
                 if (typeof PayrollController !== 'undefined') {
                     window.payrollController = new PayrollController();
                     await window.payrollController.init();
-                    console.log('Payroll controller initialized with unified data');
+                    console.log('Payroll controller initialized with unified data (EXCLUSIVE MODE)');
                 } else {
                     console.error('PayrollController not found');
                 }
@@ -575,7 +581,7 @@
             }
         });
 
-        // Debug function for manual overtime request reset
+        // Debug function for manual overtime request reset (using unified employee manager)
         if (typeof window !== 'undefined') {
             window.resetOvertimeRequestsForTesting = function() {
                 if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.resetOvertimeRequestsForTesting) {

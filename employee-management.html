@@ -231,13 +231,17 @@
                             <span class="btn-icon">📝</span>
                             <span class="btn-text">Bulk Update</span>
                         </button>
-                        <button class="btn btn-secondary" id="refreshBtn" title="Refresh data">
+                        <button class="btn btn-secondary" id="refreshBtn" title="Refresh data from server">
                             <span class="btn-icon">🔄</span>
-                            <span class="btn-text">Refresh</span>
+                            <span class="btn-text">Sync Data</span>
                         </button>
                         <button class="btn btn-primary" id="addAttendanceBtn">
                             <span class="btn-icon">➕</span>
                             <span class="btn-text">Add Entry</span>
+                        </button>
+                        <button class="btn btn-outline" id="testModalBtn" title="Test Modal (Debug)" style="display: none;">
+                            <span class="btn-icon">🔍</span>
+                            <span class="btn-text">Test Modal</span>
                         </button>
                     </div>
                 </div>
@@ -286,7 +290,7 @@
                         <div class="stat-icon">✅</div>
                         <div class="stat-content">
                             <div class="stat-value" id="presentCount">0</div>
-                            <div class="stat-label">Present</div>
+                            <div class="stat-label">On Time</div>
                         </div>
                     </div>
                     <div class="stat-card stat-late">
@@ -376,6 +380,9 @@
                         <select id="employeeSelect" class="form-input" required>
                             <option value="">Select Employee</option>
                         </select>
+                        <div id="employeeDisplay" class="form-input-readonly" style="display: none;">
+                            <span id="employeeDisplayText"></span>
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -924,6 +931,34 @@
                     });
                 }
 
+                // Test Modal button handler (for debugging)
+                const testModalBtn = document.getElementById('testModalBtn');
+                if (testModalBtn) {
+                    // Show test button in development
+                    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:') {
+                        testModalBtn.style.display = 'inline-flex';
+                    }
+                    
+                    testModalBtn.addEventListener('click', () => {
+                        console.log('=== TESTING MODAL ===');
+                        console.log('Current modal state:', {
+                            modal: document.getElementById('editAttendanceModal'),
+                            modalClasses: document.getElementById('editAttendanceModal')?.className,
+                            modalDisplay: document.getElementById('editAttendanceModal')?.style.display
+                        });
+                        
+                        // Test the force show method
+                        this.forceShowModal();
+                        
+                        // Also test with a dummy record
+                        setTimeout(() => {
+                            this.closeModal();
+                            console.log('Testing regular modal method with dummy record...');
+                            this.openModal({ id: 'test', employeeId: 1, status: 'present', date: '2025-07-13' });
+                        }, 3000);
+                    });
+                }
+
                 const closeModal = document.getElementById('closeModal');
                 if (closeModal) {
                     closeModal.addEventListener('click', () => {
@@ -1208,14 +1243,9 @@
                             </td>
                             <td>
                                 <div class="action-buttons">
-                                    <button class="btn btn-sm btn-outline" onclick="employeeManagement.editRecord('${record.id}')" title="Edit">
+                                    <button class="btn btn-primary" onclick="employeeManagement.editRecord('${record.id}')" title="Edit Attendance Record">
                                         <span class="btn-icon">✏️</span>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline" onclick="employeeManagement.overrideStatus('${record.id}')" title="Override Status">
-                                        <span class="btn-icon">🔄</span>
-                                    </button>
-                                    <button class="btn btn-sm btn-danger" onclick="employeeManagement.deleteRecord('${record.id}')" title="Delete">
-                                        <span class="btn-icon">🗑️</span>
+                                        <span class="btn-text">Modify</span>
                                     </button>
                                 </div>
                             </td>
@@ -1250,13 +1280,68 @@
                 });
             }
 
+            populateForm(record) {
+                console.log('Populating form with record:', record);
+                
+                // Populate form fields with correct IDs from the modal
+                const employeeSelect = document.getElementById('employeeSelect');
+                const dateInput = document.getElementById('attendanceDate');
+                const timeInInput = document.getElementById('clockInTime');
+                const timeOutInput = document.getElementById('clockOutTime');
+                const statusSelect = document.getElementById('attendanceStatus');
+                const notesInput = document.getElementById('notes');
+                const recordIdInput = document.getElementById('recordId');
+                
+                if (recordIdInput) {
+                    recordIdInput.value = record.id;
+                    console.log('Set record ID to:', record.id);
+                }
+                
+                if (employeeSelect) {
+                    employeeSelect.value = record.employeeId;
+                    console.log('Set employee ID to:', record.employeeId);
+                }
+                
+                if (dateInput) {
+                    dateInput.value = record.date;
+                    console.log('Set date to:', record.date);
+                }
+                
+                if (timeInInput) {
+                    timeInInput.value = record.timeIn;
+                    console.log('Set time in to:', record.timeIn);
+                }
+                
+                if (timeOutInput) {
+                    timeOutInput.value = record.timeOut || '';
+                    console.log('Set time out to:', record.timeOut);
+                }
+                
+                if (statusSelect) {
+                    statusSelect.value = record.status;
+                    console.log('Set status to:', record.status);
+                }
+                
+                if (notesInput) {
+                    notesInput.value = record.notes || '';
+                    console.log('Set notes to:', record.notes);
+                }
+                
+                // Store current editing record ID for later use
+                window.currentEditingId = record.id;
+                console.log('Stored editing ID:', record.id);
+            }
+
             openModal(record = null) {
                 console.log('Opening modal for:', record ? 'edit' : 'add new record');
+                console.log('Record data:', record);
                 
                 const modal = document.getElementById('editAttendanceModal');
                 const form = document.getElementById('attendanceForm');
                 const title = document.getElementById('modalTitle');
                 const employeeSelect = document.getElementById('employeeSelect');
+                const employeeDisplay = document.getElementById('employeeDisplay');
+                const employeeDisplayText = document.getElementById('employeeDisplayText');
 
                 if (!modal) {
                     console.error('Modal element not found');
@@ -1291,10 +1376,37 @@
                 console.log('Employee dropdown has', employeeSelect.options.length, 'options');
 
                 if (record) {
+                    // EDITING MODE: Show employee as readonly display
                     title.textContent = 'Edit Attendance Record';
+                    console.log('Populating form with record data...');
+                    
+                    // Hide the select dropdown and show readonly display
+                    employeeSelect.style.display = 'none';
+                    employeeSelect.required = false;
+                    if (employeeDisplay) {
+                        employeeDisplay.style.display = 'block';
+                        
+                        // Find employee name for display
+                        const employee = this.employees.find(emp => emp.id == record.employeeId);
+                        const employeeName = employee ? (employee.name || employee.fullName) : `Employee ID: ${record.employeeId}`;
+                        
+                        if (employeeDisplayText) {
+                            employeeDisplayText.textContent = employeeName;
+                        }
+                    }
+                    
                     this.populateForm(record);
                 } else {
+                    // ADDING MODE: Show employee select dropdown
                     title.textContent = 'Add Attendance Record';
+                    
+                    // Show the select dropdown and hide readonly display
+                    employeeSelect.style.display = 'block';
+                    employeeSelect.required = true;
+                    if (employeeDisplay) {
+                        employeeDisplay.style.display = 'none';
+                    }
+                    
                     form.reset();
                     document.getElementById('recordId').value = '';
                     document.getElementById('attendanceDate').value = new Date().toISOString().split('T')[0];
@@ -1303,26 +1415,92 @@
                     document.getElementById('attendanceStatus').value = 'present';
                 }
 
-                modal.classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
-                
-                console.log('Modal opened successfully');
+                // Show the modal with better error handling
+                try {
+                    console.log('Attempting to show modal...');
+                    console.log('Modal element:', modal);
+                    console.log('Modal current classes:', modal.className);
+                    console.log('Modal current display style:', modal.style.display);
+                    
+                    modal.classList.remove('hidden');
+                    modal.style.display = 'flex';
+                    modal.style.visibility = 'visible';
+                    modal.style.opacity = '1';
+                    document.body.style.overflow = 'hidden';
+                    
+                    console.log('After showing - Modal classes:', modal.className);
+                    console.log('After showing - Modal display style:', modal.style.display);
+                    console.log('After showing - Modal visibility:', modal.style.visibility);
+                    
+                    // Ensure the modal is definitely visible
+                    setTimeout(() => {
+                        console.log('Modal visibility check:', {
+                            display: window.getComputedStyle(modal).display,
+                            visibility: window.getComputedStyle(modal).visibility,
+                            opacity: window.getComputedStyle(modal).opacity,
+                            zIndex: window.getComputedStyle(modal).zIndex
+                        });
+                    }, 50);
+                    
+                    // Focus on the first input after a brief delay
+                    setTimeout(() => {
+                        if (record) {
+                            // If editing, focus on status field since employee is already selected
+                            const statusField = document.getElementById('attendanceStatus');
+                            if (statusField) statusField.focus();
+                        } else {
+                            // If adding new, focus on employee select
+                            if (employeeSelect) employeeSelect.focus();
+                        }
+                    }, 100);
+                    
+                    console.log('Modal opened successfully');
+                } catch (error) {
+                    console.error('Error opening modal:', error);
+                    this.showError('Failed to open edit modal: ' + error.message);
+                }
             }
 
             closeModal() {
+                console.log('Closing modal...');
                 const modal = document.getElementById('editAttendanceModal');
-                modal.classList.add('hidden');
-                document.body.style.overflow = '';
+                if (modal) {
+                    modal.classList.add('hidden');
+                    modal.style.display = 'none';
+                    modal.style.visibility = 'hidden';
+                    modal.style.opacity = '0';
+                    document.body.style.overflow = '';
+                    console.log('Modal closed');
+                } else {
+                    console.error('Modal not found when trying to close');
+                }
             }
 
-            populateForm(record) {
-                document.getElementById('recordId').value = record.id;
-                document.getElementById('employeeSelect').value = record.employeeId;
-                document.getElementById('attendanceDate').value = record.date;
-                document.getElementById('clockInTime').value = record.clockIn || '';
-                document.getElementById('clockOutTime').value = record.clockOut || '';
-                document.getElementById('attendanceStatus').value = record.status;
-                document.getElementById('notes').value = record.notes || '';
+            // Force show modal method as fallback
+            forceShowModal() {
+                const modal = document.getElementById('editAttendanceModal');
+                if (modal) {
+                    console.log('Force showing modal...');
+                    modal.style.cssText = `
+                        position: fixed !important;
+                        top: 0 !important;
+                        left: 0 !important;
+                        right: 0 !important;
+                        bottom: 0 !important;
+                        width: 100% !important;
+                        height: 100% !important;
+                        background: rgba(0, 0, 0, 0.5) !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        z-index: 99999 !important;
+                        visibility: visible !important;
+                        opacity: 1 !important;
+                    `;
+                    modal.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden';
+                    console.log('Modal force-shown with inline styles');
+                }
             }
 
             async saveAttendance() {
@@ -1403,216 +1581,50 @@
             }
 
             editRecord(id) {
+                console.log('editRecord called with ID:', id);
+                console.log('Available attendance data:', this.attendanceData.length, 'records');
+                console.log('Available record IDs:', this.attendanceData.map(r => r.id));
+                
                 const record = this.attendanceData.find(r => r.id == id);
                 if (record) {
+                    console.log('Record found for editing:', record);
                     this.openModal(record);
-                }
-            }
-
-            async deleteRecord(id) {
-                if (confirm('Are you sure you want to delete this attendance record?')) {
-                    try {
-                        // Debug: Log available data managers
-                        console.log('=== DELETION DEBUG START ===');
-                        console.log('Available managers:', {
-                            unifiedEmployeeManager: !!window.unifiedEmployeeManager,
-                            unifiedEmployeeManagerInitialized: window.unifiedEmployeeManager?.initialized,
-                            dataManager: !!window.dataManager,
-                            dataManagerInitialized: window.dataManager?.initialized,
-                            unifiedManagerNested: !!window.dataManager?.unifiedManager
-                        });
-                        
-                        // Find the record to get employee ID and date
-                        const record = this.attendanceData.find(r => r.id == id);
-                        if (!record) {
-                            throw new Error('Record not found');
-                        }
-                        
-                        console.log('=== DELETION DEBUG START ===');
-                        console.log('Record to delete:', {
-                            id: record.id,
-                            employeeId: record.employeeId,
-                            date: record.date,
-                            employeeName: record.employeeName
-                        });
-                        console.log('Current attendance data count BEFORE deletion:', this.attendanceData.length);
-                        console.log('All record IDs BEFORE deletion:', this.attendanceData.map(r => ({ id: r.id, type: typeof r.id })));
-
-                        // ONLY use unified employee manager - no fallbacks allowed
-                        if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
-                            throw new Error('Unified employee manager not available or not initialized. Cannot delete attendance record.');
-                        }
-
-                        if (typeof window.unifiedEmployeeManager.deleteAttendanceRecordById !== 'function') {
-                            throw new Error('Delete attendance record method not available on unified employee manager.');
-                        }
-
-                        // Delete through unified employee manager ONLY using record ID
-                        // Note: deleteAttendanceRecordById is synchronous, not async
-                        const deletedRecord = window.unifiedEmployeeManager.deleteAttendanceRecordById(record.id);
-                        console.log('Deleted attendance record via unified employee manager (EXCLUSIVE):', deletedRecord);
-
-                        // Allow a small delay for data synchronization across all storage systems
-                        await new Promise(resolve => setTimeout(resolve, 100));
-
-                        // Force the unified manager to reload from storage to ensure we get the latest data
-                        await window.unifiedEmployeeManager.loadData();
-
-                        // Refresh data from unified employee manager ONLY to verify deletion
-                        this.employees = window.unifiedEmployeeManager.getAllEmployees();
-                        this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
-                        
-                        console.log('Current attendance data count AFTER deletion:', this.attendanceData.length);
-                        console.log('All record IDs AFTER deletion:', this.attendanceData.map(r => ({ id: r.id, type: typeof r.id })));
-                        
-                        // Verify the record was actually deleted using multiple comparison methods
-                        const recordStillExists = this.attendanceData.find(r => 
-                            r.id === id || String(r.id) === String(id) || Number(r.id) === Number(id)
-                        );
-                        if (recordStillExists) {
-                            console.error('DELETION VERIFICATION FAILED:', {
-                                searchedForId: id,
-                                searchedForIdType: typeof id,
-                                foundRecord: recordStillExists,
-                                foundRecordIdType: typeof recordStillExists.id,
-                                totalRecords: this.attendanceData.length,
-                                allRecordIds: this.attendanceData.map(r => ({ id: r.id, type: typeof r.id }))
-                            });
-                            
-                            // Last resort: force remove from local data arrays
-                            console.warn('Attempting force removal from local data arrays...');
-                            this.attendanceData = this.attendanceData.filter(r => 
-                                r.id !== id && String(r.id) !== String(id) && Number(r.id) !== Number(id)
-                            );
-                            
-                            // Try one more time to save the corrected data
-                            if (window.unifiedEmployeeManager) {
-                                window.unifiedEmployeeManager.attendanceRecords = [...this.attendanceData];
-                                window.unifiedEmployeeManager.saveData();
-                                console.log('Force-saved corrected data to unified manager');
-                            }
-                            
-                            // Check one more time
-                            const stillExistsAfterForce = this.attendanceData.find(r => 
-                                r.id === id || String(r.id) === String(id) || Number(r.id) === Number(id)
-                            );
-                            
-                            if (stillExistsAfterForce) {
-                                throw new Error('Record still exists after deletion attempt and force removal. Unified employee manager deletion failed.');
-                            } else {
-                                console.log('Record successfully removed via force removal');
-                            }
-                        } else {
-                            console.log('Record successfully deleted and verified via unified employee manager');
-                        }
-                        
-                        // Ensure attendance records have employee names populated
-                        this.attendanceData = this.attendanceData.map(record => {
-                            if (!record.employeeName) {
-                                const employee = this.employees.find(emp => emp.id == record.employeeId);
-                                if (employee) {
-                                    record.employeeName = employee.name || employee.fullName || `Employee ${record.employeeId}`;
-                                    record.employeeCode = employee.employeeId || employee.code || `emp_${String(record.employeeId).padStart(3, '0')}`;
-                                    record.department = employee.department || '';
-                                }
-                            }
-                            return record;
-                        });
-                        
-                        this.applyFilters();
-                        this.updateStats();
-                        
-                        // Final verification: Check if record is still visible in filtered data
-                        const recordStillVisible = this.filteredData.find(r => 
-                            r.id === id || String(r.id) === String(id) || Number(r.id) === Number(id)
-                        );
-                        if (recordStillVisible) {
-                            console.warn('Record still visible in filtered data, force removing from UI');
-                            // Force remove from filtered data as well with robust comparison
-                            this.filteredData = this.filteredData.filter(r => 
-                                r.id !== id && String(r.id) !== String(id) && Number(r.id) !== Number(id)
-                            );
-                        }
-                        
-                        // Force re-render the table to ensure UI updates
-                        this.renderTable();
-                        
-                        this.showSuccess('Attendance record deleted successfully!');
-                        console.log(`Deletion completed. Records remaining: ${this.attendanceData.length}, Filtered: ${this.filteredData.length}`);
-                        console.log('=== DELETION DEBUG END ===');
-                    } catch (error) {
-                        console.error('Failed to delete record:', error);
-                        console.log('=== DELETION DEBUG END (ERROR) ===');
-                        this.showError('Failed to delete attendance record: ' + error.message);
-                    }
-                }
-            }
-
-            async overrideStatus(id) {
-                const record = this.attendanceData.find(r => r.id == id);
-                if (!record) {
-                    this.showError('Record not found');
-                    return;
-                }
-
-                const newStatus = prompt(`Override status for ${record.employeeName} on ${record.date}?\n\nCurrent status: ${record.status}\n\nEnter new status (present, late, absent, overtime, sick, vacation):`, record.status);
-                
-                if (newStatus && newStatus !== record.status) {
-                    const validStatuses = ['present', 'late', 'absent', 'overtime', 'sick', 'vacation'];
                     
-                    if (!validStatuses.includes(newStatus.toLowerCase())) {
-                        this.showError('Invalid status. Valid options: ' + validStatuses.join(', '));
-                        return;
-                    }
-
-                    const notes = prompt('Add a note for this status override (optional):', '');
-
-                    try {
-                        // ONLY use unified employee manager - no fallbacks allowed
-                        if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
-                            throw new Error('Unified employee manager not available or not initialized. Cannot override status.');
-                        }
-
-                        if (typeof window.unifiedEmployeeManager.overrideStatus !== 'function') {
-                            throw new Error('Override status method not available on unified employee manager.');
-                        }
-
-                        // Store the old status before updating
-                        const oldStatus = record.status;
+                    // Check if modal actually showed up
+                    setTimeout(() => {
+                        const modal = document.getElementById('editAttendanceModal');
+                        const modalVisible = modal && !modal.classList.contains('hidden') && 
+                                          (modal.style.display === 'flex' || window.getComputedStyle(modal).display !== 'none');
                         
-                        // Override status through unified employee manager ONLY
-                        await window.unifiedEmployeeManager.overrideStatus(
-                            record.employeeId, 
-                            record.date, 
-                            newStatus.toLowerCase(), 
-                            notes || `Status overridden from ${oldStatus} to ${newStatus.toLowerCase()}`
-                        );
-                        console.log('Status updated via unified employee manager (EXCLUSIVE)');
-                        
-                        // Refresh data from unified employee manager ONLY
-                        this.employees = window.unifiedEmployeeManager.getAllEmployees();
-                        this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
-
-                        // Ensure attendance records have employee names populated
-                        this.attendanceData = this.attendanceData.map(record => {
-                            if (!record.employeeName) {
-                                const employee = this.employees.find(emp => emp.id == record.employeeId);
-                                if (employee) {
-                                    record.employeeName = employee.name || employee.fullName || `Employee ${record.employeeId}`;
-                                    record.employeeCode = employee.employeeId || employee.code || `emp_${String(record.employeeId).padStart(3, '0')}`;
-                                    record.department = employee.department || '';
-                                }
-                            }
-                            return record;
-                        });
-
-                        this.applyFilters();
-                        this.updateStats();
-                        this.showSuccess(`Status successfully overridden to "${newStatus.toLowerCase()}"`);
-                    } catch (error) {
-                        console.error('Failed to override status:', error);
-                        this.showError('Failed to override status: ' + error.message);
-                    }
+                        if (!modalVisible) {
+                            console.warn('Modal did not show up, trying force method...');
+                            this.forceShowModal();
+                            
+                            // Populate the form manually if needed
+                            setTimeout(() => {
+                                this.populateForm(record);
+                            }, 100);
+                        } else {
+                            console.log('Modal is visible and working correctly');
+                        }
+                    }, 200);
+                    
+                } else {
+                    console.error('Record not found for ID:', id);
+                    this.showError(`Record with ID ${id} not found. Please refresh the page and try again.`);
+                    
+                    // Try to refresh data and find the record again
+                    this.forceRefreshData().then(() => {
+                        const retryRecord = this.attendanceData.find(r => r.id == id);
+                        if (retryRecord) {
+                            console.log('Record found after refresh:', retryRecord);
+                            this.openModal(retryRecord);
+                        } else {
+                            this.showError('Record still not found after refresh. The record may have been deleted.');
+                        }
+                    }).catch(error => {
+                        console.error('Failed to refresh data:', error);
+                    });
                 }
             }
 
@@ -1743,20 +1755,22 @@
                         throw new Error('Unified employee manager not available or not initialized. Cannot update status.');
                     }
 
-                    if (typeof window.unifiedEmployeeManager.overrideStatus !== 'function') {
-                        throw new Error('Override status method not available on unified employee manager.');
+                    if (typeof window.unifiedEmployeeManager.updateAttendanceRecord !== 'function') {
+                        throw new Error('Update attendance record method not available on unified employee manager.');
                     }
 
                     // Store the old status before updating
                     const oldStatus = record.status;
                     
-                    // Update status through unified employee manager ONLY
-                    await window.unifiedEmployeeManager.overrideStatus(
-                        record.employeeId, 
-                        record.date, 
-                        newStatus, 
-                        `Status updated from ${oldStatus} to ${newStatus} on ${new Date().toLocaleString()}`
-                    );
+                    // Create updated record data
+                    const updatedRecord = {
+                        ...record,
+                        status: newStatus,
+                        notes: record.notes ? `${record.notes}\nStatus updated from ${oldStatus} to ${newStatus} on ${new Date().toLocaleString()}` : `Status updated from ${oldStatus} to ${newStatus} on ${new Date().toLocaleString()}`
+                    };
+                    
+                    // Update record through unified employee manager ONLY
+                    await window.unifiedEmployeeManager.updateAttendanceRecord(recordId, updatedRecord);
                     console.log('Quick status updated via unified employee manager (EXCLUSIVE)');
                     
                     // Refresh data from unified employee manager ONLY
@@ -1934,9 +1948,8 @@
                     console.log('UnifiedEmployeeManager methods:', {
                         getAllEmployees: typeof window.unifiedEmployeeManager.getAllEmployees,
                         getAllAttendanceRecords: typeof window.unifiedEmployeeManager.getAllAttendanceRecords,
-                        deleteAttendanceRecord: typeof window.unifiedEmployeeManager.deleteAttendanceRecord,
                         saveAttendanceRecord: typeof window.unifiedEmployeeManager.saveAttendanceRecord,
-                        overrideStatus: typeof window.unifiedEmployeeManager.overrideStatus,
+                        updateAttendanceRecord: typeof window.unifiedEmployeeManager.updateAttendanceRecord,
                         saveData: typeof window.unifiedEmployeeManager.saveData,
                         loadData: typeof window.unifiedEmployeeManager.loadData
                     });
@@ -2904,10 +2917,13 @@
         }
 
         /* Modal overlay styles with backdrop blur for entire page including sidebar */
+        /* Modal Overlay */
         .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
+            right: 0;
+            bottom: 0;
             width: 100%;
             height: 100%;
             background: rgba(0, 0, 0, 0.5);
@@ -2916,24 +2932,192 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 9999;
+            z-index: 10000;
             opacity: 1;
             transition: opacity 0.3s ease;
+            visibility: visible;
         }
 
         .modal-overlay.hidden {
-            display: none;
+            display: none !important;
             opacity: 0;
+            visibility: hidden;
         }
 
-        /* Ensure the modal overlay covers the entire viewport including sidebar */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 10000;
+        /* Modal Content */
+        .modal {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            color: #6b7280;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: #f9fafb;
+            color: #111827;
+        }
+
+        .modal-content {
+            padding: 1.5rem;
+        }
+
+        /* Form Styles */
+        .form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .form-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .form-input {
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: white;
+            color: #111827;
+            font-size: 0.875rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-input-readonly {
+            padding: 0.75rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            background: #f9fafb;
+            color: #6b7280;
+            font-size: 0.875rem;
+            cursor: not-allowed;
+            user-select: none;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        /* Button Styles */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+            border-color: #2563eb;
+        }
+
+        .btn-secondary {
+            background: #f9fafb;
+            color: #374151;
+            border-color: #d1d5db;
+        }
+
+        .btn-secondary:hover {
+            background: #f3f4f6;
+        }
+
+        /* Button Icon and Text Styling */
+        .btn-icon {
+            display: inline-flex;
+            align-items: center;
+            font-size: 1rem;
+        }
+
+        .btn-text {
+            display: inline-flex;
+            align-items: center;
+            font-weight: 500;
+        }
+
+        /* Action buttons specific styling */
+        .action-buttons .btn {
+            min-width: 120px;
+            justify-content: center;
         }
     </style>
 </body>
