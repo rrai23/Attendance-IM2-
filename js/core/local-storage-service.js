@@ -71,22 +71,109 @@ class LocalStorageDataService extends DataServiceInterface {
     }
     
     /**
-     * Load mock data from JSON file
+     * Load mock data from window.mockData or JSON file
      */
     async loadMockData() {
         try {
-            const response = await fetch('/mock/data.json');
-            if (!response.ok) {
-                throw new Error(`Failed to load mock data: ${response.status}`);
+            let mockData = null;
+            
+            // First try to use window.mockData if available
+            if (typeof window.mockData !== 'undefined') {
+                console.log('Using window.mockData');
+                mockData = window.mockData;
+            } else {
+                // Fall back to loading from JSON file
+                const response = await fetch('/mock/data.json');
+                if (!response.ok) {
+                    throw new Error(`Failed to load mock data: ${response.status}`);
+                }
+                mockData = await response.json();
+                console.log('Mock data loaded from JSON file');
             }
             
-            this.data = await response.json();
+            // Convert the mock data structure to our expected format
+            this.data = this.convertMockDataStructure(mockData);
             this.saveToStorage();
-            console.log('Mock data loaded successfully');
+            console.log('Mock data converted and saved successfully');
         } catch (error) {
             console.error('Error loading mock data:', error);
             throw error;
         }
+    }
+    
+    /**
+     * Convert mock data structure to our expected format
+     * Handles conversion from users[].employee to employees[]
+     */
+    convertMockDataStructure(mockData) {
+        const convertedData = {
+            employees: [],
+            attendanceRecords: mockData.attendanceRecords || [],
+            payrollRecords: mockData.payrollRecords || [],
+            settings: mockData.settings || {},
+            analytics: mockData.analytics || {}
+        };
+        
+        // Convert users[].employee to employees[]
+        if (mockData.users && Array.isArray(mockData.users)) {
+            convertedData.employees = mockData.users
+                .map(user => {
+                    if (user.employee) {
+                        const employee = { ...user.employee };
+                        
+                        // Ensure fullName property exists
+                        if (!employee.fullName && employee.firstName && employee.lastName) {
+                            employee.fullName = `${employee.firstName} ${employee.lastName}`;
+                        }
+                        
+                        // Ensure employeeCode exists
+                        if (!employee.employeeCode && employee.id) {
+                            employee.employeeCode = `EMP${String(employee.id).padStart(3, '0')}`;
+                        }
+                        
+                        // Ensure position exists (map from role if needed)
+                        if (!employee.position && employee.role) {
+                            employee.position = this.mapRoleToPosition(employee.role);
+                        }
+                        
+                        return employee;
+                    }
+                    return null;
+                })
+                .filter(Boolean);
+        } else if (mockData.employees && Array.isArray(mockData.employees)) {
+            // If we already have an employees array, use it directly
+            convertedData.employees = mockData.employees.map(employee => {
+                const emp = { ...employee };
+                
+                // Ensure fullName property exists
+                if (!emp.fullName && emp.firstName && emp.lastName) {
+                    emp.fullName = `${emp.firstName} ${emp.lastName}`;
+                }
+                
+                // Ensure employeeCode exists
+                if (!emp.employeeCode && emp.id) {
+                    emp.employeeCode = `EMP${String(emp.id).padStart(3, '0')}`;
+                }
+                
+                return emp;
+            });
+        }
+        
+        return convertedData;
+    }
+    
+    /**
+     * Map role to position for backward compatibility
+     */
+    mapRoleToPosition(role) {
+        const roleMap = {
+            'admin': 'Administrator',
+            'manager': 'Manager',
+            'employee': 'Employee',
+            'supervisor': 'Supervisor'
+        };
+        return roleMap[role] || role;
     }
     
     /**
@@ -1399,8 +1486,19 @@ class LocalStorageDataService extends DataServiceInterface {
                 emp && 
                 typeof emp === 'object' && 
                 emp.id && 
-                emp.fullName
+                (emp.fullName || (emp.firstName && emp.lastName))
             );
+            
+            // Ensure fullName property exists for all employees
+            this.data.employees.forEach(emp => {
+                if (!emp.fullName && emp.firstName && emp.lastName) {
+                    emp.fullName = `${emp.firstName} ${emp.lastName}`;
+                }
+                // Also ensure employeeCode exists
+                if (!emp.employeeCode && emp.id) {
+                    emp.employeeCode = `EMP${String(emp.id).padStart(3, '0')}`;
+                }
+            });
             
             if (this.data.employees.length !== originalEmployeeCount) {
                 console.warn(`Removed ${originalEmployeeCount - this.data.employees.length} invalid employee records`);

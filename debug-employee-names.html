@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Employee Names Issue</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow: auto; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; margin: 5px; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐛 Debug Employee Names Issue</h1>
+        <p>Investigating why employee names show as "undefined undefined"</p>
+        
+        <div class="section">
+            <h3>1. Mock Data Structure Check</h3>
+            <button onclick="checkMockData()">Check Mock Data</button>
+            <div id="mock-data-result"></div>
+        </div>
+        
+        <div class="section">
+            <h3>2. Data Service Employee Data</h3>
+            <button onclick="checkDataService()">Check Data Service</button>
+            <div id="data-service-result"></div>
+        </div>
+        
+        <div class="section">
+            <h3>3. Direct LocalStorage Check</h3>
+            <button onclick="checkLocalStorage()">Check LocalStorage</button>
+            <div id="localstorage-result"></div>
+        </div>
+        
+        <div class="section">
+            <h3>4. Employee Object Structure</h3>
+            <button onclick="analyzeEmployeeStructure()">Analyze Employee Structure</button>
+            <div id="employee-structure-result"></div>
+        </div>
+        
+        <div class="section">
+            <h3>5. Fix Data Structure</h3>
+            <button onclick="fixDataStructure()">Fix Data Structure</button>
+            <div id="fix-result"></div>
+        </div>
+    </div>
+
+    <!-- Load all required scripts -->
+    <script src="js/mock-data.js"></script>
+    <script src="js/core/data-service-api.js"></script>
+    <script src="js/core/local-storage-service.js"></script>
+    <script src="js/core/api-service.js"></script>
+    <script src="js/core/data-service-factory.js"></script>
+    <script src="js/unified-data-service.js"></script>
+    <script src="js/data-service.js"></script>
+
+    <script>
+        function displayResult(containerId, title, data, type = 'info') {
+            const container = document.getElementById(containerId);
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : '';
+            container.innerHTML = `
+                <div class="${className}" style="margin-top: 10px; padding: 10px; border-radius: 4px;">
+                    <strong>${title}</strong>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                </div>
+            `;
+        }
+
+        function checkMockData() {
+            try {
+                if (typeof window.mockData === 'undefined') {
+                    displayResult('mock-data-result', 'Mock Data Not Found', 'window.mockData is undefined', 'error');
+                    return;
+                }
+
+                const summary = {
+                    hasUsers: !!window.mockData.users,
+                    userCount: window.mockData.users ? window.mockData.users.length : 0,
+                    hasEmployeesArray: !!window.mockData.employees,
+                    employeesArrayCount: window.mockData.employees ? window.mockData.employees.length : 0,
+                    firstUserStructure: window.mockData.users ? window.mockData.users[0] : null,
+                    firstUserEmployee: window.mockData.users?.[0]?.employee || null
+                };
+
+                displayResult('mock-data-result', 'Mock Data Structure', summary, 'success');
+            } catch (error) {
+                displayResult('mock-data-result', 'Mock Data Check Failed', error.message, 'error');
+            }
+        }
+
+        async function checkDataService() {
+            try {
+                if (!window.dataService) {
+                    displayResult('data-service-result', 'Data Service Not Available', 'window.dataService is undefined', 'error');
+                    return;
+                }
+
+                const employees = await window.dataService.getEmployees();
+                const summary = {
+                    dataServiceType: window.dataService.constructor.name,
+                    employeeCount: employees.length,
+                    firstEmployee: employees[0] || null,
+                    employeeFields: employees[0] ? Object.keys(employees[0]) : [],
+                    hasFirstName: employees[0] ? 'firstName' in employees[0] : false,
+                    hasLastName: employees[0] ? 'lastName' in employees[0] : false,
+                    firstName: employees[0]?.firstName,
+                    lastName: employees[0]?.lastName
+                };
+
+                const resultType = employees.length === 0 ? 'warning' : 'success';
+                displayResult('data-service-result', 'Data Service Employee Data', summary, resultType);
+            } catch (error) {
+                displayResult('data-service-result', 'Data Service Check Failed', error.message, 'error');
+            }
+        }
+
+        function checkLocalStorage() {
+            try {
+                const storageData = localStorage.getItem('bricks_attendance_data');
+                if (!storageData) {
+                    displayResult('localstorage-result', 'No LocalStorage Data', 'bricks_attendance_data not found in localStorage', 'warning');
+                    return;
+                }
+
+                const data = JSON.parse(storageData);
+                const summary = {
+                    hasEmployees: !!data.employees,
+                    employeeCount: data.employees ? data.employees.length : 0,
+                    firstEmployee: data.employees?.[0] || null,
+                    employeeFields: data.employees?.[0] ? Object.keys(data.employees[0]) : [],
+                    hasFirstName: data.employees?.[0] ? 'firstName' in data.employees[0] : false,
+                    hasLastName: data.employees?.[0] ? 'lastName' in data.employees[0] : false
+                };
+
+                displayResult('localstorage-result', 'LocalStorage Data', summary, 'success');
+            } catch (error) {
+                displayResult('localstorage-result', 'LocalStorage Check Failed', error.message, 'error');
+            }
+        }
+
+        async function analyzeEmployeeStructure() {
+            try {
+                const analysis = {
+                    mockDataStructure: null,
+                    dataServiceStructure: null,
+                    localStorageStructure: null,
+                    conversionNeeded: false
+                };
+
+                // Check mock data
+                if (window.mockData?.users?.[0]?.employee) {
+                    analysis.mockDataStructure = {
+                        source: 'window.mockData.users[0].employee',
+                        fields: Object.keys(window.mockData.users[0].employee),
+                        hasFirstName: 'firstName' in window.mockData.users[0].employee,
+                        hasLastName: 'lastName' in window.mockData.users[0].employee,
+                        firstName: window.mockData.users[0].employee.firstName,
+                        lastName: window.mockData.users[0].employee.lastName
+                    };
+                }
+
+                // Check data service
+                if (window.dataService) {
+                    const employees = await window.dataService.getEmployees();
+                    if (employees.length > 0) {
+                        analysis.dataServiceStructure = {
+                            source: 'window.dataService.getEmployees()[0]',
+                            fields: Object.keys(employees[0]),
+                            hasFirstName: 'firstName' in employees[0],
+                            hasLastName: 'lastName' in employees[0],
+                            firstName: employees[0].firstName,
+                            lastName: employees[0].lastName
+                        };
+                    }
+                }
+
+                // Determine if conversion is needed
+                if (analysis.mockDataStructure && analysis.dataServiceStructure) {
+                    analysis.conversionNeeded = (
+                        analysis.mockDataStructure.hasFirstName && 
+                        analysis.mockDataStructure.hasLastName &&
+                        (!analysis.dataServiceStructure.hasFirstName || !analysis.dataServiceStructure.hasLastName)
+                    );
+                }
+
+                displayResult('employee-structure-result', 'Employee Structure Analysis', analysis, analysis.conversionNeeded ? 'warning' : 'success');
+            } catch (error) {
+                displayResult('employee-structure-result', 'Structure Analysis Failed', error.message, 'error');
+            }
+        }
+
+        async function fixDataStructure() {
+            try {
+                // First, check if we have mockData.users with nested employee objects
+                if (!window.mockData?.users) {
+                    displayResult('fix-result', 'Fix Failed', 'No mockData.users found to convert', 'error');
+                    return;
+                }
+
+                // Convert users[].employee to a direct employees array
+                const employees = window.mockData.users.map(user => {
+                    if (user.employee) {
+                        return {
+                            ...user.employee,
+                            // Ensure we have employeeCode if it's missing
+                            employeeCode: user.employee.employeeCode || `EMP${String(user.employee.id).padStart(3, '0')}`
+                        };
+                    }
+                    return null;
+                }).filter(Boolean);
+
+                // Update the data structure
+                if (window.dataService && window.dataService.data) {
+                    window.dataService.data.employees = employees;
+                    
+                    // Save to localStorage
+                    if (window.dataService.saveToStorage) {
+                        window.dataService.saveToStorage();
+                    }
+                }
+
+                // Also add employees array to mockData for consistency
+                window.mockData.employees = employees;
+
+                const fixSummary = {
+                    convertedEmployees: employees.length,
+                    firstEmployee: employees[0],
+                    hasFirstName: employees[0] ? 'firstName' in employees[0] : false,
+                    hasLastName: employees[0] ? 'lastName' in employees[0] : false,
+                    firstName: employees[0]?.firstName,
+                    lastName: employees[0]?.lastName
+                };
+
+                displayResult('fix-result', 'Data Structure Fixed', fixSummary, 'success');
+
+                // Test the fix
+                setTimeout(async () => {
+                    const testEmployees = await window.dataService.getEmployees();
+                    displayResult('fix-result', 'Fix Verification', {
+                        message: 'Fix applied successfully',
+                        employeeCount: testEmployees.length,
+                        firstEmployeeName: `${testEmployees[0]?.firstName || 'undefined'} ${testEmployees[0]?.lastName || 'undefined'}`
+                    }, 'success');
+                }, 1000);
+
+            } catch (error) {
+                displayResult('fix-result', 'Fix Failed', error.message, 'error');
+            }
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Wait for data service to be ready
+            let attempts = 0;
+            while ((!window.dataService || !window.dataService.initialized) && attempts < 50) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+
+            // Auto-run checks
+            setTimeout(() => {
+                checkMockData();
+                checkDataService();
+                checkLocalStorage();
+                analyzeEmployeeStructure();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

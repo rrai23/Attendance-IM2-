@@ -37,41 +37,38 @@ class EmployeesPageManager {
         const interval = 100; // Check every 100ms
         let waited = 0;
         
-        // First try to use the unified data service
-        if (window.dataService?.initialized) {
-            console.log('Using unified data service');
-            this.unifiedManager = window.dataService;
-            return;
-        }
-        
-        // If not available, fall back to the legacy unified employee manager
-        while (!window.unifiedEmployeeManager?.initialized && !window.dataService?.initialized && waited < maxWait) {
+        // Use the unified data service (prioritize over legacy manager)
+        while (!window.dataService?.initialized && waited < maxWait) {
             await new Promise(resolve => setTimeout(resolve, interval));
             waited += interval;
         }
         
-        // Check if either service is available
         if (window.dataService?.initialized) {
-            console.log('Using unified data service (after wait)');
+            console.log('Using unified data service for employees page');
             this.unifiedManager = window.dataService;
-        } else if (window.unifiedEmployeeManager?.initialized) {
-            console.log('Using legacy unified employee manager');
-            this.unifiedManager = window.unifiedEmployeeManager;
-        } else {
-            throw new Error('No data service available');
+            return;
         }
+        
+        throw new Error('Unified data service not available');
     }
 
     async loadEmployees() {
         try {
-            console.log('Loading employees from Unified Manager...');
+            console.log('Loading employees from unified data service...');
             
-            // Get employees from unified manager
-            this.employees = this.unifiedManager.getEmployees();
+            // Get employees from unified data service (async)
+            this.employees = await this.unifiedManager.getEmployees();
             this.filteredEmployees = [...this.employees];
             
-            // Get departments
-            this.departments = this.unifiedManager.getDepartments();
+            // Get departments from unified data service or settings
+            if (this.unifiedManager.getDepartments) {
+                // If getDepartments method exists, use it
+                this.departments = await this.unifiedManager.getDepartments();
+            } else {
+                // Extract departments from employee data
+                const departmentSet = new Set(this.employees.map(emp => emp.department).filter(Boolean));
+                this.departments = Array.from(departmentSet);
+            }
             
             console.log('Loaded employees:', this.employees.length);
             console.log('Departments:', this.departments);
@@ -278,8 +275,8 @@ class EmployeesPageManager {
             this.closeDeleteModal();
         });
 
-        document.getElementById('confirmDeleteBtn')?.addEventListener('click', () => {
-            this.confirmDelete();
+        document.getElementById('confirmDeleteBtn')?.addEventListener('click', async () => {
+            await this.confirmDelete();
         });
 
         // Close modals on overlay click
@@ -392,16 +389,16 @@ class EmployeesPageManager {
             <tr>
                 <td>
                     <div class="employee-info">
-                        <div class="employee-name">${employee.firstName} ${employee.lastName}</div>
-                        <div class="employee-email">${employee.email}</div>
+                        <div class="employee-name">${this.getEmployeeName(employee)}</div>
+                        <div class="employee-email">${employee.email || 'No email'}</div>
                     </div>
                 </td>
                 <td>
-                    <span class="employee-code">${employee.employeeCode}</span>
+                    <span class="employee-code">${employee.employeeCode || employee.id || 'N/A'}</span>
                 </td>
-                <td>${employee.department}</td>
-                <td>${employee.position}</td>
-                <td>${employee.email}</td>
+                <td>${employee.department || 'No department'}</td>
+                <td>${employee.position || employee.role || 'No position'}</td>
+                <td>${employee.email || 'No email'}</td>
                 <td>
                     <span class="status-badge status-${employee.status}">
                         ${this.getStatusIcon(employee.status)} ${this.capitalizeFirst(employee.status)}
@@ -526,16 +523,16 @@ class EmployeesPageManager {
             const employeeData = this.getFormData();
             
             if (this.currentEmployee) {
-                // Update existing employee using unified manager
-                const updatedEmployee = this.unifiedManager.updateEmployee(this.currentEmployee.id, employeeData);
+                // Update existing employee using unified data service
+                const updatedEmployee = await this.unifiedManager.updateEmployee(this.currentEmployee.id, employeeData);
                 console.log('Employee updated:', updatedEmployee);
             } else {
-                // Add new employee using unified manager
-                const newEmployee = this.unifiedManager.addEmployee(employeeData);
+                // Add new employee using unified data service
+                const newEmployee = await this.unifiedManager.addEmployee(employeeData);
                 console.log('Employee added:', newEmployee);
             }
 
-            // Reload data from unified manager
+            // Reload data from unified data service
             await this.loadEmployees();
             this.applyFilters();
             this.updateStats();
@@ -659,7 +656,7 @@ class EmployeesPageManager {
         this.currentViewEmployee = employee;
         
         // Populate view modal data
-        this.setElementText('viewEmployeeName', `${employee.firstName} ${employee.lastName}`);
+        this.setElementText('viewEmployeeName', this.getEmployeeName(employee));
         this.setElementText('viewEmployeeCode', employee.employeeCode);
         this.setElementText('viewEmployeeEmail', employee.email);
         this.setElementText('viewEmployeePhone', employee.phone || 'N/A');
@@ -700,7 +697,7 @@ class EmployeesPageManager {
         if (!modal) return;
 
         this.currentDeleteEmployee = employee;
-        this.setElementText('deleteEmployeeName', `${employee.firstName} ${employee.lastName}`);
+        this.setElementText('deleteEmployeeName', this.getEmployeeName(employee));
         this.setElementValue('deleteEmployeeId', employee.id);
         
         modal.classList.remove('hidden');
@@ -708,7 +705,7 @@ class EmployeesPageManager {
         document.body.style.overflow = 'hidden';
     }
 
-    confirmDelete() {
+    async confirmDelete() {
         const employeeId = document.getElementById('deleteEmployeeId')?.value;
         if (!employeeId) {
             this.showError('Employee ID not found');
@@ -716,12 +713,12 @@ class EmployeesPageManager {
         }
 
         try {
-            // Delete employee using unified manager
-            const deletedEmployee = this.unifiedManager.deleteEmployee(parseInt(employeeId));
-            const employeeName = deletedEmployee.fullName;
+            // Delete employee using unified data service
+            const deletedEmployee = await this.unifiedManager.deleteEmployee(employeeId);
+            const employeeName = deletedEmployee.fullName || 'Employee';
             
-            // Reload data from unified manager
-            this.loadEmployees();
+            // Reload data from unified data service
+            await this.loadEmployees();
             this.applyFilters();
             this.updateStats();
             this.renderTable();
@@ -826,7 +823,7 @@ class EmployeesPageManager {
                 employee.hourlyRate = newRate;
                 employee.salary = newRate * 40 * 52; // Update annual salary calculation
                 
-                console.log(`Employee ${employee.firstName} ${employee.lastName} wage updated from ${oldRate} to ${newRate}`);
+                console.log(`Employee ${this.getEmployeeName(employee)} wage updated from ${oldRate} to ${newRate}`);
                 if (notes) {
                     console.log(`Wage change reason: ${notes}`);
                 }
@@ -1158,37 +1155,28 @@ class EmployeesPageManager {
             }, 300);
         }
     }
+
+    getEmployeeName(employee) {
+        if (employee.fullName) {
+            return employee.fullName;
+        }
+        
+        const firstName = employee.firstName || '';
+        const lastName = employee.lastName || '';
+        
+        if (firstName && lastName) {
+            return `${firstName} ${lastName}`;
+        } else if (firstName) {
+            return firstName;
+        } else if (lastName) {
+            return lastName;
+        } else if (employee.name) {
+            return employee.name;
+        } else {
+            return `Employee ${employee.id || 'Unknown'}`;
+        }
+    }
 }
 
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    if (document.getElementById('employeesTableBody')) {
-        setTimeout(() => {
-            try {
-                window.employeesPageManager = new EmployeesPageManager();
-                window.employeesPageManager.init();
-                
-                // Register with global synchronization system
-                setTimeout(() => {
-                    if (window.globalSystemSync && window.globalSystemSync.initialized) {
-                        window.globalSystemSync.registerComponent('employeesPageManager', window.employeesPageManager, {
-                            refreshData: 'refreshData',
-                            updateStats: 'updateStats',
-                            renderTable: 'renderTable',
-                            populateFilters: 'populateFilters',
-                            applyFilters: 'applyFilters'
-                        });
-                        console.log('Employees page registered with global sync');
-                    }
-                }, 500);
-                
-                // Set theme if available
-                if (typeof themeManager !== 'undefined') {
-                    themeManager.setPage('employees');
-                }
-            } catch (error) {
-                console.error('Failed to initialize employees page:', error);
-            }
-        }, 100);
-    }
-});
+// Note: Initialization is handled in employees.html to ensure proper script loading order
+// This avoids conflicts between multiple initialization points

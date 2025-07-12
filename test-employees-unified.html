@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Employees Unified Data Service</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .test-result { margin: 10px 0; padding: 10px; background: #f8f9fa; border-left: 4px solid #007bff; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; margin: 5px; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .employee-list { max-height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; margin: 10px 0; }
+        .employee-item { padding: 8px; border-bottom: 1px solid #eee; }
+        .employee-item:last-child { border-bottom: none; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Employees Unified Data Service</h1>
+        <p>This tool tests the employees page integration with the unified data service.</p>
+        
+        <div id="status-container">
+            <div class="status info">Loading data service...</div>
+        </div>
+        
+        <div id="test-controls">
+            <button onclick="testLoadEmployees()">Test Load Employees</button>
+            <button onclick="testAddEmployee()">Test Add Employee</button>
+            <button onclick="testUpdateEmployee()">Test Update Employee</button>
+            <button onclick="testDeleteEmployee()">Test Delete Employee</button>
+            <button onclick="testDepartments()">Test Departments</button>
+            <button onclick="clearTests()">Clear Results</button>
+        </div>
+        
+        <div id="test-results"></div>
+        
+        <div id="employees-display">
+            <h3>Current Employees:</h3>
+            <div id="employee-list" class="employee-list">
+                <div class="status info">No employees loaded yet</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load all required scripts in the correct order -->
+    <script src="js/mock-data.js"></script>
+    <script src="js/core/data-service-api.js"></script>
+    <script src="js/core/local-storage-service.js"></script>
+    <script src="js/core/api-service.js"></script>
+    <script src="js/core/data-service-factory.js"></script>
+    <script src="js/unified-data-service.js"></script>
+    <script src="js/data-service.js"></script>
+    <script src="js/employees-page.js"></script>
+
+    <script>
+        let employeesManager;
+        let testResults = [];
+
+        function addStatus(message, type = 'info') {
+            const container = document.getElementById('status-container');
+            const status = document.createElement('div');
+            status.className = `status ${type}`;
+            status.textContent = message;
+            container.appendChild(status);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (status.parentElement) {
+                    status.parentElement.removeChild(status);
+                }
+            }, 5000);
+        }
+
+        function addTestResult(test, result, data = null) {
+            const container = document.getElementById('test-results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'test-result';
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const status = result.success ? '✅' : '❌';
+            
+            resultDiv.innerHTML = `
+                <strong>${status} ${test}</strong> - ${timestamp}<br>
+                <small>${result.message}</small>
+                ${data ? `<pre>${JSON.stringify(data, null, 2)}</pre>` : ''}
+            `;
+            
+            container.insertBefore(resultDiv, container.firstChild);
+            testResults.push({ test, result, data, timestamp });
+        }
+
+        function clearTests() {
+            document.getElementById('test-results').innerHTML = '';
+            testResults = [];
+            addStatus('Test results cleared', 'info');
+        }
+
+        function displayEmployees(employees) {
+            const list = document.getElementById('employee-list');
+            if (!employees || employees.length === 0) {
+                list.innerHTML = '<div class="status info">No employees found</div>';
+                return;
+            }
+
+            list.innerHTML = employees.map(emp => `
+                <div class="employee-item">
+                    <strong>${emp.firstName} ${emp.lastName}</strong> (${emp.employeeCode})<br>
+                    <small>${emp.department} - ${emp.role} - ${emp.status}</small><br>
+                    <small>ID: ${emp.id}</small>
+                </div>
+            `).join('');
+        }
+
+        async function testLoadEmployees() {
+            try {
+                addStatus('Testing employee loading...', 'info');
+                
+                if (!window.dataService || !window.dataService.initialized) {
+                    throw new Error('Data service not initialized');
+                }
+
+                const employees = await window.dataService.getEmployees();
+                
+                addTestResult('Load Employees', {
+                    success: true,
+                    message: `Loaded ${employees.length} employees successfully`
+                }, { count: employees.length, sample: employees.slice(0, 2) });
+                
+                displayEmployees(employees);
+                addStatus(`Loaded ${employees.length} employees`, 'success');
+                
+            } catch (error) {
+                addTestResult('Load Employees', {
+                    success: false,
+                    message: error.message
+                });
+                addStatus('Failed to load employees: ' + error.message, 'error');
+            }
+        }
+
+        async function testAddEmployee() {
+            try {
+                addStatus('Testing employee creation...', 'info');
+                
+                const testEmployee = {
+                    firstName: 'Test',
+                    lastName: 'Employee',
+                    email: 'test.employee@example.com',
+                    department: 'Test Department',
+                    role: 'employee',
+                    status: 'active',
+                    hireDate: new Date().toISOString().split('T')[0],
+                    salary: 50000,
+                    hourlyRate: 25
+                };
+
+                const newEmployee = await window.dataService.addEmployee(testEmployee);
+                
+                addTestResult('Add Employee', {
+                    success: true,
+                    message: `Added employee with ID: ${newEmployee.id}`
+                }, newEmployee);
+                
+                addStatus('Employee added successfully', 'success');
+                
+                // Refresh the display
+                await testLoadEmployees();
+                
+            } catch (error) {
+                addTestResult('Add Employee', {
+                    success: false,
+                    message: error.message
+                });
+                addStatus('Failed to add employee: ' + error.message, 'error');
+            }
+        }
+
+        async function testUpdateEmployee() {
+            try {
+                addStatus('Testing employee update...', 'info');
+                
+                const employees = await window.dataService.getEmployees();
+                if (employees.length === 0) {
+                    throw new Error('No employees to update. Add an employee first.');
+                }
+
+                const employeeToUpdate = employees[0];
+                const updates = {
+                    salary: (employeeToUpdate.salary || 50000) + 1000,
+                    updatedAt: new Date().toISOString()
+                };
+
+                const updatedEmployee = await window.dataService.updateEmployee(employeeToUpdate.id, updates);
+                
+                addTestResult('Update Employee', {
+                    success: true,
+                    message: `Updated employee ${employeeToUpdate.firstName} ${employeeToUpdate.lastName}`
+                }, { original: employeeToUpdate, updated: updatedEmployee });
+                
+                addStatus('Employee updated successfully', 'success');
+                
+                // Refresh the display
+                await testLoadEmployees();
+                
+            } catch (error) {
+                addTestResult('Update Employee', {
+                    success: false,
+                    message: error.message
+                });
+                addStatus('Failed to update employee: ' + error.message, 'error');
+            }
+        }
+
+        async function testDeleteEmployee() {
+            try {
+                addStatus('Testing employee deletion...', 'info');
+                
+                const employees = await window.dataService.getEmployees();
+                const testEmployees = employees.filter(emp => 
+                    emp.firstName === 'Test' && emp.lastName === 'Employee'
+                );
+                
+                if (testEmployees.length === 0) {
+                    throw new Error('No test employees to delete. Add a test employee first.');
+                }
+
+                const employeeToDelete = testEmployees[0];
+                const deletedEmployee = await window.dataService.deleteEmployee(employeeToDelete.id);
+                
+                addTestResult('Delete Employee', {
+                    success: true,
+                    message: `Deleted employee ${employeeToDelete.firstName} ${employeeToDelete.lastName}`
+                }, deletedEmployee);
+                
+                addStatus('Employee deleted successfully', 'success');
+                
+                // Refresh the display
+                await testLoadEmployees();
+                
+            } catch (error) {
+                addTestResult('Delete Employee', {
+                    success: false,
+                    message: error.message
+                });
+                addStatus('Failed to delete employee: ' + error.message, 'error');
+            }
+        }
+
+        async function testDepartments() {
+            try {
+                addStatus('Testing department loading...', 'info');
+                
+                const employees = await window.dataService.getEmployees();
+                const departments = [...new Set(employees.map(emp => emp.department).filter(Boolean))];
+                
+                addTestResult('Load Departments', {
+                    success: true,
+                    message: `Found ${departments.length} departments`
+                }, departments);
+                
+                addStatus(`Found ${departments.length} departments`, 'success');
+                
+            } catch (error) {
+                addTestResult('Load Departments', {
+                    success: false,
+                    message: error.message
+                });
+                addStatus('Failed to load departments: ' + error.message, 'error');
+            }
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                addStatus('Initializing data service...', 'info');
+                
+                // Wait for data service to be ready
+                let attempts = 0;
+                const maxAttempts = 50;
+                
+                while ((!window.dataService || !window.dataService.initialized) && attempts < maxAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    attempts++;
+                }
+                
+                if (!window.dataService || !window.dataService.initialized) {
+                    throw new Error('Data service failed to initialize after 5 seconds');
+                }
+                
+                addStatus('Data service initialized successfully', 'success');
+                
+                // Initialize employees manager for testing
+                employeesManager = new EmployeesPageManager();
+                
+                // Load initial data
+                await testLoadEmployees();
+                
+            } catch (error) {
+                console.error('Initialization error:', error);
+                addStatus('Failed to initialize: ' + error.message, 'error');
+            }
+        });
+    </script>
+</body>
+</html>
