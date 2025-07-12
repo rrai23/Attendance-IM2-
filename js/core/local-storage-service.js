@@ -151,8 +151,13 @@ class LocalStorageDataService extends DataServiceInterface {
                     emp.fullName = `${emp.firstName} ${emp.lastName}`;
                 }
                 
-                // Ensure employeeCode exists
-                if (!emp.employeeCode && emp.id) {
+                // Convert employeeId to employeeCode if needed
+                if (emp.employeeId && !emp.employeeCode) {
+                    emp.employeeCode = emp.employeeId;
+                }
+                
+                // Ensure employeeCode exists (only if neither employeeCode nor employeeId exist)
+                if (!emp.employeeCode && !emp.employeeId && emp.id) {
                     emp.employeeCode = `emp_${String(emp.id).padStart(3, '0')}`;
                 }
                 
@@ -622,7 +627,22 @@ class LocalStorageDataService extends DataServiceInterface {
     async deleteEmployee(id) {
         await this.simulateDelay();
         
-        const index = this.data.employees.findIndex(emp => emp.id === id);
+        // Robust ID matching - handle both string and numeric IDs
+        const index = this.data.employees.findIndex(emp => {
+            // Direct match first (handles string IDs like "emp_001")
+            if (emp.id === id) return true;
+            
+            // Try numeric comparison for legacy support
+            const numericId = parseInt(id);
+            const numericEmpId = parseInt(emp.id);
+            if (!isNaN(numericId) && !isNaN(numericEmpId)) {
+                return numericEmpId === numericId;
+            }
+            
+            // Try string comparison
+            return String(emp.id) === String(id);
+        });
+        
         if (index === -1) {
             throw new Error(`Employee with ID ${id} not found`);
         }
@@ -632,7 +652,7 @@ class LocalStorageDataService extends DataServiceInterface {
         
         // Emit event for synchronization
         this.emit('employeeDeleted', { 
-            employeeId: id, 
+            employeeId: deletedEmployee.id, // Use the actual employee ID found
             employee: deletedEmployee 
         });
         
@@ -1535,16 +1555,23 @@ class LocalStorageDataService extends DataServiceInterface {
                     emp.fullName = `${emp.firstName} ${emp.lastName}`;
                 }
                 
+                // Convert employeeId to employeeCode if needed (data.json compatibility)
+                if (emp.employeeId && !emp.employeeCode) {
+                    emp.employeeCode = emp.employeeId;
+                    console.log(`Converted employeeId ${emp.employeeId} to employeeCode for employee ${emp.fullName}`);
+                }
+                
                 // Migrate old employeeCode format (EMP001) to new format (emp_001)
                 if (emp.employeeCode && emp.employeeCode.match(/^EMP\d{3}$/)) {
                     const match = emp.employeeCode.match(/^EMP(\d{3})$/);
                     if (match) {
+                        const oldCode = emp.employeeCode;
                         emp.employeeCode = `emp_${match[1]}`;
-                        console.log(`Migrated employee code from ${emp.employeeCode.replace('emp_', 'EMP')} to ${emp.employeeCode}`);
+                        console.log(`Migrated employee code from ${oldCode} to ${emp.employeeCode}`);
                     }
                 }
                 
-                // Ensure employeeCode exists with new format
+                // Ensure employeeCode exists with new format (only if still missing)
                 if (!emp.employeeCode && emp.id) {
                     emp.employeeCode = `emp_${String(emp.id).padStart(3, '0')}`;
                 }

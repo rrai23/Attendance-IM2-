@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Employee Deletion</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .employee-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .employee-item strong {
+            color: #007bff;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗑️ Employee Deletion Test</h1>
+        <p>This tool tests the employee deletion functionality and diagnoses ID matching issues.</p>
+
+        <div class="test-section">
+            <h3>1. Data Sources & Employee Structure</h3>
+            <button onclick="loadAndShowData()">Load & Show Current Data</button>
+            <div id="dataOutput"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Deletion Test</h3>
+            <button onclick="testDeletion()">Test Delete First Employee</button>
+            <button onclick="testDeletionById('1')">Delete by ID: 1</button>
+            <button onclick="testDeletionById('emp_001')">Delete by ID: emp_001</button>
+            <div id="deleteOutput"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. ID Conversion Test</h3>
+            <button onclick="testIdConversions()">Test ID Conversions</button>
+            <div id="conversionOutput"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4. Reset Data</h3>
+            <button onclick="resetData()">Reset to Default Data</button>
+            <div id="resetOutput"></div>
+        </div>
+    </div>
+
+    <!-- Load required scripts -->
+    <script src="js/utils/id-utility.js"></script>
+    <script src="js/core/local-storage-service.js"></script>
+    <script src="js/unified-employee-manager.js"></script>
+    <script src="js/unified-data-service.js"></script>
+
+    <script>
+        let dataService, unifiedManager;
+
+        // Initialize services
+        async function initializeServices() {
+            try {
+                // Initialize the data service
+                dataService = new window.UnifiedDataService();
+                await dataService.initialize();
+                
+                // Get the unified manager
+                unifiedManager = dataService.getUnifiedManager();
+                
+                console.log('Services initialized successfully');
+                return true;
+            } catch (error) {
+                console.error('Failed to initialize services:', error);
+                return false;
+            }
+        }
+
+        async function loadAndShowData() {
+            const output = document.getElementById('dataOutput');
+            output.innerHTML = '<p>Loading data...</p>';
+
+            try {
+                if (!dataService) {
+                    const initialized = await initializeServices();
+                    if (!initialized) {
+                        output.innerHTML = '<p class="error">Failed to initialize services</p>';
+                        return;
+                    }
+                }
+
+                const employees = await dataService.getEmployees();
+                
+                let html = `<h4>Current Employees (${employees.length} total):</h4>`;
+                
+                employees.forEach((emp, index) => {
+                    html += `
+                        <div class="employee-item">
+                            <strong>Employee ${index + 1}:</strong><br>
+                            ID: ${emp.id} (type: ${typeof emp.id})<br>
+                            Code: ${emp.employeeCode || 'N/A'}<br>
+                            Name: ${emp.firstName} ${emp.lastName}<br>
+                            <small>parseInt(ID): ${parseInt(emp.id)} | isNaN: ${isNaN(parseInt(emp.id))}</small>
+                        </div>
+                    `;
+                });
+
+                output.innerHTML = html;
+            } catch (error) {
+                output.innerHTML = `<p class="error">Error loading data: ${error.message}</p>`;
+                console.error('Error:', error);
+            }
+        }
+
+        async function testDeletion() {
+            const output = document.getElementById('deleteOutput');
+            output.innerHTML = '<p>Testing deletion...</p>';
+
+            try {
+                if (!dataService) {
+                    await initializeServices();
+                }
+
+                const employees = await dataService.getEmployees();
+                if (employees.length === 0) {
+                    output.innerHTML = '<p class="error">No employees found to delete</p>';
+                    return;
+                }
+
+                const firstEmployee = employees[0];
+                output.innerHTML += `<p>Attempting to delete: ${firstEmployee.firstName} ${firstEmployee.lastName} (ID: ${firstEmployee.id}, type: ${typeof firstEmployee.id})</p>`;
+
+                // Test deletion
+                const result = await unifiedManager.deleteEmployee(firstEmployee.id);
+                
+                output.innerHTML += `<p class="success">✅ Successfully deleted employee</p>`;
+                output.innerHTML += `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+
+                // Reload to show updated list
+                await loadAndShowData();
+
+            } catch (error) {
+                output.innerHTML += `<p class="error">❌ Deletion failed: ${error.message}</p>`;
+                console.error('Deletion error:', error);
+            }
+        }
+
+        async function testDeletionById(id) {
+            const output = document.getElementById('deleteOutput');
+            output.innerHTML += `<p>Testing deletion with ID: ${id} (type: ${typeof id})</p>`;
+
+            try {
+                if (!dataService) {
+                    await initializeServices();
+                }
+
+                const result = await unifiedManager.deleteEmployee(id);
+                output.innerHTML += `<p class="success">✅ Successfully deleted employee with ID: ${id}</p>`;
+                
+                // Reload to show updated list
+                await loadAndShowData();
+
+            } catch (error) {
+                output.innerHTML += `<p class="error">❌ Deletion failed for ID ${id}: ${error.message}</p>`;
+                console.error('Deletion error:', error);
+            }
+        }
+
+        async function testIdConversions() {
+            const output = document.getElementById('conversionOutput');
+            
+            const testIds = ['1', '2', 'emp_001', 'emp_002', 'EMP_003', 123, '123abc'];
+            
+            let html = '<h4>ID Conversion Test Results:</h4>';
+            
+            testIds.forEach(id => {
+                const parsed = parseInt(id);
+                const isNaN_result = isNaN(parsed);
+                
+                html += `
+                    <div class="employee-item">
+                        <strong>Input:</strong> ${id} (${typeof id})<br>
+                        <strong>parseInt():</strong> ${parsed}<br>
+                        <strong>isNaN:</strong> ${isNaN_result}<br>
+                        <strong>Comparison (id === parsed):</strong> ${id === parsed}<br>
+                        <strong>Comparison (id == parsed):</strong> ${id == parsed}
+                    </div>
+                `;
+            });
+
+            output.innerHTML = html;
+        }
+
+        async function resetData() {
+            const output = document.getElementById('resetOutput');
+            output.innerHTML = '<p>Resetting data...</p>';
+
+            try {
+                // Clear localStorage
+                localStorage.removeItem('bricks_attendance_data');
+                localStorage.removeItem('employee_data');
+                localStorage.removeItem('attendance_data');
+                
+                // Reinitialize
+                if (dataService) {
+                    await dataService.initialize();
+                }
+                
+                output.innerHTML = '<p class="success">✅ Data reset successfully</p>';
+                
+                // Reload data display
+                await loadAndShowData();
+                
+            } catch (error) {
+                output.innerHTML = `<p class="error">Reset failed: ${error.message}</p>`;
+                console.error('Reset error:', error);
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadAndShowData();
+        });
+    </script>
+</body>
+</html>

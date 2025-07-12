@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ID Matching Analysis</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .warning {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #e9ecef;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f9fa;
+        }
+        .mismatch {
+            background-color: #ffebee;
+        }
+        .match {
+            background-color: #e8f5e8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 ID Matching Analysis</h1>
+        <p>This tool analyzes ID consistency between employees and attendance records to identify potential matching issues.</p>
+
+        <div class="test-section">
+            <h3>1. Load and Analyze Data</h3>
+            <button onclick="analyzeData()">Analyze ID Consistency</button>
+            <button onclick="resetData()">Reset Data</button>
+            <div id="analysisOutput"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. ID Matching Tests</h3>
+            <button onclick="testIdMatching()">Test ID Matching Logic</button>
+            <div id="matchingTests"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. Fix Attendance Record IDs</h3>
+            <button onclick="fixAttendanceIds()">Fix Attendance Record IDs</button>
+            <div id="fixResults"></div>
+        </div>
+    </div>
+
+    <!-- Load required scripts -->
+    <script src="js/utils/id-utility.js"></script>
+    <script src="js/core/local-storage-service.js"></script>
+    <script src="js/unified-employee-manager.js"></script>
+    <script src="js/unified-data-service.js"></script>
+
+    <script>
+        let dataService, unifiedManager;
+
+        // Initialize services
+        async function initializeServices() {
+            try {
+                if (dataService) return true;
+                
+                dataService = new window.UnifiedDataService();
+                await dataService.initialize();
+                unifiedManager = dataService.getUnifiedManager();
+                
+                console.log('Services initialized successfully');
+                return true;
+            } catch (error) {
+                console.error('Failed to initialize services:', error);
+                return false;
+            }
+        }
+
+        // Robust ID matching function (same as in our fixes)
+        function idsMatch(id1, id2) {
+            // Direct match first
+            if (id1 === id2) return true;
+            
+            // Try numeric comparison
+            const numericId1 = parseInt(id1);
+            const numericId2 = parseInt(id2);
+            if (!isNaN(numericId1) && !isNaN(numericId2)) {
+                return numericId1 === numericId2;
+            }
+            
+            // Try string comparison
+            return String(id1) === String(id2);
+        }
+
+        async function analyzeData() {
+            const output = document.getElementById('analysisOutput');
+            output.innerHTML = '<p>Analyzing data...</p>';
+
+            try {
+                const initialized = await initializeServices();
+                if (!initialized) {
+                    output.innerHTML = '<p class="error">Failed to initialize services</p>';
+                    return;
+                }
+
+                const employees = await dataService.getEmployees();
+                const attendanceRecords = await dataService.getAttendanceRecords();
+
+                let html = '<h4>Employee Data Structure:</h4>';
+                html += '<table><tr><th>Employee</th><th>ID</th><th>ID Type</th><th>Code</th></tr>';
+                
+                employees.forEach(emp => {
+                    html += `<tr>
+                        <td>${emp.firstName} ${emp.lastName}</td>
+                        <td>${emp.id}</td>
+                        <td>${typeof emp.id}</td>
+                        <td>${emp.employeeCode || 'N/A'}</td>
+                    </tr>`;
+                });
+                html += '</table>';
+
+                html += '<h4>Attendance Record Structure:</h4>';
+                html += '<table><tr><th>Date</th><th>Employee ID</th><th>ID Type</th><th>Employee Name</th><th>Status</th></tr>';
+                
+                const recordAnalysis = {};
+                attendanceRecords.slice(0, 20).forEach(record => {
+                    const employee = employees.find(emp => idsMatch(emp.id, record.employeeId));
+                    const isMatch = !!employee;
+                    const rowClass = isMatch ? 'match' : 'mismatch';
+                    
+                    html += `<tr class="${rowClass}">
+                        <td>${record.date}</td>
+                        <td>${record.employeeId}</td>
+                        <td>${typeof record.employeeId}</td>
+                        <td>${employee ? `${employee.firstName} ${employee.lastName}` : 'NO MATCH'}</td>
+                        <td>${record.status}</td>
+                    </tr>`;
+
+                    // Track record type patterns
+                    const idType = typeof record.employeeId;
+                    if (!recordAnalysis[idType]) recordAnalysis[idType] = 0;
+                    recordAnalysis[idType]++;
+                });
+                html += '</table>';
+
+                html += '<h4>ID Type Summary:</h4>';
+                html += `<p><strong>Employees:</strong> ${employees.length} total</p>`;
+                html += `<p><strong>Attendance Records:</strong> ${attendanceRecords.length} total</p>`;
+                html += '<p><strong>Record ID Types:</strong></p><ul>';
+                Object.entries(recordAnalysis).forEach(([type, count]) => {
+                    html += `<li>${type}: ${count} records</li>`;
+                });
+                html += '</ul>';
+
+                // Check for orphaned records
+                const orphanedRecords = attendanceRecords.filter(record => 
+                    !employees.some(emp => idsMatch(emp.id, record.employeeId))
+                );
+
+                if (orphanedRecords.length > 0) {
+                    html += `<p class="warning">⚠️ Found ${orphanedRecords.length} orphaned attendance records (no matching employee)</p>`;
+                } else {
+                    html += '<p class="success">✅ All attendance records have matching employees</p>';
+                }
+
+                output.innerHTML = html;
+
+            } catch (error) {
+                output.innerHTML = `<p class="error">Analysis failed: ${error.message}</p>`;
+                console.error('Analysis error:', error);
+            }
+        }
+
+        async function testIdMatching() {
+            const output = document.getElementById('matchingTests');
+            output.innerHTML = '<p>Testing ID matching logic...</p>';
+
+            try {
+                const initialized = await initializeServices();
+                if (!initialized) {
+                    output.innerHTML = '<p class="error">Failed to initialize services</p>';
+                    return;
+                }
+
+                const employees = await dataService.getEmployees();
+                
+                let html = '<h4>ID Matching Test Results:</h4>';
+                html += '<table><tr><th>Test ID</th><th>Type</th><th>Matches Employee</th><th>Employee Found</th></tr>';
+
+                const testIds = [
+                    1, 2, 3, 4, 5, 6,
+                    '1', '2', '3', '4', '5', '6',
+                    'emp_001', 'emp_002', 'emp_003', 'emp_004', 'emp_005', 'emp_006',
+                    'EMP_001', 'invalid_id', 999, '999'
+                ];
+
+                testIds.forEach(testId => {
+                    const foundEmployee = employees.find(emp => idsMatch(emp.id, testId));
+                    const isMatch = !!foundEmployee;
+                    const rowClass = isMatch ? 'match' : 'mismatch';
+
+                    html += `<tr class="${rowClass}">
+                        <td>${testId}</td>
+                        <td>${typeof testId}</td>
+                        <td>${isMatch ? 'YES' : 'NO'}</td>
+                        <td>${foundEmployee ? `${foundEmployee.firstName} ${foundEmployee.lastName} (${foundEmployee.id})` : 'None'}</td>
+                    </tr>`;
+                });
+
+                html += '</table>';
+                output.innerHTML = html;
+
+            } catch (error) {
+                output.innerHTML = `<p class="error">Test failed: ${error.message}</p>`;
+                console.error('Test error:', error);
+            }
+        }
+
+        async function fixAttendanceIds() {
+            const output = document.getElementById('fixResults');
+            output.innerHTML = '<p>Fixing attendance record IDs...</p>';
+
+            try {
+                const initialized = await initializeServices();
+                if (!initialized) {
+                    output.innerHTML = '<p class="error">Failed to initialize services</p>';
+                    return;
+                }
+
+                const employees = await dataService.getEmployees();
+                const attendanceRecords = await dataService.getAttendanceRecords();
+
+                let fixedCount = 0;
+                let html = '<h4>Attendance ID Fix Results:</h4>';
+
+                // Update attendance records to use consistent IDs
+                attendanceRecords.forEach(record => {
+                    const employee = employees.find(emp => idsMatch(emp.id, record.employeeId));
+                    if (employee && record.employeeId !== employee.id) {
+                        html += `<p>Fixed record for ${employee.firstName} ${employee.lastName}: ${record.employeeId} → ${employee.id}</p>`;
+                        record.employeeId = employee.id;
+                        fixedCount++;
+                    }
+                });
+
+                if (fixedCount > 0) {
+                    // Save the updated data
+                    await unifiedManager.saveData();
+                    html += `<p class="success">✅ Fixed ${fixedCount} attendance records</p>`;
+                } else {
+                    html += '<p class="success">✅ All attendance records already have correct IDs</p>';
+                }
+
+                output.innerHTML = html;
+
+            } catch (error) {
+                output.innerHTML = `<p class="error">Fix failed: ${error.message}</p>`;
+                console.error('Fix error:', error);
+            }
+        }
+
+        async function resetData() {
+            try {
+                // Clear localStorage
+                localStorage.removeItem('bricks_attendance_data');
+                localStorage.removeItem('employee_data');
+                localStorage.removeItem('attendance_data');
+                
+                // Clear services
+                dataService = null;
+                unifiedManager = null;
+                
+                // Clear outputs
+                document.getElementById('analysisOutput').innerHTML = '<p>Data reset. Click "Analyze ID Consistency" to reload.</p>';
+                document.getElementById('matchingTests').innerHTML = '';
+                document.getElementById('fixResults').innerHTML = '';
+                
+            } catch (error) {
+                console.error('Reset error:', error);
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            await analyzeData();
+        });
+    </script>
+</body>
+</html>

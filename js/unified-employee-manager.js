@@ -335,16 +335,30 @@ class UnifiedEmployeeManager {
 
     deleteEmployee(id) {
         try {
-            const index = this.employees.findIndex(emp => emp.id === parseInt(id));
+            // Robust ID matching using utility or fallback
+            const index = window.IdUtility ? 
+                window.IdUtility.findEmployeeIndex(this.employees, id) :
+                this.employees.findIndex(emp => {
+                    if (emp.id === id) return true;
+                    const numericId = parseInt(id);
+                    const numericEmpId = parseInt(emp.id);
+                    if (!isNaN(numericId) && !isNaN(numericEmpId)) {
+                        return numericEmpId === numericId;
+                    }
+                    return String(emp.id) === String(id);
+                });
+            
             if (index === -1) {
-                throw new Error('Employee not found');
+                throw new Error(`Employee with ID ${id} not found`);
             }
 
             const deletedEmployee = this.employees.splice(index, 1)[0];
             
-            // Also remove their attendance records
+            // Also remove their attendance records - use robust matching
             const removedAttendanceCount = this.attendanceRecords.length;
-            this.attendanceRecords = this.attendanceRecords.filter(record => record.employeeId !== parseInt(id));
+            this.attendanceRecords = window.IdUtility ?
+                this.attendanceRecords.filter(record => !window.IdUtility.idsMatch(record.employeeId, deletedEmployee.id)) :
+                this.attendanceRecords.filter(record => record.employeeId !== deletedEmployee.id);
             const currentAttendanceCount = this.attendanceRecords.length;
             
             this.saveData();
@@ -358,14 +372,14 @@ class UnifiedEmployeeManager {
             
             // Also emit specific delete event for systems that need it
             this.emit('employeeDeleted', { 
-                employeeId: parseInt(id),
+                employeeId: deletedEmployee.id, // Use the actual employee ID found
                 employee: deletedEmployee,
                 removedAttendanceRecords: removedAttendanceCount - currentAttendanceCount
             });
             
             // Broadcast data sync event for cross-tab/page updates
             this.broadcastSystemWide('employeeDeleted', {
-                employeeId: parseInt(id),
+                employeeId: deletedEmployee.id, // Use the actual employee ID found
                 employee: deletedEmployee,
                 timestamp: new Date().toISOString()
             });
@@ -531,7 +545,18 @@ class UnifiedEmployeeManager {
     }
 
     getEmployee(id) {
-        return this.employees.find(emp => emp.id === parseInt(id));
+        return window.IdUtility ? 
+            window.IdUtility.findEmployeeById(this.employees, id) :
+            this.employees.find(emp => {
+                // Fallback if IdUtility not available
+                if (emp.id === id) return true;
+                const numericId = parseInt(id);
+                const numericEmpId = parseInt(emp.id);
+                if (!isNaN(numericId) && !isNaN(numericEmpId)) {
+                    return numericEmpId === numericId;
+                }
+                return String(emp.id) === String(id);
+            });
     }
 
     getEmployeeByCode(code) {
@@ -574,9 +599,21 @@ class UnifiedEmployeeManager {
 
     updateEmployee(id, employeeData) {
         try {
-            const index = this.employees.findIndex(emp => emp.id === parseInt(id));
+            // Robust ID matching using utility or fallback
+            const index = window.IdUtility ? 
+                window.IdUtility.findEmployeeIndex(this.employees, id) :
+                this.employees.findIndex(emp => {
+                    if (emp.id === id) return true;
+                    const numericId = parseInt(id);
+                    const numericEmpId = parseInt(emp.id);
+                    if (!isNaN(numericId) && !isNaN(numericEmpId)) {
+                        return numericEmpId === numericId;
+                    }
+                    return String(emp.id) === String(id);
+                });
+            
             if (index === -1) {
-                throw new Error('Employee not found');
+                throw new Error(`Employee with ID ${id} not found`);
             }
 
             const oldEmployee = { ...this.employees[index] };
@@ -605,52 +642,6 @@ class UnifiedEmployeeManager {
             return updatedEmployee;
         } catch (error) {
             console.error('Error updating employee:', error);
-            throw error;
-        }
-    }
-
-    deleteEmployee(id) {
-        try {
-            const index = this.employees.findIndex(emp => emp.id === parseInt(id));
-            if (index === -1) {
-                throw new Error('Employee not found');
-            }
-
-            const deletedEmployee = this.employees.splice(index, 1)[0];
-            
-            // Also remove their attendance records
-            const removedAttendanceCount = this.attendanceRecords.length;
-            this.attendanceRecords = this.attendanceRecords.filter(record => record.employeeId !== parseInt(id));
-            const currentAttendanceCount = this.attendanceRecords.length;
-            
-            this.saveData();
-            
-            // Broadcast employee deletion to all systems
-            this.emit('employeeUpdate', { 
-                action: 'delete', 
-                employee: deletedEmployee,
-                removedAttendanceRecords: removedAttendanceCount - currentAttendanceCount
-            });
-            
-            // Also emit specific delete event for systems that need it
-            this.emit('employeeDeleted', { 
-                employeeId: parseInt(id),
-                employee: deletedEmployee,
-                removedAttendanceRecords: removedAttendanceCount - currentAttendanceCount
-            });
-            
-            // Broadcast data sync event for cross-tab/page updates
-            this.broadcastSystemWide('employeeDeleted', {
-                employeeId: parseInt(id),
-                employee: deletedEmployee,
-                timestamp: new Date().toISOString()
-            });
-            
-            console.log('Employee deleted:', deletedEmployee);
-            console.log(`Removed ${removedAttendanceCount - currentAttendanceCount} attendance records`);
-            return deletedEmployee;
-        } catch (error) {
-            console.error('Error deleting employee:', error);
             throw error;
         }
     }
