@@ -79,20 +79,30 @@ class DashboardController {
         return new Promise((resolve, reject) => {
             const check = () => {
                 const dependencies = {
+                    // Check for unified data service first (preferred)
+                    unifiedDataService: typeof window.dataService !== 'undefined' && window.dataService.initialized,
+                    // Legacy data sources as fallback
                     dataManager: typeof window.dataManager !== 'undefined' && window.dataManager.initialized,
                     dataService: typeof dataService !== 'undefined',
+                    // Other dependencies
                     chartsManager: typeof chartsManager !== 'undefined' || typeof window.chartsManager !== 'undefined',
                     DashboardCalendar: typeof DashboardCalendar !== 'undefined',
                     ApexCharts: typeof ApexCharts !== 'undefined'
                 };
                 
                 console.log('DashboardController checking dependencies...', dependencies);
+                console.log('window.dataService:', window.dataService);
+                console.log('dataService global:', typeof dataService !== 'undefined' ? dataService : 'undefined');
                 
-                // Prefer data manager, but allow fallback to dataService
-                const hasDataSource = dependencies.dataManager || dependencies.dataService;
+                // Check data sources in priority order: unified service → data manager → original data service
+                const hasDataSource = dependencies.unifiedDataService || dependencies.dataManager || dependencies.dataService;
+                
+                console.log('hasDataSource:', hasDataSource);
+                console.log('DashboardCalendar available:', dependencies.DashboardCalendar);
+                console.log('ApexCharts available:', dependencies.ApexCharts);
                 
                 if (hasDataSource && dependencies.DashboardCalendar && dependencies.ApexCharts) {
-                    console.log('Core dependencies available');
+                    console.log('Core dependencies available - proceeding with initialization');
                     resolve();
                 } else if (waited >= maxWait) {
                     console.warn('Dependencies not available after 10 seconds:', dependencies);
@@ -117,15 +127,33 @@ class DashboardController {
      * Setup event listeners for dashboard interactions
      */
     setupEventListeners() {
-        // Listen for data manager updates
+        // Listen for unified data service updates
+        if (window.dataService) {
+            window.dataService.addEventListener('attendanceUpdate', (data) => {
+                console.log('Dashboard received attendance update from unified service:', data);
+                this.handleDataUpdate();
+            });
+            
+            window.dataService.addEventListener('dataChange', (data) => {
+                console.log('Dashboard received data change from unified service:', data);
+                this.handleDataUpdate();
+            });
+            
+            window.dataService.addEventListener('employeeUpdate', (data) => {
+                console.log('Dashboard received employee update from unified service:', data);
+                this.handleDataUpdate();
+            });
+        }
+        
+        // Also listen for legacy data manager updates for backwards compatibility
         if (window.dataManager) {
             window.dataManager.addEventListener('attendanceUpdate', (data) => {
-                console.log('Dashboard received attendance update:', data);
+                console.log('Dashboard received attendance update from legacy manager:', data);
                 this.handleDataUpdate();
             });
             
             window.dataManager.addEventListener('dataSync', (data) => {
-                console.log('Dashboard received data sync:', data);
+                console.log('Dashboard received data sync from legacy manager:', data);
                 this.handleDataUpdate();
             });
         }
@@ -155,14 +183,23 @@ class DashboardController {
     }
 
     /**
-     * Handle data updates from data manager
+     * Handle data updates from any data source (unified service, data manager, etc.)
      */
     async handleDataUpdate() {
         try {
+            console.log('Dashboard handling data update');
+            
+            // Reload all data
             await this.loadAttendanceStats();
+            await this.loadPaydayData();
+            
+            // Update UI components
             this.updateQuickStats();
             this.updateAttendanceCountTile();
             this.updateCharts();
+            this.updatePaydayCountdown();
+            
+            console.log('Dashboard data update complete');
         } catch (error) {
             console.error('Error handling data update:', error);
         }
@@ -195,32 +232,104 @@ class DashboardController {
      */
     async loadAttendanceStats() {
         try {
-            // Use data manager if available, otherwise fallback to dataService
-            if (window.dataManager && window.dataManager.initialized) {
-                const today = new Date().toISOString().split('T')[0];
+            const today = new Date().toISOString().split('T')[0];
+            console.log('Loading attendance stats for date:', today);
+            
+            // Prioritize the unified data service
+            if (window.dataService && window.dataService.initialized) {
+                console.log('Loading attendance stats from unified data service');
+                console.log('dataService methods:', Object.getOwnPropertyNames(window.dataService).filter(name => typeof window.dataService[name] === 'function'));
+                
+                // Get attendance stats
+                this.currentStats = await window.dataService.getAttendanceStats();
+                console.log('Received stats from unified service:', this.currentStats);
+                
+                // Get today's attendance records
+                const todayFilters = { 
+                    date: today,
+                    startDate: today, 
+                    endDate: today 
+                };
+                
+                let todayRecords = [];
+                try {
+                    todayRecords = await window.dataService.getAttendanceRecords(todayFilters);
+                    console.log('Today\'s attendance records:', todayRecords);
+                } catch (recordError) {
+                    console.error('Error getting today\'s attendance records:', recordError);
+                    // Try to recreate default data if records are corrupted
+                    if (window.dataService.createDefaultData) {
+                        try {
+                            await window.dataService.createDefaultData();
+                            todayRecords = await window.dataService.getAttendanceRecords(todayFilters);
+                            console.log('Recreated data, got records:', todayRecords);
+                        } catch (retryError) {
+                            console.error('Failed to recreate data:', retryError);
+                            todayRecords = [];
+                        }
+                    }
+                }
+                
+                // Process today's data
+                this.currentStats.today = await this.processTodayAttendance(todayRecords);
+                
+                console.log('Dashboard loaded stats from unified data service:', this.currentStats);
+            }
+            // Fallback to legacy data manager if unified service isn't available
+            else if (window.dataManager && window.dataManager.initialized) {
+                console.log('Loading attendance stats from legacy data manager');
+                
                 this.currentStats = window.dataManager.getAttendanceStats(today);
                 
                 // Get today's records for detailed processing
                 const todayRecords = window.dataManager.getTodayAttendance();
-                this.currentStats.today = this.processTodayAttendance(todayRecords);
+                this.currentStats.today = await this.processTodayAttendance(todayRecords);
                 
-                console.log('Dashboard loaded stats from data manager:', this.currentStats);
-            } else {
-                // Fallback to original dataService
+                console.log('Dashboard loaded stats from legacy data manager:', this.currentStats);
+            } 
+            // Fallback to original dataService as last resort
+            else if (typeof dataService !== 'undefined') {
+                console.log('Loading attendance stats from original dataService');
+                console.log('dataService object:', dataService);
+                
                 this.currentStats = await dataService.getAttendanceStats();
                 
                 // Also get today's specific data
-                const today = new Date().toISOString().split('T')[0];
                 const todayRecords = await dataService.getAttendanceRecords(null, today, today);
                 
                 // Process today's data
-                this.currentStats.today = this.processTodayAttendance(todayRecords);
+                this.currentStats.today = await this.processTodayAttendance(todayRecords);
                 
-                console.log('Dashboard loaded stats from dataService:', this.currentStats);
+                console.log('Dashboard loaded stats from original dataService:', this.currentStats);
+            } 
+            else {
+                console.error('No data service available for loading attendance stats');
+                console.log('Available globals:', {
+                    'window.dataService': typeof window.dataService,
+                    'window.dataManager': typeof window.dataManager,
+                    'dataService': typeof dataService
+                });
+                
+                // Create fallback stats
+                this.currentStats = this.getDefaultStats();
+                console.log('Using default stats:', this.currentStats);
+            }
+            
+            // Ensure currentStats has the properties the dashboard expects
+            if (this.currentStats) {
+                // Add any missing properties with defaults
+                this.currentStats.present = this.currentStats.present || this.currentStats.presentToday || 0;
+                this.currentStats.absent = this.currentStats.absent || this.currentStats.absentToday || 0;
+                this.currentStats.late = this.currentStats.late || this.currentStats.tardyToday || 0;
+                this.currentStats.overtime = this.currentStats.overtime || 0;
+                this.currentStats.presentPercentage = this.currentStats.presentPercentage || this.currentStats.attendanceRate || 0;
+                
+                console.log('Final stats after processing:', this.currentStats);
             }
             
         } catch (error) {
             console.error('Error loading attendance stats:', error);
+            console.error('Error stack:', error.stack);
             this.currentStats = this.getDefaultStats();
         }
     }
@@ -228,42 +337,80 @@ class DashboardController {
     /**
      * Process today's attendance data
      */
-    processTodayAttendance(records) {
-        // Get total number of employees from the data service
-        // There are 6 employees in the mock-data.js users array
-        const totalEmployees = 6; // This matches the number of employees in mock-data.js
-        
-        let present = 0;
-        let late = 0;
-        let absent = 0;
-
-        records.forEach(record => {
-            if (record.status === 'present') {
-                if (record.isLate) {
-                    late++;
-                } else {
-                    present++;
-                }
-            } else if (record.status === 'absent') {
-                absent++;
+    async processTodayAttendance(records) {
+        try {
+            // Get total number of active employees from the data service
+            let totalEmployees = 0;
+            
+            if (window.dataService && window.dataService.getEmployees) {
+                const employees = await window.dataService.getEmployees();
+                totalEmployees = employees.filter(emp => emp.status === 'active').length;
+            } else {
+                // Fallback: assume a reasonable number if we can't get the actual count
+                totalEmployees = Math.max(6, records.length);
             }
-        });
+            
+            let present = 0;
+            let late = 0;
+            let absent = 0;
 
-        // If we have fewer records than employees, the missing ones are considered absent
-        const recordedEmployees = records.length;
-        if (recordedEmployees < totalEmployees) {
-            absent += (totalEmployees - recordedEmployees);
+            // Count attendance statuses
+            records.forEach(record => {
+                switch(record.status) {
+                    case 'present':
+                        present++;
+                        break;
+                    case 'late':
+                    case 'tardy':
+                        late++;
+                        break;
+                    case 'absent':
+                        absent++;
+                        break;
+                    default:
+                        // If status is unclear, assume present if they have a timeIn
+                        if (record.timeIn) {
+                            present++;
+                        } else {
+                            absent++;
+                        }
+                }
+            });
+
+            // If we have fewer records than employees, the missing ones are considered absent
+            const recordedEmployees = records.length;
+            if (recordedEmployees < totalEmployees) {
+                absent += (totalEmployees - recordedEmployees);
+            }
+
+            const attendanceRate = totalEmployees > 0 ? ((present + late) / totalEmployees) * 100 : 0;
+
+            console.log('Processed today\'s attendance:', {
+                totalEmployees,
+                present,
+                late,
+                absent,
+                attendanceRate,
+                recordsProcessed: records.length
+            });
+
+            return {
+                total: totalEmployees,
+                present,
+                late,
+                absent,
+                attendanceRate: Math.round(attendanceRate * 10) / 10
+            };
+        } catch (error) {
+            console.error('Error processing today\'s attendance:', error);
+            return {
+                total: 0,
+                present: 0,
+                late: 0,
+                absent: 0,
+                attendanceRate: 0
+            };
         }
-
-        const attendanceRate = totalEmployees > 0 ? ((present + late) / totalEmployees) * 100 : 0;
-
-        return {
-            total: totalEmployees,
-            present,
-            late,
-            absent,
-            attendanceRate: Math.round(attendanceRate * 10) / 10
-        };
     }
 
     /**
@@ -271,7 +418,20 @@ class DashboardController {
      */
     async loadPaydayData() {
         try {
-            this.paydayData = await dataService.getNextPayday();
+            // Try to use the unified data service first
+            if (window.dataService && window.dataService.initialized) {
+                console.log('Loading payday data from unified data service');
+                this.paydayData = await window.dataService.getNextPayday();
+            }
+            // Fallback to original dataService
+            else if (typeof dataService !== 'undefined') {
+                console.log('Loading payday data from original dataService');
+                this.paydayData = await dataService.getNextPayday();
+            }
+            else {
+                console.error('No data service available for loading payday data');
+                this.paydayData = this.getDefaultPaydayData();
+            }
         } catch (error) {
             console.error('Error loading payday data:', error);
             this.paydayData = this.getDefaultPaydayData();
@@ -283,23 +443,26 @@ class DashboardController {
      */
     getDefaultStats() {
         return {
+            present: 0,
+            absent: 0,
+            late: 0,
+            leave: 0,
+            total: 0,
+            totalHours: 0,
+            averageHours: 0,
             today: {
-                total: 0,
                 present: 0,
-                late: 0,
                 absent: 0,
-                attendanceRate: 0
+                late: 0,
+                leave: 0
             },
             weekly: {
-                present: 0,
-                late: 0,
-                absent: 0,
-                onLeave: 0
+                days: [],
+                counts: []
             },
-            trends: {
-                labels: [],
-                attendanceRate: [],
-                targetRate: []
+            monthly: {
+                days: [],
+                counts: []
             }
         };
     }
@@ -309,30 +472,16 @@ class DashboardController {
      */
     getDefaultPaydayData() {
         const today = new Date();
-        const nextFriday = new Date(today);
-        
-        // Calculate days until next Friday (5 = Friday)
-        const daysUntilFriday = (5 - today.getDay() + 7) % 7;
-        
-        // If today is Friday, get next Friday (7 days from now)
-        if (daysUntilFriday === 0) {
-            nextFriday.setDate(today.getDate() + 7);
-        } else {
-            nextFriday.setDate(today.getDate() + daysUntilFriday);
-        }
-        
-        // Ensure we have a valid date
-        if (isNaN(nextFriday.getTime())) {
-            nextFriday.setTime(today.getTime() + (7 * 24 * 60 * 60 * 1000)); // fallback to 7 days from today
-        }
-        
-        const daysRemaining = Math.max(1, Math.ceil((nextFriday - today) / (1000 * 60 * 60 * 24)));
+        // Set the next payday to 15 days from now
+        const nextPayday = new Date(today);
+        nextPayday.setDate(today.getDate() + 15);
         
         return {
-            date: nextFriday.toISOString().split('T')[0],
-            daysRemaining: daysRemaining,
-            amount: 15000, // Default weekly amount in PHP
-            period: 'Weekly'
+            nextPayday: nextPayday.toISOString().split('T')[0],
+            frequency: 'biweekly',
+            daysRemaining: 15,
+            hoursRemaining: 15 * 24,
+            lastPayday: new Date(today.setDate(today.getDate() - 15)).toISOString().split('T')[0]
         };
     }
 
@@ -1408,7 +1557,12 @@ class DashboardController {
      * Update quick stats in the header and tiles
      */
     updateQuickStats() {
-        const stats = this.currentStats?.today || this.getDefaultStats().today;
+        console.log('Updating quick stats with currentStats:', this.currentStats);
+        
+        // Get stats from currentStats.today or fall back to the main currentStats
+        const stats = this.currentStats?.today || this.currentStats || this.getDefaultStats().today;
+        
+        console.log('Stats being used for display:', stats);
         
         // Update main header quick stats
         const totalEmployeesEl = document.getElementById('total-employees');
@@ -1416,10 +1570,30 @@ class DashboardController {
         const lateTodayEl = document.getElementById('late-today');
         const attendanceRateEl = document.getElementById('attendance-rate');
         
-        if (totalEmployeesEl) totalEmployeesEl.textContent = stats.total;
-        if (presentTodayEl) presentTodayEl.textContent = stats.present + stats.late;
-        if (lateTodayEl) lateTodayEl.textContent = stats.late;
-        if (attendanceRateEl) attendanceRateEl.textContent = `${stats.attendanceRate}%`;
+        // Use safe fallbacks and ensure numbers are displayed
+        const totalEmployees = stats.total || stats.totalEmployees || 0;
+        const present = stats.present || stats.presentToday || 0;
+        const late = stats.late || stats.tardyToday || 0;
+        const attendanceRate = stats.attendanceRate || stats.presentPercentage || 0;
+        
+        console.log('Values being set:', { totalEmployees, present, late, attendanceRate });
+        
+        if (totalEmployeesEl) {
+            totalEmployeesEl.textContent = totalEmployees;
+            console.log('Set total employees to:', totalEmployees);
+        }
+        if (presentTodayEl) {
+            presentTodayEl.textContent = present + late;
+            console.log('Set present today to:', present + late);
+        }
+        if (lateTodayEl) {
+            lateTodayEl.textContent = late;
+            console.log('Set late today to:', late);
+        }
+        if (attendanceRateEl) {
+            attendanceRateEl.textContent = `${attendanceRate}%`;
+            console.log('Set attendance rate to:', `${attendanceRate}%`);
+        }
         
         // Update existing tile elements if they exist (for static HTML)
         const mainAttendanceCountEl = document.getElementById('main-attendance-count');
@@ -1428,26 +1602,44 @@ class DashboardController {
         const lateCountEl = document.getElementById('late-count');
         const absentCountEl = document.getElementById('absent-count');
         
-        if (mainAttendanceCountEl) mainAttendanceCountEl.textContent = stats.present + stats.late;
-        if (totalEmployeeCountEl) totalEmployeeCountEl.textContent = stats.total;
-        if (onTimeCountEl) onTimeCountEl.textContent = stats.present;
-        if (lateCountEl) lateCountEl.textContent = stats.late;
-        if (absentCountEl) absentCountEl.textContent = stats.absent;
+        if (mainAttendanceCountEl) {
+            mainAttendanceCountEl.textContent = present + late;
+            console.log('Set main attendance count to:', present + late);
+        }
+        if (totalEmployeeCountEl) {
+            totalEmployeeCountEl.textContent = totalEmployees;
+            console.log('Set total employee count to:', totalEmployees);
+        }
+        if (onTimeCountEl) {
+            onTimeCountEl.textContent = present;
+            console.log('Set on time count to:', present);
+        }
+        if (lateCountEl) {
+            lateCountEl.textContent = late;
+            console.log('Set late count to:', late);
+        }
+        if (absentCountEl) {
+            const absent = stats.absent || stats.absentToday || (totalEmployees - present - late);
+            absentCountEl.textContent = Math.max(0, absent);
+            console.log('Set absent count to:', Math.max(0, absent));
+        }
         
         // Update circular progress if it exists in static HTML
         const rateCircle = document.querySelector('.rate-circle');
         if (rateCircle) {
-            rateCircle.setAttribute('data-rate', stats.attendanceRate);
+            rateCircle.setAttribute('data-rate', attendanceRate);
             const circleElement = rateCircle.querySelector('.circle');
             const percentageElement = rateCircle.querySelector('.percentage');
             
             if (circleElement) {
-                circleElement.setAttribute('stroke-dasharray', `${stats.attendanceRate}, 100`);
+                circleElement.setAttribute('stroke-dasharray', `${attendanceRate}, 100`);
             }
             if (percentageElement) {
-                percentageElement.textContent = `${stats.attendanceRate}%`;
+                percentageElement.textContent = `${attendanceRate}%`;
             }
         }
+        
+        console.log('Quick stats update completed');
     }
 
     /**

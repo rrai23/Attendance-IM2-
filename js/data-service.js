@@ -1,19 +1,72 @@
-// Minimal Data Service for Bricks Attendance System
-// Provides essential methods needed by the dashboard
+/**
+ * Main Data Service for Bricks Attendance System
+ * This file serves as the entry point for the data service layer.
+ * It ensures all parts of the application use a consistent data source.
+ * 
+ * IMPORTANT: This implementation has been refactored to use a unified data service 
+ * architecture that can be easily ported to PHP or other backend systems.
+ * 
+ * The DataService class now acts as a thin wrapper around the unified data service
+ * implementation (either LocalStorageDataService or ApiDataService), providing
+ * backward compatibility for existing code.
+ */
 
 class DataService {
     constructor() {
-        this.isOnline = false;
+        this.isOnline = navigator.onLine;
         this.apiBaseUrl = '/api';
         this.authToken = null;
         this.eventListeners = {}; // Event system for data changes
-        this.initializeMockData();
+        
+        // Ensure the unified service module is included
+        this.requireUnifiedService();
+        
+        // Use the unified service implementation if available
+        this.serviceImpl = window.dataService;
+        
+        if (!this.serviceImpl) {
+            console.error('No data service implementation available!');
+            // Create a basic fallback service
+            this.initializeBasicService();
+        }
+    }
+    
+    /**
+     * Ensure the unified service is required
+     */
+    requireUnifiedService() {
+        try {
+            if (typeof window.dataService === 'undefined') {
+                console.warn('Unified data service not loaded yet, attempting to load dependencies');
+                
+                // Try to load dependencies if they're available
+                if (typeof window.DataServiceFactory !== 'undefined') {
+                    window.dataService = window.DataServiceFactory.createBestService();
+                } else if (typeof window.LocalStorageDataService !== 'undefined') {
+                    window.dataService = new window.LocalStorageDataService();
+                }
+                
+                // If we still don't have a data service, create a basic one
+                if (typeof window.dataService === 'undefined') {
+                    this.initializeBasicService();
+                }
+            }
+        } catch (error) {
+            console.error('Error requiring unified service:', error);
+        }
     }
 
     /**
      * Add event listener for data changes
      */
     addEventListener(event, callback) {
+        // Delegate to service implementation if available
+        if (this.serviceImpl && typeof this.serviceImpl.addEventListener === 'function') {
+            this.serviceImpl.addEventListener(event, callback);
+            return;
+        }
+        
+        // Fall back to local implementation
         if (!this.eventListeners[event]) {
             this.eventListeners[event] = [];
         }
@@ -24,6 +77,13 @@ class DataService {
      * Remove event listener
      */
     removeEventListener(event, callback) {
+        // Delegate to service implementation if available
+        if (this.serviceImpl && typeof this.serviceImpl.removeEventListener === 'function') {
+            this.serviceImpl.removeEventListener(event, callback);
+            return;
+        }
+        
+        // Fall back to local implementation
         if (this.eventListeners[event]) {
             this.eventListeners[event] = this.eventListeners[event].filter(cb => cb !== callback);
         }
@@ -33,6 +93,13 @@ class DataService {
      * Emit event to notify listeners
      */
     emit(event, data) {
+        // Delegate to service implementation if available
+        if (this.serviceImpl && typeof this.serviceImpl.emit === 'function') {
+            this.serviceImpl.emit(event, data);
+            return;
+        }
+        
+        // Fall back to local implementation
         if (this.eventListeners[event]) {
             this.eventListeners[event].forEach(callback => {
                 try {
@@ -44,26 +111,68 @@ class DataService {
         }
     }
 
+    /**
+     * Initialize mock data when no other service is available
+     * This is a legacy method that creates a basic data structure
+     */
     initializeMockData() {
         if (typeof mockData === 'undefined') {
             console.error('Mock data not loaded. Please ensure mock-data.js is included.');
             return;
         }
-        this.data = JSON.parse(JSON.stringify(mockData));
         
-        // Load saved settings from localStorage if available
+        // Create a basic service with mock data
+        const mockDataCopy = JSON.parse(JSON.stringify(mockData));
+        
+        // Initialize basic service with mock data
+        window.dataService = {
+            initialized: true,
+            _data: mockDataCopy,
+            addEventListener: (event, callback) => {
+                if (!this.eventListeners[event]) {
+                    this.eventListeners[event] = [];
+                }
+                this.eventListeners[event].push(callback);
+            },
+            removeEventListener: (event, callback) => {
+                if (!this.eventListeners[event]) return;
+                this.eventListeners[event] = this.eventListeners[event].filter(cb => cb !== callback);
+            },
+            emit: (event, data) => {
+                if (!this.eventListeners[event]) return;
+                for (const cb of this.eventListeners[event]) {
+                    try {
+                        cb(data);
+                    } catch (error) {
+                        console.error(`Error in event listener for ${event}:`, error);
+                    }
+                }
+            },
+            // Implement basic data methods
+            getEmployees: async () => mockDataCopy.employees,
+            getAttendanceRecords: async () => mockDataCopy.attendanceRecords,
+            getSettings: async () => mockDataCopy.settings
+        };
+        
+        this.serviceImpl = window.dataService;
+    }
+    
+    /**
+     * Forward method calls to the service implementation
+     * This allows us to delegate all calls to the unified service
+     * while maintaining backward compatibility
+     */
+    async forwardMethod(method, ...args) {
         try {
-            const savedSettings = localStorage.getItem('bricks_settings');
-            if (savedSettings) {
-                const parsedSettings = JSON.parse(savedSettings);
-                this.data.settings = {
-                    ...this.data.settings,
-                    ...parsedSettings
-                };
-                console.log('Loaded settings from localStorage');
+            if (!this.serviceImpl || typeof this.serviceImpl[method] !== 'function') {
+                console.error(`Method ${method} not available in the service implementation`);
+                return null;
             }
+            
+            return await this.serviceImpl[method](...args);
         } catch (error) {
-            console.warn('Failed to load settings from localStorage:', error);
+            console.error(`Error forwarding method ${method}:`, error);
+            throw error;
         }
     }
 
@@ -866,17 +975,74 @@ class DataService {
         }
     }
 
-    // ...existing code...
+    /**
+     * Initialize a basic fallback service
+     */
+    initializeBasicService() {
+        console.warn('Initializing basic fallback data service');
+        
+        // Create a simple service with basic functionality
+        window.dataService = {
+            initialized: true,
+            addEventListener: (event, callback) => {
+                if (!this.eventListeners[event]) {
+                    this.eventListeners[event] = [];
+                }
+                this.eventListeners[event].push(callback);
+            },
+            removeEventListener: (event, callback) => {
+                if (!this.eventListeners[event]) return;
+                this.eventListeners[event] = this.eventListeners[event].filter(cb => cb !== callback);
+            },
+            emit: (event, data) => {
+                if (!this.eventListeners[event]) return;
+                for (const cb of this.eventListeners[event]) {
+                    try {
+                        cb(data);
+                    } catch (error) {
+                        console.error(`Error in event listener for ${event}:`, error);
+                    }
+                }
+            },
+            // Basic data storage
+            _data: {
+                employees: [],
+                attendanceRecords: [],
+                payrollRecords: [],
+                settings: {
+                    company: { name: 'Bricks Company', workingHours: 8 },
+                    preferences: { theme: 'light' }
+                }
+            },
+            // Basic data methods
+            getEmployees: async () => this._data.employees,
+            getAttendanceRecords: async () => this._data.attendanceRecords,
+            getSettings: async () => this._data.settings
+        };
+        
+        this.serviceImpl = window.dataService;
+    }
 }
 
-// Create singleton instance and export immediately
-const dataService = new DataService();
+// Only create legacy DataService if unified service isn't already available
+let dataService;
 
-// Export immediately for both module systems to avoid temporal dead zone issues
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = dataService;
-} else if (typeof window !== 'undefined') {
-    window.dataService = dataService;
+if (typeof window !== 'undefined' && window.dataService && window.dataService.initialized) {
+    // Use existing unified data service
+    dataService = window.dataService;
+    console.log('Using existing unified data service');
+} else {
+    // Create legacy DataService as fallback
+    dataService = new DataService();
+    console.log('Created legacy DataService as fallback');
+    
+    // Export for module systems
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports = dataService;
+    } else if (typeof window !== 'undefined' && !window.dataService) {
+        // Only set window.dataService if it doesn't already exist
+        window.dataService = dataService;
+    }
 }
 
 // Ensure methods exist for compatibility (defensive programming)
@@ -902,4 +1068,145 @@ if (typeof window !== 'undefined') {
             hasGetAuthToken: typeof dataService.getAuthToken === 'function'
         });
     };
+}
+
+// ====================================================================
+// METHOD FORWARDING - All methods delegate to the unified data service
+// ====================================================================
+
+// Employee methods
+async function getEmployees() {
+    return dataService.forwardMethod('getEmployees');
+}
+
+async function getEmployee(id) {
+    return dataService.forwardMethod('getEmployee', id);
+}
+
+async function addEmployee(employeeData) {
+    return dataService.forwardMethod('addEmployee', employeeData);
+}
+
+async function updateEmployee(id, updates) {
+    return dataService.forwardMethod('updateEmployee', id, updates);
+}
+
+async function deleteEmployee(id) {
+    return dataService.forwardMethod('deleteEmployee', id);
+}
+
+// Attendance methods
+async function getAttendanceRecords(filters) {
+    return dataService.forwardMethod('getAttendanceRecords', filters);
+}
+
+async function getEmployeeAttendance(employeeId, filters) {
+    return dataService.forwardMethod('getEmployeeAttendance', employeeId, filters);
+}
+
+async function addAttendanceRecord(record) {
+    return dataService.forwardMethod('addAttendanceRecord', record);
+}
+
+async function updateAttendanceRecord(id, updates) {
+    return dataService.forwardMethod('updateAttendanceRecord', id, updates);
+}
+
+async function deleteAttendanceRecord(id) {
+    return dataService.forwardMethod('deleteAttendanceRecord', id);
+}
+
+async function getAttendanceStats(filters) {
+    return dataService.forwardMethod('getAttendanceStats', filters);
+}
+
+// Payroll methods
+async function getPayrollData(filters) {
+    return dataService.forwardMethod('getPayrollData', filters);
+}
+
+async function calculatePayroll(startDate, endDate, options) {
+    return dataService.forwardMethod('calculatePayroll', startDate, endDate, options);
+}
+
+async function getEmployeePayrollHistory(employeeId, filters) {
+    return dataService.forwardMethod('getEmployeePayrollHistory', employeeId, filters);
+}
+
+async function getPayrollHistory(filters) {
+    return dataService.forwardMethod('getPayrollHistory', filters);
+}
+
+async function savePayrollRecord(payrollData) {
+    return dataService.forwardMethod('savePayrollRecord', payrollData);
+}
+
+async function updateEmployeeWage(employeeId, amount, reason) {
+    return dataService.forwardMethod('updateEmployeeWage', employeeId, amount, reason);
+}
+
+// Settings methods
+async function getSettings() {
+    return dataService.forwardMethod('getSettings');
+}
+
+async function saveSettings(settings) {
+    return dataService.forwardMethod('saveSettings', settings);
+}
+
+// Event methods
+function addEventListener(event, callback) {
+    if (dataService.serviceImpl && typeof dataService.serviceImpl.addEventListener === 'function') {
+        dataService.serviceImpl.addEventListener(event, callback);
+    } else {
+        if (!dataService.eventListeners[event]) {
+            dataService.eventListeners[event] = [];
+        }
+        dataService.eventListeners[event].push(callback);
+    }
+}
+
+function removeEventListener(event, callback) {
+    if (dataService.serviceImpl && typeof dataService.serviceImpl.removeEventListener === 'function') {
+        dataService.serviceImpl.removeEventListener(event, callback);
+    } else {
+        if (!dataService.eventListeners[event]) return;
+        dataService.eventListeners[event] = dataService.eventListeners[event].filter(cb => cb !== callback);
+    }
+}
+
+function emit(event, data = {}) {
+    if (dataService.serviceImpl && typeof dataService.serviceImpl.emit === 'function') {
+        dataService.serviceImpl.emit(event, data);
+    } else {
+        if (!dataService.eventListeners[event]) return;
+        for (const callback of dataService.eventListeners[event]) {
+            try {
+                callback(data);
+            } catch (error) {
+                console.error(`Error in event listener for ${event}:`, error);
+            }
+        }
+    }
+}
+
+// Authentication methods
+function setAuthToken(token) {
+    if (dataService.serviceImpl && typeof dataService.serviceImpl.setAuthToken === 'function') {
+        dataService.serviceImpl.setAuthToken(token);
+    } else {
+        dataService.authToken = token;
+        localStorage.setItem('bricks_auth_token', token);
+    }
+}
+
+function getAuthToken() {
+    if (dataService.serviceImpl && typeof dataService.serviceImpl.getAuthToken === 'function') {
+        return dataService.serviceImpl.getAuthToken();
+    } else {
+        if (!dataService.authToken) {
+            dataService.authToken = localStorage.getItem('bricks_auth_token');
+        }
+        return dataService.authToken;
+    }
 }

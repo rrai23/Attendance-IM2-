@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sidebar Test - Theme Selector Fix</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background: #f5f5f5; 
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .alert { 
+            padding: 15px; 
+            margin: 15px 0; 
+            border-radius: 5px; 
+            border-left: 4px solid;
+        }
+        .alert-success { 
+            background: #d4edda; 
+            border-color: #28a745; 
+            color: #155724; 
+        }
+        .alert-info { 
+            background: #d1ecf1; 
+            border-color: #17a2b8; 
+            color: #0c5460; 
+        }
+        button { 
+            padding: 12px 24px; 
+            margin: 10px 5px; 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            font-size: 16px;
+        }
+        button:hover { 
+            background: #0056b3; 
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Sidebar Test - Theme Selector Fix</h1>
+        
+        <div class="alert alert-info">
+            <strong>Purpose:</strong> Test that the sidebar loads without errors after fixing the missing setupThemeSelector method.
+        </div>
+        
+        <div>
+            <button onclick="testSidebar()">🔍 Test Sidebar Functionality</button>
+            <button onclick="testThemeSelector()">🎨 Test Theme Selector</button>
+            <button onclick="openDashboard()">📊 Open Dashboard</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <!-- Load necessary scripts in the same order as dashboard -->
+    <script src="js/mock-data.js"></script>
+    <script src="js/core/data-service-api.js"></script>
+    <script src="js/core/local-storage-service.js"></script>
+    <script src="js/core/api-service.js"></script>
+    <script src="js/core/data-service-factory.js"></script>
+    <script src="js/unified-data-service.js"></script>
+    <script src="js/data-service.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/theme.js"></script>
+    <script src="js/sidebar.js"></script>
+
+    <script>
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+            resultsDiv.appendChild(resultDiv);
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function testSidebar() {
+            addResult('🔍 Testing sidebar functionality...', 'info');
+            
+            try {
+                // Check if SidebarManager class exists
+                if (typeof SidebarManager !== 'undefined') {
+                    addResult('✅ SidebarManager class is available', 'success');
+                    
+                    // Check if a sidebar instance exists
+                    if (typeof sidebarManager !== 'undefined') {
+                        addResult('✅ Sidebar manager instance exists', 'success');
+                        
+                        // Check if setupThemeSelector method exists
+                        if (typeof sidebarManager.setupThemeSelector === 'function') {
+                            addResult('✅ setupThemeSelector method is available', 'success');
+                        } else {
+                            addResult('❌ setupThemeSelector method is missing', 'error');
+                        }
+                        
+                        // Check if syncThemeSelector method exists
+                        if (typeof sidebarManager.syncThemeSelector === 'function') {
+                            addResult('✅ syncThemeSelector method is available', 'success');
+                        } else {
+                            addResult('❌ syncThemeSelector method is missing', 'error');
+                        }
+                        
+                    } else {
+                        addResult('⚠️ Sidebar manager instance not found (may be normal if not on dashboard)', 'info');
+                    }
+                } else {
+                    addResult('❌ SidebarManager class not found', 'error');
+                }
+                
+                addResult('🎯 Sidebar test completed', 'info');
+                
+            } catch (error) {
+                addResult(`❌ Error testing sidebar: ${error.message}`, 'error');
+            }
+        }
+
+        function testThemeSelector() {
+            addResult('🎨 Testing theme selector...', 'info');
+            
+            try {
+                // Check if theme-related globals exist
+                if (typeof themeManager !== 'undefined') {
+                    addResult('✅ Theme manager is available', 'success');
+                } else {
+                    addResult('⚠️ Theme manager not found (may use fallback)', 'info');
+                }
+                
+                // Test theme selector setup
+                if (typeof SidebarManager !== 'undefined') {
+                    const testSidebar = new SidebarManager();
+                    
+                    // Test setupThemeSelector method
+                    testSidebar.setupThemeSelector();
+                    addResult('✅ setupThemeSelector executed without errors', 'success');
+                    
+                    // Test syncThemeSelector method
+                    testSidebar.syncThemeSelector();
+                    addResult('✅ syncThemeSelector executed without errors', 'success');
+                } else {
+                    addResult('❌ Cannot test - SidebarManager class not available', 'error');
+                }
+                
+                addResult('🎯 Theme selector test completed', 'info');
+                
+            } catch (error) {
+                addResult(`❌ Error testing theme selector: ${error.message}`, 'error');
+            }
+        }
+
+        function openDashboard() {
+            window.open('dashboard.html', '_blank');
+            addResult('📊 Dashboard opened in new tab for visual verification', 'info');
+        }
+
+        // Auto-run basic test on load
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                addResult('🚀 Auto-testing sidebar on page load...', 'info');
+                testSidebar();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

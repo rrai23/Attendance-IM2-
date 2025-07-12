@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Service Debug - Bricks Attendance System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .debug-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .debug-section h2 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .data-display {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Data Service Debug Panel</h1>
+    
+    <div class="debug-section">
+        <h2>Service Status</h2>
+        <div id="service-status" class="data-display">Checking...</div>
+        <button onclick="checkServiceStatus()">Refresh Status</button>
+    </div>
+
+    <div class="debug-section">
+        <h2>Attendance Statistics</h2>
+        <div id="attendance-stats" class="data-display">Click button to load...</div>
+        <div class="stats-grid" id="stats-grid"></div>
+        <button onclick="loadAttendanceStats()">Load Attendance Stats</button>
+        <button onclick="clearLocalStorage()">Clear Local Storage</button>
+    </div>
+
+    <div class="debug-section">
+        <h2>Employee Data</h2>
+        <div id="employee-data" class="data-display">Click button to load...</div>
+        <button onclick="loadEmployees()">Load Employees</button>
+    </div>
+
+    <div class="debug-section">
+        <h2>Today's Attendance Records</h2>
+        <div id="attendance-records" class="data-display">Click button to load...</div>
+        <button onclick="loadTodayAttendance()">Load Today's Attendance</button>
+        <button onclick="addSampleAttendance()">Add Sample Attendance</button>
+    </div>
+
+    <div class="debug-section">
+        <h2>Settings</h2>
+        <div id="settings-data" class="data-display">Click button to load...</div>
+        <button onclick="loadSettings()">Load Settings</button>
+    </div>
+
+    <!-- Load scripts in correct order -->
+    <script src="js/mock-data.js"></script>
+    <script src="js/core/data-service-api.js"></script>
+    <script src="js/core/local-storage-service.js"></script>
+    <script src="js/core/api-service.js"></script>
+    <script src="js/core/data-service-factory.js"></script>
+    <script src="js/unified-data-service.js"></script>
+    <script src="js/data-service.js"></script>
+
+    <script>
+        let debugInfo = {
+            serviceType: 'Unknown',
+            isInitialized: false,
+            hasData: false
+        };
+
+        function log(element, data, type = 'info') {
+            const el = document.getElementById(element);
+            const className = type === 'error' ? 'data-display error' : 
+                             type === 'success' ? 'data-display success' : 
+                             'data-display';
+            el.className = className;
+            el.textContent = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
+        }
+
+        function checkServiceStatus() {
+            try {
+                const status = {
+                    timestamp: new Date().toISOString(),
+                    windowDataService: typeof window.dataService !== 'undefined',
+                    dataServiceInitialized: window.dataService?.initialized || false,
+                    dataServiceType: window.dataService?.constructor?.name || 'Unknown',
+                    dataServiceFactory: typeof DataServiceFactory !== 'undefined',
+                    localStorageService: typeof LocalStorageDataService !== 'undefined',
+                    apiService: typeof ApiDataService !== 'undefined',
+                    mockData: typeof mockData !== 'undefined',
+                    localStorage: {
+                        hasAttendanceData: localStorage.getItem('bricks_attendance_data') !== null,
+                        hasAuthToken: localStorage.getItem('bricks_auth_token') !== null
+                    }
+                };
+
+                debugInfo.serviceType = status.dataServiceType;
+                debugInfo.isInitialized = status.dataServiceInitialized;
+                
+                log('service-status', status, 'success');
+            } catch (error) {
+                log('service-status', `Error checking status: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadAttendanceStats() {
+            try {
+                if (!window.dataService) {
+                    throw new Error('Data service not available');
+                }
+
+                console.log('Loading attendance stats...');
+                const stats = await window.dataService.getAttendanceStats();
+                console.log('Received stats:', stats);
+                
+                log('attendance-stats', stats, 'success');
+                
+                // Update stats grid
+                updateStatsGrid(stats);
+                
+            } catch (error) {
+                console.error('Error loading stats:', error);
+                log('attendance-stats', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        function updateStatsGrid(stats) {
+            const grid = document.getElementById('stats-grid');
+            if (!stats) {
+                grid.innerHTML = '<div class="stat-card">No data available</div>';
+                return;
+            }
+
+            grid.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${stats.present || 0}</div>
+                    <div class="stat-label">Present</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.late || stats.tardyToday || 0}</div>
+                    <div class="stat-label">Late</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.absent || stats.absentToday || 0}</div>
+                    <div class="stat-label">Absent</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.totalEmployees || stats.today?.total || 0}</div>
+                    <div class="stat-label">Total Employees</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.presentPercentage || stats.attendanceRate || 0}%</div>
+                    <div class="stat-label">Attendance Rate</div>
+                </div>
+            `;
+        }
+
+        async function loadEmployees() {
+            try {
+                if (!window.dataService) {
+                    throw new Error('Data service not available');
+                }
+
+                const employees = await window.dataService.getEmployees();
+                log('employee-data', employees, 'success');
+                
+            } catch (error) {
+                log('employee-data', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadTodayAttendance() {
+            try {
+                if (!window.dataService) {
+                    throw new Error('Data service not available');
+                }
+
+                const today = new Date().toISOString().split('T')[0];
+                const records = await window.dataService.getAttendanceRecords({ date: today });
+                
+                const summary = {
+                    date: today,
+                    totalRecords: records.length,
+                    records: records
+                };
+                
+                log('attendance-records', summary, 'success');
+                
+            } catch (error) {
+                log('attendance-records', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function addSampleAttendance() {
+            try {
+                if (!window.dataService) {
+                    throw new Error('Data service not available');
+                }
+
+                const today = new Date().toISOString().split('T')[0];
+                const employees = await window.dataService.getEmployees();
+                
+                // Add sample attendance for each employee
+                for (let i = 0; i < employees.length; i++) {
+                    const employee = employees[i];
+                    const record = {
+                        employeeId: employee.id,
+                        date: today,
+                        timeIn: i % 3 === 0 ? '08:20' : '08:00', // Some late arrivals
+                        timeOut: null,
+                        status: i % 3 === 0 ? 'late' : 'present',
+                        notes: i % 3 === 0 ? 'Traffic delay' : 'On time'
+                    };
+                    
+                    await window.dataService.addAttendanceRecord(record);
+                }
+                
+                log('attendance-records', `Added sample attendance for ${employees.length} employees`, 'success');
+                
+                // Refresh the data
+                await loadTodayAttendance();
+                await loadAttendanceStats();
+                
+            } catch (error) {
+                log('attendance-records', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadSettings() {
+            try {
+                if (!window.dataService) {
+                    throw new Error('Data service not available');
+                }
+
+                const settings = await window.dataService.getSettings();
+                log('settings-data', settings, 'success');
+                
+            } catch (error) {
+                log('settings-data', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        function clearLocalStorage() {
+            localStorage.removeItem('bricks_attendance_data');
+            localStorage.removeItem('bricks_auth_token');
+            log('attendance-stats', 'Local storage cleared. Refresh page to reinitialize.', 'success');
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                checkServiceStatus();
+            }, 1000);
+        });
+
+        // Also set up an interval to monitor the service
+        setInterval(checkServiceStatus, 5000);
+    </script>
+</body>
+</html>

@@ -37,16 +37,29 @@ class EmployeesPageManager {
         const interval = 100; // Check every 100ms
         let waited = 0;
         
-        while (!window.unifiedEmployeeManager?.initialized && waited < maxWait) {
+        // First try to use the unified data service
+        if (window.dataService?.initialized) {
+            console.log('Using unified data service');
+            this.unifiedManager = window.dataService;
+            return;
+        }
+        
+        // If not available, fall back to the legacy unified employee manager
+        while (!window.unifiedEmployeeManager?.initialized && !window.dataService?.initialized && waited < maxWait) {
             await new Promise(resolve => setTimeout(resolve, interval));
             waited += interval;
         }
         
-        if (!window.unifiedEmployeeManager?.initialized) {
-            throw new Error('Unified Employee Manager not available');
+        // Check if either service is available
+        if (window.dataService?.initialized) {
+            console.log('Using unified data service (after wait)');
+            this.unifiedManager = window.dataService;
+        } else if (window.unifiedEmployeeManager?.initialized) {
+            console.log('Using legacy unified employee manager');
+            this.unifiedManager = window.unifiedEmployeeManager;
+        } else {
+            throw new Error('No data service available');
         }
-        
-        this.unifiedManager = window.unifiedEmployeeManager;
     }
 
     async loadEmployees() {

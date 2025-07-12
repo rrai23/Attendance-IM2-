@@ -1322,6 +1322,62 @@ class SidebarManager {
             clearTimeout(this.resizeTimeout);
         }
     }
+
+    /**
+     * Setup theme selector event listeners
+     */
+    setupThemeSelector() {
+        const themeButtons = document.querySelectorAll('.theme-option');
+        
+        themeButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                const theme = button.dataset.theme;
+                
+                if (theme && typeof themeManager !== 'undefined') {
+                    themeManager.setTheme(theme);
+                    this.syncThemeSelector();
+                }
+            });
+        });
+    }
+
+    /**
+     * Sync theme selector with current theme
+     */
+    syncThemeSelector() {
+        try {
+            let currentTheme = 'light'; // default
+            
+            // Get current theme from various sources
+            if (typeof themeManager !== 'undefined' && themeManager.getCurrentTheme) {
+                currentTheme = themeManager.getCurrentTheme();
+            } else if (document.documentElement.hasAttribute('data-theme')) {
+                currentTheme = document.documentElement.getAttribute('data-theme');
+            } else {
+                // Check localStorage for saved theme
+                const savedTheme = localStorage.getItem('bricks_theme');
+                if (savedTheme) {
+                    currentTheme = savedTheme;
+                }
+            }
+            
+            // Update theme selector buttons
+            const themeButtons = document.querySelectorAll('.theme-option');
+            themeButtons.forEach(button => {
+                if (button.dataset.theme === currentTheme) {
+                    button.classList.add('active');
+                } else {
+                    button.classList.remove('active');
+                }
+            });
+            
+        } catch (error) {
+            console.warn('Error syncing theme selector:', error);
+        }
+    }
+
+    // ...existing code...
 }
 
 // Create and export sidebar manager instance
