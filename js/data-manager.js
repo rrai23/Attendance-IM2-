@@ -114,6 +114,43 @@ class DataManager {
         return this.attendanceRecords || [];
     }
 
+    deleteAttendanceRecord(employeeId, date) {
+        if (this.unifiedManager) {
+            return this.unifiedManager.deleteAttendanceRecord(employeeId, date);
+        }
+        
+        // Fallback implementation
+        const index = this.attendanceRecords.findIndex(
+            r => r.employeeId === employeeId && r.date === date
+        );
+        
+        if (index >= 0) {
+            return this.attendanceRecords.splice(index, 1)[0];
+        }
+        
+        throw new Error('Attendance record not found');
+    }
+
+    updateAttendanceStatus(employeeId, date, status, notes = '') {
+        if (this.unifiedManager) {
+            return this.unifiedManager.updateAttendanceStatus(employeeId, date, status, notes);
+        }
+        
+        // Fallback implementation
+        const record = this.attendanceRecords.find(
+            r => r.employeeId === employeeId && r.date === date
+        );
+        
+        if (record) {
+            record.status = status;
+            record.notes = notes;
+            record.lastModified = new Date().toISOString();
+            return record;
+        }
+        
+        throw new Error('Attendance record not found');
+    }
+
     getTodayAttendance() {
         if (this.unifiedManager) {
             return this.unifiedManager.getTodayAttendance();
@@ -224,6 +261,37 @@ class DataManager {
     loadFromStorage() {
         // This is handled by the unified manager
         console.log('DataManager: Storage loading delegated to Unified Employee Manager');
+    }
+
+    // Refresh data - reload from storage
+    async refreshData() {
+        try {
+            console.log('Refreshing data...');
+            
+            if (this.unifiedManager) {
+                // Use the unified manager's loadData method to refresh
+                await this.unifiedManager.loadData();
+                console.log('Data refreshed successfully from unified manager');
+            } else {
+                // Fallback - just reload from localStorage
+                const employees = localStorage.getItem('employees');
+                const attendanceRecords = localStorage.getItem('attendanceRecords');
+                
+                if (employees) {
+                    this.employees = JSON.parse(employees);
+                }
+                if (attendanceRecords) {
+                    this.attendanceRecords = JSON.parse(attendanceRecords);
+                }
+                
+                console.log('Data refreshed successfully from localStorage');
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('Failed to refresh data:', error);
+            throw error;
+        }
     }
 
     // Utility methods

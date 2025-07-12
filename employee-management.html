@@ -307,36 +307,6 @@
                         </div>
                     </div>
                 </div>
-                <div class="stats-grid">
-                    <div class="stat-card stat-present">
-                        <div class="stat-icon">✅</div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="presentCount">0</div>
-                            <div class="stat-label">Present Today</div>
-                        </div>
-                    </div>
-                    <div class="stat-card stat-late">
-                        <div class="stat-icon">⏰</div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="lateCount">0</div>
-                            <div class="stat-label">Late Today</div>
-                        </div>
-                    </div>
-                    <div class="stat-card stat-absent">
-                        <div class="stat-icon">❌</div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="absentCount">0</div>
-                            <div class="stat-label">Absent Today</div>
-                        </div>
-                    </div>
-                    <div class="stat-card stat-overtime">
-                        <div class="stat-icon">🌙</div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="overtimeCount">0</div>
-                            <div class="stat-label">Overtime Today</div>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- Attendance Table -->
                 <div class="card">
@@ -706,68 +676,118 @@
 
             setupEventListeners() {
                 // Modal controls
-                document.getElementById('addAttendanceBtn').addEventListener('click', () => {
-                    this.openModal();
-                });
+                const addAttendanceBtn = document.getElementById('addAttendanceBtn');
+                if (addAttendanceBtn) {
+                    addAttendanceBtn.addEventListener('click', () => {
+                        this.openModal();
+                    });
+                }
 
-                document.getElementById('closeModal').addEventListener('click', () => {
-                    this.closeModal();
-                });
+                const closeModal = document.getElementById('closeModal');
+                if (closeModal) {
+                    closeModal.addEventListener('click', () => {
+                        this.closeModal();
+                    });
+                }
 
-                document.getElementById('cancelBtn').addEventListener('click', () => {
-                    this.closeModal();
-                });
+                const cancelBtn = document.getElementById('cancelBtn');
+                if (cancelBtn) {
+                    cancelBtn.addEventListener('click', () => {
+                        this.closeModal();
+                    });
+                }
 
                 // Form submission
-                document.getElementById('attendanceForm').addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    this.saveAttendance();
-                });
+                const attendanceForm = document.getElementById('attendanceForm');
+                if (attendanceForm) {
+                    attendanceForm.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        this.saveAttendance();
+                    });
+                }
 
                 // Filter changes
-                document.getElementById('employeeFilter').addEventListener('change', () => {
-                    this.applyFilters();
-                });
+                const employeeFilter = document.getElementById('employeeFilter');
+                if (employeeFilter) {
+                    employeeFilter.addEventListener('change', () => {
+                        this.applyFilters();
+                    });
+                }
 
-                document.getElementById('dateFilter').addEventListener('change', () => {
-                    this.applyFilters();
-                });
+                const dateFilter = document.getElementById('dateFilter');
+                if (dateFilter) {
+                    dateFilter.addEventListener('change', () => {
+                        this.applyFilters();
+                    });
+                }
 
-                document.getElementById('statusFilter').addEventListener('change', () => {
-                    this.applyFilters();
-                });
+                const statusFilter = document.getElementById('statusFilter');
+                if (statusFilter) {
+                    statusFilter.addEventListener('change', () => {
+                        this.applyFilters();
+                    });
+                }
 
-                document.getElementById('searchInput').addEventListener('input', () => {
-                    this.applyFilters();
-                });
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) {
+                    searchInput.addEventListener('input', () => {
+                        this.applyFilters();
+                    });
+                }
 
                 // Refresh button
-                document.getElementById('refreshBtn').addEventListener('click', async () => {
-                    try {
-                        this.showLoadingState(true);
-                        
-                        // ONLY use unified data manager
-                        if (!window.dataManager) {
-                            throw new Error('Unified data manager not available. Cannot refresh data.');
-                        }
+                const refreshBtn = document.getElementById('refreshBtn');
+                if (refreshBtn) {
+                    refreshBtn.addEventListener('click', async () => {
+                        try {
+                            this.showLoadingState(true);
+                            
+                            // ONLY use unified data manager
+                            if (!window.dataManager) {
+                                throw new Error('Unified data manager not available. Cannot refresh data.');
+                            }
 
-                        // Force refresh data from unified data service
-                        await window.dataManager.refreshData();
-                        
-                        // Reload data from unified service
-                        this.attendanceData = window.dataManager.getAttendanceRecords();
-                        this.employees = window.dataManager.getEmployees();
-                        this.updateEmployeeDropdowns();
-                        
-                        this.applyFilters();
-                        this.showLoadingState(false);
-                        this.showSuccess('Data refreshed successfully from unified data service!');
-                    } catch (error) {
-                        console.error('Failed to refresh data:', error);
-                        this.showLoadingState(false);
-                        this.showError('Failed to refresh data: ' + error.message);
-                    }
-                });
+                            // Use refreshData method if available, otherwise reload manually
+                            if (typeof window.dataManager.refreshData === 'function') {
+                                await window.dataManager.refreshData();
+                            } else {
+                                // Fallback: reinitialize the data manager
+                                console.log('refreshData method not available, reinitializing...');
+                                if (typeof window.dataManager.init === 'function') {
+                                    await window.dataManager.init();
+                                }
+                            }
+                            
+                            // Reload data from unified service
+                            this.attendanceData = window.dataManager.getAttendanceRecords ? 
+                                window.dataManager.getAttendanceRecords() : [];
+                            this.employees = window.dataManager.getEmployees ? 
+                                window.dataManager.getEmployees() : [];
+                            
+                            // Ensure attendance records have employee names populated after refresh
+                            this.attendanceData = this.attendanceData.map(record => {
+                                if (!record.employeeName) {
+                                    const employee = this.employees.find(emp => emp.id == record.employeeId);
+                                    if (employee) {
+                                        record.employeeName = employee.name || employee.fullName || `Employee ${record.employeeId}`;
+                                        record.employeeCode = employee.employeeId || employee.code || `emp_${String(record.employeeId).padStart(3, '0')}`;
+                                        record.department = employee.department || '';
+                                    }
+                                }
+                                return record;
+                            });
+                            
+                            this.updateEmployeeDropdowns();
+                            this.applyFilters();
+                            this.showLoadingState(false);
+                            this.showSuccess('Data refreshed successfully from unified data service!');
+                        } catch (error) {
+                            console.error('Failed to refresh data:', error);
+                            this.showLoadingState(false);
+                            this.showError('Failed to refresh data: ' + error.message);
+                        }
+                    });
+                }
 
                 // Export button
                 const exportBtn = document.getElementById('exportAttendanceBtn');
@@ -778,11 +798,14 @@
                 }
 
                 // Close modal on overlay click
-                document.getElementById('editAttendanceModal').addEventListener('click', (e) => {
-                    if (e.target.classList.contains('modal-overlay')) {
-                        this.closeModal();
-                    }
-                });
+                const editAttendanceModal = document.getElementById('editAttendanceModal');
+                if (editAttendanceModal) {
+                    editAttendanceModal.addEventListener('click', (e) => {
+                        if (e.target.classList.contains('modal-overlay')) {
+                            this.closeModal();
+                        }
+                    });
+                }
             }
 
             setupFilters() {
@@ -831,31 +854,52 @@
             }
 
             updateStats() {
-                const today = new Date().toISOString().split('T')[0];
-                const todayRecords = this.attendanceData.filter(record => record.date === today);
+                // Show statistics for currently filtered data instead of just today
+                const filteredRecords = this.filteredData;
 
-                const presentCount = todayRecords.filter(r => r.status === 'present').length;
-                const lateCount = todayRecords.filter(r => r.status === 'late').length;
-                const absentCount = todayRecords.filter(r => r.status === 'absent').length;
-                const overtimeCount = todayRecords.filter(r => r.status === 'overtime').length;
+                const totalCount = filteredRecords.length;
+                const presentCount = filteredRecords.filter(r => r.status === 'present').length;
+                const lateCount = filteredRecords.filter(r => r.status === 'late').length;
+                const absentCount = filteredRecords.filter(r => r.status === 'absent').length;
 
-                document.getElementById('presentCount').textContent = presentCount;
-                document.getElementById('lateCount').textContent = lateCount;
-                document.getElementById('absentCount').textContent = absentCount;
-                document.getElementById('overtimeCount').textContent = overtimeCount;
+                // Update all stat elements with error handling
+                const statElements = [
+                    { id: 'totalRecords', value: totalCount },
+                    { id: 'presentCount', value: presentCount },
+                    { id: 'lateCount', value: lateCount },
+                    { id: 'absentCount', value: absentCount }
+                ];
+
+                statElements.forEach(stat => {
+                    const elements = document.querySelectorAll(`#${stat.id}`);
+                    elements.forEach(element => {
+                        if (element) {
+                            element.textContent = stat.value;
+                        }
+                    });
+                });
             }
 
             renderTable() {
                 const tbody = document.getElementById('attendanceTableBody');
                 const emptyState = document.getElementById('emptyState');
 
-                if (this.filteredData.length === 0) {
-                    tbody.innerHTML = '';
-                    emptyState.classList.remove('hidden');
+                if (!tbody) {
+                    console.error('Attendance table body element not found');
                     return;
                 }
 
-                emptyState.classList.add('hidden');
+                if (this.filteredData.length === 0) {
+                    tbody.innerHTML = '';
+                    if (emptyState) {
+                        emptyState.classList.remove('hidden');
+                    }
+                    return;
+                }
+
+                if (emptyState) {
+                    emptyState.classList.add('hidden');
+                }
 
                 tbody.innerHTML = this.filteredData.map(record => {
                     // Find the employee details from the employees array
@@ -1003,6 +1047,19 @@
                     
                     // Refresh data from unified service
                     this.attendanceData = window.dataManager.getAttendanceRecords();
+                    
+                    // Ensure attendance records have employee names populated
+                    this.attendanceData = this.attendanceData.map(record => {
+                        if (!record.employeeName) {
+                            const employee = this.employees.find(emp => emp.id == record.employeeId);
+                            if (employee) {
+                                record.employeeName = employee.name || employee.fullName || `Employee ${record.employeeId}`;
+                                record.employeeCode = employee.employeeId || employee.code || `emp_${String(record.employeeId).padStart(3, '0')}`;
+                                record.department = employee.department || '';
+                            }
+                        }
+                        return record;
+                    });
 
                     this.applyFilters();
                     this.updateStats();
@@ -1053,10 +1110,35 @@
                         }
 
                         // Delete through unified data service
-                        await window.dataManager.deleteAttendanceRecord(record.employeeId, record.date);
+                        if (typeof window.dataManager.deleteAttendanceRecord === 'function') {
+                            await window.dataManager.deleteAttendanceRecord(record.employeeId, record.date);
+                        } else {
+                            // Fallback: remove from the array and save
+                            const index = this.attendanceData.findIndex(r => r.id == id);
+                            if (index >= 0) {
+                                this.attendanceData.splice(index, 1);
+                                if (typeof window.dataManager.saveToStorage === 'function') {
+                                    window.dataManager.saveToStorage();
+                                }
+                            }
+                        }
                         
                         // Refresh data from unified service
-                        this.attendanceData = window.dataManager.getAttendanceRecords();
+                        this.attendanceData = window.dataManager.getAttendanceRecords ? 
+                            window.dataManager.getAttendanceRecords() : this.attendanceData;
+                        
+                        // Ensure attendance records have employee names populated
+                        this.attendanceData = this.attendanceData.map(record => {
+                            if (!record.employeeName) {
+                                const employee = this.employees.find(emp => emp.id == record.employeeId);
+                                if (employee) {
+                                    record.employeeName = employee.name || employee.fullName || `Employee ${record.employeeId}`;
+                                    record.employeeCode = employee.employeeId || employee.code || `emp_${String(record.employeeId).padStart(3, '0')}`;
+                                    record.department = employee.department || '';
+                                }
+                            }
+                            return record;
+                        });
                         
                         this.applyFilters();
                         this.updateStats();
@@ -1094,15 +1176,39 @@
                         }
 
                         // Override status through unified data service
-                        await window.dataManager.updateAttendanceStatus(
-                            record.employeeId, 
-                            record.date, 
-                            newStatus.toLowerCase(), 
-                            notes || `Status overridden from ${record.status} to ${newStatus.toLowerCase()}`
-                        );
+                        if (typeof window.dataManager.updateAttendanceStatus === 'function') {
+                            await window.dataManager.updateAttendanceStatus(
+                                record.employeeId, 
+                                record.date, 
+                                newStatus.toLowerCase(), 
+                                notes || `Status overridden from ${record.status} to ${newStatus.toLowerCase()}`
+                            );
+                        } else {
+                            // Fallback: update the record directly
+                            record.status = newStatus.toLowerCase();
+                            record.notes = notes || `Status overridden from ${record.status} to ${newStatus.toLowerCase()}`;
+                            record.lastModified = new Date().toISOString();
+                            if (typeof window.dataManager.saveToStorage === 'function') {
+                                window.dataManager.saveToStorage();
+                            }
+                        }
                         
                         // Refresh data from unified service
-                        this.attendanceData = window.dataManager.getAttendanceRecords();
+                        this.attendanceData = window.dataManager.getAttendanceRecords ? 
+                            window.dataManager.getAttendanceRecords() : this.attendanceData;
+
+                        // Ensure attendance records have employee names populated
+                        this.attendanceData = this.attendanceData.map(record => {
+                            if (!record.employeeName) {
+                                const employee = this.employees.find(emp => emp.id == record.employeeId);
+                                if (employee) {
+                                    record.employeeName = employee.name || employee.fullName || `Employee ${record.employeeId}`;
+                                    record.employeeCode = employee.employeeId || employee.code || `emp_${String(record.employeeId).padStart(3, '0')}`;
+                                    record.department = employee.department || '';
+                                }
+                            }
+                            return record;
+                        });
 
                         this.applyFilters();
                         this.updateStats();
@@ -1242,15 +1348,39 @@
                     }
 
                     // Update status through unified data service
-                    await window.dataManager.updateAttendanceStatus(
-                        record.employeeId, 
-                        record.date, 
-                        newStatus, 
-                        `Status updated from ${record.status} to ${newStatus} on ${new Date().toLocaleString()}`
-                    );
+                    if (typeof window.dataManager.updateAttendanceStatus === 'function') {
+                        await window.dataManager.updateAttendanceStatus(
+                            record.employeeId, 
+                            record.date, 
+                            newStatus, 
+                            `Status updated from ${record.status} to ${newStatus} on ${new Date().toLocaleString()}`
+                        );
+                    } else {
+                        // Fallback: update the record directly
+                        record.status = newStatus;
+                        record.notes = `Status updated from ${record.status} to ${newStatus} on ${new Date().toLocaleString()}`;
+                        record.lastModified = new Date().toISOString();
+                        if (typeof window.dataManager.saveToStorage === 'function') {
+                            window.dataManager.saveToStorage();
+                        }
+                    }
                     
                     // Refresh data from unified service
-                    this.attendanceData = window.dataManager.getAttendanceRecords();
+                    this.attendanceData = window.dataManager.getAttendanceRecords ? 
+                        window.dataManager.getAttendanceRecords() : this.attendanceData;
+
+                    // Ensure attendance records have employee names populated
+                    this.attendanceData = this.attendanceData.map(record => {
+                        if (!record.employeeName) {
+                            const employee = this.employees.find(emp => emp.id == record.employeeId);
+                            if (employee) {
+                                record.employeeName = employee.name || employee.fullName || `Employee ${record.employeeId}`;
+                                record.employeeCode = employee.employeeId || employee.code || `emp_${String(record.employeeId).padStart(3, '0')}`;
+                                record.department = employee.department || '';
+                            }
+                        }
+                        return record;
+                    });
 
                     this.applyFilters();
                     this.showSuccess(`Status updated to "${newStatus}" for ${record.employeeName}`);
@@ -1273,6 +1403,19 @@
                     // Refresh both employee and attendance data
                     this.attendanceData = window.dataManager.getAttendanceRecords();
                     this.employees = window.dataManager.getEmployees();
+                    
+                    // Ensure attendance records have employee names populated
+                    this.attendanceData = this.attendanceData.map(record => {
+                        if (!record.employeeName) {
+                            const employee = this.employees.find(emp => emp.id == record.employeeId);
+                            if (employee) {
+                                record.employeeName = employee.name || employee.fullName || `Employee ${record.employeeId}`;
+                                record.employeeCode = employee.employeeId || employee.code || `emp_${String(record.employeeId).padStart(3, '0')}`;
+                                record.department = employee.department || '';
+                            }
+                        }
+                        return record;
+                    });
                     
                     // Update UI components
                     this.updateEmployeeDropdowns();
