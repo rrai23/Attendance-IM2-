@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified Data Integration Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            max-width: 1200px; 
+            margin: 0 auto;
+        }
+        .test-section { 
+            border: 1px solid #ccc; 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-radius: 8px;
+        }
+        .success { border-left: 4px solid #4CAF50; background-color: #f9fff9; }
+        .error { border-left: 4px solid #f44336; background-color: #fff9f9; }
+        .info { border-left: 4px solid #2196F3; background-color: #f9f9ff; }
+        .employee-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; margin-top: 15px; }
+        .employee-card { 
+            border: 1px solid #ddd; 
+            padding: 10px; 
+            border-radius: 5px; 
+            background-color: #fafafa;
+        }
+        .employee-name { font-weight: bold; color: #333; }
+        .employee-details { font-size: 0.9em; color: #666; margin-top: 5px; }
+        button { 
+            background: #007AFF; 
+            color: white; 
+            border: none; 
+            padding: 8px 16px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            margin: 5px;
+        }
+        button:hover { background: #0056CC; }
+        #log { 
+            background: #f5f5f5; 
+            padding: 15px; 
+            border-radius: 5px; 
+            max-height: 300px; 
+            overflow-y: auto; 
+            font-family: monospace; 
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔗 Unified Data Integration Test</h1>
+    <p>This page tests whether payroll and employee management are using the same unified data source.</p>
+
+    <div class="test-section info">
+        <h3>Test Controls</h3>
+        <button onclick="testUnifiedData()">🔍 Test Unified Data</button>
+        <button onclick="addTestEmployee()">➕ Add Test Employee</button>
+        <button onclick="updateEmployeeWage()">💰 Update Employee Wage</button>
+        <button onclick="clearLog()">🗑️ Clear Log</button>
+    </div>
+
+    <div class="test-section" id="status-section">
+        <h3>📊 System Status</h3>
+        <div id="status-content">Loading...</div>
+    </div>
+
+    <div class="test-section" id="employees-section">
+        <h3>👥 Current Employees</h3>
+        <div id="employees-content">Loading...</div>
+    </div>
+
+    <div class="test-section" id="payroll-section">
+        <h3>💰 Payroll Integration</h3>
+        <div id="payroll-content">Loading...</div>
+    </div>
+
+    <div class="test-section">
+        <h3>📝 Test Log</h3>
+        <div id="log"></div>
+    </div>
+
+    <!-- Include required scripts -->
+    <script src="js/unified-employee-manager.js"></script>
+    <script src="js/data-service.js"></script>
+    <script src="js/payroll.js"></script>
+
+    <script>
+        let unifiedManager = null;
+        let payrollController = null;
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                info: '#333',
+                success: '#4CAF50',
+                error: '#f44336',
+                warning: '#ff9800'
+            };
+            
+            logDiv.innerHTML += `<div style="color: ${colors[type]}; margin: 2px 0;">
+                [${timestamp}] ${message}
+            </div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        async function initializeSystems() {
+            try {
+                log('🚀 Initializing Unified Employee Manager...', 'info');
+                unifiedManager = new UnifiedEmployeeManager();
+                await unifiedManager.init();
+                log('✅ Unified Employee Manager initialized', 'success');
+
+                log('🚀 Initializing Payroll Controller...', 'info');
+                payrollController = new PayrollController();
+                await payrollController.init();
+                log('✅ Payroll Controller initialized', 'success');
+
+                updateStatus();
+                updateEmployeesList();
+                updatePayrollInfo();
+
+            } catch (error) {
+                log(`❌ Initialization error: ${error.message}`, 'error');
+            }
+        }
+
+        function updateStatus() {
+            const statusDiv = document.getElementById('status-content');
+            
+            const unifiedStatus = unifiedManager ? '✅ Active' : '❌ Not loaded';
+            const payrollStatus = payrollController ? '✅ Active' : '❌ Not loaded';
+            const employeeCount = unifiedManager ? unifiedManager.getEmployees().length : 0;
+            
+            statusDiv.innerHTML = `
+                <p><strong>Unified Employee Manager:</strong> ${unifiedStatus}</p>
+                <p><strong>Payroll Controller:</strong> ${payrollStatus}</p>
+                <p><strong>Total Employees:</strong> ${employeeCount}</p>
+                <p><strong>Data Source:</strong> ${unifiedManager ? 'Unified Manager' : 'Fallback'}</p>
+            `;
+        }
+
+        function updateEmployeesList() {
+            const employeesDiv = document.getElementById('employees-content');
+            
+            if (!unifiedManager) {
+                employeesDiv.innerHTML = '<p>Unified Employee Manager not loaded</p>';
+                return;
+            }
+
+            const employees = unifiedManager.getEmployees();
+            console.log('Retrieved employees for display:', employees);
+            
+            if (employees.length === 0) {
+                employeesDiv.innerHTML = '<p>No employees found</p>';
+                return;
+            }
+
+            const employeesHTML = employees.map(emp => {
+                // Handle different name property variations
+                const displayName = emp.fullName || emp.name || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Unknown Employee';
+                const hourlyRate = emp.hourlyRate || emp.wage || 'Not set';
+                
+                console.log('Processing employee:', emp.id, displayName, emp);
+                
+                return `
+                    <div class="employee-card">
+                        <div class="employee-name">${displayName}</div>
+                        <div class="employee-details">
+                            <div>ID: ${emp.id}</div>
+                            <div>Code: ${emp.employeeCode || 'N/A'}</div>
+                            <div>Department: ${emp.department || 'N/A'}</div>
+                            <div>Position: ${emp.position || 'N/A'}</div>
+                            <div>Hourly Rate: ₱${hourlyRate}</div>
+                            <div>Status: ${emp.status || 'Unknown'}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            employeesDiv.innerHTML = `<div class="employee-list">${employeesHTML}</div>`;
+        }
+
+        function updatePayrollInfo() {
+            const payrollDiv = document.getElementById('payroll-content');
+            
+            if (!payrollController) {
+                payrollDiv.innerHTML = '<p>Payroll Controller not loaded</p>';
+                return;
+            }
+
+            const employees = payrollController.employees;
+            const payrollData = payrollController.payrollData;
+            
+            payrollDiv.innerHTML = `
+                <p><strong>Payroll Employees Count:</strong> ${employees.length}</p>
+                <p><strong>Data Source:</strong> ${employees.length > 0 ? 'Unified Manager' : 'Fallback'}</p>
+                <p><strong>Pay Period:</strong> ${payrollData ? 'Calculated' : 'Not calculated'}</p>
+                <p><strong>Payroll Status:</strong> ${payrollController.isInitialized ? 'Ready' : 'Initializing'}</p>
+            `;
+        }
+
+        async function testUnifiedData() {
+            log('🔍 Testing unified data integration...', 'info');
+            
+            if (!unifiedManager || !payrollController) {
+                log('❌ Systems not properly initialized', 'error');
+                return;
+            }
+
+            const unifiedEmployees = unifiedManager.getEmployees();
+            const payrollEmployees = payrollController.employees;
+
+            log(`📊 Unified Manager has ${unifiedEmployees.length} employees`, 'info');
+            log(`💰 Payroll Controller has ${payrollEmployees.length} employees`, 'info');
+
+            if (unifiedEmployees.length === payrollEmployees.length) {
+                log('✅ Employee counts match - data is unified!', 'success');
+            } else {
+                log('⚠️ Employee counts do not match - data may not be unified', 'warning');
+            }
+
+            // Test if they have the same employee IDs
+            const unifiedIds = unifiedEmployees.map(emp => emp.id).sort();
+            const payrollIds = payrollEmployees.map(emp => emp.id).sort();
+            
+            const idsMatch = JSON.stringify(unifiedIds) === JSON.stringify(payrollIds);
+            log(`🆔 Employee IDs match: ${idsMatch ? '✅ Yes' : '❌ No'}`, idsMatch ? 'success' : 'error');
+        }
+
+        async function addTestEmployee() {
+            if (!unifiedManager) {
+                log('❌ Unified Manager not available', 'error');
+                return;
+            }
+
+            const testEmployee = {
+                firstName: 'Test',
+                lastName: 'Employee',
+                email: 'test@company.com',
+                department: 'Testing',
+                position: 'Tester',
+                hourlyRate: 30.00
+            };
+
+            try {
+                const newEmployee = unifiedManager.addEmployee(testEmployee);
+                log(`✅ Added test employee: ${newEmployee.fullName} (ID: ${newEmployee.id})`, 'success');
+                
+                updateEmployeesList();
+                updatePayrollInfo();
+                
+                // Test if payroll picks up the new employee
+                setTimeout(() => {
+                    if (payrollController) {
+                        payrollController.refreshPayrollDisplay();
+                        log('🔄 Refreshed payroll display with new employee', 'info');
+                    }
+                }, 1000);
+                
+            } catch (error) {
+                log(`❌ Error adding employee: ${error.message}`, 'error');
+            }
+        }
+
+        async function updateEmployeeWage() {
+            if (!unifiedManager) {
+                log('❌ Unified Manager not available', 'error');
+                return;
+            }
+
+            const employees = unifiedManager.getEmployees();
+            if (employees.length === 0) {
+                log('❌ No employees to update', 'error');
+                return;
+            }
+
+            const employee = employees[0];
+            const newRate = (employee.hourlyRate || 25) + 5;
+
+            try {
+                unifiedManager.updateEmployeeWage(employee.id, { hourlyRate: newRate });
+                log(`💰 Updated ${employee.fullName}'s wage to ₱${newRate}/hr`, 'success');
+                
+                updateEmployeesList();
+                updatePayrollInfo();
+                
+            } catch (error) {
+                log(`❌ Error updating wage: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🌟 Starting unified data integration test...', 'info');
+            initializeSystems();
+        });
+    </script>
+</body>
+</html>

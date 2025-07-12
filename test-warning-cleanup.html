@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Warning Cleanup</title>
+</head>
+<body>
+    <h1>Data Service Warning Test</h1>
+    <div id="output"></div>
+    
+    <script src="js/data-service.js"></script>
+    <script>
+        const output = document.getElementById('output');
+        
+        // Capture console messages
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+        
+        const messages = [];
+        
+        console.log = (...args) => {
+            messages.push({type: 'log', message: args.join(' ')});
+            originalLog(...args);
+        };
+        
+        console.warn = (...args) => {
+            messages.push({type: 'warn', message: args.join(' ')});
+            originalWarn(...args);
+        };
+        
+        console.error = (...args) => {
+            messages.push({type: 'error', message: args.join(' ')});
+            originalError(...args);
+        };
+        
+        // Test data service initialization
+        const dataService = new DataService();
+        
+        // Display messages
+        setTimeout(() => {
+            output.innerHTML = '<h2>Console Messages:</h2>' + 
+                messages.map(msg => `<div style="color: ${msg.type === 'error' ? 'red' : msg.type === 'warn' ? 'orange' : 'blue'}; margin: 5px 0;">[${msg.type.toUpperCase()}] ${msg.message}</div>`).join('');
+        }, 100);
+    </script>
+</body>
+</html>

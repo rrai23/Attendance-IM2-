@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Unified Data Integration</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .debug-section { border: 1px solid #ccc; padding: 15px; margin: 10px 0; }
+        .error { background-color: #ffe6e6; }
+        .success { background-color: #e6ffe6; }
+        .info { background-color: #e6f3ff; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Unified Data Integration</h1>
+
+    <div class="debug-section">
+        <h3>Console Output</h3>
+        <div id="console-output"></div>
+    </div>
+
+    <div class="debug-section">
+        <h3>Script Loading Status</h3>
+        <div id="script-status"></div>
+    </div>
+
+    <div class="debug-section">
+        <h3>Employee Data Structure</h3>
+        <div id="data-structure"></div>
+    </div>
+
+    <script>
+        // Capture console output
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        const consoleOutput = document.getElementById('console-output');
+        let logCount = 0;
+        
+        function addToConsole(message, type) {
+            logCount++;
+            const div = document.createElement('div');
+            div.style.margin = '2px 0';
+            div.style.color = type === 'error' ? 'red' : type === 'warn' ? 'orange' : 'black';
+            div.innerHTML = `[${logCount}] ${message}`;
+            consoleOutput.appendChild(div);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        
+        console.log = (...args) => {
+            originalLog(...args);
+            addToConsole(args.join(' '), 'log');
+        };
+        
+        console.error = (...args) => {
+            originalError(...args);
+            addToConsole(args.join(' '), 'error');
+        };
+        
+        console.warn = (...args) => {
+            originalWarn(...args);
+            addToConsole(args.join(' '), 'warn');
+        };
+        
+        // Check script loading
+        function checkScriptLoading() {
+            const status = document.getElementById('script-status');
+            status.innerHTML = `
+                <p>UnifiedEmployeeManager: ${typeof UnifiedEmployeeManager !== 'undefined' ? '✅ Loaded' : '❌ Not loaded'}</p>
+                <p>DataService: ${typeof DataService !== 'undefined' ? '✅ Loaded' : '❌ Not loaded'}</p>
+                <p>PayrollController: ${typeof PayrollController !== 'undefined' ? '✅ Loaded' : '❌ Not loaded'}</p>
+                <p>window.unifiedEmployeeManager: ${typeof window.unifiedEmployeeManager !== 'undefined' ? '✅ Exists' : '❌ Does not exist'}</p>
+                <p>window.dataService: ${typeof window.dataService !== 'undefined' ? '✅ Exists' : '❌ Does not exist'}</p>
+            `;
+        }
+        
+        async function debugDataStructure() {
+            const dataDiv = document.getElementById('data-structure');
+            
+            try {
+                console.log('Creating UnifiedEmployeeManager instance...');
+                const manager = new UnifiedEmployeeManager();
+                console.log('UnifiedEmployeeManager created, initializing...');
+                
+                await manager.init();
+                console.log('UnifiedEmployeeManager initialized');
+                
+                const employees = manager.getEmployees();
+                console.log('Retrieved employees:', employees);
+                
+                dataDiv.innerHTML = `
+                    <h4>Employee Data:</h4>
+                    <pre>${JSON.stringify(employees, null, 2)}</pre>
+                    <p>Total employees: ${employees.length}</p>
+                `;
+                
+                // Test individual employee properties
+                if (employees.length > 0) {
+                    const emp = employees[0];
+                    console.log('First employee object:', emp);
+                    console.log('Employee properties:', Object.keys(emp));
+                    console.log('fullName:', emp.fullName);
+                    console.log('name:', emp.name);
+                    console.log('firstName:', emp.firstName);
+                    console.log('lastName:', emp.lastName);
+                }
+                
+            } catch (error) {
+                console.error('Error debugging data structure:', error);
+                dataDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        // Test everything when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Page loaded, checking scripts...');
+            checkScriptLoading();
+            
+            setTimeout(() => {
+                console.log('Starting data structure debug...');
+                debugDataStructure();
+            }, 1000);
+        });
+    </script>
+
+    <!-- Include scripts in the same order as the main page -->
+    <script src="js/unified-employee-manager.js"></script>
+    <script src="js/data-service.js"></script>
+    <script src="js/payroll.js"></script>
+</body>
+</html>

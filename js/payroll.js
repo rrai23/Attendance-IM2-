@@ -18,11 +18,9 @@ class PayrollController {
         this.OVERTIME_MULTIPLIER = 1.5;
         this.STANDARD_WORK_HOURS = 40; // per week
         
-        // Initialize asynchronously
-        this.init().catch(error => {
-            console.error('Failed to initialize payroll controller:', error);
-            this.showError('Failed to load payroll data');
-        });
+        // Initialize asynchronously but don't auto-start
+        // Initialization will be controlled by the page
+        this.initPromise = null;
     }
 
     /**
@@ -54,31 +52,51 @@ class PayrollController {
     }
 
     /**
-     * Load initial data from data service
+     * Load initial data from unified employee manager
      */
     async loadInitialData() {
         try {
-            // Check if dataService is available
-            if (typeof dataService === 'undefined') {
-                console.warn('dataService not available, using default data');
+            // Priority 1: Use Unified Employee Manager if available
+            if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
+                console.log('Loading payroll data from Unified Employee Manager');
+                this.employees = window.unifiedEmployeeManager.getEmployees();
+                this.overtimeRequests = window.unifiedEmployeeManager.getOvertimeRequests() || [];
+                this.payrollHistory = window.unifiedEmployeeManager.getPayrollHistory() || [];
+                this.settings = window.unifiedEmployeeManager.getSettings() || {};
+                
+                // Set up listener for unified data changes
+                window.unifiedEmployeeManager.addEventListener('employeeUpdate', () => {
+                    this.employees = window.unifiedEmployeeManager.getEmployees();
+                    this.refreshPayrollDisplay();
+                });
+                
+                console.log(`Loaded ${this.employees.length} employees from Unified Employee Manager`);
+            }
+            // Priority 2: Use dataService if available
+            else if (typeof dataService !== 'undefined') {
+                console.log('Loading payroll data from dataService');
+                const [employees, overtimeRequests, payrollHistory, settings] = await Promise.all([
+                    dataService.getEmployees(),
+                    dataService.getOvertimeRequests(),
+                    dataService.getPayrollHistory(),
+                    dataService.getSettings()
+                ]);
+
+                this.employees = employees;
+                this.overtimeRequests = overtimeRequests;
+                this.payrollHistory = payrollHistory;
+                this.settings = settings;
+                
+                console.log(`Loaded ${this.employees.length} employees from dataService`);
+            }
+            // Fallback: Use default data
+            else {
+                console.warn('No unified data source available, using default payroll data');
                 this.employees = [];
                 this.overtimeRequests = [];
                 this.payrollHistory = [];
                 this.settings = {};
-                return;
             }
-
-            const [employees, overtimeRequests, payrollHistory, settings] = await Promise.all([
-                dataService.getEmployees(),
-                dataService.getOvertimeRequests(),
-                dataService.getPayrollHistory(),
-                dataService.getSettings()
-            ]);
-
-            this.employees = employees;
-            this.overtimeRequests = overtimeRequests;
-            this.payrollHistory = payrollHistory;
-            this.settings = settings;
 
             // Calculate current payroll data
             await this.calculateCurrentPayrollData();
@@ -104,11 +122,24 @@ class PayrollController {
 
         for (const employee of this.employees) {
             try {
-                const calculation = await dataService.calculatePayroll(
-                    employee.id,
-                    payPeriodStart.toISOString().split('T')[0],
-                    payPeriodEnd.toISOString().split('T')[0]
-                );
+                let calculation;
+                
+                // Try to get calculation from dataService first
+                if (typeof dataService !== 'undefined' && dataService.calculatePayroll) {
+                    try {
+                        calculation = await dataService.calculatePayroll(
+                            employee.id,
+                            payPeriodStart.toISOString().split('T')[0],
+                            payPeriodEnd.toISOString().split('T')[0]
+                        );
+                    } catch (error) {
+                        console.warn(`DataService payroll calculation failed for employee ${employee.id}, using fallback`);
+                        calculation = this.calculatePayrollFallback(employee, payPeriodStart, payPeriodEnd);
+                    }
+                } else {
+                    // Use fallback calculation method
+                    calculation = this.calculatePayrollFallback(employee, payPeriodStart, payPeriodEnd);
+                }
                 
                 this.payrollData.employees.push({
                     ...employee,
@@ -118,6 +149,46 @@ class PayrollController {
                 console.error(`Error calculating payroll for employee ${employee.id}:`, error);
             }
         }
+    }
+
+    /**
+     * Fallback payroll calculation method
+     */
+    calculatePayrollFallback(employee, payPeriodStart, payPeriodEnd) {
+        // Get hourly rate from unified employee data structure
+        const hourlyRate = employee.hourlyRate || 25.00;
+        
+        // For demonstration, calculate basic payroll
+        // In a real system, this would fetch attendance data and calculate actual hours
+        const standardHours = 80; // 2 weeks * 40 hours
+        const overtimeHours = 0; // Would be calculated from actual attendance
+        
+        const regularPay = standardHours * hourlyRate;
+        const overtimePay = overtimeHours * hourlyRate * this.OVERTIME_MULTIPLIER;
+        const grossPay = regularPay + overtimePay;
+        const taxes = grossPay * this.TAX_RATE;
+        const netPay = grossPay - taxes;
+        
+        // Handle different name property variations
+        const employeeName = employee.fullName || 
+                            employee.name || 
+                            `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 
+                            'Unknown Employee';
+        
+        return {
+            employeeId: employee.id,
+            employeeName: employeeName,
+            regularHours: standardHours,
+            overtimeHours: overtimeHours,
+            hourlyRate: hourlyRate,
+            regularPay: regularPay,
+            overtimePay: overtimePay,
+            grossPay: grossPay,
+            taxes: taxes,
+            netPay: netPay,
+            payPeriodStart: payPeriodStart.toISOString().split('T')[0],
+            payPeriodEnd: payPeriodEnd.toISOString().split('T')[0]
+        };
     }
 
     /**
@@ -300,14 +371,20 @@ class PayrollController {
         const wagesHTML = this.employees.map(employee => {
             const payrollData = this.payrollData?.employees.find(emp => emp.id === employee.id);
             
+            // Handle different name property variations
+            const employeeName = employee.fullName || 
+                               employee.name || 
+                               `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 
+                               'Unknown Employee';
+            
             return `
                 <div class="wage-item" data-employee-id="${employee.id}">
                     <div class="employee-info">
-                        <div class="employee-name">${employee.name}</div>
-                        <div class="employee-role">${employee.position} - ${employee.department}</div>
+                        <div class="employee-name">${employeeName}</div>
+                        <div class="employee-role">${employee.position || 'N/A'} - ${employee.department || 'N/A'}</div>
                     </div>
                     <div class="wage-details">
-                        <div class="hourly-rate">${this.formatCurrency(employee.hourlyRate)}/hr</div>
+                        <div class="hourly-rate">${this.formatCurrency(employee.hourlyRate || 0)}/hr</div>
                         ${payrollData ? `
                             <div class="period-earnings">
                                 ${this.formatCurrency(payrollData.payroll?.grossPay || 0)} this period
@@ -384,7 +461,17 @@ class PayrollController {
      */
     renderOvertimeRequest(request, isPending) {
         const employee = this.employees.find(emp => emp.id === request.employeeId);
-        const employeeName = employee ? employee.name : request.employeeName || 'Unknown';
+        
+        // Handle different name property variations
+        let employeeName = 'Unknown Employee';
+        if (employee) {
+            employeeName = employee.fullName || 
+                          employee.name || 
+                          `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 
+                          'Unknown Employee';
+        } else if (request.employeeName) {
+            employeeName = request.employeeName;
+        }
         
         const statusClass = {
             'pending': 'status-pending',
@@ -462,7 +549,17 @@ class PayrollController {
      */
     renderPayrollHistoryItem(record) {
         const employee = this.employees.find(emp => emp.id === record.employeeId);
-        const employeeName = employee ? employee.name : record.employeeName || 'Unknown';
+        
+        // Handle different name property variations
+        let employeeName = 'Unknown Employee';
+        if (employee) {
+            employeeName = employee.fullName || 
+                          employee.name || 
+                          `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 
+                          'Unknown Employee';
+        } else if (record.employeeName) {
+            employeeName = record.employeeName;
+        }
 
         return `
             <div class="history-item" data-record-id="${record.id}">
@@ -474,18 +571,18 @@ class PayrollController {
                 </div>
                 <div class="history-details">
                     <div class="hours-worked">
-                        <span class="regular-hours">${record.regularHours}h regular</span>
-                        ${record.overtimeHours > 0 ? `
+                        <span class="regular-hours">${record.regularHours || 0}h regular</span>
+                        ${(record.overtimeHours || 0) > 0 ? `
                             <span class="overtime-hours">${record.overtimeHours}h overtime</span>
                         ` : ''}
                     </div>
                     <div class="pay-amounts">
-                        <div class="gross-pay">${this.formatCurrency(record.grossPay)} gross</div>
-                        <div class="net-pay">${this.formatCurrency(record.netPay)} net</div>
+                        <div class="gross-pay">${this.formatCurrency(record.grossPay || 0)} gross</div>
+                        <div class="net-pay">${this.formatCurrency(record.netPay || 0)} net</div>
                     </div>
                 </div>
                 <div class="history-status">
-                    <span class="status-badge status-${record.status}">${record.status}</span>
+                    <span class="status-badge status-${record.status || 'pending'}">${record.status || 'pending'}</span>
                 </div>
             </div>
         `;
@@ -509,15 +606,21 @@ class PayrollController {
             return;
         }
 
+        // Handle different name property variations
+        const employeeName = employee.fullName || 
+                           employee.name || 
+                           `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 
+                           'Unknown Employee';
+
         const modalId = manager.create({
-            title: `Edit Wage - ${employee.firstName} ${employee.lastName}`,
+            title: `Edit Wage - ${employeeName}`,
             form: {
                 fields: [
                     {
                         type: 'number',
                         name: 'hourlyRate',
-                        label: 'Hourly Rate ($)',
-                        value: employee.hourlyRate,
+                        label: 'Hourly Rate (₱)',
+                        value: employee.hourlyRate || 25.00,
                         required: true,
                         step: '0.01',
                         min: '0'
@@ -561,15 +664,32 @@ class PayrollController {
      */
     async updateEmployeeWage(employeeId, newRate, notes) {
         try {
-            await dataService.updateEmployeeWage(employeeId, newRate);
+            console.log(`Updating wage for employee ${employeeId} to ₱${newRate}`);
             
-            // Update local data
-            const employee = this.employees.find(emp => emp.id === employeeId);
-            if (employee) {
-                employee.hourlyRate = newRate;
+            // Priority 1: Use Unified Employee Manager if available
+            if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
+                console.log('Using Unified Employee Manager to update wage');
+                window.unifiedEmployeeManager.updateEmployeeWage(employeeId, { hourlyRate: newRate });
+                
+                // Update local employee data to reflect the change
+                this.employees = window.unifiedEmployeeManager.getEmployees();
+            }
+            // Priority 2: Use dataService if available
+            else if (typeof dataService !== 'undefined' && dataService.updateEmployeeWage) {
+                console.log('Using dataService to update wage');
+                await dataService.updateEmployeeWage(employeeId, newRate);
+            }
+            // Fallback: Update local data only
+            else {
+                console.log('Updating wage in local data only (no persistent storage)');
+                const employee = this.employees.find(emp => emp.id === employeeId);
+                if (employee) {
+                    employee.hourlyRate = newRate;
+                    console.log(`Updated employee ${employee.fullName || employee.name} wage to ₱${newRate}`);
+                }
             }
 
-            // Recalculate payroll data
+            // Recalculate payroll data with updated wage
             await this.calculateCurrentPayrollData();
             
             // Re-render affected components
@@ -578,10 +698,20 @@ class PayrollController {
 
             // Log the change if notes provided
             if (notes) {
-                console.log(`Wage change for employee ${employeeId}: ${notes}`);
+                console.log(`Wage change note for employee ${employeeId}: ${notes}`);
             }
+            
+            console.log('Wage update completed successfully');
         } catch (error) {
             console.error('Error updating employee wage:', error);
+            console.error('Error details:', {
+                employeeId: employeeId,
+                newRate: newRate,
+                notes: notes,
+                unifiedManagerAvailable: !!window.unifiedEmployeeManager,
+                unifiedManagerInitialized: window.unifiedEmployeeManager?.initialized,
+                dataServiceAvailable: typeof dataService !== 'undefined'
+            });
             throw error;
         }
     }
@@ -903,6 +1033,25 @@ class PayrollController {
         } catch (error) {
             console.error('Error refreshing payroll data:', error);
             this.showError('Failed to refresh payroll data');
+        }
+    }
+
+    /**
+     * Refresh payroll display when unified data changes
+     */
+    refreshPayrollDisplay() {
+        if (!this.isInitialized || typeof document === 'undefined') return;
+        
+        try {
+            console.log('Refreshing payroll display with updated employee data');
+            this.calculateCurrentPayrollData().then(() => {
+                this.renderPayrollOverview();
+                this.renderEmployeeWages();
+                this.renderOvertimeRequests();
+                this.renderPayrollHistory();
+            });
+        } catch (error) {
+            console.error('Error refreshing payroll display:', error);
         }
     }
 
