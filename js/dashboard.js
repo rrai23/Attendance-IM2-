@@ -471,7 +471,8 @@ class DashboardController {
                 present,
                 late,
                 absent,
-                attendanceRate: Math.round(attendanceRate * 10) / 10
+                attendanceRate: Math.round(attendanceRate * 10) / 10,
+                dataFullyLoaded: true  // 🎯 Mark that attendance data is fully processed
             };
         } catch (error) {
             console.error('Error processing today\'s attendance:', error);
@@ -480,7 +481,8 @@ class DashboardController {
                 present: 0,
                 late: 0,
                 absent: 0,
-                attendanceRate: 0
+                attendanceRate: 0,
+                dataFullyLoaded: false  // 🎯 Mark that data failed to load
             };
         }
     }
@@ -526,7 +528,8 @@ class DashboardController {
                 present: 0,
                 absent: 0,
                 late: 0,
-                leave: 0
+                leave: 0,
+                dataFullyLoaded: false  // 🎯 Default stats are not fully loaded
             },
             weekly: {
                 days: [],
@@ -1657,17 +1660,26 @@ class DashboardController {
         
         console.log('Stats being used for display:', stats);
         
+        // 🎯 CRITICAL FIX: Don't update UI if attendance data isn't fully loaded yet
+        // This prevents the brief flash of incorrect "absent" counts
+        const totalEmployees = Number(stats.total || stats.totalEmployees) || 0;
+        const present = Number(stats.present || stats.presentToday) || 0;
+        const late = Number(stats.late || stats.tardyToday) || 0;
+        const attendanceRate = Number(stats.attendanceRate || stats.presentPercentage) || 0;
+        
+        // If we have employees but no attendance data processed yet, don't update the UI
+        // This prevents showing "1 absent" when data is still loading
+        if (totalEmployees > 0 && present === 0 && late === 0 && !stats.dataFullyLoaded) {
+            console.log('🎯 Skipping UI update - attendance data not fully loaded yet');
+            console.log('Current state:', { totalEmployees, present, late, dataFullyLoaded: stats.dataFullyLoaded });
+            return;
+        }
+        
         // Update main header quick stats
         const totalEmployeesEl = document.getElementById('total-employees');
         const presentTodayEl = document.getElementById('present-today');
         const lateTodayEl = document.getElementById('late-today');
         const attendanceRateEl = document.getElementById('attendance-rate');
-        
-        // Use safe fallbacks and ensure numbers are displayed, not objects
-        const totalEmployees = Number(stats.total || stats.totalEmployees) || 0;
-        const present = Number(stats.present || stats.presentToday) || 0;
-        const late = Number(stats.late || stats.tardyToday) || 0;
-        const attendanceRate = Number(stats.attendanceRate || stats.presentPercentage) || 0;
         
         console.log('Values being set:', { totalEmployees, present, late, attendanceRate });
         
