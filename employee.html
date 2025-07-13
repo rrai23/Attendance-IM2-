@@ -1591,6 +1591,178 @@
             top: 6px;
         }
 
+        /* Enhanced Modal Styles - Fix Modal Display Issues */
+        .modal-overlay {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            background: rgba(0, 0, 0, 0.6) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            z-index: 10000 !important;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.hidden {
+            display: none !important;
+        }
+
+        .modal-overlay.active {
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
+        .modal-overlay .modal {
+            background: var(--bg-primary) !important;
+            border-radius: var(--radius-lg) !important;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25) !important;
+            max-width: 500px !important;
+            width: 90vw !important;
+            max-height: 90vh !important;
+            overflow: hidden !important;
+            transform: scale(0.9) translateY(20px);
+            transition: transform 0.3s ease-out;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-overlay.active .modal {
+            transform: scale(1) translateY(0) !important;
+        }
+
+        /* Enhanced Modal Components */
+        .modal-overlay .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-lg);
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+            flex-shrink: 0;
+        }
+
+        .modal-overlay .modal-title {
+            margin: 0;
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+        }
+
+        .modal-overlay .modal-close {
+            background: none;
+            border: none;
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            font-size: 18px;
+            line-height: 1;
+        }
+
+        .modal-overlay .modal-close:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .modal-overlay .modal-body {
+            padding: var(--spacing-lg);
+            overflow-y: auto;
+            flex: 1;
+            max-height: 60vh;
+        }
+
+        .modal-overlay .modal-footer {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: var(--spacing-md);
+            padding: var(--spacing-lg);
+            border-top: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+            flex-shrink: 0;
+        }
+
+        /* Enhanced Form Styling in Modal */
+        .overtime-form .form-group {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .overtime-form .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .overtime-form .form-label {
+            display: block;
+            margin-bottom: var(--spacing-sm);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            color: var(--text-primary);
+        }
+
+        .overtime-form .form-input,
+        .overtime-form .form-textarea,
+        .overtime-form .form-select {
+            width: 100%;
+            padding: var(--spacing-md);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: var(--font-size-base);
+            font-family: var(--font-family);
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+            box-sizing: border-box;
+        }
+
+        .overtime-form .form-input:focus,
+        .overtime-form .form-textarea:focus,
+        .overtime-form .form-select:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(90, 200, 250, 0.1);
+        }
+
+        .overtime-form .form-help {
+            font-size: var(--font-size-xs);
+            color: var(--text-tertiary);
+            margin-top: var(--spacing-xs);
+        }
+
+        .overtime-form .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+            max-height: 150px;
+        }
+
+        .overtime-form .form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 12px center;
+            background-repeat: no-repeat;
+            background-size: 16px;
+            padding-right: 40px;
+        }
+
+        /* Prevent body scroll when modal is open */
+        body.modal-open {
+            overflow: hidden;
+        }
+
         /* Mobile Floating Action Button */
         .mobile-fab-container {
             position: fixed;
@@ -3220,9 +3392,17 @@
             showOvertimeForm() {
                 const modal = document.getElementById('overtime-form-modal');
                 if (modal) {
+                    // Prevent body scroll
+                    document.body.classList.add('modal-open');
+                    
+                    // Ensure modal starts in correct state
                     modal.classList.remove('hidden');
-                    modal.classList.add('active');
                     modal.style.display = 'flex';
+                    
+                    // Use requestAnimationFrame to ensure DOM is ready before adding active class
+                    requestAnimationFrame(() => {
+                        modal.classList.add('active');
+                    });
                     
                     // If not in edit mode, set today's date as default
                     if (!this.editingRequestId) {
@@ -3236,35 +3416,43 @@
                         document.querySelector('#overtime-form-modal button[type="submit"]').innerHTML = '<span class="btn-icon">📝</span>Submit Request';
                     }
                     
-                    // Focus on first input
+                    // Focus on first input after animation completes
                     setTimeout(() => {
                         const dateInput = document.getElementById('overtime-date');
                         if (dateInput) {
                             dateInput.focus();
                         }
-                    }, 100);
+                    }, 200);
                 }
             }
 
             hideOvertimeForm() {
                 const modal = document.getElementById('overtime-form-modal');
                 if (modal) {
-                    modal.classList.add('hidden');
+                    // Remove active class first for animation
                     modal.classList.remove('active');
-                    modal.style.display = 'none';
                     
-                    // Reset form
-                    const form = document.getElementById('overtime-form');
-                    if (form) {
-                        form.reset();
-                    }
-                    
-                    // Clear edit mode
-                    this.editingRequestId = null;
-                    
-                    // Reset modal title and button text to create mode
-                    document.querySelector('#overtime-form-modal .modal-title').textContent = 'Request Overtime';
-                    document.querySelector('#overtime-form-modal button[type="submit"]').innerHTML = '<span class="btn-icon">📝</span>Submit Request';
+                    // Hide modal after animation completes
+                    setTimeout(() => {
+                        modal.classList.add('hidden');
+                        modal.style.display = 'none';
+                        
+                        // Re-enable body scroll
+                        document.body.classList.remove('modal-open');
+                        
+                        // Reset form
+                        const form = document.getElementById('overtime-form');
+                        if (form) {
+                            form.reset();
+                        }
+                        
+                        // Clear edit mode
+                        this.editingRequestId = null;
+                        
+                        // Reset modal title and button text to create mode
+                        document.querySelector('#overtime-form-modal .modal-title').textContent = 'Request Overtime';
+                        document.querySelector('#overtime-form-modal button[type="submit"]').innerHTML = '<span class="btn-icon">📝</span>Submit Request';
+                    }, 300); // Match transition duration
                 }
             }
 
