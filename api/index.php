@@ -1,244 +1,536 @@
 <?php
 /**
- * PHP Data Service API Endpoints
- * This file provides the API endpoints for the Bricks Attendance System
- * that match the JavaScript API service implementation.
+ * Bricks Attendance System - Main API Endpoint
+ * Complete PHP backend for XAMPP/MySQL integration
  * 
- * Note: This is a starter template showing the API structure. In a real 
- * implementation, you would need to add proper authentication, validation,
- * database connections, and error handling.
+ * This file handles all API requests and routes them to appropriate classes
  */
+
+// Include configuration and classes
+require_once '../config/database.php';
+require_once '../classes/AuthAPI.php';
+require_once '../classes/EmployeeAPI.php';
+require_once '../classes/AttendanceAPI.php';
+require_once '../classes/PayrollAPI.php';
 
 // Set headers for JSON API
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
     exit(0);
 }
 
 // Parse the request URL to determine the endpoint
 $requestUri = $_SERVER['REQUEST_URI'];
-$basePathLength = strlen('/api');
-$endpoint = substr($requestUri, $basePathLength);
+$scriptName = $_SERVER['SCRIPT_NAME'];
+$basePath = dirname($scriptName);
+$endpoint = str_replace($basePath, '', $requestUri);
+
+// Remove query string from endpoint
+if (($pos = strpos($endpoint, '?')) !== false) {
+    $endpoint = substr($endpoint, 0, $pos);
+}
+
+// Clean up endpoint
+$endpoint = trim($endpoint, '/');
+if (strpos($endpoint, 'index.php') === 0) {
+    $endpoint = substr($endpoint, 9);
+}
+$endpoint = '/' . trim($endpoint, '/');
 
 // Extract query parameters
-$queryString = $_SERVER['QUERY_STRING'] ?? '';
-parse_str($queryString, $queryParams);
+$queryParams = $_GET;
 
 // Read request body for POST, PUT methods
 $requestBody = file_get_contents('php://input');
 $requestData = !empty($requestBody) ? json_decode($requestBody, true) : [];
 
-// Check for auth token
-$authHeader = isset($_SERVER['HTTP_AUTHORIZATION']) ? $_SERVER['HTTP_AUTHORIZATION'] : '';
-$token = '';
-
-if (!empty($authHeader) && strpos($authHeader, 'Bearer ') === 0) {
-    $token = substr($authHeader, 7);
-}
+// Initialize API classes
+$authAPI = new AuthAPI();
+$employeeAPI = new EmployeeAPI();
+$attendanceAPI = new AttendanceAPI();
+$payrollAPI = new PayrollAPI();
 
 // Define route handlers
 try {
-    // Authentication routes
+    // Authentication routes (no auth required)
     if (preg_match('#^/auth/login$#', $endpoint)) {
-        handleAuthLogin($requestData);
-        exit;
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $result = $authAPI->login(
+                $requestData['username'] ?? '',
+                $requestData['password'] ?? '',
+                $requestData['rememberMe'] ?? false
+            );
+            sendSuccess($result);
+        } else {
+            sendError('Method not allowed', 405);
+        }
     }
     
-    // Verify auth token for protected routes
-    if (!verifyAuthToken($token)) {
-        respondWithError('Unauthorized', 401);
-        exit;
+    elseif (preg_match('#^/auth/logout$#', $endpoint)) {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $result = $authAPI->logout();
+            sendSuccess($result);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+    }
+    
+    // Check authentication for protected routes
+    elseif (!getCurrentUser()) {
+        sendError('Unauthorized - Please login', 401);
     }
     
     // Employee routes
-    if (preg_match('#^/employees$#', $endpoint)) {
+    elseif (preg_match('#^/employees$#', $endpoint)) {
         if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-            getEmployees();
+            $employees = $employeeAPI->getEmployees($queryParams);
+            sendSuccess($employees);
         } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            addEmployee($requestData);
+            $employee = $employeeAPI->addEmployee($requestData);
+            sendSuccess($employee, 'Employee created successfully');
         } else {
-            respondWithError('Method not allowed', 405);
+            sendError('Method not allowed', 405);
         }
-    } 
+    }
+    
     elseif (preg_match('#^/employees/([a-zA-Z0-9_]+)$#', $endpoint, $matches)) {
         $employeeId = $matches[1];
         
         if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-            getEmployee($employeeId);
+            $employee = $employeeAPI->getEmployee($employeeId);
+            sendSuccess($employee);
         } elseif ($_SERVER['REQUEST_METHOD'] === 'PUT') {
-            updateEmployee($employeeId, $requestData);
+            $employee = $employeeAPI->updateEmployee($employeeId, $requestData);
+            sendSuccess($employee, 'Employee updated successfully');
         } elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
-            deleteEmployee($employeeId);
+            $result = $employeeAPI->deleteEmployee($employeeId);
+            sendSuccess($result);
         } else {
-            respondWithError('Method not allowed', 405);
+            sendError('Method not allowed', 405);
         }
     }
+    
     elseif (preg_match('#^/employees/([a-zA-Z0-9_]+)/wage$#', $endpoint, $matches)) {
         $employeeId = $matches[1];
         
         if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
-            updateEmployeeWage($employeeId, $requestData);
+            $result = $employeeAPI->updateEmployeeWage($employeeId, $requestData);
+            sendSuccess($result);
         } else {
-            respondWithError('Method not allowed', 405);
+            sendError('Method not allowed', 405);
         }
     }
+    
     elseif (preg_match('#^/employees/performance$#', $endpoint)) {
-        getEmployeePerformance($queryParams);
+        $performance = $employeeAPI->getEmployeePerformance($queryParams);
+        sendSuccess($performance);
     }
     
     // Attendance routes
     elseif (preg_match('#^/attendance$#', $endpoint)) {
         if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-            getAttendanceRecords($queryParams);
+            $records = $attendanceAPI->getAttendanceRecords($queryParams);
+            sendSuccess($records);
         } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            addAttendanceRecord($requestData);
+            $record = $attendanceAPI->addAttendanceRecord($requestData);
+            sendSuccess($record, 'Attendance record created successfully');
         } else {
-            respondWithError('Method not allowed', 405);
+            sendError('Method not allowed', 405);
         }
     }
+    
     elseif (preg_match('#^/attendance/([a-zA-Z0-9_]+)$#', $endpoint, $matches)) {
         $recordId = $matches[1];
         
-        if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
-            updateAttendanceRecord($recordId, $requestData);
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+            $record = $attendanceAPI->getAttendanceRecord($recordId);
+            sendSuccess($record);
+        } elseif ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+            $record = $attendanceAPI->updateAttendanceRecord($recordId, $requestData);
+            sendSuccess($record, 'Attendance record updated successfully');
+        } elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+            $result = $attendanceAPI->deleteAttendanceRecord($recordId);
+            sendSuccess($result);
         } else {
-            respondWithError('Method not allowed', 405);
+            sendError('Method not allowed', 405);
         }
     }
+    
     elseif (preg_match('#^/attendance/stats$#', $endpoint)) {
-        getAttendanceStats($queryParams);
+        $stats = $attendanceAPI->getAttendanceStats($queryParams);
+        sendSuccess($stats);
+    }
+    
+    elseif (preg_match('#^/attendance/([a-zA-Z0-9_]+)/clock-in$#', $endpoint, $matches)) {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $employeeId = $matches[1];
+            $result = $attendanceAPI->clockIn($employeeId, $requestData);
+            sendSuccess($result);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+    }
+    
+    elseif (preg_match('#^/attendance/([a-zA-Z0-9_]+)/clock-out$#', $endpoint, $matches)) {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $employeeId = $matches[1];
+            $result = $attendanceAPI->clockOut($employeeId, $requestData);
+            sendSuccess($result);
+        } else {
+            sendError('Method not allowed', 405);
+        }
     }
     
     // Department routes
     elseif (preg_match('#^/departments$#', $endpoint)) {
-        getDepartments();
+        $departments = $employeeAPI->getDepartments();
+        sendSuccess($departments);
     }
-    elseif (preg_match('#^/departments/([a-zA-Z0-9_]+)/employees$#', $endpoint, $matches)) {
-        $departmentId = $matches[1];
-        getEmployeesByDepartment($departmentId);
+    
+    elseif (preg_match('#^/departments/([a-zA-Z0-9_\s%]+)/employees$#', $endpoint, $matches)) {
+        $departmentId = urldecode($matches[1]);
+        $employees = $employeeAPI->getEmployeesByDepartment($departmentId);
+        sendSuccess($employees);
     }
     
     // Payroll routes
     elseif (preg_match('#^/payroll$#', $endpoint)) {
-        getPayrollData($queryParams);
+        $payrollData = $payrollAPI->getPayrollData($queryParams);
+        sendSuccess($payrollData);
     }
+    
     elseif (preg_match('#^/payroll/calculate$#', $endpoint)) {
-        calculatePayroll($requestData);
-    }
-    elseif (preg_match('#^/payroll/history$#', $endpoint)) {
-        getPayrollHistory($queryParams);
-    }
-    elseif (preg_match('#^/payroll/nextpayday$#', $endpoint)) {
-        $settings = getMockSettings();
-        $frequency = $settings['payroll']['frequency'] ?? 'biweekly';
-        
-        $today = new DateTime();
-        $nextPayday = clone $today;
-        $lastPayday = clone $today;
-        
-        // Calculate next payday based on frequency
-        switch($frequency) {
-            case 'weekly':
-                // Weekly on Friday
-                $dayToFriday = (5 - $nextPayday->format('N') + 7) % 7; // 5 is Friday in ISO-8601
-                $nextPayday->modify("+{$dayToFriday} day");
-                $lastPayday->modify('-7 days');
-                break;
-                
-            case 'biweekly':
-                // Biweekly on the 15th and last day of month
-                $currentDay = (int)$nextPayday->format('j');
-                $lastDayOfMonth = (int)$nextPayday->format('t');
-                
-                if ($currentDay < 15) {
-                    $nextPayday->setDate($nextPayday->format('Y'), $nextPayday->format('n'), 15);
-                } else if ($currentDay < $lastDayOfMonth) {
-                    $nextPayday->setDate($nextPayday->format('Y'), $nextPayday->format('n'), $lastDayOfMonth);
-                } else {
-                    // Move to the 15th of next month
-                    $nextPayday->modify('first day of next month');
-                    $nextPayday->setDate($nextPayday->format('Y'), $nextPayday->format('n'), 15);
-                }
-                
-                // Last payday
-                if ($currentDay < 15) {
-                    $lastPayday->modify('last day of last month');
-                } else {
-                    $lastPayday->setDate($lastPayday->format('Y'), $lastPayday->format('n'), 15);
-                }
-                break;
-                
-            case 'monthly':
-                // Monthly on the last day of month
-                $nextPayday->modify('last day of next month');
-                $lastPayday->modify('last day of this month');
-                break;
-                
-            default:
-                // Default to biweekly
-                $nextPayday->modify('+14 days');
-                $lastPayday->modify('-14 days');
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $result = $payrollAPI->calculatePayroll($requestData);
+            sendSuccess($result);
+        } else {
+            sendError('Method not allowed', 405);
         }
-        
-        // Calculate remaining days and hours
-        $interval = $today->diff($nextPayday);
-        $daysRemaining = $interval->days;
-        $hoursRemaining = $daysRemaining * 24;
-        
-        $response = [
-            'success' => true,
-            'message' => 'Next payday information retrieved',
-            'data' => [
-                'nextPayday' => $nextPayday->format('Y-m-d'),
-                'frequency' => $frequency,
-                'daysRemaining' => $daysRemaining,
-                'hoursRemaining' => $hoursRemaining,
-                'lastPayday' => $lastPayday->format('Y-m-d')
-            ]
-        ];
-        
-        echo json_encode($response);
-        exit();
+    }
+    
+    elseif (preg_match('#^/payroll/bulk-calculate$#', $endpoint)) {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $result = $payrollAPI->bulkCalculatePayroll($requestData);
+            sendSuccess($result);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+    }
+    
+    elseif (preg_match('#^/payroll/([a-zA-Z0-9_]+)/approve$#', $endpoint, $matches)) {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $payrollId = $matches[1];
+            $result = $payrollAPI->approvePayroll($payrollId);
+            sendSuccess($result);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+    }
+    
+    elseif (preg_match('#^/payroll/([a-zA-Z0-9_]+)/pay$#', $endpoint, $matches)) {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $payrollId = $matches[1];
+            $result = $payrollAPI->processPayment($payrollId);
+            sendSuccess($result);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+    }
+    
+    elseif (preg_match('#^/payroll/history$#', $endpoint)) {
+        $history = $payrollAPI->getPayrollHistory($queryParams);
+        sendSuccess($history);
+    }
+    
+    elseif (preg_match('#^/payroll/nextpayday$#', $endpoint)) {
+        $result = $payrollAPI->getNextPayday();
+        sendSuccess($result);
+    }
+    
+    elseif (preg_match('#^/payroll/summary$#', $endpoint)) {
+        $summary = $payrollAPI->getPayrollSummary($queryParams);
+        sendSuccess($summary);
+    }
+    
+    // User management routes
+    elseif (preg_match('#^/auth/me$#', $endpoint)) {
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+            $user = $authAPI->getCurrentUser();
+            sendSuccess($user);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+    }
+    
+    elseif (preg_match('#^/auth/change-password$#', $endpoint)) {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $result = $authAPI->changePassword(
+                $requestData['currentPassword'] ?? '',
+                $requestData['newPassword'] ?? ''
+            );
+            sendSuccess($result);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+    }
+    
+    elseif (preg_match('#^/auth/reset-password$#', $endpoint)) {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $result = $authAPI->resetPassword(
+                $requestData['employeeId'] ?? '',
+                $requestData['newPassword'] ?? ''
+            );
+            sendSuccess($result);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+    }
+    
+    elseif (preg_match('#^/auth/sessions$#', $endpoint)) {
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+            $sessions = $authAPI->getUserSessions($queryParams['employeeId'] ?? null);
+            sendSuccess($sessions);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+    }
+    
+    elseif (preg_match('#^/auth/cleanup-sessions$#', $endpoint)) {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $result = $authAPI->cleanupExpiredSessions();
+            sendSuccess($result);
+        } else {
+            sendError('Method not allowed', 405);
+        }
     }
     
     // Settings routes
     elseif (preg_match('#^/settings$#', $endpoint)) {
         if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-            getSettings();
+            $settings = getSystemSettings();
+            sendSuccess($settings);
         } elseif ($_SERVER['REQUEST_METHOD'] === 'PUT') {
-            saveSettings($requestData);
+            $result = saveSystemSettings($requestData);
+            sendSuccess($result);
         } else {
-            respondWithError('Method not allowed', 405);
+            sendError('Method not allowed', 405);
         }
     }
     
-    // Overtime routes
-    elseif (preg_match('#^/overtime$#', $endpoint)) {
-        getOvertimeRequests($queryParams);
-    }
-    
-    // System routes
+    // System status route
     elseif (preg_match('#^/system/status$#', $endpoint)) {
-        getSystemStatus();
+        $status = getSystemStatus();
+        sendSuccess($status);
     }
     
-    // Philippines holidays route
+    // Philippines holidays route (for calendar integration)
     elseif (preg_match('#^/holidays/philippines/(\d{4})$#', $endpoint, $matches)) {
         $year = intval($matches[1]);
-        getPhilippineHolidays($year);
+        $holidays = getPhilippineHolidays($year);
+        sendSuccess($holidays);
     }
     
     // 404 Not Found
     else {
-        respondWithError('Endpoint not found', 404);
+        sendError('Endpoint not found: ' . $endpoint, 404);
     }
+    
 } catch (Exception $e) {
-    respondWithError($e->getMessage(), 500);
+    if (DEBUG_MODE) {
+        sendError('Server Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine(), 500);
+    } else {
+        sendError('Internal server error', 500);
+    }
+    error_log("API Error: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
+}
+
+/**
+ * Helper Functions for Settings and System Status
+ */
+
+function getSystemSettings() {
+    try {
+        $db = getDatabase();
+        $stmt = $db->query("SELECT setting_key, setting_value FROM system_settings");
+        $settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+        
+        // Format settings into expected structure
+        return [
+            'company' => [
+                'name' => $settings['company_name'] ?? 'Bricks Company',
+                'workingHours' => intval($settings['working_hours_per_day'] ?? 8),
+                'startTime' => $settings['work_start_time'] ?? '09:00',
+                'endTime' => $settings['work_end_time'] ?? '17:00'
+            ],
+            'payroll' => [
+                'standardWage' => floatval($settings['standard_wage'] ?? 15.00),
+                'overtimeRate' => floatval($settings['overtime_rate_multiplier'] ?? 1.5),
+                'minOvertimeHours' => floatval($settings['minimum_overtime_hours'] ?? 1),
+                'frequency' => $settings['payroll_frequency'] ?? 'biweekly',
+                'currency' => $settings['currency'] ?? 'PHP',
+                'currencySymbol' => $settings['currency_symbol'] ?? '₱',
+                'taxRate' => floatval($settings['tax_rate'] ?? 0.20)
+            ],
+            'preferences' => [
+                'theme' => $settings['theme'] ?? 'auto',
+                'dateFormat' => $settings['date_format'] ?? 'YYYY-MM-DD',
+                'timeFormat' => $settings['time_format'] ?? '24',
+                'timezone' => $settings['timezone'] ?? 'Asia/Manila'
+            ],
+            'departments' => getDepartmentsList(),
+            'lastUpdated' => date('c')
+        ];
+    } catch (Exception $e) {
+        throw new Exception("Failed to get system settings: " . $e->getMessage());
+    }
+}
+
+function saveSystemSettings($data) {
+    try {
+        if (!hasPermission('admin')) {
+            throw new Exception("Unauthorized: Admin access required");
+        }
+        
+        $db = getDatabase();
+        $db->beginTransaction();
+        
+        // Save company settings
+        if (isset($data['company'])) {
+            foreach ($data['company'] as $key => $value) {
+                $settingKey = 'company_' . $key;
+                if ($key === 'workingHours') $settingKey = 'working_hours_per_day';
+                elseif ($key === 'startTime') $settingKey = 'work_start_time';
+                elseif ($key === 'endTime') $settingKey = 'work_end_time';
+                
+                setSystemSetting($settingKey, $value);
+            }
+        }
+        
+        // Save payroll settings
+        if (isset($data['payroll'])) {
+            foreach ($data['payroll'] as $key => $value) {
+                $settingKey = $key === 'standardWage' ? 'standard_wage' : 
+                             ($key === 'overtimeRate' ? 'overtime_rate_multiplier' :
+                             ($key === 'minOvertimeHours' ? 'minimum_overtime_hours' :
+                             ($key === 'frequency' ? 'payroll_frequency' :
+                             ($key === 'currencySymbol' ? 'currency_symbol' :
+                             ($key === 'taxRate' ? 'tax_rate' : $key)))));
+                
+                setSystemSetting($settingKey, $value);
+            }
+        }
+        
+        // Save preference settings
+        if (isset($data['preferences'])) {
+            foreach ($data['preferences'] as $key => $value) {
+                $settingKey = $key === 'dateFormat' ? 'date_format' :
+                             ($key === 'timeFormat' ? 'time_format' : $key);
+                setSystemSetting($settingKey, $value);
+            }
+        }
+        
+        $db->commit();
+        
+        // Log audit
+        logAudit(getCurrentUser()['sub'], 'UPDATE_SETTINGS', 'system_settings', null, null, $data);
+        
+        return getSystemSettings();
+    } catch (Exception $e) {
+        $db->rollback();
+        throw new Exception("Failed to save settings: " . $e->getMessage());
+    }
+}
+
+function getDepartmentsList() {
+    try {
+        $db = getDatabase();
+        $stmt = $db->query("SELECT name FROM departments ORDER BY name");
+        return array_column($stmt->fetchAll(), 'name');
+    } catch (Exception $e) {
+        return ['Management', 'Operations', 'Human Resources', 'Finance', 'IT'];
+    }
+}
+
+function getSystemStatus() {
+    try {
+        $db = getDatabase();
+        
+        // Database status
+        $dbStatus = 'connected';
+        try {
+            $db->query("SELECT 1");
+        } catch (Exception $e) {
+            $dbStatus = 'error';
+        }
+        
+        // Get some basic statistics
+        $employeeCount = $db->query("SELECT COUNT(*) FROM employees WHERE status = 'active'")->fetchColumn();
+        $attendanceToday = $db->query("SELECT COUNT(*) FROM attendance_records WHERE record_date = CURDATE()")->fetchColumn();
+        
+        return [
+            'server' => [
+                'status' => 'online',
+                'uptime' => '99.9%',
+                'lastRestart' => date('c', strtotime('-1 day')),
+                'phpVersion' => PHP_VERSION,
+                'timezone' => date_default_timezone_get()
+            ],
+            'database' => [
+                'status' => $dbStatus,
+                'size' => '2.5 GB', // Placeholder
+                'lastBackup' => date('c', strtotime('-1 hour'))
+            ],
+            'backup' => [
+                'status' => 'active',
+                'lastBackup' => date('c', strtotime('-1 hour')),
+                'nextBackup' => date('c', strtotime('+1 hour'))
+            ],
+            'users' => [
+                'total' => intval($employeeCount),
+                'active' => intval($employeeCount),
+                'online' => 1 // Placeholder
+            ],
+            'statistics' => [
+                'totalEmployees' => intval($employeeCount),
+                'attendanceToday' => intval($attendanceToday),
+                'systemLoad' => sys_getloadavg()[0] ?? 0.1
+            ],
+            'version' => '2.0.0',
+            'lastUpdated' => date('c')
+        ];
+    } catch (Exception $e) {
+        throw new Exception("Failed to get system status: " . $e->getMessage());
+    }
+}
+
+function getPhilippineHolidays($year) {
+    // This is a basic implementation. In production, you might want to use a more comprehensive holiday API
+    $holidays = [
+        "$year-01-01" => "New Year's Day",
+        "$year-04-09" => "Araw ng Kagitingan",
+        "$year-05-01" => "Labor Day",
+        "$year-06-12" => "Independence Day",
+        "$year-08-29" => "National Heroes Day",
+        "$year-11-30" => "Bonifacio Day",
+        "$year-12-25" => "Christmas Day",
+        "$year-12-30" => "Rizal Day"
+    ];
+    
+    // Add some variable holidays (simplified)
+    if ($year == 2025) {
+        $holidays["$year-04-17"] = "Maundy Thursday";
+        $holidays["$year-04-18"] = "Good Friday";
+        $holidays["$year-04-19"] = "Black Saturday";
+        $holidays["$year-04-20"] = "Easter Sunday";
+    }
+    
+    return $holidays;
 }
 
 /**
@@ -311,817 +603,4 @@ function verifyAuthToken($token) {
     } catch (Exception $e) {
         return false;
     }
-}
-
-/**
- * Get all employees
- */
-function getEmployees() {
-    // In a real implementation, fetch from database
-    
-    // Mock data
-    $employees = [
-        [
-            'id' => 'emp_001',
-            'username' => 'admin',
-            'role' => 'admin',
-            'fullName' => 'Administrator',
-            'email' => 'admin@bricks.com',
-            'department' => 'Management',
-            'position' => 'System Administrator',
-            'startDate' => '2024-01-01',
-            'status' => 'active',
-            'hourlyRate' => 25.00
-        ],
-        [
-            'id' => 'emp_002',
-            'username' => 'employee',
-            'role' => 'employee',
-            'fullName' => 'Employee User',
-            'email' => 'employee@bricks.com',
-            'department' => 'Operations',
-            'position' => 'Staff',
-            'startDate' => '2024-01-15',
-            'status' => 'active',
-            'hourlyRate' => 15.00
-        ]
-    ];
-    
-    respondWithData($employees);
-}
-
-/**
- * Get a specific employee
- */
-function getEmployee($id) {
-    // In a real implementation, fetch from database by ID
-    
-    // Mock data
-    if ($id === 'emp_001') {
-        respondWithData([
-            'id' => 'emp_001',
-            'username' => 'admin',
-            'role' => 'admin',
-            'fullName' => 'Administrator',
-            'email' => 'admin@bricks.com',
-            'department' => 'Management',
-            'position' => 'System Administrator',
-            'startDate' => '2024-01-01',
-            'status' => 'active',
-            'hourlyRate' => 25.00
-        ]);
-    } elseif ($id === 'emp_002') {
-        respondWithData([
-            'id' => 'emp_002',
-            'username' => 'employee',
-            'role' => 'employee',
-            'fullName' => 'Employee User',
-            'email' => 'employee@bricks.com',
-            'department' => 'Operations',
-            'position' => 'Staff',
-            'startDate' => '2024-01-15',
-            'status' => 'active',
-            'hourlyRate' => 15.00
-        ]);
-    } else {
-        respondWithError('Employee not found', 404);
-    }
-}
-
-/**
- * Add a new employee
- */
-function addEmployee($data) {
-    // In a real implementation, validate and insert into database
-    
-    // Mock data
-    $newEmployee = array_merge([
-        'id' => 'emp_' . uniqid(),
-        'createdAt' => date('c'),
-        'status' => 'active'
-    ], $data);
-    
-    respondWithData($newEmployee);
-}
-
-/**
- * Update an existing employee
- */
-function updateEmployee($id, $data) {
-    // In a real implementation, validate and update in database
-    
-    // Mock data
-    $existingEmployee = ($id === 'emp_001') ? [
-        'id' => 'emp_001',
-        'username' => 'admin',
-        'role' => 'admin',
-        'fullName' => 'Administrator',
-        'email' => 'admin@bricks.com',
-        'department' => 'Management',
-        'position' => 'System Administrator',
-        'startDate' => '2024-01-01',
-        'status' => 'active',
-        'hourlyRate' => 25.00
-    ] : [
-        'id' => 'emp_002',
-        'username' => 'employee',
-        'role' => 'employee',
-        'fullName' => 'Employee User',
-        'email' => 'employee@bricks.com',
-        'department' => 'Operations',
-        'position' => 'Staff',
-        'startDate' => '2024-01-15',
-        'status' => 'active',
-        'hourlyRate' => 15.00
-    ];
-    
-    $updatedEmployee = array_merge($existingEmployee, $data, [
-        'lastModified' => date('c')
-    ]);
-    
-    respondWithData($updatedEmployee);
-}
-
-/**
- * Update employee wage
- */
-function updateEmployeeWage($id, $data) {
-    // In a real implementation, validate and update in database
-    
-    // Check required fields
-    if (!isset($data['hourlyRate'])) {
-        respondWithError('Hourly rate is required', 400);
-        return;
-    }
-    
-    // Mock data
-    respondWithData([
-        'success' => true,
-        'employee' => [
-            'id' => $id,
-            'hourlyRate' => $data['hourlyRate'],
-            'lastWageUpdate' => [
-                'date' => date('c'),
-                'oldRate' => 15.00,
-                'newRate' => $data['hourlyRate'],
-                'reason' => $data['reason'] ?? '',
-                'by' => 'admin'
-            ]
-        ],
-        'oldRate' => 15.00,
-        'newRate' => $data['hourlyRate']
-    ]);
-}
-
-/**
- * Delete an employee
- */
-function deleteEmployee($id) {
-    // In a real implementation, delete from database
-    
-    respondWithData([
-        'success' => true,
-        'message' => "Employee {$id} successfully deleted"
-    ]);
-}
-
-/**
- * Get attendance records
- */
-function getAttendanceRecords($filters) {
-    // In a real implementation, fetch from database with filters
-    
-    // Mock data
-    $records = [
-        [
-            'id' => 'att_001',
-            'employeeId' => 'emp_001',
-            'employeeName' => 'Administrator',
-            'date' => date('Y-m-d'),
-            'clockIn' => '09:00',
-            'clockOut' => '17:00',
-            'status' => 'present',
-            'hours' => 8,
-            'notes' => '',
-            'createdAt' => date('c')
-        ],
-        [
-            'id' => 'att_002',
-            'employeeId' => 'emp_002',
-            'employeeName' => 'Employee User',
-            'date' => date('Y-m-d'),
-            'clockIn' => '09:15',
-            'clockOut' => '17:30',
-            'status' => 'tardy',
-            'hours' => 8.25,
-            'notes' => 'Traffic delay',
-            'createdAt' => date('c')
-        ]
-    ];
-    
-    // Apply filters
-    if (isset($filters['employeeId'])) {
-        $records = array_filter($records, function($record) use ($filters) {
-            return $record['employeeId'] === $filters['employeeId'];
-        });
-    }
-    
-    if (isset($filters['startDate'])) {
-        $records = array_filter($records, function($record) use ($filters) {
-            return $record['date'] >= $filters['startDate'];
-        });
-    }
-    
-    if (isset($filters['endDate'])) {
-        $records = array_filter($records, function($record) use ($filters) {
-            return $record['date'] <= $filters['endDate'];
-        });
-    }
-    
-    respondWithData(array_values($records));
-}
-
-/**
- * Add attendance record
- */
-function addAttendanceRecord($data) {
-    // In a real implementation, validate and insert into database
-    
-    // Mock data
-    $newRecord = array_merge([
-        'id' => 'att_' . uniqid(),
-        'createdAt' => date('c'),
-    ], $data);
-    
-    // Calculate hours
-    if (isset($newRecord['clockIn']) && isset($newRecord['clockOut'])) {
-        $newRecord['hours'] = calculateHours($newRecord['clockIn'], $newRecord['clockOut']);
-    }
-    
-    respondWithData($newRecord);
-}
-
-/**
- * Update attendance record
- */
-function updateAttendanceRecord($id, $data) {
-    // In a real implementation, validate and update database
-    
-    // Mock data
-    $existingRecord = [
-        'id' => $id,
-        'employeeId' => 'emp_001',
-        'employeeName' => 'Administrator',
-        'date' => date('Y-m-d'),
-        'clockIn' => '09:00',
-        'clockOut' => '17:00',
-        'status' => 'present',
-        'hours' => 8,
-        'notes' => '',
-        'createdAt' => date('c', strtotime('-1 hour'))
-    ];
-    
-    $updatedRecord = array_merge($existingRecord, $data, [
-        'lastModified' => date('c')
-    ]);
-    
-    // Recalculate hours if clock times were updated
-    if (isset($data['clockIn']) || isset($data['clockOut'])) {
-        $clockIn = $data['clockIn'] ?? $existingRecord['clockIn'];
-        $clockOut = $data['clockOut'] ?? $existingRecord['clockOut'];
-        $updatedRecord['hours'] = calculateHours($clockIn, $clockOut);
-    }
-    
-    respondWithData($updatedRecord);
-}
-
-/**
- * Calculate hours between clock in/out times
- */
-function calculateHours($clockIn, $clockOut) {
-    if (!$clockIn || !$clockOut) return 0;
-    
-    list($inHour, $inMinute) = explode(':', $clockIn);
-    list($outHour, $outMinute) = explode(':', $clockOut);
-    
-    $inMinutes = ($inHour * 60) + $inMinute;
-    $outMinutes = ($outHour * 60) + $outMinute;
-    
-    // Handle overnight shifts
-    $totalMinutes = $outMinutes >= $inMinutes 
-        ? $outMinutes - $inMinutes 
-        : (24 * 60 - $inMinutes) + $outMinutes;
-    
-    return round($totalMinutes / 60, 2);
-}
-
-/**
- * Get attendance statistics
- */
-function getAttendanceStats($params) {
-    // In a real implementation, calculate from database
-    
-    $date = $params['date'] ?? date('Y-m-d');
-    
-    // Mock data
-    respondWithData([
-        'date' => $date,
-        'totalEmployees' => 2,
-        'presentToday' => 2,
-        'absentToday' => 0,
-        'tardyToday' => 1,
-        'attendanceRate' => 100,
-        'tardyRate' => 50,
-        'weeklyTrend' => [100, 100, 100, 100, 100, 0, 0], // Mon-Sun
-        'lastUpdated' => date('c'),
-        'departments' => [
-            'total' => 2,
-            'with100Percent' => 2,
-            'withIssues' => 0
-        ],
-        'overtime' => [
-            'requestsToday' => 1,
-            'pendingApproval' => 1,
-            'thisWeekTotal' => 5.5
-        ],
-        'today' => [
-            'total' => 2,
-            'present' => 1,
-            'late' => 1,
-            'absent' => 0,
-            'attendanceRate' => 100
-        ]
-    ]);
-}
-
-/**
- * Get departments
- */
-function getDepartments() {
-    // In a real implementation, fetch from database
-    
-    // Mock data
-    respondWithData([
-        'Management',
-        'Operations',
-        'Human Resources',
-        'Finance',
-        'IT'
-    ]);
-}
-
-/**
- * Get employees by department
- */
-function getEmployeesByDepartment($departmentId) {
-    // In a real implementation, fetch from database
-    
-    // Mock data
-    if ($departmentId === 'Management') {
-        respondWithData([
-            [
-                'id' => 'emp_001',
-                'fullName' => 'Administrator',
-                'position' => 'System Administrator',
-                'department' => 'Management',
-                'status' => 'active'
-            ]
-        ]);
-    } elseif ($departmentId === 'Operations') {
-        respondWithData([
-            [
-                'id' => 'emp_002',
-                'fullName' => 'Employee User',
-                'position' => 'Staff',
-                'department' => 'Operations',
-                'status' => 'active'
-            ]
-        ]);
-    } else {
-        respondWithData([]);
-    }
-}
-
-/**
- * Get employee performance
- */
-function getEmployeePerformance($params) {
-    // In a real implementation, calculate from database
-    
-    $employeeId = $params['employeeId'] ?? null;
-    
-    // Mock data
-    $performance = [
-        [
-            'employeeId' => 'emp_001',
-            'name' => 'Administrator',
-            'department' => 'Management',
-            'attendanceRate' => 98.5,
-            'punctualityRate' => 95.2,
-            'productivity' => 92,
-            'recentProjects' => 3,
-            'lastUpdated' => date('c')
-        ],
-        [
-            'employeeId' => 'emp_002',
-            'name' => 'Employee User',
-            'department' => 'Operations',
-            'attendanceRate' => 100.0,
-            'punctualityRate' => 85.7,
-            'productivity' => 88,
-            'recentProjects' => 2,
-            'lastUpdated' => date('c')
-        ]
-    ];
-    
-    if ($employeeId) {
-        $filtered = array_filter($performance, function($item) use ($employeeId) {
-            return $item['employeeId'] === $employeeId;
-        });
-        
-        respondWithData(array_values($filtered));
-    } else {
-        respondWithData($performance);
-    }
-}
-
-/**
- * Get payroll data
- */
-function getPayrollData($filters) {
-    // In a real implementation, fetch from database with filters
-    
-    // Mock data
-    respondWithData([
-        [
-            'id' => 'pay_001',
-            'employeeId' => 'emp_001',
-            'employeeName' => 'Administrator',
-            'periodStart' => '2025-07-01',
-            'periodEnd' => '2025-07-15',
-            'hourlyRate' => 25.00,
-            'regularHours' => 80,
-            'overtimeHours' => 5,
-            'regularPay' => 2000.00,
-            'overtimePay' => 187.50,
-            'grossPay' => 2187.50,
-            'taxAmount' => 437.50,
-            'netPay' => 1750.00,
-            'status' => 'paid',
-            'paidOn' => '2025-07-16',
-            'currency' => 'PHP',
-            'currencySymbol' => '₱'
-        ],
-        [
-            'id' => 'pay_002',
-            'employeeId' => 'emp_002',
-            'employeeName' => 'Employee User',
-            'periodStart' => '2025-07-01',
-            'periodEnd' => '2025-07-15',
-            'hourlyRate' => 15.00,
-            'regularHours' => 80,
-            'overtimeHours' => 0,
-            'regularPay' => 1200.00,
-            'overtimePay' => 0.00,
-            'grossPay' => 1200.00,
-            'taxAmount' => 240.00,
-            'netPay' => 960.00,
-            'status' => 'paid',
-            'paidOn' => '2025-07-16',
-            'currency' => 'PHP',
-            'currencySymbol' => '₱'
-        ]
-    ]);
-}
-
-/**
- * Calculate payroll
- */
-function calculatePayroll($data) {
-    // In a real implementation, calculate from attendance records
-    
-    // Check required fields
-    if (!isset($data['employeeId']) || !isset($data['startDate']) || !isset($data['endDate'])) {
-        respondWithError('Missing required fields', 400);
-        return;
-    }
-    
-    // Mock calculation
-    respondWithData([
-        'employeeId' => $data['employeeId'],
-        'employeeName' => ($data['employeeId'] === 'emp_001') ? 'Administrator' : 'Employee User',
-        'periodStart' => $data['startDate'],
-        'periodEnd' => $data['endDate'],
-        'hourlyRate' => ($data['employeeId'] === 'emp_001') ? 25.00 : 15.00,
-        'regularHours' => 80,
-        'overtimeHours' => ($data['employeeId'] === 'emp_001') ? 5 : 0,
-        'regularPay' => ($data['employeeId'] === 'emp_001') ? 2000.00 : 1200.00,
-        'overtimePay' => ($data['employeeId'] === 'emp_001') ? 187.50 : 0.00,
-        'grossPay' => ($data['employeeId'] === 'emp_001') ? 2187.50 : 1200.00,
-        'taxAmount' => ($data['employeeId'] === 'emp_001') ? 437.50 : 240.00,
-        'netPay' => ($data['employeeId'] === 'emp_001') ? 1750.00 : 960.00,
-        'daysWorked' => 10,
-        'daysLate' => ($data['employeeId'] === 'emp_001') ? 1 : 3,
-        'currency' => 'PHP',
-        'currencySymbol' => '₱',
-        'calculatedAt' => date('c')
-    ]);
-}
-
-/**
- * Get payroll history
- */
-function getPayrollHistory($filters) {
-    // This can use the same implementation as getPayrollData for now
-    getPayrollData($filters);
-}
-
-/**
- * Get settings
- */
-function getSettings() {
-    // In a real implementation, fetch from database
-    
-    // Mock data
-    respondWithData([
-        'company' => [
-            'name' => 'Bricks Company',
-            'workingHours' => 8,
-            'startTime' => '09:00',
-            'endTime' => '17:00'
-        ],
-        'payroll' => [
-            'standardWage' => 15.00,
-            'overtimeRate' => 1.5,
-            'minOvertimeHours' => 8,
-            'frequency' => 'biweekly',
-            'currency' => 'PHP',
-            'currencySymbol' => '₱',
-            'taxRate' => 0.20
-        ],
-        'preferences' => [
-            'theme' => 'auto',
-            'dateFormat' => 'YYYY-MM-DD',
-            'timeFormat' => '24'
-        ],
-        'departments' => [
-            'Management',
-            'Operations',
-            'Human Resources',
-            'Finance',
-            'IT'
-        ],
-        'lastUpdated' => date('c')
-    ]);
-}
-
-/**
- * Save settings
- */
-function saveSettings($data) {
-    // In a real implementation, validate and save to database
-    
-    // Mock data
-    $updatedSettings = array_merge([
-        'company' => [
-            'name' => 'Bricks Company',
-            'workingHours' => 8,
-            'startTime' => '09:00',
-            'endTime' => '17:00'
-        ],
-        'payroll' => [
-            'standardWage' => 15.00,
-            'overtimeRate' => 1.5,
-            'minOvertimeHours' => 8,
-            'frequency' => 'biweekly',
-            'currency' => 'PHP',
-            'currencySymbol' => '₱',
-            'taxRate' => 0.20
-        ],
-        'preferences' => [
-            'theme' => 'auto',
-            'dateFormat' => 'YYYY-MM-DD',
-            'timeFormat' => '24'
-        ],
-        'departments' => [
-            'Management',
-            'Operations',
-            'Human Resources',
-            'Finance',
-            'IT'
-        ]
-    ], $data, [
-        'lastUpdated' => date('c')
-    ]);
-    
-    respondWithData($updatedSettings);
-}
-
-/**
- * Get overtime requests
- */
-function getOvertimeRequests($filters) {
-    // In a real implementation, fetch from database with filters
-    
-    // Mock data
-    respondWithData([
-        [
-            'id' => 'ot_001',
-            'employeeId' => 'emp_001',
-            'employeeName' => 'Administrator',
-            'date' => date('Y-m-d'),
-            'hours' => 2.5,
-            'reason' => 'Project deadline',
-            'status' => 'approved',
-            'approvedBy' => 'admin',
-            'requestedAt' => date('c', strtotime('-1 day'))
-        ],
-        [
-            'id' => 'ot_002',
-            'employeeId' => 'emp_002',
-            'employeeName' => 'Employee User',
-            'date' => date('Y-m-d'),
-            'hours' => 1.5,
-            'reason' => 'System maintenance',
-            'status' => 'pending',
-            'requestedAt' => date('c')
-        ]
-    ]);
-}
-
-/**
- * Get system status
- */
-function getSystemStatus() {
-    // In a real implementation, fetch actual system metrics
-    
-    // Mock data
-    respondWithData([
-        'server' => [
-            'status' => 'online',
-            'uptime' => '99.9%',
-            'lastRestart' => date('c', strtotime('-1 day'))
-        ],
-        'database' => [
-            'status' => 'connected',
-            'size' => '2.5 GB',
-            'lastBackup' => date('c', strtotime('-1 hour'))
-        ],
-        'backup' => [
-            'status' => 'active',
-            'lastBackup' => date('c', strtotime('-1 hour')),
-            'nextBackup' => date('c', strtotime('+1 hour'))
-        ],
-        'users' => [
-            'total' => 2,
-            'active' => 2,
-            'online' => 1
-        ],
-        'version' => '2.0.0',
-        'lastUpdated' => date('c')
-    ]);
-}
-
-/**
- * Response helpers
- */
-
-/**
- * Send JSON response with data
- */
-function respondWithData($data) {
-    echo json_encode($data);
-    exit;
-}
-
-/**
- * Send JSON response with error
- */
-function respondWithError($message, $statusCode = 400) {
-    http_response_code($statusCode);
-    echo json_encode([
-        'error' => true,
-        'message' => $message,
-        'code' => $statusCode
-    ]);
-    exit;
-}
-
-/**
- * Get mock settings (for testing)
- */
-function getMockSettings() {
-    return [
-        'company' => [
-            'name' => 'Bricks Company',
-            'workingHours' => 8,
-            'startTime' => '09:00',
-            'endTime' => '17:00'
-        ],
-        'payroll' => [
-            'standardWage' => 15.00,
-            'overtimeRate' => 1.5,
-            'minOvertimeHours' => 8,
-            'frequency' => 'biweekly',
-            'currency' => 'PHP',
-            'currencySymbol' => '₱',
-            'taxRate' => 0.20
-        ],
-        'preferences' => [
-            'theme' => 'auto',
-            'dateFormat' => 'YYYY-MM-DD',
-            'timeFormat' => '24'
-        ],
-        'departments' => [
-            'Management',
-            'Operations',
-            'Human Resources',
-            'Finance',
-            'IT'
-        ],
-        'lastUpdated' => date('c')
-    ];
-}
-
-/**
- * Get Philippine holidays
- */
-function getPhilippineHolidays($year) {
-    // In a real implementation, fetch from database or external API
-    
-    // Mock data
-    $holidays = [
-        [
-            'date' => "{$year}-01-01",
-            'name' => 'New Year\'s Day',
-            'type' => 'regular'
-        ],
-        [
-            'date' => "{$year}-04-09",
-            'name' => 'Araw ng Kagitingan',
-            'type' => 'regular'
-        ],
-        [
-            'date' => "{$year}-05-01",
-            'name' => 'Labor Day',
-            'type' => 'regular'
-        ],
-        [
-            'date' => "{$year}-06-12",
-            'name' => 'Independence Day',
-            'type' => 'regular'
-        ],
-        [
-            'date' => "{$year}-08-28",
-            'name' => 'National Heroes Day',
-            'type' => 'regular'
-        ],
-        [
-            'date' => "{$year}-11-30",
-            'name' => 'Bonifacio Day',
-            'type' => 'regular'
-        ],
-        [
-            'date' => "{$year}-12-25",
-            'name' => 'Christmas Day',
-            'type' => 'regular'
-        ],
-        [
-            'date' => "{$year}-12-30",
-            'name' => 'Rizal Day',
-            'type' => 'regular'
-        ],
-        [
-            'date' => "{$year}-02-25",
-            'name' => 'EDSA People Power Revolution Anniversary',
-            'type' => 'special'
-        ],
-        [
-            'date' => "{$year}-04-14",
-            'name' => 'Black Saturday',
-            'type' => 'special'
-        ],
-        [
-            'date' => "{$year}-04-15",
-            'name' => 'Easter Sunday',
-            'type' => 'special'
-        ],
-        [
-            'date' => "{$year}-11-01",
-            'name' => 'All Saints\' Day',
-            'type' => 'special'
-        ],
-        [
-            'date' => "{$year}-11-02",
-            'name' => 'All Souls\' Day',
-            'type' => 'special'
-        ],
-        [
-            'date' => "{$year}-12-31",
-            'name' => 'New Year\'s Eve',
-            'type' => 'special'
-        ]
-    ];
-    
-    respondWithData($holidays);
 }
