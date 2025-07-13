@@ -88,6 +88,13 @@
                             <span class="nav-indicator"></span>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a href="employee.html#security" class="nav-link" data-page="security" title="Change username and password">
+                            <span class="nav-icon">🔐</span>
+                            <span class="nav-text">Security</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </li>
                     <li class="nav-item nav-item-dropdown" id="timeTrackingDropdown">
                         <a href="#" class="nav-link nav-dropdown-toggle" 
                            title="Time tracking tools"
@@ -394,6 +401,107 @@
                     </div>
                 </div>
             </section>
+
+            <!-- Security Section -->
+            <section class="security-section" id="security-section" style="display: none;">
+                <div class="section-header">
+                    <h2>Account Security</h2>
+                    <p>Manage your login credentials and account security settings</p>
+                </div>
+                
+                <div class="tiles-grid grid-2">
+                    <!-- Change Username -->
+                    <div class="tile">
+                        <div class="tile-header">
+                            <h3 class="tile-title">Change Username</h3>
+                            <span class="tile-icon">👤</span>
+                        </div>
+                        <div class="tile-content">
+                            <form class="security-form" id="username-form">
+                                <div class="form-group">
+                                    <label for="current-username" class="form-label">Current Username</label>
+                                    <input type="text" id="current-username" name="current-username" class="form-input" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-username" class="form-label">New Username</label>
+                                    <input type="text" id="new-username" name="new-username" class="form-input" placeholder="Enter new username" required>
+                                    <div class="form-help">Username must be at least 3 characters long</div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="confirm-password-username" class="form-label">Confirm Password</label>
+                                    <input type="password" id="confirm-password-username" name="confirm-password-username" class="form-input" placeholder="Enter your current password" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <span class="btn-icon">💾</span>
+                                    Update Username
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Change Password -->
+                    <div class="tile">
+                        <div class="tile-header">
+                            <h3 class="tile-title">Change Password</h3>
+                            <span class="tile-icon">🔐</span>
+                        </div>
+                        <div class="tile-content">
+                            <form class="security-form" id="password-form">
+                                <div class="form-group">
+                                    <label for="current-password" class="form-label">Current Password</label>
+                                    <input type="password" id="current-password" name="current-password" class="form-input" placeholder="Enter current password" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-password" class="form-label">New Password</label>
+                                    <input type="password" id="new-password" name="new-password" class="form-input" placeholder="Enter new password" required>
+                                    <div class="form-help">Password must be at least 6 characters long</div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="confirm-password" class="form-label">Confirm New Password</label>
+                                    <input type="password" id="confirm-password" name="confirm-password" class="form-input" placeholder="Confirm new password" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <span class="btn-icon">🔒</span>
+                                    Update Password
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Security Information -->
+                <div class="tile">
+                    <div class="tile-header">
+                        <h3 class="tile-title">Security Information</h3>
+                        <span class="tile-icon">ℹ️</span>
+                    </div>
+                    <div class="tile-content">
+                        <div class="security-info">
+                            <div class="info-item">
+                                <strong>Last Password Change:</strong>
+                                <span id="last-password-change">Never</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>Account Created:</strong>
+                                <span id="account-created">--</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>Login Attempts:</strong>
+                                <span id="login-attempts">--</span>
+                            </div>
+                        </div>
+                        <div class="security-tips">
+                            <h4>Security Tips:</h4>
+                            <ul>
+                                <li>Use a strong, unique password</li>
+                                <li>Change your password regularly</li>
+                                <li>Don't share your login credentials</li>
+                                <li>Log out when using shared computers</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -519,6 +627,7 @@
     <script src="js/unified-employee-manager.js"></script>
     <script src="js/data-manager.js"></script>
     <script src="js/global-system-sync.js"></script>
+    <script src="js/unified-account-manager.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/theme.js"></script>
     <script src="js/charts.js"></script>
@@ -1547,6 +1656,127 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
+
+        /* Security Section Styles */
+        .security-section {
+            padding: var(--spacing-lg) 0;
+        }
+
+        .security-section .section-header {
+            margin-bottom: var(--spacing-lg);
+            text-align: center;
+        }
+
+        .security-section .section-header h2 {
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .security-section .section-header p {
+            color: var(--text-secondary);
+            font-size: var(--font-size-sm);
+        }
+
+        .security-form {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .security-form .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+        }
+
+        .security-form .form-label {
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            font-size: var(--font-size-sm);
+        }
+
+        .security-form .form-input {
+            padding: var(--spacing-sm);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-sm);
+            font-size: var(--font-size-sm);
+            transition: border-color 0.2s ease;
+        }
+
+        .security-form .form-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(var(--accent-primary-rgb), 0.1);
+        }
+
+        .security-form .form-input[readonly] {
+            background-color: var(--bg-secondary);
+            color: var(--text-secondary);
+        }
+
+        .security-form .form-help {
+            font-size: var(--font-size-xs);
+            color: var(--text-secondary);
+            margin-top: var(--spacing-xs);
+        }
+
+        .security-info {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .security-info .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-sm);
+            background-color: var(--bg-secondary);
+            border-radius: var(--border-radius-sm);
+            font-size: var(--font-size-sm);
+        }
+
+        .security-tips {
+            background-color: var(--bg-tertiary);
+            padding: var(--spacing-md);
+            border-radius: var(--border-radius-sm);
+            border-left: 4px solid var(--accent-primary);
+        }
+
+        .security-tips h4 {
+            margin-bottom: var(--spacing-sm);
+            color: var(--text-primary);
+            font-size: var(--font-size-sm);
+        }
+
+        .security-tips ul {
+            margin: 0;
+            padding-left: var(--spacing-md);
+        }
+
+        .security-tips li {
+            margin-bottom: var(--spacing-xs);
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        /* Grid layout for security forms */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: var(--spacing-lg);
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            
+            .security-form .form-input {
+                font-size: 16px; /* Prevent zoom on iOS */
+            }
+        }
     </style>
 
     <!-- Employee Page Initialization Script -->
@@ -1899,6 +2129,19 @@
                         this.logout();
                     });
                 }
+
+                // Navigation links
+                const navLinks = document.querySelectorAll('.nav-link[data-page]');
+                navLinks.forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const page = link.getAttribute('data-page');
+                        this.navigateToSection(page);
+                    });
+                });
+
+                // Security form handlers
+                this.setupSecurityForms();
 
                 // Setup mobile menu and UI interactions
                 this.setupMobileInteractions();
@@ -2717,6 +2960,307 @@
                     clearInterval(this.refreshInterval);
                 }
             }
+
+            /**
+             * Navigate to different sections
+             */
+            navigateToSection(section) {
+                // Hide main content sections for non-main pages
+                const pageHeader = document.querySelector('.page-header');
+                const quickActions = document.querySelector('.quick-actions');
+                const tilesGrids = document.querySelectorAll('.tiles-grid');
+                const chartsSection = document.querySelector('.charts-section');
+                const securitySection = document.getElementById('security-section');
+                
+                if (section === 'security') {
+                    // Hide all main content sections
+                    if (pageHeader) pageHeader.style.display = 'none';
+                    if (quickActions) quickActions.style.display = 'none';
+                    
+                    // Hide only main dashboard tiles-grids, not the one inside security section
+                    tilesGrids.forEach(grid => {
+                        if (grid && !grid.closest('#security-section')) {
+                            grid.style.display = 'none';
+                        }
+                    });
+                    
+                    if (chartsSection) chartsSection.style.display = 'none';
+                    
+                    // Show security section
+                    if (securitySection) {
+                        securitySection.style.display = 'block';
+                        this.loadSecurityInfo();
+                    }
+                } else {
+                    // Show main sections for default view (dashboard)
+                    if (pageHeader) pageHeader.style.display = 'block';
+                    if (quickActions) quickActions.style.display = 'block';
+                    tilesGrids.forEach(grid => {
+                        if (grid && !grid.closest('#security-section')) {
+                            grid.style.display = 'block';
+                        }
+                    });
+                    if (chartsSection) chartsSection.style.display = 'block';
+                    
+                    // Hide security section
+                    if (securitySection) {
+                        securitySection.style.display = 'none';
+                    }
+                }
+
+                // Update navigation active state
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.classList.remove('active');
+                });
+                
+                if (section && section !== 'dashboard') {
+                    const targetLink = document.querySelector(`[data-page="${section}"]`);
+                    if (targetLink) {
+                        targetLink.classList.add('active');
+                    }
+                } else {
+                    // Default to dashboard (first nav link) if no specific section
+                    const dashboardLink = document.querySelector('.nav-link:first-child');
+                    if (dashboardLink) {
+                        dashboardLink.classList.add('active');
+                    }
+                }
+            }
+
+            /**
+             * Setup security form handlers
+             */
+            setupSecurityForms() {
+                // Username form
+                const usernameForm = document.getElementById('username-form');
+                if (usernameForm) {
+                    usernameForm.addEventListener('submit', (e) => this.handleUsernameChange(e));
+                }
+
+                // Password form
+                const passwordForm = document.getElementById('password-form');
+                if (passwordForm) {
+                    passwordForm.addEventListener('submit', (e) => this.handlePasswordChange(e));
+                }
+            }
+
+            /**
+             * Load current security information
+             */
+            async loadSecurityInfo() {
+                try {
+                    // Get current user info from multiple sources
+                    let currentUser = this.currentUser;
+                    
+                    // Fallback to auth service if currentUser is not available
+                    if (!currentUser && window.authService && window.authService.isAuthenticated()) {
+                        currentUser = window.authService.getCurrentUser();
+                    }
+                    
+                    // Fallback to localStorage
+                    if (!currentUser) {
+                        const authKey = localStorage.getItem('bricks_auth_user') ? 'bricks_auth_user' : 'currentUser';
+                        const userData = localStorage.getItem(authKey);
+                        if (userData) {
+                            try {
+                                currentUser = JSON.parse(userData);
+                            } catch (error) {
+                                console.warn('Failed to parse user data from localStorage:', error);
+                            }
+                        }
+                    }
+                    
+                    // Update current username field
+                    const currentUsernameInput = document.getElementById('current-username');
+                    if (currentUsernameInput && currentUser && currentUser.username) {
+                        currentUsernameInput.value = currentUser.username;
+                        console.log('Loaded current username:', currentUser.username);
+                    } else {
+                        console.warn('Could not load current username - user data not available');
+                    }
+
+                    // Update security info if account manager is available
+                    if (window.unifiedAccountManager && window.unifiedAccountManager.initialized && currentUser && currentUser.username) {
+                        const account = window.unifiedAccountManager.getAccount(currentUser.username);
+                        if (account) {
+                            const lastPasswordElement = document.getElementById('last-password-change');
+                            const accountCreatedElement = document.getElementById('account-created');
+                            
+                            if (lastPasswordElement) {
+                                lastPasswordElement.textContent = 
+                                    account.passwordChangedAt ? new Date(account.passwordChangedAt).toLocaleDateString() : 'Never';
+                            }
+                            
+                            if (accountCreatedElement) {
+                                accountCreatedElement.textContent = 
+                                    new Date(account.createdAt).toLocaleDateString();
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Failed to load security info:', error);
+                }
+            }
+
+            /**
+             * Handle username change
+             */
+            async handleUsernameChange(e) {
+                e.preventDefault();
+                
+                try {
+                    const formData = new FormData(e.target);
+                    const newUsername = formData.get('new-username');
+                    const confirmPassword = formData.get('confirm-password-username');
+
+                    if (!newUsername || newUsername.trim().length < 3) {
+                        this.showError('Username must be at least 3 characters long');
+                        return;
+                    }
+
+                    if (!confirmPassword) {
+                        this.showError('Please enter your current password to confirm');
+                        return;
+                    }
+
+                    // Check if account manager is available
+                    if (!window.unifiedAccountManager) {
+                        this.showError('Account management system is not available. Please refresh the page and try again.');
+                        return;
+                    }
+
+                    if (!window.unifiedAccountManager.initialized) {
+                        this.showError('Account management system is still initializing. Please wait a moment and try again.');
+                        return;
+                    }
+
+                    const trimmedUsername = newUsername.trim();
+
+                    // Validate current password first
+                    const authResult = await window.unifiedAccountManager.authenticate(
+                        this.currentUser.username, 
+                        confirmPassword
+                    );
+
+                    if (!authResult.success) {
+                        this.showError('Current password is incorrect');
+                        return;
+                    }
+
+                    // Check if new username is available
+                    const existingAccount = window.unifiedAccountManager.getAccount(trimmedUsername);
+                    if (existingAccount) {
+                        this.showError('Username already exists');
+                        return;
+                    }
+
+                    // Update username
+                    const account = window.unifiedAccountManager.getAccount(this.currentUser.username);
+                    if (account) {
+                        const oldUsername = this.currentUser.username;
+                        
+                        // Update account in unified account manager
+                        account.username = trimmedUsername;
+                        account.updatedAt = new Date().toISOString();
+                        window.unifiedAccountManager.saveAccounts();
+                        
+                        // Update current user info
+                        this.currentUser.username = trimmedUsername;
+                        
+                        // Update authentication data in localStorage
+                        if (window.authService && window.authService.getCurrentUser()) {
+                            // Update auth service using the correct method
+                            const updateResult = window.authService.updateUserData({ username: trimmedUsername });
+                            if (!updateResult) {
+                                console.warn('Failed to update auth service user data');
+                            }
+                        }
+                        
+                        // Update localStorage directly as fallback
+                        const authKey = localStorage.getItem('bricks_auth_user') ? 'bricks_auth_user' : 'currentUser';
+                        if (localStorage.getItem(authKey)) {
+                            try {
+                                const userData = JSON.parse(localStorage.getItem(authKey));
+                                userData.username = trimmedUsername;
+                                localStorage.setItem(authKey, JSON.stringify(userData));
+                            } catch (error) {
+                                console.warn('Failed to update localStorage auth data:', error);
+                            }
+                        }
+                        
+                        this.showSuccess('Username updated successfully! Please log in with your new username.');
+                        e.target.reset();
+                        
+                        // Logout after a delay
+                        setTimeout(() => {
+                            this.logout();
+                        }, 2000);
+                    }
+
+                } catch (error) {
+                    console.error('Username change failed:', error);
+                    this.showError('Failed to update username: ' + error.message);
+                }
+            }
+
+            /**
+             * Handle password change
+             */
+            async handlePasswordChange(e) {
+                e.preventDefault();
+                
+                try {
+                    const formData = new FormData(e.target);
+                    const currentPassword = formData.get('current-password');
+                    const newPassword = formData.get('new-password');
+                    const confirmPassword = formData.get('confirm-password');
+
+                    if (!currentPassword || !newPassword || !confirmPassword) {
+                        this.showError('Please fill in all password fields');
+                        return;
+                    }
+
+                    if (newPassword.length < 6) {
+                        this.showError('New password must be at least 6 characters long');
+                        return;
+                    }
+
+                    if (newPassword !== confirmPassword) {
+                        this.showError('New passwords do not match');
+                        return;
+                    }
+
+                    // Check if account manager is available
+                    if (!window.unifiedAccountManager) {
+                        this.showError('Account management system is not available. Please refresh the page and try again.');
+                        return;
+                    }
+
+                    if (!window.unifiedAccountManager.initialized) {
+                        this.showError('Account management system is still initializing. Please wait a moment and try again.');
+                        return;
+                    }
+
+                    // Change password using account manager
+                    const result = await window.unifiedAccountManager.changePassword(
+                        this.currentUser.username,
+                        currentPassword,
+                        newPassword
+                    );
+
+                    if (result.success) {
+                        this.showSuccess('Password updated successfully!');
+                        e.target.reset();
+                        this.loadSecurityInfo(); // Refresh security info
+                    } else {
+                        this.showError(result.message || 'Failed to update password');
+                    }
+
+                } catch (error) {
+                    console.error('Password change failed:', error);
+                    this.showError('Failed to update password: ' + error.message);
+                }
+            }
         }
 
         // Initialize employee page when DOM is ready
@@ -2724,8 +3268,22 @@
             console.log('DOM loaded, initializing employee page...');
             
             try {
-                // Create global employee page instance
+                // Create global employee page instance first
                 window.employeePage = new EmployeePage();
+                
+                // Try to initialize unified account manager
+                try {
+                    if (typeof UnifiedAccountManager !== 'undefined') {
+                        window.unifiedAccountManager = new UnifiedAccountManager();
+                        window.unifiedAccountManager.initialize();
+                        console.log('Unified Account Manager initialized');
+                    } else {
+                        console.warn('UnifiedAccountManager not available - Security features may be limited');
+                    }
+                } catch (accountError) {
+                    console.error('Failed to initialize Account Manager:', accountError);
+                    console.log('Continuing without account manager - Security features will be limited');
+                }
                 
                 // Update current time immediately and then every second
                 window.employeePage.updateCurrentTime();

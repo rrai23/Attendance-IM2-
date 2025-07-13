@@ -64,6 +64,13 @@ class SidebarManager {
                     icon: '👤',
                     url: '/employee.html',
                     description: 'Personal attendance data'
+                },
+                {
+                    id: 'security',
+                    label: 'Security',
+                    icon: '🔐',
+                    url: '/employee.html#security',
+                    description: 'Change username and password'
                 }
             ]
         };
@@ -464,7 +471,13 @@ class SidebarManager {
         const link = event.currentTarget;
         const page = link.dataset.page;
         
-        // Don't prevent default for actual navigation
+        // Check if there's a page-specific navigation handler
+        if (window.employeePage && typeof window.employeePage.navigateToSection === 'function') {
+            event.preventDefault();
+            window.employeePage.navigateToSection(page);
+        }
+        
+        // Don't prevent default for actual navigation to other pages
         // Just update active state and trigger page change
         this.setActivePage(page);
         
