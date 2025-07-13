@@ -873,18 +873,35 @@ a:hover {
   top: var(--spacing-lg);
   right: var(--spacing-lg);
   display: flex;
+  align-items: center;
   background-color: var(--bg-tertiary);
   border-radius: var(--radius-md);
-  padding: 2px;
+  padding: var(--spacing-xs);
 }
 
-.login-theme-toggle .theme-option {
-  padding: 6px 8px;
+.login-theme-toggle .theme-toggle-switch {
+  width: 50px;
+  height: 28px;
 }
 
-.login-theme-toggle .theme-icon {
-  width: 16px;
-  height: 16px;
+.login-theme-toggle .theme-toggle-slider {
+  padding: 3px;
+}
+
+.login-theme-toggle .theme-toggle-slider:before {
+  height: 20px;
+  width: 20px;
+  left: 3px;
+}
+
+.login-theme-toggle .theme-toggle-input:checked + .theme-toggle-slider:before {
+  transform: translateX(22px);
+}
+
+.login-theme-toggle .theme-icon-light,
+.login-theme-toggle .theme-icon-dark {
+  width: 12px;
+  height: 12px;
 }
 
 .login-brand {

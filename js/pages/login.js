@@ -22,6 +22,7 @@ class LoginPage {
 
         this.setupEventListeners();
         this.setupFloatingLabels();
+        this.setupThemeToggle();
         this.focusFirstInput();
     }
 
@@ -381,6 +382,119 @@ class LoginPage {
         
         // Proceed with login
         await this.handleLogin(e);
+    }
+
+    /**
+     * Setup theme toggle functionality
+     */
+    setupThemeToggle() {
+        const themeToggle = document.querySelector('#login-theme-toggle');
+        
+        if (themeToggle) {
+            // Set initial state based on current theme
+            this.syncThemeToggle();
+            
+            // Add event listener for theme changes
+            themeToggle.addEventListener('change', (e) => {
+                const theme = e.target.checked ? 'dark' : 'light';
+                this.handleThemeChange(theme);
+            });
+        }
+    }
+
+    /**
+     * Sync theme toggle with current theme
+     */
+    syncThemeToggle() {
+        try {
+            let currentTheme = 'light'; // default
+            
+            // Get current theme from various sources
+            if (typeof themeManager !== 'undefined' && themeManager.getCurrentTheme) {
+                currentTheme = themeManager.getCurrentTheme();
+            } else if (document.documentElement.hasAttribute('data-theme')) {
+                currentTheme = document.documentElement.getAttribute('data-theme');
+            } else {
+                // Check localStorage for saved theme
+                const savedTheme = localStorage.getItem('bricks_theme') || localStorage.getItem('theme');
+                if (savedTheme) {
+                    currentTheme = savedTheme;
+                }
+            }
+            
+            // Update theme toggle
+            const themeToggle = document.querySelector('#login-theme-toggle');
+            if (themeToggle) {
+                themeToggle.checked = currentTheme === 'dark';
+            }
+            
+        } catch (error) {
+            console.warn('Error syncing theme toggle:', error);
+        }
+    }
+
+    /**
+     * Handle theme change
+     */
+    handleThemeChange(theme) {
+        console.log('Login page theme change requested:', theme);
+        
+        // Try multiple ways to change theme
+        let themeChanged = false;
+        
+        // Method 1: Use window.setTheme if available
+        if (typeof window.setTheme === 'function') {
+            try {
+                window.setTheme(theme);
+                themeChanged = true;
+                console.log('Theme changed using window.setTheme');
+            } catch (error) {
+                console.error('Error using window.setTheme:', error);
+            }
+        }
+        
+        // Method 2: Use themeManager directly if available
+        if (!themeChanged && typeof window.themeManager !== 'undefined' && window.themeManager.setTheme) {
+            try {
+                window.themeManager.setTheme(theme);
+                themeChanged = true;
+                console.log('Theme changed using themeManager.setTheme');
+            } catch (error) {
+                console.error('Error using themeManager.setTheme:', error);
+            }
+        }
+        
+        // Method 3: Manual theme change as fallback
+        if (!themeChanged) {
+            try {
+                document.documentElement.setAttribute('data-theme', theme);
+                document.body.className = theme === 'dark' ? 'dark-theme page-login' : 'page-login';
+                
+                // Save theme to localStorage
+                localStorage.setItem('bricks_theme', theme);
+                
+                themeChanged = true;
+                console.log('Theme changed manually on login page');
+            } catch (error) {
+                console.error('Error changing theme manually:', error);
+            }
+        }
+        
+        if (themeChanged) {
+            // Update theme toggle state
+            const themeToggle = document.querySelector('#login-theme-toggle');
+            if (themeToggle) {
+                themeToggle.checked = theme === 'dark';
+            }
+            
+            console.log(`Login page theme successfully changed to: ${theme}`);
+            
+            // Trigger custom event for other components
+            const event = new CustomEvent('themeChanged', { detail: theme });
+            document.dispatchEvent(event);
+        } else {
+            console.warn('Failed to change theme on login page');
+        }
     }
 }
 
