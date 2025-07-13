@@ -16,7 +16,8 @@ class UnifiedEmployeeManager {
         this.eventListeners = {
             employeeUpdate: [],
             attendanceUpdate: [],
-            dataSync: []
+            dataSync: [],
+            settingsUpdate: []
         };
         
         // Don't auto-initialize in constructor - let the global init function handle it
@@ -1615,6 +1616,69 @@ class UnifiedEmployeeManager {
         });
         
         return result;
+    }
+
+    /**
+     * Save application settings
+     */
+    async saveSettings(settings) {
+        try {
+            console.log('Saving settings through unified manager...');
+            
+            // Store settings with a consistent key
+            localStorage.setItem('attendance-settings', JSON.stringify(settings));
+            
+            // Also store in the unified data structure for consistency
+            const unifiedData = JSON.parse(localStorage.getItem(this.storageKey) || '{}');
+            unifiedData.settings = settings;
+            localStorage.setItem(this.storageKey, JSON.stringify(unifiedData));
+            
+            // Emit settings update event
+            this.emit('settingsUpdate', { 
+                action: 'save', 
+                settings: settings,
+                timestamp: new Date().toISOString()
+            });
+            
+            console.log('Settings saved successfully through unified manager');
+            return { success: true, message: 'Settings saved successfully' };
+        } catch (error) {
+            console.error('Failed to save settings:', error);
+            return { success: false, message: 'Failed to save settings: ' + error.message };
+        }
+    }
+
+    /**
+     * Get application settings
+     */
+    async getSettings() {
+        try {
+            const settingsData = localStorage.getItem('attendance-settings');
+            if (settingsData) {
+                return { success: true, data: JSON.parse(settingsData) };
+            }
+            
+            // Fallback to unified data structure
+            const unifiedData = JSON.parse(localStorage.getItem(this.storageKey) || '{}');
+            if (unifiedData.settings) {
+                return { success: true, data: unifiedData.settings };
+            }
+            
+            return { success: true, data: null };
+        } catch (error) {
+            console.error('Failed to get settings:', error);
+            return { success: false, message: 'Failed to load settings: ' + error.message };
+        }
+    }
+
+    /**
+     * Add event listener for settings updates
+     */
+    onSettingsUpdate(callback) {
+        if (!this.eventListeners.settingsUpdate) {
+            this.eventListeners.settingsUpdate = [];
+        }
+        this.eventListeners.settingsUpdate.push(callback);
     }
 }
 

@@ -119,14 +119,23 @@ class SettingsController {
      */
     async loadSettings() {
         try {
-            // Get settings from unified employee manager or create defaults
+            // Get settings from unified employee manager first
             let savedSettings = {};
             
             try {
-                // Check if unified manager has settings stored
-                const settingsData = localStorage.getItem('bricks-unified-settings');
-                if (settingsData) {
-                    savedSettings = JSON.parse(settingsData);
+                if (this.unifiedEmployeeManager && this.unifiedEmployeeManager.getSettings) {
+                    const result = await this.unifiedEmployeeManager.getSettings();
+                    if (result.success && result.data) {
+                        savedSettings = result.data;
+                        console.log('Settings loaded from unified manager:', savedSettings);
+                    }
+                } else {
+                    // Fallback to direct localStorage access with consistent key
+                    const settingsData = localStorage.getItem('attendance-settings');
+                    if (settingsData) {
+                        savedSettings = JSON.parse(settingsData);
+                        console.log('Settings loaded from localStorage fallback:', savedSettings);
+                    }
                 }
             } catch (error) {
                 console.warn('Failed to load saved settings, using defaults:', error);
@@ -338,6 +347,820 @@ class SettingsController {
                 return e.returnValue;
             }
         });
+    }
+
+    /**
+     * Setup unified data listeners for real-time updates
+     */
+    setupUnifiedDataListeners() {
+        try {
+            if (!this.unifiedEmployeeManager) {
+                console.warn('UnifiedEmployeeManager not available for data listeners');
+                return;
+            }
+
+            // Listen for employee data changes
+            this.unifiedEmployeeManager.addEventListener('employeeUpdate', (data) => {
+                console.log('Employee data updated, refreshing user stats');
+                this.loadUserStats();
+            });
+
+            // Listen for attendance data changes
+            this.unifiedEmployeeManager.addEventListener('attendanceUpdate', (data) => {
+                console.log('Attendance data updated, refreshing stats');
+                this.loadUserStats();
+            });
+
+            console.log('Unified data listeners setup successfully');
+        } catch (error) {
+            console.error('Error setting up unified data listeners:', error);
+        }
+    }
+
+    /**
+     * Show error message to user
+     */
+    showErrorMessage(message) {
+        try {
+            // Try to find existing notification container
+            let container = document.getElementById('notification-container');
+            
+            if (!container) {
+                // Create notification container if it doesn't exist
+                container = document.createElement('div');
+                container.id = 'notification-container';
+                container.className = 'notification-container';
+                container.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 10000;
+                    max-width: 400px;
+                `;
+                document.body.appendChild(container);
+            }
+
+            // Create error notification
+            const notification = document.createElement('div');
+            notification.className = 'notification notification-error';
+            notification.style.cssText = `
+                background: #ff3b30;
+                color: white;
+                padding: 1rem;
+                border-radius: 8px;
+                margin-bottom: 10px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                animation: slideIn 0.3s ease;
+            `;
+
+            notification.innerHTML = `
+                <span style="font-size: 1.2em;">⚠️</span>
+                <span style="flex: 1;">${message}</span>
+                <button onclick="this.parentElement.remove()" style="
+                    background: none;
+                    border: none;
+                    color: white;
+                    font-size: 1.2em;
+                    cursor: pointer;
+                    padding: 0;
+                    margin-left: 10px;
+                ">&times;</button>
+            `;
+
+            container.appendChild(notification);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 5000);
+
+            console.error('Error message shown:', message);
+        } catch (error) {
+            console.error('Failed to show error message:', error);
+            // Fallback to alert
+            alert(message);
+        }
+    }
+
+    /**
+     * Mark form as dirty (has unsaved changes)
+     */
+    markDirty() {
+        if (this.isPopulating) {
+            return; // Don't mark dirty during form population
+        }
+        
+        this.isDirty = true;
+        
+        // Update save button state
+        const saveBtn = document.getElementById('save-settings-btn');
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Changes';
+            saveBtn.classList.add('btn-primary');
+            saveBtn.classList.remove('btn-secondary');
+        }
+
+        // Show unsaved changes indicator
+        this.showUnsavedIndicator();
+        
+        console.log('Form marked as dirty - unsaved changes detected');
+    }
+
+    /**
+     * Mark form as clean (no unsaved changes)
+     */
+    markClean() {
+        this.isDirty = false;
+        
+        // Update save button state
+        const saveBtn = document.getElementById('save-settings-btn');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saved';
+            saveBtn.classList.remove('btn-primary');
+            saveBtn.classList.add('btn-secondary');
+        }
+
+        // Hide unsaved changes indicator
+        this.hideUnsavedIndicator();
+        
+        console.log('Form marked as clean - all changes saved');
+    }
+
+    /**
+     * Show unsaved changes indicator
+     */
+    showUnsavedIndicator() {
+        // Add indicator to page title or create visual indicator
+        if (document.title && !document.title.includes('*')) {
+            document.title = '* ' + document.title;
+        }
+
+        // Add visual indicator to active tab if possible
+        const activeTab = document.querySelector('.settings-tab.active');
+        if (activeTab && !activeTab.querySelector('.unsaved-indicator')) {
+            const indicator = document.createElement('span');
+            indicator.className = 'unsaved-indicator';
+            indicator.textContent = ' *';
+            indicator.style.color = '#ff3b30';
+            indicator.style.fontWeight = 'bold';
+            activeTab.appendChild(indicator);
+        }
+    }
+
+    /**
+     * Hide unsaved changes indicator
+     */
+    hideUnsavedIndicator() {
+        // Remove indicator from page title
+        if (document.title.startsWith('* ')) {
+            document.title = document.title.substring(2);
+        }
+
+        // Remove visual indicators
+        const indicators = document.querySelectorAll('.unsaved-indicator');
+        indicators.forEach(indicator => indicator.remove());
+    }
+
+    /**
+     * Validate a specific form field
+     */
+    validateField(field) {
+        try {
+            if (!field) return true;
+
+            const fieldName = field.name || field.id;
+            const value = field.value;
+            let isValid = true;
+            let errorMessage = '';
+
+            // Remove existing error styling
+            field.classList.remove('error');
+            const existingError = field.parentNode.querySelector('.field-error');
+            if (existingError) {
+                existingError.remove();
+            }
+
+            // Validation rules based on field type and name
+            if (field.required && (!value || value.trim() === '')) {
+                isValid = false;
+                errorMessage = 'This field is required';
+            } else if (field.type === 'email' && value && !this.isValidEmail(value)) {
+                isValid = false;
+                errorMessage = 'Please enter a valid email address';
+            } else if (field.type === 'number' && value) {
+                const num = parseFloat(value);
+                if (isNaN(num)) {
+                    isValid = false;
+                    errorMessage = 'Please enter a valid number';
+                } else if (field.min && num < parseFloat(field.min)) {
+                    isValid = false;
+                    errorMessage = `Value must be at least ${field.min}`;
+                } else if (field.max && num > parseFloat(field.max)) {
+                    isValid = false;
+                    errorMessage = `Value must be no more than ${field.max}`;
+                }
+            }
+
+            // Show error if validation failed
+            if (!isValid) {
+                field.classList.add('error');
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'field-error';
+                errorDiv.style.cssText = 'color: #ff3b30; font-size: 0.875rem; margin-top: 4px;';
+                errorDiv.textContent = errorMessage;
+                field.parentNode.appendChild(errorDiv);
+                
+                this.validationErrors[fieldName] = errorMessage;
+            } else {
+                delete this.validationErrors[fieldName];
+            }
+
+            return isValid;
+        } catch (error) {
+            console.error('Error validating field:', error);
+            return true; // Don't block on validation errors
+        }
+    }
+
+    /**
+     * Check if email is valid
+     */
+    isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
+    /**
+     * Setup form validation
+     */
+    setupFormValidation() {
+        try {
+            // Add CSS for error styling
+            if (!document.getElementById('settings-validation-styles')) {
+                const style = document.createElement('style');
+                style.id = 'settings-validation-styles';
+                style.textContent = `
+                    .settings-form .form-input.error,
+                    .settings-form .form-select.error,
+                    .settings-form .form-textarea.error {
+                        border-color: #ff3b30;
+                        box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.1);
+                    }
+                    .field-error {
+                        color: #ff3b30;
+                        font-size: 0.875rem;
+                        margin-top: 4px;
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            console.log('Form validation setup completed');
+        } catch (error) {
+            console.error('Error setting up form validation:', error);
+        }
+    }
+
+    /**
+     * Setup auto-save functionality
+     */
+    setupAutoSave() {
+        try {
+            // Auto-save every 30 seconds if there are changes
+            this.autoSaveInterval = setInterval(() => {
+                if (this.isDirty && Object.keys(this.validationErrors).length === 0) {
+                    console.log('Auto-saving settings...');
+                    this.saveSettings(true); // true for silent save
+                }
+            }, 30000); // 30 seconds
+
+            console.log('Auto-save setup completed');
+        } catch (error) {
+            console.error('Error setting up auto-save:', error);
+        }
+    }
+
+    /**
+     * Handle user management actions
+     */
+    handleUserManagementActions() {
+        try {
+            // Add user button
+            const addUserBtn = document.getElementById('add-user-btn');
+            if (addUserBtn) {
+                addUserBtn.addEventListener('click', () => this.showAddUserDialog());
+            }
+
+            // Bulk actions
+            const bulkActionsBtn = document.getElementById('bulk-actions-btn');
+            if (bulkActionsBtn) {
+                bulkActionsBtn.addEventListener('click', () => this.showBulkActionsDialog());
+            }
+
+            // Export users button
+            const exportUsersBtn = document.getElementById('export-users-btn');
+            if (exportUsersBtn) {
+                exportUsersBtn.addEventListener('click', () => this.exportUsers());
+            }
+
+            // Import users button
+            const importUsersBtn = document.getElementById('import-users-btn');
+            if (importUsersBtn) {
+                importUsersBtn.addEventListener('click', () => this.showImportUsersDialog());
+            }
+
+            console.log('User management actions setup completed');
+        } catch (error) {
+            console.error('Error setting up user management actions:', error);
+        }
+    }
+
+    /**
+     * Show add user dialog
+     */
+    showAddUserDialog() {
+        try {
+            // Simple implementation - can be enhanced with a proper modal
+            const name = prompt('Enter user name:');
+            if (name) {
+                const email = prompt('Enter user email:');
+                if (email && this.isValidEmail(email)) {
+                    this.addUser({ name, email });
+                } else {
+                    this.showErrorMessage('Please enter a valid email address');
+                }
+            }
+        } catch (error) {
+            console.error('Error showing add user dialog:', error);
+            this.showErrorMessage('Failed to show add user dialog');
+        }
+    }
+
+    /**
+     * Add a new user
+     */
+    addUser(userData) {
+        try {
+            if (!this.unifiedEmployeeManager) {
+                this.showErrorMessage('Employee manager not available');
+                return;
+            }
+
+            // Use unified employee manager to add user
+            const result = this.unifiedEmployeeManager.addEmployee(userData);
+            if (result.success) {
+                console.log('User added successfully:', userData);
+                this.loadUserStats(); // Refresh stats
+            } else {
+                this.showErrorMessage('Failed to add user: ' + result.message);
+            }
+        } catch (error) {
+            console.error('Error adding user:', error);
+            this.showErrorMessage('Failed to add user: ' + error.message);
+        }
+    }
+
+    /**
+     * Show bulk actions dialog
+     */
+    showBulkActionsDialog() {
+        try {
+            // Simple implementation
+            const action = prompt('Enter bulk action (export, delete, activate, deactivate):');
+            if (action) {
+                this.performBulkAction(action);
+            }
+        } catch (error) {
+            console.error('Error showing bulk actions dialog:', error);
+            this.showErrorMessage('Failed to show bulk actions dialog');
+        }
+    }
+
+    /**
+     * Perform bulk action
+     */
+    performBulkAction(action) {
+        try {
+            console.log('Performing bulk action:', action);
+            // Implementation depends on specific requirements
+            this.showErrorMessage('Bulk actions feature coming soon');
+        } catch (error) {
+            console.error('Error performing bulk action:', error);
+            this.showErrorMessage('Failed to perform bulk action');
+        }
+    }
+
+    /**
+     * Export users
+     */
+    exportUsers() {
+        try {
+            if (!this.unifiedEmployeeManager) {
+                this.showErrorMessage('Employee manager not available');
+                return;
+            }
+
+            const employees = this.unifiedEmployeeManager.getAllEmployees();
+            const csvContent = this.convertToCSV(employees);
+            this.downloadCSV(csvContent, 'users-export.csv');
+        } catch (error) {
+            console.error('Error exporting users:', error);
+            this.showErrorMessage('Failed to export users');
+        }
+    }
+
+    /**
+     * Convert data to CSV format
+     */
+    convertToCSV(data) {
+        if (!data || data.length === 0) return '';
+        
+        const headers = Object.keys(data[0]);
+        const csvRows = [headers.join(',')];
+        
+        for (const row of data) {
+            const values = headers.map(header => {
+                const value = row[header];
+                return typeof value === 'string' ? `"${value.replace(/"/g, '""')}"` : value;
+            });
+            csvRows.push(values.join(','));
+        }
+        
+        return csvRows.join('\n');
+    }
+
+    /**
+     * Download CSV file
+     */
+    downloadCSV(csvContent, filename) {
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }
+
+    /**
+     * Show import users dialog
+     */
+    showImportUsersDialog() {
+        try {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.csv';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    this.importUsersFromFile(file);
+                }
+            };
+            input.click();
+        } catch (error) {
+            console.error('Error showing import dialog:', error);
+            this.showErrorMessage('Failed to show import dialog');
+        }
+    }
+
+    /**
+     * Import users from file
+     */
+    importUsersFromFile(file) {
+        try {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const csv = e.target.result;
+                const users = this.parseCSV(csv);
+                this.importUsers(users);
+            };
+            reader.readAsText(file);
+        } catch (error) {
+            console.error('Error importing users from file:', error);
+            this.showErrorMessage('Failed to import users from file');
+        }
+    }
+
+    /**
+     * Parse CSV content
+     */
+    parseCSV(csv) {
+        const lines = csv.split('\n');
+        const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+        const data = [];
+        
+        for (let i = 1; i < lines.length; i++) {
+            if (lines[i].trim()) {
+                const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
+                const obj = {};
+                headers.forEach((header, index) => {
+                    obj[header] = values[index] || '';
+                });
+                data.push(obj);
+            }
+        }
+        
+        return data;
+    }
+
+    /**
+     * Import multiple users
+     */
+    importUsers(users) {
+        try {
+            let successCount = 0;
+            let errorCount = 0;
+            
+            for (const user of users) {
+                try {
+                    const result = this.addUser(user);
+                    if (result !== false) {
+                        successCount++;
+                    } else {
+                        errorCount++;
+                    }
+                } catch (error) {
+                    errorCount++;
+                    console.error('Error importing user:', user, error);
+                }
+            }
+            
+            console.log(`Import completed: ${successCount} success, ${errorCount} errors`);
+            this.showErrorMessage(`Import completed: ${successCount} users imported, ${errorCount} errors`);
+        } catch (error) {
+            console.error('Error importing users:', error);
+            this.showErrorMessage('Failed to import users');
+        }
+    }
+
+    /**
+     * Save settings to storage
+     */
+    async saveSettings(silent = false) {
+        try {
+            if (!silent) {
+                console.log('Saving settings...');
+            }
+
+            // Collect form data
+            const formData = this.collectFormData();
+            
+            // Validate form data
+            const validationResult = this.validateFormData(formData);
+            if (!validationResult.isValid) {
+                this.showErrorMessage('Please fix validation errors before saving');
+                return false;
+            }
+
+            // Save to unified data service
+            if (this.unifiedEmployeeManager && this.unifiedEmployeeManager.saveSettings) {
+                const result = await this.unifiedEmployeeManager.saveSettings(formData);
+                if (!result.success) {
+                    throw new Error(result.message || 'Failed to save settings');
+                }
+            } else {
+                // Fallback to localStorage
+                localStorage.setItem('attendance-settings', JSON.stringify(formData));
+            }
+
+            // Update current settings
+            this.currentSettings = { ...formData };
+            this.markClean();
+
+            if (!silent) {
+                console.log('Settings saved successfully');
+                this.showSuccessMessage('Settings saved successfully');
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            this.showErrorMessage('Failed to save settings: ' + error.message);
+            return false;
+        }
+    }
+
+    /**
+     * Collect form data from all sections
+     */
+    collectFormData() {
+        const data = {};
+        
+        // Collect data from each section
+        const sections = ['general', 'payroll', 'attendance', 'notifications', 'security', 'theme'];
+        
+        for (const section of sections) {
+            data[section] = this.collectSectionData(section);
+        }
+        
+        return data;
+    }
+
+    /**
+     * Collect data from a specific section
+     */
+    collectSectionData(section) {
+        const sectionData = {};
+        const container = document.getElementById(`${section}-settings`);
+        
+        if (!container) return sectionData;
+        
+        // Find all form inputs in this section
+        const inputs = container.querySelectorAll('input, select, textarea');
+        
+        for (const input of inputs) {
+            const name = input.name || input.id;
+            if (!name) continue;
+            
+            // Extract property name from dotted field name (e.g., "general.companyName" -> "companyName")
+            const propertyName = name.includes('.') ? name.split('.').pop() : name;
+            
+            let value = input.value;
+            
+            // Handle different input types
+            if (input.type === 'checkbox') {
+                value = input.checked;
+            } else if (input.type === 'radio') {
+                if (input.checked) {
+                    sectionData[propertyName] = value;
+                }
+                continue;
+            } else if (input.type === 'number') {
+                value = parseFloat(value) || 0;
+            }
+            
+            sectionData[propertyName] = value;
+        }
+        
+        return sectionData;
+    }
+
+    /**
+     * Validate form data
+     */
+    validateFormData(data) {
+        const errors = [];
+        
+        // Add validation rules as needed
+        if (data.general && data.general.companyName && data.general.companyName.trim() === '') {
+            errors.push('Company name is required');
+        }
+        
+        if (data.notifications && data.notifications.emailAddress && data.notifications.emailAddress.trim() !== '') {
+            if (!this.isValidEmail(data.notifications.emailAddress)) {
+                errors.push('Valid email address is required for notifications');
+            }
+        }
+        
+        return {
+            isValid: errors.length === 0,
+            errors: errors
+        };
+    }
+
+    /**
+     * Show success message
+     */
+    showSuccessMessage(message) {
+        try {
+            let container = document.getElementById('notification-container');
+            
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'notification-container';
+                container.className = 'notification-container';
+                container.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 10000;
+                    max-width: 400px;
+                `;
+                document.body.appendChild(container);
+            }
+
+            const notification = document.createElement('div');
+            notification.className = 'notification notification-success';
+            notification.style.cssText = `
+                background: #34c759;
+                color: white;
+                padding: 1rem;
+                border-radius: 8px;
+                margin-bottom: 10px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                animation: slideIn 0.3s ease;
+            `;
+
+            notification.innerHTML = `
+                <span style="font-size: 1.2em;">✅</span>
+                <span style="flex: 1;">${message}</span>
+                <button onclick="this.parentElement.remove()" style="
+                    background: none;
+                    border: none;
+                    color: white;
+                    font-size: 1.2em;
+                    cursor: pointer;
+                    padding: 0;
+                    margin-left: 10px;
+                ">&times;</button>
+            `;
+
+            container.appendChild(notification);
+
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 3000);
+        } catch (error) {
+            console.error('Failed to show success message:', error);
+        }
+    }
+
+    /**
+     * Render missing sections if they don't exist
+     */
+    renderMissingSections() {
+        try {
+            // Check if main content area exists
+            const mainContent = document.querySelector('.main-content');
+            if (!mainContent) {
+                console.warn('Main content area not found');
+                return;
+            }
+
+            // List of expected sections
+            const expectedSections = [
+                { id: 'general-settings', title: 'General Settings' },
+                { id: 'payroll-settings', title: 'Payroll Settings' },
+                { id: 'attendance-settings', title: 'Attendance Settings' },
+                { id: 'notifications-settings', title: 'Notification Settings' },
+                { id: 'security-settings', title: 'Security Settings' },
+                { id: 'theme-settings', title: 'Theme Settings' }
+            ];
+
+            let missingSections = 0;
+
+            for (const section of expectedSections) {
+                if (!document.getElementById(section.id)) {
+                    this.createBasicSection(section.id, section.title);
+                    missingSections++;
+                }
+            }
+
+            if (missingSections > 0) {
+                console.log(`Created ${missingSections} missing sections`);
+            }
+        } catch (error) {
+            console.error('Error rendering missing sections:', error);
+        }
+    }
+
+    /**
+     * Create a basic section if it doesn't exist
+     */
+    createBasicSection(sectionId, title) {
+        try {
+            const mainContent = document.querySelector('.main-content');
+            if (!mainContent) return;
+
+            const section = document.createElement('div');
+            section.id = sectionId;
+            section.className = 'settings-section';
+            section.style.cssText = `
+                background: var(--bg-primary, #ffffff);
+                border: 1px solid var(--border-color, #e5e7eb);
+                border-radius: 8px;
+                padding: 1.5rem;
+                margin-bottom: 1.5rem;
+            `;
+
+            section.innerHTML = `
+                <h3 style="margin-bottom: 1rem; color: var(--text-primary, #1f2937);">${title}</h3>
+                <div class="settings-content">
+                    <p style="color: var(--text-secondary, #6b7280); font-style: italic;">
+                        This section is dynamically created. Add specific settings as needed.
+                    </p>
+                </div>
+            `;
+
+            mainContent.appendChild(section);
+            console.log(`Created basic section: ${sectionId}`);
+        } catch (error) {
+            console.error(`Error creating section ${sectionId}:`, error);
+        }
     }
 
     /**
@@ -554,46 +1377,49 @@ class SettingsController {
         
         console.log(`Populating ${section} fields with:`, data);
         
-        Object.keys(data).forEach(key => {
+        // Handle nested data structure (e.g., if data.general exists within data)
+        const actualData = data[section] || data;
+        
+        Object.keys(actualData).forEach(key => {
             const fieldName = `${section}.${key}`;
             const field = document.querySelector(`[name="${fieldName}"]`);
             
             if (field) {
-                console.log(`Setting field ${fieldName} to:`, data[key]);
+                console.log(`Setting field ${fieldName} to:`, actualData[key]);
                 
                 if (field.type === 'checkbox') {
-                    field.checked = Boolean(data[key]);
+                    field.checked = Boolean(actualData[key]);
                 } else if (field.type === 'radio') {
-                    const radioField = document.querySelector(`[name="${fieldName}"][value="${data[key]}"]`);
+                    const radioField = document.querySelector(`[name="${fieldName}"][value="${actualData[key]}"]`);
                     if (radioField) radioField.checked = true;
                 } else if (field.tagName === 'SELECT') {
                     // Handle select elements specially
-                    console.log(`Setting select ${fieldName} to value: ${data[key]}`);
+                    console.log(`Setting select ${fieldName} to value: ${actualData[key]}`);
                     
                     // First, clear any existing selection
                     Array.from(field.options).forEach(option => option.selected = false);
                     
                     // Try to find and select the correct option
-                    const option = field.querySelector(`option[value="${data[key]}"]`);
+                    const option = field.querySelector(`option[value="${actualData[key]}"]`);
                     if (option) {
-                        field.value = data[key];
+                        field.value = actualData[key];
                         option.selected = true;
-                        console.log(`✅ Successfully set select ${fieldName} to ${data[key]}`);
+                        console.log(`✅ Successfully set select ${fieldName} to ${actualData[key]}`);
                     } else {
-                        console.warn(`⚠️ Option not found for ${fieldName} with value: ${data[key]}`);
+                        console.warn(`⚠️ Option not found for ${fieldName} with value: ${actualData[key]}`);
                         console.log('Available options:', Array.from(field.options).map(opt => opt.value));
                         
                         // Create the missing option
                         const newOption = document.createElement('option');
-                        newOption.value = data[key];
-                        newOption.textContent = data[key];
+                        newOption.value = actualData[key];
+                        newOption.textContent = actualData[key];
                         newOption.selected = true;
                         field.appendChild(newOption);
-                        field.value = data[key];
-                        console.log(`✅ Created and selected new option for ${fieldName}: ${data[key]}`);
+                        field.value = actualData[key];
+                        console.log(`✅ Created and selected new option for ${fieldName}: ${actualData[key]}`);
                     }
                 } else {
-                    field.value = data[key] || '';
+                    field.value = actualData[key] || '';
                 }
                 
                 // Trigger change event to update any dependent UI
@@ -709,15 +1535,6 @@ class SettingsController {
                             <option value="EUR" ${settings.currency === 'EUR' ? 'selected' : ''}>EUR (€)</option>
                             <option value="GBP" ${settings.currency === 'GBP' ? 'selected' : ''}>GBP (£)</option>
                             <option value="CAD" ${settings.currency === 'CAD' ? 'selected' : ''}>CAD ($)</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="language">Language</label>
-                        <select id="language" name="general.language">
-                            <option value="en" ${settings.language === 'en' ? 'selected' : ''}>English</option>
-                            <option value="es" ${settings.language === 'es' ? 'selected' : ''}>Spanish</option>
-                            <option value="fr" ${settings.language === 'fr' ? 'selected' : ''}>French</option>
                         </select>
                     </div>
                 </div>
