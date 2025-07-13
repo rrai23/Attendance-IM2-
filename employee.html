@@ -8,14 +8,51 @@
     <meta name="robots" content="noindex, nofollow">
     
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
     
     <!-- Stylesheets -->
     <link rel="stylesheet" href="css/styles.css">
     
     <!-- ApexCharts for data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    
+    <!-- Date utility functions (alternative to date-fns) -->
+    <script>
+        // Simple date utility functions to replace date-fns
+        window.dateUtils = {
+            format: function(date, format) {
+                if (typeof date === 'string') date = new Date(date);
+                const d = date.getDate().toString().padStart(2, '0');
+                const m = (date.getMonth() + 1).toString().padStart(2, '0');
+                const y = date.getFullYear();
+                return format.replace('dd', d).replace('MM', m).replace('yyyy', y);
+            },
+            subDays: function(date, days) {
+                const result = new Date(date);
+                result.setDate(result.getDate() - days);
+                return result;
+            },
+            addDays: function(date, days) {
+                const result = new Date(date);
+                result.setDate(result.getDate() + days);
+                return result;
+            },
+            startOfMonth: function(date) {
+                return new Date(date.getFullYear(), date.getMonth(), 1);
+            },
+            endOfMonth: function(date) {
+                return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+            },
+            isToday: function(date) {
+                const today = new Date();
+                const compareDate = new Date(date);
+                return today.toDateString() === compareDate.toDateString();
+            },
+            parseISO: function(dateString) {
+                return new Date(dateString);
+            }
+        };
+    </script>
     
     <!-- Preload critical resources -->
     <link rel="preload" href="js/unified-data-service.js" as="script">
@@ -350,7 +387,13 @@
                 <div class="tile">
                     <div class="tile-header">
                         <h3 class="tile-title">Overtime Requests</h3>
-                        <span class="tile-icon">⏱️</span>
+                        <div class="tile-header-actions">
+                            <button class="btn btn-primary btn-sm" id="request-overtime-btn" onclick="window.employeePage.showOvertimeForm()">
+                                <span class="btn-icon">➕</span>
+                                Request Overtime
+                            </button>
+                            <span class="tile-icon">⏱️</span>
+                        </div>
                     </div>
                     <div class="tile-content">
                         <div id="overtime-requests" class="loading-container">
@@ -1297,6 +1340,28 @@
             justify-content: flex-end;
             padding-top: var(--spacing-sm);
             border-top: 1px solid var(--border-color);
+            margin-top: var(--spacing-sm);
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--bg-tertiary);
+            border-color: var(--text-secondary);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary:active {
+            transform: translateY(0);
         }
 
         /* Empty State */
@@ -1536,6 +1601,44 @@
             clip: rect(0, 0, 0, 0);
             white-space: nowrap;
             border: 0;
+        }
+
+        /* Tile Header Actions */
+        .tile-header-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: var(--font-size-sm);
+            border-radius: var(--radius-sm);
+        }
+
+        .btn-primary {
+            background-color: var(--accent-primary);
+            color: white;
+            border: 1px solid var(--accent-primary);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-hover);
+            border-color: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-icon {
+            font-size: 0.9em;
         }
 
         /* Responsive Design */
@@ -2624,11 +2727,15 @@
              */
             loadOvertimeRequests() {
                 try {
-                    // In a real implementation, overtime requests would be stored separately
-                    // For now, we'll simulate some overtime requests
-                    this.overtimeRequests = [
-                        // Mock overtime requests would go here
-                    ];
+                    // Get all overtime requests from localStorage
+                    const allRequests = this.getAllOvertimeRequests();
+                    
+                    // Filter requests for current employee
+                    this.overtimeRequests = allRequests.filter(request => 
+                        request.employeeId === this.employeeId
+                    ).sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)); // Sort by newest first
+                    
+                    console.log(`Loaded ${this.overtimeRequests.length} overtime requests for employee ${this.employeeId}`);
                 } catch (error) {
                     console.error('Failed to load overtime requests:', error);
                     this.overtimeRequests = [];
@@ -2820,21 +2927,71 @@
                     this.showLoading(true);
 
                     const formData = new FormData(e.target);
-                    const overtimeData = {
-                        employeeId: this.employeeId,
-                        date: formData.get('overtime-date'),
-                        startTime: formData.get('overtime-start'),
-                        endTime: formData.get('overtime-end'),
-                        reason: formData.get('overtime-reason'),
-                        description: formData.get('overtime-description'),
-                        status: 'pending',
-                        submittedAt: new Date().toISOString()
-                    };
-
-                    // In a real implementation, this would create an overtime request
-                    console.log('Overtime request:', overtimeData);
+                    const hoursRequested = parseFloat(formData.get('overtime-hours'));
                     
-                    this.showSuccess('Overtime request submitted successfully');
+                    if (this.editingRequestId) {
+                        // Edit mode - update existing request
+                        const requestIndex = this.overtimeRequests.findIndex(req => req.id === this.editingRequestId);
+                        if (requestIndex === -1) {
+                            throw new Error('Request not found');
+                        }
+
+                        const existingRequest = this.overtimeRequests[requestIndex];
+                        const updatedData = {
+                            ...existingRequest,
+                            date: formData.get('overtime-date'),
+                            hoursRequested: hoursRequested,
+                            reason: formData.get('overtime-reason'),
+                            description: formData.get('overtime-description') || '',
+                            updatedAt: new Date().toISOString()
+                        };
+
+                        // Update in array
+                        this.overtimeRequests[requestIndex] = updatedData;
+
+                        // Update in localStorage
+                        const allRequests = this.getAllOvertimeRequests();
+                        const globalIndex = allRequests.findIndex(req => req.id === this.editingRequestId);
+                        if (globalIndex !== -1) {
+                            allRequests[globalIndex] = updatedData;
+                            localStorage.setItem('bricks_overtime_requests', JSON.stringify(allRequests));
+                        }
+
+                        this.showSuccess('Overtime request updated successfully!');
+                        console.log('Overtime request updated:', updatedData);
+                    } else {
+                        // Create mode - new request
+                        const requestId = 'overtime_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                        
+                        const overtimeData = {
+                            id: requestId,
+                            employeeId: this.employeeId,
+                            employeeName: this.currentUser?.name || this.currentUser?.fullName || 'Employee',
+                            date: formData.get('overtime-date'),
+                            hoursRequested: hoursRequested,
+                            reason: formData.get('overtime-reason'),
+                            description: formData.get('overtime-description') || '',
+                            status: 'pending',
+                            submittedAt: new Date().toISOString(),
+                            submittedBy: this.currentUser?.username || 'employee'
+                        };
+
+                        // Save overtime request to localStorage for persistence
+                        this.saveOvertimeRequest(overtimeData);
+                        
+                        // Add to current overtime requests array
+                        this.overtimeRequests.unshift(overtimeData);
+
+                        this.showSuccess('Overtime request submitted successfully! It will be reviewed by administration.');
+                        console.log('Overtime request submitted:', overtimeData);
+                    }
+                    
+                    // Re-render overtime requests to show the changes
+                    this.renderOvertimeRequests();
+                    
+                    // Dispatch event for cross-tab communication
+                    window.dispatchEvent(new CustomEvent('overtimeRequestSubmitted'));
+                    
                     this.hideOvertimeForm();
                     e.target.reset();
                 } catch (error) {
@@ -2842,6 +2999,45 @@
                     this.showError('Failed to submit overtime request: ' + error.message);
                 } finally {
                     this.showLoading(false);
+                }
+            }
+
+            /**
+             * Save overtime request to localStorage
+             */
+            saveOvertimeRequest(overtimeData) {
+                try {
+                    // Get existing overtime requests
+                    const existingRequests = this.getAllOvertimeRequests();
+                    
+                    // Add new request
+                    existingRequests.push(overtimeData);
+                    
+                    // Save back to localStorage
+                    localStorage.setItem('bricks_overtime_requests', JSON.stringify(existingRequests));
+                    
+                    // Dispatch a custom event to notify other components/pages
+                    window.dispatchEvent(new CustomEvent('overtimeRequestSubmitted', {
+                        detail: { request: overtimeData, allRequests: existingRequests }
+                    }));
+                    
+                    console.log('Overtime request saved to localStorage and event dispatched');
+                } catch (error) {
+                    console.error('Failed to save overtime request:', error);
+                    throw new Error('Failed to save overtime request');
+                }
+            }
+
+            /**
+             * Get all overtime requests from localStorage
+             */
+            getAllOvertimeRequests() {
+                try {
+                    const stored = localStorage.getItem('bricks_overtime_requests');
+                    return stored ? JSON.parse(stored) : [];
+                } catch (error) {
+                    console.error('Failed to load overtime requests:', error);
+                    return [];
                 }
             }
 
@@ -2904,14 +3100,21 @@
                     modal.classList.add('active');
                     modal.style.display = 'flex';
                     
-                    // Set today's date as default
-                    const dateInput = document.getElementById('overtime-date');
-                    if (dateInput) {
-                        dateInput.value = new Date().toISOString().split('T')[0];
+                    // If not in edit mode, set today's date as default
+                    if (!this.editingRequestId) {
+                        const dateInput = document.getElementById('overtime-date');
+                        if (dateInput) {
+                            dateInput.value = new Date().toISOString().split('T')[0];
+                        }
+                        
+                        // Reset modal to create mode
+                        document.querySelector('#overtime-form-modal .modal-title').textContent = 'Request Overtime';
+                        document.querySelector('#overtime-form-modal button[type="submit"]').innerHTML = '<span class="btn-icon">📝</span>Submit Request';
                     }
                     
                     // Focus on first input
                     setTimeout(() => {
+                        const dateInput = document.getElementById('overtime-date');
                         if (dateInput) {
                             dateInput.focus();
                         }
@@ -2931,6 +3134,13 @@
                     if (form) {
                         form.reset();
                     }
+                    
+                    // Clear edit mode
+                    this.editingRequestId = null;
+                    
+                    // Reset modal title and button text to create mode
+                    document.querySelector('#overtime-form-modal .modal-title').textContent = 'Request Overtime';
+                    document.querySelector('#overtime-form-modal button[type="submit"]').innerHTML = '<span class="btn-icon">📝</span>Submit Request';
                 }
             }
 
@@ -3048,7 +3258,7 @@
                                     </div>
                                     <div class="time-item">
                                         <div class="time-label">Hours</div>
-                                        <div class="time-value">${(entry.hours || 0).toFixed(1)}h</div>
+                                        <div class="time-value">${(parseFloat(entry.hours) || 0).toFixed(1)}h</div>
                                     </div>
                                 </div>
                             </div>
@@ -3137,9 +3347,13 @@
                         <div class="empty-state">
                             <div class="empty-icon">⏱️</div>
                             <p class="empty-message">No overtime requests submitted</p>
-                            <small style="color: var(--text-tertiary); margin-top: 8px;">
-                                Use the "Request Overtime" button to submit your first request
+                            <small style="color: var(--text-tertiary); margin-bottom: 16px; display: block;">
+                                Submit your first overtime request to get started
                             </small>
+                            <button class="btn btn-primary btn-sm" onclick="window.employeePage.showOvertimeForm()">
+                                <span class="btn-icon">➕</span>
+                                Request Overtime
+                            </button>
                         </div>
                     `;
                     return;
@@ -3178,6 +3392,9 @@
                         <div class="request-header">
                             <div class="request-date">
                                 <strong>${formatDate(request.date)}</strong>
+                                <small style="display: block; color: var(--text-tertiary); font-size: 0.75rem; margin-top: 2px;">
+                                    Submitted: ${formatDate(request.submittedAt)}
+                                </small>
                             </div>
                             <div class="request-status">
                                 <span class="status-icon">${getStatusIcon(request.status)}</span>
@@ -3186,19 +3403,17 @@
                         </div>
                         <div class="request-details">
                             <div class="detail-item">
-                                <div class="detail-label">Duration</div>
-                                <div class="detail-value">${request.hours} hours</div>
+                                <div class="detail-label">Hours Requested</div>
+                                <div class="detail-value">${request.hoursRequested} hours</div>
                             </div>
                             <div class="detail-item">
                                 <div class="detail-label">Reason</div>
-                                <div class="detail-value">${request.reason}</div>
+                                <div class="detail-value">${(request.reason || '').replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
                             </div>
-                            ${request.startTime && request.endTime ? `
-                                <div class="detail-item">
-                                    <div class="detail-label">Time</div>
-                                    <div class="detail-value">${request.startTime} - ${request.endTime}</div>
-                                </div>
-                            ` : ''}
+                            <div class="detail-item">
+                                <div class="detail-label">Request ID</div>
+                                <div class="detail-value" style="font-family: monospace; font-size: 0.8rem;">${String(request.id || '').split('_')[1] || request.id || 'N/A'}</div>
+                            </div>
                         </div>
                         ${request.description ? `
                             <div class="request-description">
@@ -3206,11 +3421,104 @@
                                 <p>${request.description}</p>
                             </div>
                         ` : ''}
+                        ${request.status === 'pending' ? `
+                            <div class="request-actions">
+                                <button class="btn btn-secondary btn-sm" onclick="window.employeePage.editOvertimeRequest('${request.id}')">
+                                    <span class="btn-icon">✏️</span>
+                                    Edit
+                                </button>
+                                <button class="btn btn-secondary btn-sm" onclick="window.employeePage.deleteOvertimeRequest('${request.id}')" style="color: var(--color-error);">
+                                    <span class="btn-icon">🗑️</span>
+                                    Delete
+                                </button>
+                            </div>
+                        ` : ''}
+                        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-color); font-size: 0.75rem; color: var(--text-tertiary);">
+                            ${request.status === 'pending' ? 'You can edit or delete this request until it is reviewed' : 'Status will be updated once reviewed by administration'}
+                        </div>
                     </div>
                 `).join('');
 
                 container.innerHTML = requestsHtml;
                 console.log('Overtime requests rendered successfully');
+            }
+
+            /**
+             * Edit overtime request
+             */
+            editOvertimeRequest(requestId) {
+                try {
+                    // Find the request to edit
+                    const request = this.overtimeRequests.find(req => req.id === requestId);
+                    if (!request) {
+                        this.showNotification('Overtime request not found', 'error');
+                        return;
+                    }
+
+                    if (request.status !== 'pending') {
+                        this.showNotification('Only pending requests can be edited', 'error');
+                        return;
+                    }
+
+                    // Populate the form with existing data
+                    document.getElementById('overtime-date').value = request.date;
+                    document.getElementById('overtime-hours').value = request.hoursRequested;
+                    document.getElementById('overtime-reason').value = request.reason;
+                    document.getElementById('overtime-description').value = request.description || '';
+
+                    // Set the form to edit mode
+                    this.editingRequestId = requestId;
+
+                    // Update modal title and button text
+                    document.querySelector('#overtime-form-modal .modal-title').textContent = 'Edit Overtime Request';
+                    document.querySelector('#overtime-form-modal button[type="submit"]').innerHTML = '<span class="btn-icon">💾</span>Update Request';
+
+                    // Show the modal
+                    this.showOvertimeForm();
+                } catch (error) {
+                    console.error('Failed to edit overtime request:', error);
+                    this.showNotification('Failed to load request for editing', 'error');
+                }
+            }
+
+            /**
+             * Delete overtime request
+             */
+            deleteOvertimeRequest(requestId) {
+                try {
+                    // Find the request to delete
+                    const request = this.overtimeRequests.find(req => req.id === requestId);
+                    if (!request) {
+                        this.showNotification('Overtime request not found', 'error');
+                        return;
+                    }
+
+                    if (request.status !== 'pending') {
+                        this.showNotification('Only pending requests can be deleted', 'error');
+                        return;
+                    }
+
+                    // Confirm deletion
+                    if (!confirm('Are you sure you want to delete this overtime request? This action cannot be undone.')) {
+                        return;
+                    }
+
+                    // Remove from array
+                    this.overtimeRequests = this.overtimeRequests.filter(req => req.id !== requestId);
+
+                    // Update localStorage
+                    const allRequests = this.getAllOvertimeRequests();
+                    const updatedRequests = allRequests.filter(req => req.id !== requestId);
+                    localStorage.setItem('bricks_overtime_requests', JSON.stringify(updatedRequests));
+
+                    // Re-render the requests
+                    this.renderOvertimeRequests();
+
+                    this.showNotification('Overtime request deleted successfully', 'success');
+                } catch (error) {
+                    console.error('Failed to delete overtime request:', error);
+                    this.showNotification('Failed to delete overtime request', 'error');
+                }
             }
 
             /**
@@ -3621,14 +3929,14 @@
                 // Try to initialize unified account manager
                 try {
                     if (typeof UnifiedAccountManager !== 'undefined') {
-                        window.unifiedAccountManager = new UnifiedAccountManager();
-                        window.unifiedAccountManager.initialize();
-                        console.log('Unified Account Manager initialized');
+                        // UnifiedAccountManager auto-initializes, just check if it's available
+                        console.log('UnifiedAccountManager is available');
+                        // Note: The account manager will auto-initialize when employee manager is ready
                     } else {
                         console.warn('UnifiedAccountManager not available - Security features may be limited');
                     }
                 } catch (accountError) {
-                    console.error('Failed to initialize Account Manager:', accountError);
+                    console.error('Failed to access Account Manager:', accountError);
                     console.log('Continuing without account manager - Security features will be limited');
                 }
                 

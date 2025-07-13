@@ -39,6 +39,12 @@ class PayrollController {
                 this.renderOvertimeRequests();
                 this.renderPayrollHistory();
                 this.renderDepartmentCosts();
+                
+                // Listen for overtime request submissions from employee dashboard
+                window.addEventListener('overtimeRequestSubmitted', () => {
+                    console.log('[PAYROLL] Overtime request submitted - refreshing overtime requests');
+                    this.renderOvertimeRequests();
+                });
             }
             
             this.isInitialized = true;
@@ -508,18 +514,51 @@ class PayrollController {
             'denied': 'status-denied'
         }[request.status] || '';
 
+        // Handle different hour property names
+        const hours = request.hoursRequested || request.hours || 0;
+
+        // Format employee ID properly
+        const formattedEmployeeId = request.employeeId ? 
+            (typeof request.employeeId === 'string' && request.employeeId.startsWith('emp_') ? 
+                request.employeeId : 
+                `emp_${String(request.employeeId).padStart(3, '0')}`) : 
+            'N/A';
+
+        // Format request ID for display
+        const displayRequestId = request.id ? 
+            (String(request.id).includes('_') ? 
+                String(request.id).split('_')[1] || String(request.id) : 
+                String(request.id)) : 
+            'N/A';
+
         return `
             <div class="overtime-request ${statusClass}" data-request-id="${request.id}">
                 <div class="request-info">
-                    <div class="employee-name">${employeeName}</div>
+                    <div class="employee-name">
+                        <strong>${employeeName}</strong>
+                        <div style="display: flex; gap: 12px; margin-top: 4px;">
+                            ${request.employeeId ? `<small style="color: var(--text-tertiary);">Employee ID: ${formattedEmployeeId}</small>` : ''}
+                            ${request.id ? `<small style="color: var(--text-tertiary);">Request ID: ${displayRequestId}</small>` : ''}
+                        </div>
+                    </div>
                     <div class="request-details">
                         <span class="request-date">${this.formatDate(request.date)}</span>
-                        <span class="request-hours">${request.hours} hours</span>
-                        <span class="request-reason">${request.reason}</span>
+                        <span class="request-hours">${hours} hours</span>
+                        <span class="request-reason">${this.formatReason(request.reason)}</span>
+                    </div>
+                    ${request.description ? `
+                        <div class="request-description">
+                            <small style="color: var(--text-secondary);">${request.description}</small>
+                        </div>
+                    ` : ''}
+                    <div class="request-metadata">
+                        <small style="color: var(--text-tertiary);">
+                            Submitted: ${this.formatDateTime(request.submittedAt)}
+                        </small>
                     </div>
                 </div>
                 <div class="request-status">
-                    <span class="status-badge status-${request.status}">${request.status}</span>
+                    <span class="status-badge status-${request.status}">${request.status.toUpperCase()}</span>
                     ${request.approvedDate ? `
                         <div class="approval-date">
                             ${this.formatDate(request.approvedDate)}
@@ -529,17 +568,42 @@ class PayrollController {
                 ${isPending ? `
                     <div class="request-actions">
                         <button class="btn btn-sm btn-success approve-overtime-btn" 
-                                data-request-id="${request.id}">
-                            Approve
+                                data-request-id="${request.id}"
+                                title="Approve overtime request">
+                            ✓ Approve
                         </button>
                         <button class="btn btn-sm btn-danger deny-overtime-btn" 
-                                data-request-id="${request.id}">
-                            Deny
+                                data-request-id="${request.id}"
+                                title="Deny overtime request">
+                            ✗ Deny
                         </button>
                     </div>
                 ` : ''}
             </div>
         `;
+    }
+
+    /**
+     * Format reason for display
+     */
+    formatReason(reason) {
+        if (!reason) return 'No reason provided';
+        return reason.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+
+    /**
+     * Format date and time for display
+     */
+    formatDateTime(dateString) {
+        if (!dateString) return 'Unknown';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     }
 
     /**
