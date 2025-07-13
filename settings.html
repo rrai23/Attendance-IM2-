@@ -124,12 +124,6 @@
                         </svg>
                         Security
                     </button>
-                    <button class="settings-tab" data-tab="theme">
-                        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
-                        </svg>
-                        Theme
-                    </button>
                     <button class="settings-tab" data-tab="users">
                         <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -779,122 +773,6 @@
                                             <small class="form-help text-danger">⚠️ This will permanently delete ALL stored data including employees, attendance records, and settings</small>
                                         </div>
                                     </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Theme Settings -->
-                    <div class="settings-content" id="theme-settings">
-                        <div class="tiles-grid grid-2">
-                            <div class="tile">
-                                <div class="tile-header">
-                                    <h3 class="tile-title">Default Theme</h3>
-                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
-                                    </svg>
-                                </div>
-                                <div class="tile-content">
-                                    <form class="settings-form">
-                                        <div class="form-group">
-                                            <label for="default-theme" class="form-label">Default Theme</label>
-                                            <select id="default-theme" name="theme.defaultTheme" class="form-select">
-                                                <option value="light" selected>Light</option>
-                                                <option value="dark">Dark</option>
-                                                <option value="auto">Auto (System)</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="checkbox-label">
-                                                <input type="checkbox" id="allow-user-themes" name="theme.allowUserThemes" checked>
-                                                <span class="checkmark"></span>
-                                                Allow users to change themes
-                                            </label>
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="checkbox-label">
-                                                <input type="checkbox" id="high-contrast" name="theme.highContrast">
-                                                <span class="checkmark"></span>
-                                                High contrast mode
-                                            </label>
-                                            <small class="form-help">Improve accessibility with higher contrast</small>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-
-                            <div class="tile">
-                                <div class="tile-header">
-                                    <h3 class="tile-title">Color Customization</h3>
-                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <circle cx="13.5" cy="6.5" r=".5"></circle>
-                                        <circle cx="17.5" cy="10.5" r=".5"></circle>
-                                        <circle cx="8.5" cy="7.5" r=".5"></circle>
-                                        <circle cx="6.5" cy="12.5" r=".5"></circle>
-                                        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path>
-                                    </svg>
-                                </div>
-                                <div class="tile-content">
-                                    <form class="settings-form">
-                                        <div class="form-group">
-                                            <label for="accent-color" class="form-label">Primary Accent Color</label>
-                                            <input type="color" id="accent-color" name="theme.accentColor" class="form-input" value="#ff9500">
-                                            <small class="form-help">Primary accent color for the interface</small>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="secondary-color" class="form-label">Secondary Color</label>
-                                            <input type="color" id="secondary-color" name="theme.secondaryColor" class="form-input" value="#007aff">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="success-color" class="form-label">Success Color</label>
-                                            <input type="color" id="success-color" name="theme.successColor" class="form-input" value="#34c759">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="warning-color" class="form-label">Warning Color</label>
-                                            <input type="color" id="warning-color" name="theme.warningColor" class="form-input" value="#ff9500">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="danger-color" class="form-label">Danger Color</label>
-                                            <input type="color" id="danger-color" name="theme.dangerColor" class="form-input" value="#ff3b30">
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-
-                            <div class="tile tile-large">
-                                <div class="tile-header">
-                                    <h3 class="tile-title">Theme Preview</h3>
-                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                    </svg>
-                                </div>
-                                <div class="tile-content">
-                                    <div class="theme-preview">
-                                        <div class="preview-card">
-                                            <div class="preview-header">
-                                                <h4>Sample Interface</h4>
-                                                <div class="preview-actions">
-                                                    <button class="preview-btn preview-btn-primary">Primary</button>
-                                                    <button class="preview-btn preview-btn-secondary">Secondary</button>
-                                                </div>
-                                            </div>
-                                            <div class="preview-content">
-                                                <p class="preview-text">This is how your interface will look with the current theme settings.</p>
-                                                <div class="preview-form">
-                                                    <input type="text" class="preview-input" placeholder="Sample input field">
-                                                    <select class="preview-select">
-                                                        <option>Sample dropdown</option>
-                                                    </select>
-                                                </div>
-                                                <div class="preview-badges">
-                                                    <span class="preview-badge preview-badge-success">Success</span>
-                                                    <span class="preview-badge preview-badge-warning">Warning</span>
-                                                    <span class="preview-badge preview-badge-danger">Danger</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -178,25 +178,26 @@ class SidebarManager {
                     <div class="user-name">${userName}</div>
                     <div class="user-role">${userRole}</div>
                 </div>
-                <div class="theme-selector compact">
-                    <button class="theme-option active" data-theme="light" title="Light Mode">
-                        <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="5"></circle>
-                            <line x1="12" y1="1" x2="12" y2="3"></line>
-                            <line x1="12" y1="21" x2="12" y2="23"></line>
-                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                            <line x1="1" y1="12" x2="3" y2="12"></line>
-                            <line x1="21" y1="12" x2="23" y2="12"></line>
-                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                        </svg>
-                    </button>
-                    <button class="theme-option" data-theme="dark" title="Dark Mode">
-                        <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                        </svg>
-                    </button>
+                <div class="theme-toggle-container compact">
+                    <label class="theme-toggle-switch" title="Toggle Dark Mode">
+                        <input type="checkbox" class="theme-toggle-input" id="sidebar-theme-toggle">
+                        <span class="theme-toggle-slider">
+                            <svg class="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="5"></circle>
+                                <line x1="12" y1="1" x2="12" y2="3"></line>
+                                <line x1="12" y1="21" x2="12" y2="23"></line>
+                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                                <line x1="1" y1="12" x2="3" y2="12"></line>
+                                <line x1="21" y1="12" x2="23" y2="12"></line>
+                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                            </svg>
+                            <svg class="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                            </svg>
+                        </span>
+                    </label>
                 </div>
             </div>
 
@@ -964,7 +965,7 @@ class SidebarManager {
     }
 
     /**
-     * Handle theme change from sidebar theme selector
+     * Handle theme change from sidebar theme toggle
      */
     handleThemeChange(theme) {
         console.log('Theme change requested:', theme);
@@ -1009,17 +1010,12 @@ class SidebarManager {
         }
         
         if (themeChanged) {
-            // Update theme selector buttons
-            const themeButtons = document.querySelectorAll('.theme-option');
-            console.log('Updating theme buttons, found:', themeButtons.length);
-            
-            themeButtons.forEach(button => {
-                button.classList.remove('active');
-                if (button.getAttribute('data-theme') === theme) {
-                    button.classList.add('active');
-                    console.log('Activated button for theme:', theme);
-                }
-            });
+            // Update theme toggle
+            const themeToggle = document.querySelector('#sidebar-theme-toggle');
+            if (themeToggle) {
+                themeToggle.checked = theme === 'dark';
+                console.log('Updated theme toggle state');
+            }
             
             console.log(`Theme successfully changed to: ${theme}`);
             this.showNotification(`Switched to ${theme} mode`, 'success');
@@ -1192,26 +1188,21 @@ class SidebarManager {
     }
 
     /**
-     * Setup theme selector event listeners
+     * Setup theme toggle event listener
      */
     setupThemeSelector() {
-        const themeButtons = document.querySelectorAll('.theme-option');
+        const themeToggle = document.querySelector('#sidebar-theme-toggle');
         
-        themeButtons.forEach(button => {
-            button.addEventListener('click', (e) => {
-                e.preventDefault();
-                const theme = button.dataset.theme;
-                
-                if (theme && typeof themeManager !== 'undefined') {
-                    themeManager.setTheme(theme);
-                    this.syncThemeSelector();
-                }
+        if (themeToggle) {
+            themeToggle.addEventListener('change', (e) => {
+                const theme = e.target.checked ? 'dark' : 'light';
+                this.handleThemeChange(theme);
             });
-        });
+        }
     }
 
     /**
-     * Sync theme selector with current theme
+     * Sync theme toggle with current theme
      */
     syncThemeSelector() {
         try {
@@ -1230,18 +1221,14 @@ class SidebarManager {
                 }
             }
             
-            // Update theme selector buttons
-            const themeButtons = document.querySelectorAll('.theme-option');
-            themeButtons.forEach(button => {
-                if (button.dataset.theme === currentTheme) {
-                    button.classList.add('active');
-                } else {
-                    button.classList.remove('active');
-                }
-            });
+            // Update theme toggle
+            const themeToggle = document.querySelector('#sidebar-theme-toggle');
+            if (themeToggle) {
+                themeToggle.checked = currentTheme === 'dark';
+            }
             
         } catch (error) {
-            console.warn('Error syncing theme selector:', error);
+            console.warn('Error syncing theme toggle:', error);
         }
     }
 

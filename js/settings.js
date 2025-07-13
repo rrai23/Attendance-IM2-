@@ -186,12 +186,6 @@ class SettingsController {
                     twoFactorAuth: false,
                     ...savedSettings.security
                 },
-                theme: {
-                    defaultTheme: 'light',
-                    allowUserThemes: true,
-                    accentColor: '#007aff',
-                    ...savedSettings.theme
-                },
                 users: {
                     defaultRole: 'employee',
                     defaultHourlyRate: 15.00,
@@ -299,14 +293,6 @@ class SettingsController {
                 this.validateField(e.target);
             }
         });
-
-        // Theme selector
-        const themeSelector = document.getElementById('default-theme');
-        if (themeSelector) {
-            themeSelector.addEventListener('change', (e) => {
-                this.handleThemeChange(e.target.value);
-            });
-        }
 
         // Test email button
         const testEmailBtn = document.getElementById('test-email-btn');
@@ -956,7 +942,7 @@ class SettingsController {
         const data = {};
         
         // Collect data from each section
-        const sections = ['general', 'payroll', 'attendance', 'notifications', 'security', 'theme'];
+        const sections = ['general', 'payroll', 'attendance', 'notifications', 'security'];
         
         for (const section of sections) {
             data[section] = this.collectSectionData(section);
@@ -1107,8 +1093,7 @@ class SettingsController {
                 { id: 'payroll-settings', title: 'Payroll Settings' },
                 { id: 'attendance-settings', title: 'Attendance Settings' },
                 { id: 'notifications-settings', title: 'Notification Settings' },
-                { id: 'security-settings', title: 'Security Settings' },
-                { id: 'theme-settings', title: 'Theme Settings' }
+                { id: 'security-settings', title: 'Security Settings' }
             ];
 
             let missingSections = 0;
@@ -1181,7 +1166,6 @@ class SettingsController {
             this.populateFormFields('attendance', this.currentSettings.attendance);
             this.populateFormFields('notifications', this.currentSettings.notifications);
             this.populateFormFields('security', this.currentSettings.security);
-            this.populateFormFields('theme', this.currentSettings.theme);
             
             // Ensure dropdowns work properly by refreshing them
             this.refreshDropdowns();
@@ -1211,7 +1195,6 @@ class SettingsController {
             this.enhanceAttendanceFields();
             this.enhanceNotificationFields();
             this.enhanceSecurityFields();
-            this.enhanceThemeFields();
             
             console.log('Enhanced missing fields successfully');
         } catch (error) {
@@ -1287,10 +1270,6 @@ class SettingsController {
 
     enhanceSecurityFields() {
         // Add security field enhancements if needed
-    }
-
-    enhanceThemeFields() {
-        // Add theme field enhancements if needed
     }
 
     /**
@@ -2365,31 +2344,6 @@ class SettingsController {
         
         totalUsersElements.forEach(el => el.textContent = stats.total);
         activeUsersElements.forEach(el => el.textContent = stats.active);
-    }
-
-    /**
-     * Handle theme change when user selects a different theme
-     */
-    handleThemeChange(theme) {
-        try {
-            console.log('Theme change requested:', theme);
-            
-            // Apply theme immediately
-            document.documentElement.setAttribute('data-theme', theme);
-            
-            // Save to localStorage
-            localStorage.setItem('theme', theme);
-            
-            // Update theme manager if available
-            if (this.themeManager) {
-                this.themeManager.setTheme(theme);
-            }
-            
-            console.log('Theme successfully changed to:', theme);
-        } catch (error) {
-            console.error('Error changing theme:', error);
-            this.showErrorMessage('Failed to change theme: ' + error.message);
-        }
     }
 
     /**
