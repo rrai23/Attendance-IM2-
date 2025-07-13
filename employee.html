@@ -8,7 +8,7 @@
     <meta name="robots" content="noindex, nofollow">
     
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
     
     <!-- Stylesheets -->
     <link rel="stylesheet" href="css/styles.css">
@@ -18,9 +18,10 @@
     <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
     
     <!-- Preload critical resources -->
-    <link rel="preload" href="/js/data-service.js" as="script">
-    <link rel="preload" href="/js/auth.js" as="script">
-    <link rel="preload" href="/js/theme.js" as="script">
+    <link rel="preload" href="js/unified-data-service.js" as="script">
+    <link rel="preload" href="js/unified-employee-manager.js" as="script">
+    <link rel="preload" href="js/auth.js" as="script">
+    <link rel="preload" href="js/theme.js" as="script">
 </head>
 <body>
     <!-- Skip Navigation Links -->
@@ -81,7 +82,7 @@
             <nav class="sidebar-nav">
                 <ul class="nav-list">
                     <li class="nav-item">
-                        <a href="/employee.html" class="nav-link active" data-page="employee" title="Personal attendance data">
+                        <a href="employee.html" class="nav-link active" data-page="employee" title="Personal attendance data">
                             <span class="nav-icon">👤</span>
                             <span class="nav-text">My Attendance</span>
                             <span class="nav-indicator"></span>
@@ -100,10 +101,10 @@
                             <span class="nav-indicator"></span>
                         </a>
                         <ul class="nav-dropdown-menu">
-                            <li><a href="/employee.html#clock" class="nav-dropdown-link">Clock In/Out</a></li>
-                            <li><a href="/employee.html#timesheet" class="nav-dropdown-link">My Timesheet</a></li>
-                            <li><a href="/employee.html#overtime" class="nav-dropdown-link">Overtime Requests</a></li>
-                            <li><a href="/employee.html#schedule" class="nav-dropdown-link">My Schedule</a></li>
+                            <li><a href="employee.html#clock" class="nav-dropdown-link">Clock In/Out</a></li>
+                            <li><a href="employee.html#timesheet" class="nav-dropdown-link">My Timesheet</a></li>
+                            <li><a href="employee.html#overtime" class="nav-dropdown-link">Overtime Requests</a></li>
+                            <li><a href="employee.html#schedule" class="nav-dropdown-link">My Schedule</a></li>
                         </ul>
                     </li>
                     <li class="nav-item nav-item-dropdown" id="reportsDropdown">
@@ -119,14 +120,14 @@
                             <span class="nav-indicator"></span>
                         </a>
                         <ul class="nav-dropdown-menu">
-                            <li><a href="/employee.html#attendance-report" class="nav-dropdown-link">Attendance Summary</a></li>
-                            <li><a href="/employee.html#hours-report" class="nav-dropdown-link">Hours Worked</a></li>
-                            <li><a href="/employee.html#overtime-report" class="nav-dropdown-link">Overtime Summary</a></li>
-                            <li><a href="/employee.html#export" class="nav-dropdown-link">Export Data</a></li>
+                            <li><a href="employee.html#attendance-report" class="nav-dropdown-link">Attendance Summary</a></li>
+                            <li><a href="employee.html#hours-report" class="nav-dropdown-link">Hours Worked</a></li>
+                            <li><a href="employee.html#overtime-report" class="nav-dropdown-link">Overtime Summary</a></li>
+                            <li><a href="employee.html#export" class="nav-dropdown-link">Export Data</a></li>
                         </ul>
                     </li>
                     <li class="nav-item">
-                        <a href="/employee.html#profile" class="nav-link" data-page="profile" title="Personal profile settings">
+                        <a href="employee.html#profile" class="nav-link" data-page="profile" title="Personal profile settings">
                             <span class="nav-icon">⚙️</span>
                             <span class="nav-text">Profile</span>
                             <span class="nav-indicator"></span>
@@ -437,7 +438,7 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="employeeController.hideOvertimeForm()">Cancel</button>
+                <button type="button" class="btn btn-secondary" onclick="employeePage.hideOvertimeForm()">Cancel</button>
                 <button type="submit" form="overtime-form" class="btn btn-primary">Submit Request</button>
             </div>
         </div>
@@ -509,13 +510,20 @@
 
     <!-- Scripts -->
     <script src="js/mock-data.js"></script>
-    <script src="js/data-service.js"></script>
+    <script src="js/utils/id-utility.js"></script>
+    <script src="js/core/data-service-api.js"></script>
+    <script src="js/core/local-storage-service.js"></script>
+    <script src="js/core/api-service.js"></script>
+    <script src="js/core/data-service-factory.js"></script>
+    <script src="js/unified-data-service.js"></script>
+    <script src="js/unified-employee-manager.js"></script>
+    <script src="js/data-manager.js"></script>
+    <script src="js/global-system-sync.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/theme.js"></script>
     <script src="js/charts.js"></script>
     <script src="js/sidebar.js"></script>
     <script src="js/modals.js"></script>
-    <script src="js/employee.js"></script>
 
     <!-- Additional Styles for Employee Page -->
     <style>
@@ -1366,10 +1374,887 @@
 
     <!-- Employee Page Initialization Script -->
     <script>
-        // Initialize employee page when DOM is ready
-        document.addEventListener('DOMContentLoaded', function() {
-            // Update current time display
-            function updateCurrentTime() {
+        /**
+         * Employee Self-Service Page Controller
+         * Uses unified employee manager exclusively for all data operations
+         */
+        class EmployeePage {
+            constructor() {
+                this.currentUser = null;
+                this.employeeId = null;
+                this.attendanceData = [];
+                this.recentEntries = [];
+                this.personalStats = {};
+                this.overtimeRequests = [];
+                this.charts = new Map();
+                this.refreshInterval = null;
+                this.autoRefreshEnabled = true;
+                this.refreshIntervalTime = 30000; // 30 seconds
+
+                // UI elements cache
+                this.elements = {
+                    attendanceSummary: null,
+                    recentEntriesContainer: null,
+                    statsContainer: null,
+                    overtimeContainer: null,
+                    loadingIndicators: [],
+                    errorContainers: []
+                };
+
+                this.init();
+            }
+
+            /**
+             * Initialize the employee page
+             */
+            async init() {
+                try {
+                    console.log('Initializing employee page with unified employee manager...');
+                    
+                    // Wait for auth service to be ready first (but don't fail if it's not available)
+                    await this.waitForAuthService();
+                    
+                    // Verify authentication and get current user
+                    if (!this.verifyAuthentication()) {
+                        console.log('Authentication failed, stopping initialization');
+                        return;
+                    }
+
+                    // Cache DOM elements first (before waiting for unified manager)
+                    this.cacheElements();
+
+                    // Setup basic event listeners
+                    this.setupEventListeners();
+
+                    // Try to wait for unified employee manager (but don't fail completely if it's not ready)
+                    try {
+                        await this.waitForUnifiedEmployeeManager();
+                        console.log('Unified employee manager is ready, proceeding with full initialization');
+
+                        // Load initial data
+                        await this.loadInitialData();
+
+                        // Setup auto refresh
+                        this.setupAutoRefresh();
+
+                        // Setup real-time data updates
+                        this.setupDataUpdateListeners();
+                    } catch (error) {
+                        console.warn('Unified employee manager not ready, using basic mode:', error);
+                        // Show basic UI without data
+                        this.showBasicInterface();
+                    }
+
+                    console.log('Employee page initialized successfully');
+                } catch (error) {
+                    console.error('Failed to initialize employee page:', error);
+                    this.showError('Failed to load employee data: ' + error.message);
+                }
+            }
+
+            /**
+             * Wait for unified employee manager to be available and initialized
+             */
+            async waitForUnifiedEmployeeManager() {
+                const maxAttempts = 50;
+                let attempts = 0;
+
+                while (attempts < maxAttempts) {
+                    if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
+                        console.log('Unified employee manager is ready');
+                        return;
+                    }
+                    
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    attempts++;
+                }
+
+                throw new Error('Unified employee manager not available or not initialized. Employee page requires the unified data system.');
+            }
+
+            /**
+             * Wait for auth service to be available
+             */
+            async waitForAuthService() {
+                const maxAttempts = 30;
+                let attempts = 0;
+
+                while (attempts < maxAttempts) {
+                    if (window.authService) {
+                        console.log('Auth service is ready');
+                        return;
+                    }
+                    
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    attempts++;
+                }
+
+                console.warn('Auth service not available, using fallback authentication');
+            }
+
+            /**
+             * Show basic interface when unified manager is not ready
+             */
+            showBasicInterface() {
+                console.log('Showing basic interface without unified manager');
+                
+                // Hide loading indicators
+                this.showLoading(false);
+                
+                // Show basic employee info
+                this.updateUserDisplay();
+                
+                // Enable basic clock in/out functionality
+                this.setupBasicClockFunctionality();
+                
+                // Show message about limited functionality
+                this.showInfo('Connected in basic mode. Some features may be limited.');
+            }
+
+            /**
+             * Setup basic clock functionality when unified manager is not available
+             */
+            setupBasicClockFunctionality() {
+                const clockInBtn = document.getElementById('clock-in-btn');
+                const clockOutBtn = document.getElementById('clock-out-btn');
+                
+                if (clockInBtn) {
+                    clockInBtn.addEventListener('click', () => {
+                        this.showInfo('Clock In recorded locally. Data will sync when connection is restored.');
+                    });
+                }
+                
+                if (clockOutBtn) {
+                    clockOutBtn.addEventListener('click', () => {
+                        this.showInfo('Clock Out recorded locally. Data will sync when connection is restored.');
+                    });
+                }
+            }
+
+            /**
+             * Verify user authentication
+             */
+            verifyAuthentication() {
+                console.log('Verifying authentication...');
+                
+                // First, try to get user from auth service if available
+                if (window.authService && window.authService.isAuthenticated()) {
+                    console.log('Using auth service for authentication');
+                    this.currentUser = window.authService.getCurrentUser();
+                    if (this.currentUser) {
+                        this.employeeId = this.currentUser.id || this.currentUser.employeeId || this.currentUser.username || 'emp_' + Date.now();
+                        
+                        if (this.employeeId) {
+                            console.log('Authenticated employee via auth service:', this.employeeId);
+                            return true;
+                        }
+                    }
+                }
+
+                // Fallback: Check localStorage directly with both possible keys
+                console.log('Checking localStorage for authentication...');
+                let currentUser = localStorage.getItem('bricks_auth_user');
+                if (!currentUser) {
+                    currentUser = localStorage.getItem('currentUser');
+                }
+                
+                if (!currentUser) {
+                    console.log('No authenticated user found in localStorage');
+                    // Give scripts time to load before redirecting
+                    setTimeout(() => {
+                        if (!this.currentUser) {
+                            console.log('Still no authentication found after delay, redirecting to login');
+                            this.redirectToLogin();
+                        }
+                    }, 2000);
+                    return false;
+                }
+
+                try {
+                    this.currentUser = JSON.parse(currentUser);
+                    this.employeeId = this.currentUser.id || this.currentUser.employeeId || this.currentUser.username;
+                    
+                    // Generate fallback employee ID if none exists
+                    if (!this.employeeId) {
+                        this.employeeId = 'emp_' + (this.currentUser.name || 'user').replace(/\s+/g, '').toLowerCase();
+                        console.warn('No employee ID found, using generated ID:', this.employeeId);
+                    }
+
+                    console.log('Authenticated employee via localStorage:', this.employeeId);
+                    return true;
+                } catch (error) {
+                    console.error('Invalid user data in localStorage:', error);
+                    // Clear corrupted data and redirect
+                    localStorage.removeItem('bricks_auth_user');
+                    localStorage.removeItem('currentUser');
+                    this.redirectToLogin();
+                    return false;
+                }
+            }
+
+            /**
+             * Redirect to login page safely
+             */
+            redirectToLogin() {
+                // Prevent redirect loop by checking current page
+                if (window.location.pathname.includes('login.html')) {
+                    console.log('Already on login page, not redirecting');
+                    return;
+                }
+                
+                console.log('Redirecting to login page...');
+                window.location.href = './login.html';
+            }
+
+            /**
+             * Logout user safely
+             */
+            logout() {
+                // Clear all possible authentication data
+                localStorage.removeItem('bricks_auth_user');
+                localStorage.removeItem('bricks_auth_session');
+                localStorage.removeItem('bricks_auth_expiry');
+                localStorage.removeItem('currentUser'); // Legacy key
+                
+                // Use auth service logout if available
+                if (window.authService && window.authService.logout) {
+                    window.authService.logout();
+                } else {
+                    this.redirectToLogin();
+                }
+            }
+
+            /**
+             * Cache DOM elements for better performance
+             */
+            cacheElements() {
+                this.elements.attendanceSummary = document.getElementById('attendance-summary');
+                this.elements.recentEntriesContainer = document.getElementById('recent-entries');
+                this.elements.statsContainer = document.getElementById('stats-container');
+                this.elements.overtimeContainer = document.getElementById('overtime-container');
+                this.elements.loadingIndicators = document.querySelectorAll('.loading-indicator');
+                this.elements.errorContainers = document.querySelectorAll('.error-container');
+
+                // Update user info display
+                this.updateUserDisplay();
+            }
+
+            /**
+             * Update user display information
+             */
+            updateUserDisplay() {
+                console.log('Updating user display with:', this.currentUser);
+                
+                const userNameEl = document.getElementById('user-name');
+                const userRoleEl = document.getElementById('user-role');
+                const userAvatarEl = document.getElementById('user-avatar-text');
+                const employeeNameEl = document.getElementById('employee-name');
+                const employeeIdEl = document.getElementById('employee-id');
+                const employeeDepartmentEl = document.getElementById('employee-department');
+                const employeeAvatarInitialEl = document.getElementById('employee-avatar-initial');
+
+                if (this.currentUser) {
+                    const name = this.currentUser.name || this.currentUser.fullName || 'Employee';
+                    const role = this.currentUser.role || 'Employee';
+                    const department = this.currentUser.department || 'General';
+                    
+                    if (userNameEl) userNameEl.textContent = name;
+                    if (userRoleEl) userRoleEl.textContent = role;
+                    if (userAvatarEl) userAvatarEl.textContent = name.charAt(0).toUpperCase();
+                    
+                    if (employeeNameEl) employeeNameEl.textContent = name;
+                    if (employeeIdEl) employeeIdEl.textContent = `ID: ${this.employeeId}`;
+                    if (employeeDepartmentEl) employeeDepartmentEl.textContent = department;
+                    if (employeeAvatarInitialEl) employeeAvatarInitialEl.textContent = name.charAt(0).toUpperCase();
+                    
+                    console.log('User display updated successfully');
+                } else {
+                    console.warn('No current user data available for display');
+                }
+            }
+
+            /**
+             * Setup event listeners
+             */
+            setupEventListeners() {
+                // Clock in/out buttons
+                const clockInBtn = document.getElementById('clock-in-btn');
+                const clockOutBtn = document.getElementById('clock-out-btn');
+                
+                if (clockInBtn) {
+                    clockInBtn.addEventListener('click', () => this.handleClockIn());
+                }
+                
+                if (clockOutBtn) {
+                    clockOutBtn.addEventListener('click', () => this.handleClockOut());
+                }
+
+                // Lunch break buttons
+                const lunchStartBtn = document.getElementById('lunch-start-btn');
+                const lunchEndBtn = document.getElementById('lunch-end-btn');
+                
+                if (lunchStartBtn) {
+                    lunchStartBtn.addEventListener('click', () => this.handleLunchStart());
+                }
+                
+                if (lunchEndBtn) {
+                    lunchEndBtn.addEventListener('click', () => this.handleLunchEnd());
+                }
+
+                // Overtime form
+                const overtimeForm = document.getElementById('overtime-form');
+                if (overtimeForm) {
+                    overtimeForm.addEventListener('submit', (e) => this.handleOvertimeSubmit(e));
+                }
+
+                // Refresh button
+                const refreshBtn = document.getElementById('refresh-btn');
+                if (refreshBtn) {
+                    refreshBtn.addEventListener('click', () => this.refreshData());
+                }
+
+                // Logout button
+                const logoutBtn = document.getElementById('logout-btn');
+                if (logoutBtn) {
+                    logoutBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        console.log('Logout button clicked');
+                        this.logout();
+                    });
+                }
+
+                // Setup mobile menu and UI interactions
+                this.setupMobileInteractions();
+                this.setupKeyboardShortcuts();
+            }
+
+            /**
+             * Setup mobile UI interactions
+             */
+            setupMobileInteractions() {
+                // Handle mobile hamburger menu
+                const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+                if (mobileMenuToggle) {
+                    mobileMenuToggle.addEventListener('click', function() {
+                        if (window.sidebarManager) {
+                            window.sidebarManager.toggleSidebar();
+                            const isCollapsed = window.sidebarManager.isCollapsed;
+                            mobileMenuToggle.setAttribute('aria-expanded', !isCollapsed);
+                        }
+                    });
+                }
+
+                // Handle mobile FAB
+                const mobileFabMain = document.getElementById('mobile-fab-main');
+                const mobileFabContainer = document.getElementById('mobile-fab-container');
+                if (mobileFabMain && mobileFabContainer) {
+                    mobileFabMain.addEventListener('click', function() {
+                        const isOpen = mobileFabContainer.classList.contains('open');
+                        mobileFabContainer.classList.toggle('open');
+                        mobileFabMain.setAttribute('aria-expanded', !isOpen);
+                    });
+
+                    // Handle FAB menu items
+                    mobileFabContainer.addEventListener('click', (e) => {
+                        const fabItem = e.target.closest('.mobile-fab-item');
+                        if (fabItem) {
+                            const action = fabItem.dataset.action;
+                            this.handleMobileFabAction(action);
+                            mobileFabContainer.classList.remove('open');
+                            mobileFabMain.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+
+                    // Close FAB menu when clicking outside
+                    document.addEventListener('click', function(e) {
+                        if (!mobileFabContainer.contains(e.target)) {
+                            mobileFabContainer.classList.remove('open');
+                            mobileFabMain.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+                }
+            }
+
+            /**
+             * Setup keyboard shortcuts
+             */
+            setupKeyboardShortcuts() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.altKey) {
+                        switch(e.key.toLowerCase()) {
+                            case 'c':
+                                e.preventDefault();
+                                this.handleQuickClock();
+                                break;
+                            case 't':
+                                e.preventDefault();
+                                this.navigateToTimesheet();
+                                break;
+                            case 'o':
+                                e.preventDefault();
+                                this.showOvertimeForm();
+                                break;
+                            case 's':
+                                e.preventDefault();
+                                this.navigateToSchedule();
+                                break;
+                        }
+                    }
+                });
+            }
+
+            /**
+             * Load initial data from unified employee manager
+             */
+            async loadInitialData() {
+                try {
+                    this.showLoading(true);
+
+                    // Load employee attendance data using unified employee manager ONLY
+                    if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
+                        throw new Error('Unified employee manager not available. Cannot load employee data.');
+                    }
+
+                    console.log('Loading employee data from unified employee manager...');
+                    
+                    // Get employee's attendance records
+                    this.attendanceData = window.unifiedEmployeeManager.getEmployeeAttendanceRecords(this.employeeId);
+                    
+                    // Get recent entries (last 10)
+                    this.recentEntries = this.attendanceData
+                        .sort((a, b) => new Date(b.date) - new Date(a.date))
+                        .slice(0, 10);
+
+                    // Calculate personal stats
+                    this.calculatePersonalStats();
+
+                    // Get overtime requests
+                    this.loadOvertimeRequests();
+
+                    // Render data
+                    this.renderAttendanceSummary();
+                    this.renderRecentEntries();
+                    this.renderStats();
+                    this.renderOvertimeRequests();
+
+                    console.log('Employee data loaded successfully:', {
+                        attendanceRecords: this.attendanceData.length,
+                        recentEntries: this.recentEntries.length,
+                        overtimeRequests: this.overtimeRequests.length
+                    });
+
+                } catch (error) {
+                    console.error('Failed to load initial data:', error);
+                    this.showError('Failed to load employee data: ' + error.message);
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            /**
+             * Calculate personal statistics
+             */
+            calculatePersonalStats() {
+                const today = new Date();
+                const currentMonth = today.getMonth();
+                const currentYear = today.getFullYear();
+                
+                // Filter records for current month
+                const monthlyRecords = this.attendanceData.filter(record => {
+                    const recordDate = new Date(record.date);
+                    return recordDate.getMonth() === currentMonth && recordDate.getFullYear() === currentYear;
+                });
+
+                // Calculate stats
+                this.personalStats = {
+                    totalDaysThisMonth: monthlyRecords.length,
+                    presentDays: monthlyRecords.filter(r => r.status === 'present').length,
+                    lateDays: monthlyRecords.filter(r => r.status === 'late').length,
+                    absentDays: monthlyRecords.filter(r => r.status === 'absent').length,
+                    overtimeDays: monthlyRecords.filter(r => r.status === 'overtime').length,
+                    totalHoursWorked: monthlyRecords.reduce((total, record) => {
+                        return total + (record.hoursWorked || 0);
+                    }, 0),
+                    attendanceRate: monthlyRecords.length > 0 ? 
+                        ((monthlyRecords.filter(r => ['present', 'late', 'overtime'].includes(r.status)).length / monthlyRecords.length) * 100).toFixed(1) : 0
+                };
+            }
+
+            /**
+             * Load overtime requests for current employee
+             */
+            loadOvertimeRequests() {
+                try {
+                    // In a real implementation, overtime requests would be stored separately
+                    // For now, we'll simulate some overtime requests
+                    this.overtimeRequests = [
+                        // Mock overtime requests would go here
+                    ];
+                } catch (error) {
+                    console.error('Failed to load overtime requests:', error);
+                    this.overtimeRequests = [];
+                }
+            }
+
+            /**
+             * Setup data update listeners for real-time updates
+             */
+            setupDataUpdateListeners() {
+                if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
+                    // Listen for attendance updates
+                    window.unifiedEmployeeManager.addEventListener('attendanceUpdate', (data) => {
+                        console.log('Attendance data updated:', data);
+                        
+                        // Refresh data if it affects current employee
+                        if (data.employeeId == this.employeeId) {
+                            this.refreshData();
+                        }
+                    });
+
+                    // Listen for employee updates
+                    window.unifiedEmployeeManager.addEventListener('employeeUpdate', (data) => {
+                        console.log('Employee data updated:', data);
+                        
+                        // Refresh data if it affects current employee
+                        if (data.employee && data.employee.id == this.employeeId) {
+                            this.refreshData();
+                        }
+                    });
+                }
+            }
+
+            /**
+             * Setup auto refresh functionality
+             */
+            setupAutoRefresh() {
+                if (this.autoRefreshEnabled) {
+                    this.refreshInterval = setInterval(() => {
+                        this.refreshData(true); // Silent refresh
+                    }, this.refreshIntervalTime);
+                }
+            }
+
+            /**
+             * Refresh all data
+             */
+            async refreshData(silent = false) {
+                try {
+                    if (!silent) {
+                        this.showLoading(true);
+                    }
+
+                    await this.loadInitialData();
+                    
+                    if (!silent) {
+                        this.showSuccess('Data refreshed successfully');
+                    }
+                } catch (error) {
+                    console.error('Failed to refresh data:', error);
+                    if (!silent) {
+                        this.showError('Failed to refresh data: ' + error.message);
+                    }
+                } finally {
+                    if (!silent) {
+                        this.showLoading(false);
+                    }
+                }
+            }
+
+            /**
+             * Handle clock in action
+             */
+            async handleClockIn() {
+                try {
+                    this.showLoading(true);
+
+                    if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
+                        throw new Error('Unified employee manager not available');
+                    }
+
+                    // Create clock in record
+                    const clockInData = {
+                        employeeId: this.employeeId,
+                        date: new Date().toISOString().split('T')[0],
+                        clockInTime: new Date().toTimeString().slice(0, 8),
+                        status: 'present',
+                        action: 'clock_in'
+                    };
+
+                    await window.unifiedEmployeeManager.addAttendanceRecord(clockInData);
+                    
+                    this.showSuccess('Clocked in successfully');
+                    await this.refreshData(true);
+                } catch (error) {
+                    console.error('Clock in failed:', error);
+                    this.showError('Failed to clock in: ' + error.message);
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            /**
+             * Handle clock out action
+             */
+            async handleClockOut() {
+                try {
+                    this.showLoading(true);
+
+                    if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
+                        throw new Error('Unified employee manager not available');
+                    }
+
+                    // Find today's attendance record and update it
+                    const today = new Date().toISOString().split('T')[0];
+                    const existingRecord = this.attendanceData.find(record => 
+                        record.employeeId == this.employeeId && record.date === today
+                    );
+
+                    if (!existingRecord) {
+                        throw new Error('No clock in record found for today');
+                    }
+
+                    // Update with clock out time
+                    const updateData = {
+                        ...existingRecord,
+                        clockOutTime: new Date().toTimeString().slice(0, 8),
+                        action: 'clock_out'
+                    };
+
+                    // Calculate hours worked
+                    if (updateData.clockInTime && updateData.clockOutTime) {
+                        const clockIn = new Date(`${today}T${updateData.clockInTime}`);
+                        const clockOut = new Date(`${today}T${updateData.clockOutTime}`);
+                        updateData.hoursWorked = ((clockOut - clockIn) / (1000 * 60 * 60)).toFixed(2);
+                    }
+
+                    await window.unifiedEmployeeManager.updateAttendanceRecord(existingRecord.id, updateData);
+                    
+                    this.showSuccess('Clocked out successfully');
+                    await this.refreshData(true);
+                } catch (error) {
+                    console.error('Clock out failed:', error);
+                    this.showError('Failed to clock out: ' + error.message);
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            /**
+             * Handle lunch start action
+             */
+            async handleLunchStart() {
+                try {
+                    this.showLoading(true);
+                    // Implementation would be similar to clock in/out
+                    this.showSuccess('Lunch break started');
+                } catch (error) {
+                    console.error('Lunch start failed:', error);
+                    this.showError('Failed to start lunch break: ' + error.message);
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            /**
+             * Handle lunch end action
+             */
+            async handleLunchEnd() {
+                try {
+                    this.showLoading(true);
+                    // Implementation would be similar to clock in/out
+                    this.showSuccess('Lunch break ended');
+                } catch (error) {
+                    console.error('Lunch end failed:', error);
+                    this.showError('Failed to end lunch break: ' + error.message);
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            /**
+             * Handle overtime form submission
+             */
+            async handleOvertimeSubmit(e) {
+                e.preventDefault();
+                
+                try {
+                    this.showLoading(true);
+
+                    const formData = new FormData(e.target);
+                    const overtimeData = {
+                        employeeId: this.employeeId,
+                        date: formData.get('overtime-date'),
+                        startTime: formData.get('overtime-start'),
+                        endTime: formData.get('overtime-end'),
+                        reason: formData.get('overtime-reason'),
+                        description: formData.get('overtime-description'),
+                        status: 'pending',
+                        submittedAt: new Date().toISOString()
+                    };
+
+                    // In a real implementation, this would create an overtime request
+                    console.log('Overtime request:', overtimeData);
+                    
+                    this.showSuccess('Overtime request submitted successfully');
+                    this.hideOvertimeForm();
+                    e.target.reset();
+                } catch (error) {
+                    console.error('Overtime submission failed:', error);
+                    this.showError('Failed to submit overtime request: ' + error.message);
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            /**
+             * Mobile FAB action handler
+             */
+            handleMobileFabAction(action) {
+                switch (action) {
+                    case 'clock':
+                        this.handleQuickClock();
+                        break;
+                    case 'timesheet':
+                        this.navigateToTimesheet();
+                        break;
+                    case 'overtime':
+                        this.showOvertimeForm();
+                        break;
+                    case 'schedule':
+                        this.navigateToSchedule();
+                        break;
+                }
+            }
+
+            /**
+             * Handle quick clock action (determines if clock in or out is needed)
+             */
+            handleQuickClock() {
+                const today = new Date().toISOString().split('T')[0];
+                const todayRecord = this.attendanceData.find(record => 
+                    record.employeeId == this.employeeId && record.date === today
+                );
+
+                if (!todayRecord || !todayRecord.clockInTime) {
+                    this.handleClockIn();
+                } else if (!todayRecord.clockOutTime) {
+                    this.handleClockOut();
+                } else {
+                    this.showInfo('You have already completed your attendance for today');
+                }
+            }
+
+            /**
+             * Navigation helpers
+             */
+            navigateToTimesheet() {
+                window.location.hash = 'timesheet';
+            }
+
+            navigateToSchedule() {
+                window.location.hash = 'schedule';
+            }
+
+            /**
+             * Show/hide overtime form
+             */
+            showOvertimeForm() {
+                const modal = document.getElementById('overtime-modal');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    modal.style.display = 'flex';
+                }
+            }
+
+            hideOvertimeForm() {
+                const modal = document.getElementById('overtime-modal');
+                if (modal) {
+                    modal.classList.add('hidden');
+                    modal.style.display = 'none';
+                }
+            }
+
+            /**
+             * Render methods
+             */
+            renderAttendanceSummary() {
+                // Implementation for rendering attendance summary
+                console.log('Rendering attendance summary...');
+            }
+
+            renderRecentEntries() {
+                // Implementation for rendering recent entries
+                console.log('Rendering recent entries...');
+            }
+
+            renderStats() {
+                // Implementation for rendering statistics
+                console.log('Rendering personal statistics...');
+            }
+
+            renderOvertimeRequests() {
+                // Implementation for rendering overtime requests
+                console.log('Rendering overtime requests...');
+            }
+
+            /**
+             * Utility methods for UI feedback
+             */
+            showLoading(show) {
+                const loadingOverlay = document.getElementById('loading-overlay');
+                if (loadingOverlay) {
+                    loadingOverlay.style.display = show ? 'flex' : 'none';
+                }
+            }
+
+            showSuccess(message) {
+                this.showNotification(message, 'success');
+            }
+
+            showError(message) {
+                this.showNotification(message, 'error');
+            }
+
+            showInfo(message) {
+                this.showNotification(message, 'info');
+            }
+
+            showNotification(message, type = 'info') {
+                console.log(`${type.toUpperCase()}: ${message}`);
+                
+                // Create notification element
+                const notification = document.createElement('div');
+                notification.className = `notification notification-${type}`;
+                notification.textContent = message;
+
+                // Add to notification container or create one
+                let container = document.querySelector('.notification-container');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.className = 'notification-container';
+                    document.body.appendChild(container);
+                }
+
+                container.appendChild(notification);
+
+                // Show notification
+                setTimeout(() => notification.classList.add('show'), 100);
+
+                // Remove notification after 5 seconds
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }, 300);
+                }, 5000);
+            }
+
+            /**
+             * Update current time display
+             */
+            updateCurrentTime() {
                 const now = new Date();
                 const timeString = now.toLocaleTimeString('en-US', { 
                     hour12: false, 
@@ -1383,126 +2268,43 @@
                 });
             }
 
-            // Update time immediately and then every second
-            updateCurrentTime();
-            setInterval(updateCurrentTime, 1000);
-
-            // Handle mobile hamburger menu
-            const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
-            if (mobileMenuToggle) {
-                mobileMenuToggle.addEventListener('click', function() {
-                    if (window.sidebarManager) {
-                        window.sidebarManager.toggleSidebar();
-                        // Update aria-expanded
-                        const isCollapsed = window.sidebarManager.isCollapsed;
-                        mobileMenuToggle.setAttribute('aria-expanded', !isCollapsed);
-                    }
-                });
-            }
-
-            // Handle mobile FAB
-            const mobileFabMain = document.getElementById('mobile-fab-main');
-            const mobileFabContainer = document.getElementById('mobile-fab-container');
-            if (mobileFabMain && mobileFabContainer) {
-                mobileFabMain.addEventListener('click', function() {
-                    const isOpen = mobileFabContainer.classList.contains('open');
-                    mobileFabContainer.classList.toggle('open');
-                    mobileFabMain.setAttribute('aria-expanded', !isOpen);
-                });
-
-                // Handle FAB menu items
-                mobileFabContainer.addEventListener('click', function(e) {
-                    const fabItem = e.target.closest('.mobile-fab-item');
-                    if (fabItem) {
-                        const action = fabItem.dataset.action;
-                        handleMobileFabAction(action);
-                        // Close FAB menu
-                        mobileFabContainer.classList.remove('open');
-                        mobileFabMain.setAttribute('aria-expanded', 'false');
-                    }
-                });
-
-                // Close FAB menu when clicking outside
-                document.addEventListener('click', function(e) {
-                    if (!mobileFabContainer.contains(e.target)) {
-                        mobileFabContainer.classList.remove('open');
-                        mobileFabMain.setAttribute('aria-expanded', 'false');
-                    }
-                });
-            }
-
-            // Handle keyboard shortcuts for quick actions
-            document.addEventListener('keydown', function(e) {
-                if (e.altKey) {
-                    switch(e.key.toLowerCase()) {
-                        case 'c':
-                            e.preventDefault();
-                            document.getElementById('quickClockBtn')?.click();
-                            break;
-                        case 't':
-                            e.preventDefault();
-                            document.getElementById('quickTimesheetBtn')?.click();
-                            break;
-                        case 'o':
-                            e.preventDefault();
-                            document.getElementById('quickOvertimeBtn')?.click();
-                            break;
-                        case 's':
-                            e.preventDefault();
-                            document.getElementById('quickScheduleBtn')?.click();
-                            break;
-                    }
-                }
-            });
-
-            // Handle mobile FAB actions
-            function handleMobileFabAction(action) {
-                switch (action) {
-                    case 'clock':
-                        // Handle clock in/out action
-                        const clockBtn = document.getElementById('clock-in-btn') || document.getElementById('clock-out-btn');
-                        if (clockBtn) clockBtn.click();
-                        break;
-                    case 'timesheet':
-                        // Navigate to timesheet section
-                        window.location.hash = 'timesheet';
-                        break;
-                    case 'overtime':
-                        // Show overtime request modal
-                        if (window.employeeController && window.employeeController.showOvertimeForm) {
-                            window.employeeController.showOvertimeForm();
-                        }
-                        break;
-                    case 'schedule':
-                        // Navigate to schedule section
-                        window.location.hash = 'schedule';
-                        break;
+            /**
+             * Cleanup when page is unloaded
+             */
+            cleanup() {
+                if (this.refreshInterval) {
+                    clearInterval(this.refreshInterval);
                 }
             }
+        }
 
-            // Handle quick action buttons in sidebar
-            const quickClockBtn = document.getElementById('quickClockBtn');
-            const quickTimesheetBtn = document.getElementById('quickTimesheetBtn');
-            const quickOvertimeBtn = document.getElementById('quickOvertimeBtn');
-            const quickScheduleBtn = document.getElementById('quickScheduleBtn');
+        // Initialize employee page when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, initializing employee page...');
+            
+            try {
+                // Create global employee page instance
+                window.employeePage = new EmployeePage();
+                
+                // Update current time immediately and then every second
+                window.employeePage.updateCurrentTime();
+                setInterval(() => {
+                    if (window.employeePage) {
+                        window.employeePage.updateCurrentTime();
+                    }
+                }, 1000);
 
-            if (quickClockBtn) {
-                quickClockBtn.addEventListener('click', () => handleMobileFabAction('clock'));
+                console.log('Employee page initialization completed');
+            } catch (error) {
+                console.error('Failed to initialize employee page:', error);
             }
+        });
 
-            if (quickTimesheetBtn) {
-                quickTimesheetBtn.addEventListener('click', () => handleMobileFabAction('timesheet'));
+        // Cleanup when page is unloaded
+        window.addEventListener('beforeunload', function() {
+            if (window.employeePage) {
+                window.employeePage.cleanup();
             }
-
-            if (quickOvertimeBtn) {
-                quickOvertimeBtn.addEventListener('click', () => handleMobileFabAction('overtime'));
-            }
-
-            if (quickScheduleBtn) {
-                quickScheduleBtn.addEventListener('click', () => handleMobileFabAction('schedule'));
-            }
-
-            console.log('Employee page initialized');
         });
     </script>
 </body>

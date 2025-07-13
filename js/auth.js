@@ -48,6 +48,7 @@ class AuthService {
             localStorage.removeItem(this.storageKey);
             localStorage.removeItem(this.tokenExpiryKey);
             localStorage.removeItem(this.userKey);
+            localStorage.removeItem('currentUser'); // Also clear legacy key
         }
     }
 
@@ -166,7 +167,10 @@ class AuthService {
             localStorage.setItem(this.storageKey, token);
             localStorage.setItem(this.tokenExpiryKey, expiryTime.toString());
             localStorage.setItem(this.userKey, JSON.stringify(user));
-            console.log('AuthService: Stored authentication data');
+            
+            // Also store with legacy key for compatibility with employee.html
+            localStorage.setItem('currentUser', JSON.stringify(user));
+            console.log('AuthService: Stored authentication data with both keys');
 
             // Set token in data service if available
             if (typeof dataService !== 'undefined' && dataService && typeof dataService.setAuthToken === 'function') {
@@ -214,6 +218,7 @@ class AuthService {
         localStorage.removeItem(this.storageKey);
         localStorage.removeItem(this.tokenExpiryKey);
         localStorage.removeItem(this.userKey);
+        localStorage.removeItem('currentUser'); // Also clear legacy key
 
         // Clear data service token if available
         if (typeof dataService !== 'undefined' && dataService && typeof dataService.setAuthToken === 'function') {
@@ -245,6 +250,7 @@ class AuthService {
             localStorage.removeItem(this.storageKey);
             localStorage.removeItem(this.tokenExpiryKey);
             localStorage.removeItem(this.userKey);
+            localStorage.removeItem('currentUser'); // Also clear legacy key
             return false;
         }
 
@@ -267,6 +273,7 @@ class AuthService {
             localStorage.removeItem(this.storageKey);
             localStorage.removeItem(this.tokenExpiryKey);
             localStorage.removeItem(this.userKey);
+            localStorage.removeItem('currentUser'); // Also clear legacy key
             return null;
         }
     }
