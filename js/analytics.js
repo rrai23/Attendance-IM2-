@@ -73,6 +73,10 @@ class AnalyticsController {
             }
 
             this.setupEventListeners();
+            
+            // Setup employee update listeners after unified manager is available
+            this.setupEmployeeUpdateListeners();
+            
             await this.loadInitialData();
             this.setupFilters();
             this.setupDateRangePicker();
@@ -94,17 +98,38 @@ class AnalyticsController {
      */
     async initializeDataService() {
         try {
-            if (typeof window.UnifiedDataService !== 'undefined') {
-                this.dataService = new window.UnifiedDataService();
-                await this.dataService.initialize();
-                this.unifiedManager = this.dataService.getUnifiedManager();
-                console.log('Analytics using UnifiedDataService');
-            } else if (typeof dataService !== 'undefined') {
-                this.dataService = dataService;
-                console.log('Analytics using legacy dataService');
-            } else {
-                throw new Error('No data service available');
+            // Wait for unified employee manager to be ready (same approach as other pages)
+            let waitCount = 0;
+            const maxWait = 50; // 5 seconds max wait
+            
+            while ((!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) && waitCount < maxWait) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                waitCount++;
             }
+            
+            if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
+                throw new Error('UnifiedEmployeeManager not available or not initialized');
+            }
+            
+            console.log('Analytics: UnifiedEmployeeManager is ready! Employee count:', window.unifiedEmployeeManager.getAllEmployees().length);
+            
+            // Use unified employee manager directly
+            this.unifiedManager = window.unifiedEmployeeManager;
+            
+            // Create a simple data service wrapper that uses unified manager
+            this.dataService = {
+                getEmployees: () => this.unifiedManager.getAllEmployees(),
+                getAttendanceRecords: () => this.unifiedManager.getAllAttendanceRecords(),
+                getEmployeeById: (id) => this.unifiedManager.getEmployee(id),
+                getDepartments: () => {
+                    const employees = this.unifiedManager.getAllEmployees();
+                    const departments = [...new Set(employees.map(emp => emp.department).filter(Boolean))];
+                    return departments.map(dept => ({ name: dept, id: dept }));
+                }
+            };
+            
+            console.log('Analytics: Using UnifiedEmployeeManager directly');
+            
         } catch (error) {
             console.error('Failed to initialize data service:', error);
             throw error;
@@ -178,12 +203,78 @@ class AnalyticsController {
     }
 
     /**
+     * Setup event listeners for employee updates
+     */
+    setupEmployeeUpdateListeners() {
+        if (this.unifiedManager) {
+            // Listen for employee deletions and updates
+            this.unifiedManager.addEventListener('employeeUpdate', (data) => {
+                console.log('Analytics: Employee update received:', data);
+                this.handleEmployeeUpdate(data);
+            });
+
+            this.unifiedManager.addEventListener('employeeDeleted', (data) => {
+                console.log('Analytics: Employee deleted event received:', data);
+                this.handleEmployeeUpdate({ action: 'delete', ...data });
+            });
+
+            console.log('Analytics: Employee update listeners setup complete');
+        } else {
+            console.warn('Analytics: UnifiedManager not available for event listeners');
+        }
+    }
+
+    /**
+     * Handle employee update events
+     */
+    async handleEmployeeUpdate(data) {
+        try {
+            console.log('Analytics: Handling employee update:', data);
+            
+            // Refresh employee data and update UI
+            await this.refreshEmployeeData();
+            
+            // If current employee was deleted, reset selection
+            if (data.action === 'delete' && this.currentEmployee === data.employeeId) {
+                this.currentEmployee = null;
+                const employeeSelect = document.getElementById('employeeSelect');
+                if (employeeSelect) {
+                    employeeSelect.value = '';
+                }
+                // Refresh analytics data for all employees
+                await this.loadAnalyticsData();
+            }
+            
+        } catch (error) {
+            console.error('Analytics: Failed to handle employee update:', error);
+        }
+    }
+
+    /**
+     * Refresh employee data and update dropdown
+     */
+    async refreshEmployeeData() {
+        try {
+            const employees = await this.dataService.getEmployees();
+            this.populateEmployeeDropdown(employees);
+            console.log('Analytics: Employee data refreshed, new count:', employees.length);
+        } catch (error) {
+            console.error('Analytics: Failed to refresh employee data:', error);
+        }
+    }
+
+    /**
      * Load initial data for dropdowns and filters
      */
     async loadInitialData() {
         try {
-            // Load employees for dropdown
+            // Load employees for dropdown using unified manager
             const employees = await this.dataService.getEmployees();
+            console.log('Analytics: Loaded employees from unified manager:', {
+                count: employees.length,
+                sampleEmployee: employees[0]?.name || employees[0]?.firstName
+            });
+            
             this.populateEmployeeDropdown(employees);
 
             // Load departments for filter (if method exists)
@@ -209,6 +300,8 @@ class AnalyticsController {
      * Populate employee selection dropdown
      */
     populateEmployeeDropdown(employees) {
+        console.log('Analytics: populateEmployeeDropdown called with', employees.length, 'employees');
+        
         const employeeSelect = document.getElementById('employeeSelect');
         if (!employeeSelect) return;
 
@@ -232,6 +325,7 @@ class AnalyticsController {
         });
 
         // Update employee count
+        console.log('Analytics: Updating employee count to', employees.length);
         this.updateEmployeeCount(employees.length);
     }
 
