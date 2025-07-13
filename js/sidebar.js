@@ -157,28 +157,28 @@ class SidebarManager {
         const userRole = this.userRole.charAt(0).toUpperCase() + this.userRole.slice(1);
 
         return `
-            <div class="sidebar-header">
-                <div class="sidebar-brand">
+            <div class="sidebar-header compact">
+                <div class="sidebar-brand compact">
                     <div class="brand-icon">🧱</div>
-                    <div class="brand-text">
+                    <div class="brand-text compact">
                         <h2>Bricks</h2>
                         <span>Attendance System</span>
                     </div>
                 </div>
-                <button class="sidebar-toggle" aria-label="Toggle sidebar">
+                <button class="sidebar-toggle compact" aria-label="Toggle sidebar">
                     <span class="toggle-icon">‹</span>
                 </button>
             </div>
 
-            <div class="sidebar-user">
-                <div class="user-avatar">
+            <div class="sidebar-user compact">
+                <div class="user-avatar compact">
                     <span>${userName.charAt(0).toUpperCase()}</span>
                 </div>
-                <div class="user-info">
+                <div class="user-info compact">
                     <div class="user-name">${userName}</div>
                     <div class="user-role">${userRole}</div>
                 </div>
-                <div class="theme-selector">
+                <div class="theme-selector compact">
                     <button class="theme-option active" data-theme="light" title="Light Mode">
                         <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="5"></circle>
@@ -200,17 +200,17 @@ class SidebarManager {
                 </div>
             </div>
 
-            <nav class="sidebar-nav" role="navigation" aria-label="Main navigation">
-                <ul class="nav-list">
+            <nav class="sidebar-nav compact" role="navigation" aria-label="Main navigation">
+                <ul class="nav-list compact">
                     ${this.generateMenuItems()}
                 </ul>
             </nav>
 
             <!-- System Status Section -->
-            <div class="sidebar-status">
-                <div class="status-header">
-                    <h4>System Status</h4>
-                    <button class="status-refresh-btn" title="Refresh status" aria-label="Refresh system status">
+            <div class="sidebar-status compact">
+                <div class="status-header compact">
+                    <h4>Status</h4>
+                    <button class="status-refresh-btn compact" title="Refresh status" aria-label="Refresh system status">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="23,4 23,10 17,10"></polyline>
                             <polyline points="1,20 1,14 7,14"></polyline>
@@ -218,23 +218,23 @@ class SidebarManager {
                         </svg>
                     </button>
                 </div>
-                <div class="status-indicators">
-                    <div class="status-item" title="Server connection status">
+                <div class="status-indicators compact">
+                    <div class="status-item compact" title="Server connection status">
                         <span class="status-indicator status-online"></span>
                         <span class="status-text">Server</span>
                         <span class="status-detail">Online</span>
                     </div>
-                    <div class="status-item" title="Database connection status">
+                    <div class="status-item compact" title="Database connection status">
                         <span class="status-indicator status-online"></span>
                         <span class="status-text">Database</span>
                         <span class="status-detail">Connected</span>
                     </div>
-                    <div class="status-item" title="Data synchronization status">
+                    <div class="status-item compact" title="Data synchronization status">
                         <span class="status-indicator status-online"></span>
                         <span class="status-text">Sync</span>
                         <span class="status-detail">Active</span>
                     </div>
-                    <div class="status-item" title="System uptime">
+                    <div class="status-item compact" title="System uptime">
                         <span class="status-indicator status-info"></span>
                         <span class="status-text">Uptime</span>
                         <span class="status-detail">99.8%</span>
@@ -242,12 +242,12 @@ class SidebarManager {
                 </div>
             </div>
 
-            <div class="sidebar-footer">
-                <button class="logout-btn" title="Logout">
+            <div class="sidebar-footer compact">
+                <button class="logout-btn compact" title="Logout">
                     <span class="logout-icon">🚪</span>
                     <span class="logout-text">Logout</span>
                 </button>
-                <div class="sidebar-version">
+                <div class="sidebar-version compact">
                     <small>v1.0.0</small>
                 </div>
             </div>
@@ -265,9 +265,9 @@ class SidebarManager {
             const activeClass = isActive ? 'active' : '';
             
             return `
-                <li class="nav-item">
+                <li class="nav-item compact">
                     <a href="${item.url}" 
-                       class="nav-link ${activeClass}" 
+                       class="nav-link compact ${activeClass}" 
                        data-page="${item.id}"
                        title="${item.description}">
                         <span class="nav-icon">${item.icon}</span>
@@ -306,7 +306,7 @@ class SidebarManager {
         // Status refresh button
         const statusRefreshBtn = document.querySelector('.status-refresh-btn');
         if (statusRefreshBtn) {
-            statusRefreshBtn.addEventListener('click', () => this.updateSystemStatus());
+            statusRefreshBtn.addEventListener('click', () => this.updateSystemStatus(true));
         }
 
         // Listen for auth events - defer to ensure authService is available
@@ -380,9 +380,9 @@ class SidebarManager {
         // Theme selector buttons - retry setup if needed
         this.setupThemeSelector();
 
-        // Update system status periodically
-        this.updateSystemStatus();
-        setInterval(() => this.updateSystemStatus(), 30000); // Update every 30 seconds
+        // Update system status periodically (without notifications)
+        this.updateSystemStatus(false);
+        setInterval(() => this.updateSystemStatus(false), 30000); // Update every 30 seconds
     }
 
     /**
@@ -1040,7 +1040,7 @@ class SidebarManager {
     /**
      * Update system status indicators with enhanced information
      */
-    updateSystemStatus() {
+    updateSystemStatus(showNotification = false) {
         // Add loading state
         const refreshBtn = document.querySelector('.status-refresh-btn');
         if (refreshBtn) {
@@ -1105,8 +1105,10 @@ class SidebarManager {
                 refreshBtn.style.pointerEvents = 'auto';
             }
             
-            // Show success notification
-            this.showNotification('System status updated', 'success', 2000);
+            // Only show notification when explicitly requested (manual refresh)
+            if (showNotification) {
+                this.showNotification('System status updated', 'success', 2000);
+            }
             
         }, 800); // Simulate network delay
     }
