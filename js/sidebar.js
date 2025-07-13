@@ -1018,7 +1018,6 @@ class SidebarManager {
             }
             
             console.log(`Theme successfully changed to: ${theme}`);
-            this.showNotification(`Switched to ${theme} mode`, 'success');
             
             // Trigger custom event
             const event = new CustomEvent('themeChanged', { detail: theme });
@@ -1026,7 +1025,6 @@ class SidebarManager {
             
         } else {
             console.warn('Failed to change theme. Available theme functions:', Object.keys(window).filter(k => k.toLowerCase().includes('theme')));
-            this.showNotification('Unable to change theme', 'error');
         }
     }
 
