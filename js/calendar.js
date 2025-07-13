@@ -497,7 +497,7 @@ class Calendar {
         const displayIndicators = indicators.slice(0, 2);
 
         return displayIndicators.length > 0 ? 
-            `<div class="day-indicators">${displayIndicators.map(i => i.html).join('')}</div>` : '';
+            `<div class="day-indicators">${displayIndicators.map(i => i.php).join('')}</div>` : '';
     }
 
     selectDate(dayElement) {

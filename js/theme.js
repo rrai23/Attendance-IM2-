@@ -110,7 +110,7 @@ class ThemeManager {
     detectCurrentPage() {
         // Try to get page from URL
         const path = window.location.pathname;
-        const filename = path.split('/').pop().replace('.html', '');
+        const filename = path.split('/').pop().replace('.php', '');
         
         if (this.accentColors[filename]) {
             this.currentPage = filename;

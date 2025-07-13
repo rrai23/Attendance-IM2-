@@ -133,7 +133,7 @@ class GlobalSystemSync {
 
     detectCurrentPage() {
         const url = window.location.pathname;
-        const filename = url.split('/').pop() || 'index.html';
+        const filename = url.split('/').pop() || 'index.php';
         
         if (filename.includes('employee')) return 'employees';
         if (filename.includes('dashboard')) return 'dashboard';
@@ -141,7 +141,7 @@ class GlobalSystemSync {
         if (filename.includes('analytics')) return 'analytics';
         if (filename.includes('attendance')) return 'attendance';
         if (filename.includes('settings')) return 'settings';
-        if (filename === 'index.html' || filename === '') return 'dashboard';
+        if (filename === 'index.php' || filename === '') return 'dashboard';
         
         return 'unknown';
     }

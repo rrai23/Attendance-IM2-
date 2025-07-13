@@ -10,7 +10,7 @@ class AnalyticsController {
         this.analyticsData = null;
         this.charts = new Map();
         this.isInitialized = false;
-        this.unifiedManager = null;
+        this.dataService = null;
         this.unifiedManager = null;
         this.filters = {
             employeeId: null,
@@ -65,26 +65,18 @@ class AnalyticsController {
         try {
             console.log('Initializing AnalyticsController...');
             
-            // 🎯 DIRECT ACCESS: Use UnifiedEmployeeManager directly, no wrapper
-            if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
-                throw new Error('UnifiedEmployeeManager not available or not initialized');
-            }
-            
-            console.log('Analytics: Using UnifiedEmployeeManager directly');
-            this.unifiedManager = window.unifiedEmployeeManager;
+            // Initialize unified data service
+            await this.initializeDataService();
             
             if (typeof chartsManager === 'undefined') {
                 console.warn('chartsManager is not available - will use fallback visualizations');
             }
 
             this.setupEventListeners();
-            
-            // Setup employee update listeners after unified manager is available
-            this.setupEmployeeUpdateListeners();
-            
             await this.loadInitialData();
             this.setupFilters();
             this.setupDateRangePicker();
+            this.renderAnalyticsTiles();
             await this.loadAnalyticsData();
             this.renderCharts();
             this.setupAutoRefresh();
@@ -94,6 +86,28 @@ class AnalyticsController {
         } catch (error) {
             console.error('Failed to initialize analytics controller:', error);
             this.showError('Failed to load analytics data. Please refresh the page.');
+        }
+    }
+
+    /**
+     * Initialize the unified data service
+     */
+    async initializeDataService() {
+        try {
+            if (typeof window.UnifiedDataService !== 'undefined') {
+                this.dataService = new window.UnifiedDataService();
+                await this.dataService.initialize();
+                this.unifiedManager = this.dataService.getUnifiedManager();
+                console.log('Analytics using UnifiedDataService');
+            } else if (typeof dataService !== 'undefined') {
+                this.dataService = dataService;
+                console.log('Analytics using legacy dataService');
+            } else {
+                throw new Error('No data service available');
+            }
+        } catch (error) {
+            console.error('Failed to initialize data service:', error);
+            throw error;
         }
     }
 
@@ -164,83 +178,23 @@ class AnalyticsController {
     }
 
     /**
-     * Setup event listeners for employee updates
-     */
-    setupEmployeeUpdateListeners() {
-        if (this.unifiedManager) {
-            // Listen for employee deletions and updates
-            this.unifiedManager.addEventListener('employeeUpdate', (data) => {
-                console.log('Analytics: Employee update received:', data);
-                this.handleEmployeeUpdate(data);
-            });
-
-            this.unifiedManager.addEventListener('employeeDeleted', (data) => {
-                console.log('Analytics: Employee deleted event received:', data);
-                this.handleEmployeeUpdate({ action: 'delete', ...data });
-            });
-
-            console.log('Analytics: Employee update listeners setup complete');
-        } else {
-            console.warn('Analytics: UnifiedManager not available for event listeners');
-        }
-    }
-
-    /**
-     * Handle employee update events
-     */
-    async handleEmployeeUpdate(data) {
-        try {
-            console.log('Analytics: Handling employee update:', data);
-            
-            // Refresh employee data and update UI
-            await this.refreshEmployeeData();
-            
-            // If current employee was deleted, reset selection
-            if (data.action === 'delete' && this.currentEmployee === data.employeeId) {
-                this.currentEmployee = null;
-                const employeeSelect = document.getElementById('employeeSelect');
-                if (employeeSelect) {
-                    employeeSelect.value = '';
-                }
-                // Refresh analytics data for all employees
-                await this.loadAnalyticsData();
-            }
-            
-        } catch (error) {
-            console.error('Analytics: Failed to handle employee update:', error);
-        }
-    }
-
-    /**
-     * Refresh employee data and update dropdown
-     */
-    async refreshEmployeeData() {
-        try {
-            const employees = await this.unifiedManager.getAllEmployees();
-            this.populateEmployeeDropdown(employees);
-            console.log('Analytics: Employee data refreshed, new count:', employees.length);
-        } catch (error) {
-            console.error('Analytics: Failed to refresh employee data:', error);
-        }
-    }
-
-    /**
      * Load initial data for dropdowns and filters
      */
     async loadInitialData() {
         try {
-            // 🎯 DIRECT ACCESS: Load employees directly from unified manager
-            const employees = this.unifiedManager.getAllEmployees();
-            console.log('Analytics: Loaded employees from unified manager:', {
-                count: employees.length,
-                sampleEmployee: employees[0]?.name || employees[0]?.firstName
-            });
-            
+            // Load employees for dropdown
+            const employees = await this.dataService.getEmployees();
             this.populateEmployeeDropdown(employees);
 
-            // Load departments for filter - extract from employees
-            const departments = [...new Set(employees.map(emp => emp.department).filter(Boolean))];
-            this.populateDepartmentFilter(departments.map(dept => ({ name: dept, id: dept })));
+            // Load departments for filter (if method exists)
+            if (this.dataService.getDepartments) {
+                const departments = await this.dataService.getDepartments();
+                this.populateDepartmentFilter(departments);
+            } else {
+                // Extract departments from employees
+                const departments = [...new Set(employees.map(emp => emp.department).filter(Boolean))];
+                this.populateDepartmentFilter(departments.map(dept => ({ name: dept, id: dept })));
+            }
 
             // Set default employee (all employees)
             this.currentEmployee = null;
@@ -255,8 +209,6 @@ class AnalyticsController {
      * Populate employee selection dropdown
      */
     populateEmployeeDropdown(employees) {
-        console.log('Analytics: populateEmployeeDropdown called with', employees.length, 'employees');
-        
         const employeeSelect = document.getElementById('employeeSelect');
         if (!employeeSelect) return;
 
@@ -280,7 +232,6 @@ class AnalyticsController {
         });
 
         // Update employee count
-        console.log('Analytics: Updating employee count to', employees.length);
         this.updateEmployeeCount(employees.length);
     }
 
@@ -446,11 +397,16 @@ class AnalyticsController {
     async filterEmployeesByDepartment(departmentId) {
         let employees;
         if (departmentId) {
-            // Get all employees from unified manager and filter by department
-            const allEmployees = await this.unifiedManager.getAllEmployees();
-            employees = allEmployees.filter(emp => emp.department === departmentId);
+            // If using unified data service, filter employees by department
+            if (this.dataService.getEmployeesByDepartment) {
+                employees = await this.dataService.getEmployeesByDepartment(departmentId);
+            } else {
+                // Fallback: get all employees and filter by department
+                const allEmployees = await this.dataService.getEmployees();
+                employees = allEmployees.filter(emp => emp.department === departmentId);
+            }
         } else {
-            employees = await this.unifiedManager.getAllEmployees();
+            employees = await this.dataService.getEmployees();
         }
             
         this.populateEmployeeDropdown(employees);
@@ -544,43 +500,35 @@ class AnalyticsController {
      */
     async loadAnalyticsData() {
         try {
-            // 🎯 DIRECT ACCESS: Get attendance records directly from unified manager
-            let attendanceRecords;
-            
-            if (this.filters.employeeId) {
-                // Filter by specific employee
-                attendanceRecords = this.unifiedManager.getAttendanceRecords({
-                    employeeId: this.filters.employeeId
-                });
-            } else {
-                // Get all attendance records
-                attendanceRecords = this.unifiedManager.getAllAttendanceRecords();
-            }
-            
-            // Apply date filtering if specified
-            if (this.filters.startDate || this.filters.endDate) {
-                attendanceRecords = attendanceRecords.filter(record => {
-                    const recordDate = record.date;
-                    if (this.filters.startDate && recordDate < this.filters.startDate) return false;
-                    if (this.filters.endDate && recordDate > this.filters.endDate) return false;
-                    return true;
-                });
-            }
-            
-            console.log('Analytics: Loaded attendance records:', {
-                total: attendanceRecords.length,
-                employeeFilter: this.filters.employeeId,
-                dateRange: `${this.filters.startDate} to ${this.filters.endDate}`
-            });
+            // Get attendance records based on filters
+            const attendanceRecords = await this.dataService.getAttendanceRecords(
+                this.filters.employeeId ? {
+                    employeeId: this.filters.employeeId,
+                    startDate: this.filters.startDate,
+                    endDate: this.filters.endDate
+                } : {
+                    startDate: this.filters.startDate,
+                    endDate: this.filters.endDate
+                }
+            );
 
-            // Get attendance statistics directly from unified manager
-            const attendanceStats = this.unifiedManager.getAttendanceStats();
+            // Get employee performance data (if method exists)
+            let performanceData = null;
+            if (this.dataService.getEmployeePerformance) {
+                performanceData = await this.dataService.getEmployeePerformance(this.filters.employeeId);
+            }
+
+            // Get attendance statistics (if method exists)
+            let attendanceStats = null;
+            if (this.dataService.getAttendanceStats) {
+                attendanceStats = await this.dataService.getAttendanceStats();
+            } else {
+                // Calculate basic stats from attendance records
+                attendanceStats = this.calculateBasicAttendanceStats(attendanceRecords);
+            }
 
             // Process and structure the data for charts
-            this.analyticsData = this.processAnalyticsData(attendanceRecords, null, attendanceStats);
-
-            // Update analytics summary tiles with the new data
-            this.updateAnalyticsSummary();
+            this.analyticsData = this.processAnalyticsData(attendanceRecords, performanceData, attendanceStats);
 
             return this.analyticsData;
         } catch (error) {
@@ -875,6 +823,39 @@ class AnalyticsController {
             overtimeHours: Math.round(overtimeHours * 100) / 100,
             averageHoursPerDay: total > 0 ? Math.round((totalHours / total) * 100) / 100 : 0
         };
+    }
+
+    /**
+     * Render analytics tiles
+     */
+    renderAnalyticsTiles() {
+        // This method sets up the tile structure
+        // The actual data will be populated by updateAnalyticsSummary()
+        const tilesContainer = document.getElementById('analyticsTiles');
+        if (!tilesContainer) return;
+
+        const tiles = [
+            { id: 'attendanceRate', title: 'Attendance Rate', icon: '📊', value: '0%', trend: 'neutral' },
+            { id: 'punctualityRate', title: 'Punctuality Rate', icon: '⏰', value: '0%', trend: 'neutral' },
+            { id: 'totalHours', title: 'Total Hours', icon: '🕐', value: '0h', trend: 'neutral' },
+            { id: 'overtimeHours', title: 'Overtime Hours', icon: '⏱️', value: '0h', trend: 'neutral' }
+        ];
+
+        tilesContainer.innerHTML = tiles.map(tile => `
+            <div class="analytics-tile" id="${tile.id}Tile">
+                <div class="tile-header">
+                    <span class="tile-icon">${tile.icon}</span>
+                    <h3 class="tile-title">${tile.title}</h3>
+                </div>
+                <div class="tile-content">
+                    <div class="tile-value" id="${tile.id}Value">${tile.value}</div>
+                    <div class="tile-trend ${tile.trend}" id="${tile.id}Trend">
+                        <span class="trend-indicator"></span>
+                        <span class="trend-text">No change</span>
+                    </div>
+                </div>
+            </div>
+        `).join('');
     }
 
     /**
@@ -1722,16 +1703,13 @@ if (typeof module !== 'undefined' && module.exports) {
 
 // Wait for dependencies to be ready before initializing
 function initializeWhenReady() {
-    // 🎯 CRITICAL FIX: Check for unifiedEmployeeManager instead of UnifiedDataService
-    if (typeof window.unifiedEmployeeManager !== 'undefined' && window.unifiedEmployeeManager.initialized) {
+    // Check if unified data service is available, or fallback to legacy dataService
+    if (typeof window.UnifiedDataService !== 'undefined' || typeof dataService !== 'undefined') {
         if (!analyticsController.isInitialized) {
-            console.log('Analytics: UnifiedEmployeeManager detected, initializing...');
             analyticsController.init().catch(console.error);
         }
     } else {
-        console.log('Analytics waiting for dependencies... unifiedEmployeeManager:', 
-                   typeof window.unifiedEmployeeManager, 
-                   'initialized:', window.unifiedEmployeeManager?.initialized);
+        console.log('Analytics waiting for dependencies... UnifiedDataService:', typeof window.UnifiedDataService, 'dataService:', typeof dataService);
         setTimeout(initializeWhenReady, 100);
     }
 }

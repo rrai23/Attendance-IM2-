@@ -9,7 +9,7 @@ class EmployeeAttendanceManager {
         this.employees = [];
         this.currentViewingRecord = null;
         this.currentEditingRecord = null;
-        this.unifiedManager = null;
+        this.dataService = null;
         this.unifiedManager = null;
         this.statusTypes = {
             present: { label: 'Present', icon: '✅', color: '#22c55e' },
@@ -56,26 +56,19 @@ class EmployeeAttendanceManager {
      */
     async initializeDataService() {
         try {
-            // Wait for unified employee manager to be ready
-            let waitCount = 0;
-            const maxWait = 100; // 10 seconds max wait
-            
-            while ((!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) && waitCount < maxWait) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-                waitCount++;
-                if (waitCount % 10 === 0) {
-                    console.log(`Employee Attendance waiting for unified manager... (${waitCount/10}s)`);
-                }
+            if (typeof window.UnifiedDataService !== 'undefined') {
+                this.dataService = new window.UnifiedDataService();
+                await this.dataService.initialize();
+                this.unifiedManager = this.dataService.getUnifiedManager();
+                console.log('Employee Attendance using UnifiedDataService');
+            } else if (typeof dataService !== 'undefined') {
+                this.dataService = dataService;
+                console.log('Employee Attendance using legacy dataService');
+            } else {
+                throw new Error('No data service available');
             }
-            
-            if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
-                throw new Error('UnifiedEmployeeManager not available or not initialized');
-            }
-            
-            this.unifiedManager = window.unifiedEmployeeManager;
-            console.log('Employee Attendance using UnifiedEmployeeManager directly');
         } catch (error) {
-            console.error('Failed to initialize unified employee manager:', error);
+            console.error('Failed to initialize data service:', error);
             throw error;
         }
     }
@@ -87,8 +80,8 @@ class EmployeeAttendanceManager {
         try {
             console.log('Loading employees from unified data service...');
             
-            // Get employees from unified manager
-            const employeesData = this.unifiedManager.getAllEmployees();
+            // Get employees from unified data service
+            const employeesData = await this.dataService.getEmployees();
             
             // Transform data to match the expected format for this module
             this.employees = employeesData.map(emp => ({
@@ -141,7 +134,7 @@ class EmployeeAttendanceManager {
             console.log('Loading attendance records from unified data service...');
             
             // Get all attendance records from unified data service
-            const records = this.unifiedManager.getAllAttendanceRecords();
+            const records = await this.dataService.getAttendanceRecords();
             
             // Transform data to match the expected format for this module
             this.attendanceRecords = records.map(record => ({
@@ -415,12 +408,14 @@ class EmployeeAttendanceManager {
                 modifiedBy: 'Admin' // In a real app, this would be the current user
             };
 
-            // Save to unified manager
-            try {
-                this.unifiedManager.addAttendanceRecord(record);
-                console.log('Attendance record saved to unified manager');
-            } catch (error) {
-                console.warn('Failed to save to unified manager:', error);
+            // Save to unified data service
+            if (this.dataService && typeof this.dataService.saveAttendanceRecord === 'function') {
+                try {
+                    await this.dataService.saveAttendanceRecord(record);
+                    console.log('Attendance record saved to unified data service');
+                } catch (error) {
+                    console.warn('Failed to save to unified data service:', error);
+                }
             }
 
             // Update local records

@@ -1,4 +1,6 @@
-// Authentication module for the Bricks Attendance System
+/**
+ * Authentication module for the Bricks Attendance System
+ */
 class Auth {
     static STORAGE_KEY = 'bricks_auth';
     static SESSION_DURATION = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
@@ -125,7 +127,7 @@ class Auth {
      */
     static logout() {
         sessionStorage.removeItem(this.STORAGE_KEY);
-        window.location.href = 'login.html';
+        window.location.href = '/IM2/login.php';
     }
 
     /**
@@ -142,7 +144,7 @@ class Auth {
      */
     static requireAuth(requiredRole = null) {
         if (!this.isAuthenticated()) {
-            window.location.href = 'login.html';
+            window.location.href = '/IM2/login.php';
             return;
         }
 
@@ -150,9 +152,9 @@ class Auth {
             // Redirect to appropriate dashboard based on role
             const userRole = this.getCurrentUserRole();
             if (userRole === 'admin') {
-                window.location.href = 'dashboard.html';
+                window.location.href = 'dashboard.php';
             } else {
-                window.location.href = 'employee.html';
+                window.location.href = 'employee.php';
             }
             return;
         }

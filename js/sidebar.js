@@ -18,42 +18,42 @@ class SidebarManager {
                     id: 'dashboard',
                     label: 'Dashboard',
                     icon: '📊',
-                    url: '/dashboard.html',
+                    url: '/IM2/dashboard.php',
                     description: 'Overview and statistics'
                 },
                 {
                     id: 'employees',
                     label: 'Employees',
                     icon: '👥',
-                    url: '/employees.html',
+                    url: '/IM2/employees.php',
                     description: 'Employee management'
                 },
                 {
-                    id: 'employee-management',
+                    id: 'attendance',
                     label: 'Attendance',
                     icon: '🕐',
-                    url: '/employee-management.html',
-                    description: 'Manage employee attendance'
+                    url: '/IM2/employee-management.php',
+                    description: 'Employee attendance'
                 },
                 {
                     id: 'analytics',
                     label: 'Analytics',
                     icon: '📈',
-                    url: '/analytics.html',
+                    url: '/IM2/analytics.php',
                     description: 'Detailed attendance analytics'
                 },
                 {
                     id: 'payroll',
                     label: 'Payroll',
                     icon: '💰',
-                    url: '/payroll.html',
+                    url: '/IM2/payroll.php',
                     description: 'Payroll management'
                 },
                 {
                     id: 'settings',
                     label: 'Settings',
                     icon: '⚙️',
-                    url: '/settings.html',
+                    url: '/IM2/settings.php',
                     description: 'System configuration'
                 }
             ],
@@ -62,15 +62,8 @@ class SidebarManager {
                     id: 'employee',
                     label: 'My Attendance',
                     icon: '👤',
-                    url: '/employee.html',
+                    url: '/IM2/employee.php',
                     description: 'Personal attendance data'
-                },
-                {
-                    id: 'security',
-                    label: 'Security',
-                    icon: '🔐',
-                    url: '/employee.html#security',
-                    description: 'Change username and password'
                 }
             ]
         };
@@ -99,7 +92,7 @@ class SidebarManager {
      */
     detectCurrentPage() {
         const path = window.location.pathname;
-        const filename = path.split('/').pop().replace('.html', '');
+        const filename = path.split('/').pop().replace('.php', '');
         this.currentPage = filename || 'dashboard';
     }
 
@@ -153,7 +146,7 @@ class SidebarManager {
      */
     generateSidebarHTML() {
         const user = typeof authService !== 'undefined' ? authService.getCurrentUser() : null;
-        const userName = user ? `${user.firstName || user.username || user.name || 'User'}` : 'User';
+        const userName = user ? `${user.firstName || user.username || user.name}` : '';
         const userRole = this.userRole.charAt(0).toUpperCase() + this.userRole.slice(1);
 
         return `
@@ -206,38 +199,64 @@ class SidebarManager {
                 </ul>
             </nav>
 
+            <!-- Quick Actions Section -->
+            <div class="sidebar-quick-actions">
+                <div class="quick-actions-header">
+                    <h4>Quick Actions</h4>
+                </div>
+                <div class="quick-actions-grid" role="group" aria-label="Quick action buttons">
+                    <button class="quick-action-btn" 
+                            title="Clock In/Out (Alt+C)" 
+                            id="quickClockBtn"
+                            aria-label="Clock In or Clock Out"
+                            data-shortcut="Alt+C">
+                        <span class="quick-action-icon">🕐</span>
+                        <span class="quick-action-text">Clock In/Out</span>
+                    </button>
+                    <button class="quick-action-btn" 
+                            title="Add Employee (Alt+E)" 
+                            id="quickAddEmployeeBtn"
+                            aria-label="Add new employee"
+                            data-shortcut="Alt+E">
+                        <span class="quick-action-icon">👤</span>
+                        <span class="quick-action-text">Add Employee</span>
+                    </button>
+                    <button class="quick-action-btn" 
+                            title="Generate Report (Alt+R)" 
+                            id="quickReportBtn"
+                            aria-label="Generate attendance report"
+                            data-shortcut="Alt+R">
+                        <span class="quick-action-icon">📊</span>
+                        <span class="quick-action-text">Report</span>
+                    </button>
+                    <button class="quick-action-btn" 
+                            title="System Status (Alt+Q)" 
+                            id="quickStatusBtn"
+                            aria-label="View system status"
+                            data-shortcut="Alt+Q">
+                        <span class="quick-action-icon">❤️</span>
+                        <span class="quick-action-text">Status</span>
+                    </button>
+                </div>
+            </div>
+
             <!-- System Status Section -->
             <div class="sidebar-status">
                 <div class="status-header">
                     <h4>System Status</h4>
-                    <button class="status-refresh-btn" title="Refresh status" aria-label="Refresh system status">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="23,4 23,10 17,10"></polyline>
-                            <polyline points="1,20 1,14 7,14"></polyline>
-                            <path d="M20.49,9A9,9,0,0,0,5.64,5.64L1,10m22,4L18.36,18.36A9,9,0,0,1,3.51,15"></path>
-                        </svg>
-                    </button>
                 </div>
                 <div class="status-indicators">
-                    <div class="status-item" title="Server connection status">
+                    <div class="status-item">
                         <span class="status-indicator status-online"></span>
-                        <span class="status-text">Server</span>
-                        <span class="status-detail">Online</span>
+                        <span class="status-text">Server Online</span>
                     </div>
-                    <div class="status-item" title="Database connection status">
+                    <div class="status-item">
                         <span class="status-indicator status-online"></span>
-                        <span class="status-text">Database</span>
-                        <span class="status-detail">Connected</span>
+                        <span class="status-text">Database Connected</span>
                     </div>
-                    <div class="status-item" title="Data synchronization status">
+                    <div class="status-item">
                         <span class="status-indicator status-online"></span>
-                        <span class="status-text">Sync</span>
-                        <span class="status-detail">Active</span>
-                    </div>
-                    <div class="status-item" title="System uptime">
-                        <span class="status-indicator status-info"></span>
-                        <span class="status-text">Uptime</span>
-                        <span class="status-detail">99.8%</span>
+                        <span class="status-text">Backup System</span>
                     </div>
                 </div>
             </div>
@@ -301,12 +320,6 @@ class SidebarManager {
         const logoutBtn = document.querySelector('.logout-btn');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', () => this.handleLogout());
-        }
-
-        // Status refresh button
-        const statusRefreshBtn = document.querySelector('.status-refresh-btn');
-        if (statusRefreshBtn) {
-            statusRefreshBtn.addEventListener('click', () => this.updateSystemStatus());
         }
 
         // Listen for auth events - defer to ensure authService is available
@@ -377,6 +390,28 @@ class SidebarManager {
             }
         });
 
+        // Quick action buttons
+        const quickClockBtn = document.getElementById('quickClockBtn');
+        const quickAddEmployeeBtn = document.getElementById('quickAddEmployeeBtn');
+        const quickReportBtn = document.getElementById('quickReportBtn');
+        const quickStatusBtn = document.getElementById('quickStatusBtn');
+
+        if (quickClockBtn) {
+            quickClockBtn.addEventListener('click', () => this.handleQuickClock());
+        }
+
+        if (quickAddEmployeeBtn) {
+            quickAddEmployeeBtn.addEventListener('click', () => this.handleQuickAddEmployee());
+        }
+
+        if (quickReportBtn) {
+            quickReportBtn.addEventListener('click', () => this.handleQuickReport());
+        }
+
+        if (quickStatusBtn) {
+            quickStatusBtn.addEventListener('click', () => this.handleQuickStatus());
+        }
+
         // Theme selector buttons - retry setup if needed
         this.setupThemeSelector();
 
@@ -429,13 +464,7 @@ class SidebarManager {
         const link = event.currentTarget;
         const page = link.dataset.page;
         
-        // Check if there's a page-specific navigation handler
-        if (window.employeePage && typeof window.employeePage.navigateToSection === 'function') {
-            event.preventDefault();
-            window.employeePage.navigateToSection(page);
-        }
-        
-        // Don't prevent default for actual navigation to other pages
+        // Don't prevent default for actual navigation
         // Just update active state and trigger page change
         this.setActivePage(page);
         
@@ -446,6 +475,45 @@ class SidebarManager {
 
         // Add click animation
         this.addClickAnimation(link);
+        
+        // Add actual page navigation logic
+        let targetUrl = null;
+        
+        switch (page) {
+            case 'employees':
+                targetUrl = '/IM2/employees.php';
+                break;
+            case 'attendance':
+                targetUrl = '/IM2/employee-management.php';
+                break;
+            case 'analytics':
+                targetUrl = '/IM2/analytics.php';
+                break;
+            case 'settings':
+                targetUrl = '/IM2/settings.php';
+                break;
+            case 'payroll':
+                targetUrl = '/IM2/payroll.php';
+                break;
+            case 'users':
+                targetUrl = '/IM2/users.php';
+                break;
+            case 'dashboard':
+                targetUrl = '/IM2/dashboard.php';
+                break;
+            case 'employee':
+                targetUrl = '/IM2/employee.php';
+                break;
+            default:
+                // Use the href attribute as fallback
+                targetUrl = link.getAttribute('href');
+                break;
+        }
+        
+        // Navigate to the target URL if it exists and is different from current page
+        if (targetUrl && targetUrl !== window.location.pathname) {
+            window.location.href = targetUrl;
+        }
     }
 
     /**
@@ -678,7 +746,7 @@ class SidebarManager {
                         authService.logout('user_logout');
                     } else {
                         // Fallback logout
-                        window.location.href = '/login.html';
+                        window.location.href = '/IM2/logout.php';
                     }
                 }
             });
@@ -688,7 +756,7 @@ class SidebarManager {
                 if (typeof authService !== 'undefined') {
                     authService.logout('user_logout');
                 } else {
-                    window.location.href = '/login.html';
+                    window.location.href = '/IM2/logout.php';
                 }
             }
         }
@@ -704,10 +772,32 @@ class SidebarManager {
             this.toggleSidebar();
         }
 
-        // Alt + 1-6 for quick navigation (admin only)
+        // Quick action shortcuts
+        if (event.altKey) {
+            switch (event.key.toLowerCase()) {
+                case 'c':
+                    event.preventDefault();
+                    this.handleQuickClock();
+                    break;
+                case 'e':
+                    event.preventDefault();
+                    this.handleQuickAddEmployee();
+                    break;
+                case 'r':
+                    event.preventDefault();
+                    this.handleQuickReport();
+                    break;
+                case 'q':
+                    event.preventDefault();
+                    this.handleQuickStatus();
+                    break;
+            }
+        }
+
+        // Alt + 1-4 for quick navigation (admin only)
         if (event.altKey && this.userRole === 'admin') {
             const num = parseInt(event.key);
-            if (num >= 1 && num <= 6) {
+            if (num >= 1 && num <= 4) {
                 event.preventDefault();
                 const items = this.menuItems.admin;
                 if (items[num - 1]) {
@@ -897,13 +987,93 @@ class SidebarManager {
     }
 
     /**
-     * Handle mobile specific functionality (simplified without quick actions)
+     * Handle mobile quick actions
      */
     handleMobileQuickActions() {
-        // Remove any existing floating action buttons since we don't need them anymore
         const existingFab = document.querySelector('.mobile-fab-container');
-        if (existingFab) {
-            existingFab.remove();
+        
+        if (window.innerWidth <= 768 && this.isCollapsed) {
+            // Create floating action button for mobile
+            if (!existingFab) {
+                this.createMobileFloatingActions();
+            }
+        } else {
+            // Remove floating action button
+            if (existingFab) {
+                existingFab.remove();
+            }
+        }
+    }
+
+    /**
+     * Create mobile floating action button
+     */
+    createMobileFloatingActions() {
+        const fabContainer = document.createElement('div');
+        fabContainer.className = 'mobile-fab-container';
+        fabContainer.innerHTML = `
+            <button class="mobile-fab-main" aria-label="Quick actions">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+            </button>
+            <div class="mobile-fab-menu">
+                <button class="mobile-fab-item" data-action="clock" aria-label="Clock in/out">
+                    <span>🕐</span>
+                </button>
+                <button class="mobile-fab-item" data-action="employee" aria-label="Add employee">
+                    <span>👤</span>
+                </button>
+                <button class="mobile-fab-item" data-action="report" aria-label="Generate report">
+                    <span>📊</span>
+                </button>
+                <button class="mobile-fab-item" data-action="status" aria-label="System status">
+                    <span>❤️</span>
+                </button>
+            </div>
+        `;
+        
+        // Add event listeners
+        const mainFab = fabContainer.querySelector('.mobile-fab-main');
+        const fabMenu = fabContainer.querySelector('.mobile-fab-menu');
+        
+        mainFab.addEventListener('click', () => {
+            fabContainer.classList.toggle('open');
+            mainFab.setAttribute('aria-expanded', fabContainer.classList.contains('open'));
+        });
+        
+        // Handle quick action clicks
+        fabContainer.addEventListener('click', (e) => {
+            const actionBtn = e.target.closest('.mobile-fab-item');
+            if (actionBtn) {
+                const action = actionBtn.dataset.action;
+                this.handleMobileFabAction(action);
+                fabContainer.classList.remove('open');
+                mainFab.setAttribute('aria-expanded', 'false');
+            }
+        });
+        
+        document.body.appendChild(fabContainer);
+    }
+
+    /**
+     * Handle mobile FAB actions
+     */
+    handleMobileFabAction(action) {
+        switch (action) {
+            case 'clock':
+                this.handleQuickClock();
+                break;
+            case 'employee':
+                this.handleQuickAddEmployee();
+                break;
+            case 'report':
+                this.handleQuickReport();
+                break;
+            case 'status':
+                this.handleQuickStatus();
+                break;
         }
     }
 
@@ -961,6 +1131,73 @@ class SidebarManager {
             toggle.setAttribute('aria-expanded', 'false');
             toggle.setAttribute('tabindex', '0');
         });
+    }
+
+    /**
+     * Handle quick actions
+     */
+    handleQuickClock() {
+        if (typeof window.showQuickClockModal === 'function') {
+            window.showQuickClockModal();
+        } else {
+            // Basic clock in/out functionality
+            const now = new Date().toLocaleTimeString();
+            const clockAction = localStorage.getItem('lastClockAction') || 'out';
+            const newAction = clockAction === 'in' ? 'out' : 'in';
+            
+            localStorage.setItem('lastClockAction', newAction);
+            localStorage.setItem('lastClockTime', now);
+            
+            // Show a simple notification
+            this.showNotification(`Clocked ${newAction} at ${now}`, 'success');
+        }
+    }
+
+    handleQuickAddEmployee() {
+        if (typeof window.showAddEmployeeModal === 'function') {
+            window.showAddEmployeeModal();
+        } else {
+            // Redirect to employee page with add parameter
+            window.location.href = '/employee.php#add';
+        }
+    }
+
+    handleQuickReport() {
+        if (typeof window.showQuickReportModal === 'function') {
+            window.showQuickReportModal();
+        } else {
+            // Basic report generation
+            const reportData = {
+                type: 'quick-summary',
+                date: new Date().toLocaleDateString(),
+                employees: 'All Active',
+                format: 'PDF'
+            };
+            
+            this.showNotification('Generating quick attendance report...', 'info');
+            console.log('Quick report generated:', reportData);
+            
+            // Simulate report generation
+            setTimeout(() => {
+                this.showNotification('Report generated successfully!', 'success');
+            }, 2000);
+        }
+    }
+
+    handleQuickStatus() {
+        if (typeof window.showSystemStatusModal === 'function') {
+            window.showSystemStatusModal();
+        } else {
+            // Show basic system status info
+            const status = {
+                server: 'Online',
+                database: 'Connected',
+                users: Math.floor(Math.random() * 50) + 10,
+                uptime: '99.8%'
+            };
+            
+            this.showNotification(`System Status: ${status.server} | Users: ${status.users} | Uptime: ${status.uptime}`, 'info');
+        }
     }
 
     /**
@@ -1037,78 +1274,14 @@ class SidebarManager {
     /**
      * Update system status indicators
      */
-    /**
-     * Update system status indicators with enhanced information
-     */
     updateSystemStatus() {
-        // Add loading state
-        const refreshBtn = document.querySelector('.status-refresh-btn');
-        if (refreshBtn) {
-            refreshBtn.classList.add('refreshing');
-            refreshBtn.style.pointerEvents = 'none';
-        }
-
-        // Simulate async status check
-        setTimeout(() => {
-            const statusItems = document.querySelectorAll('.status-item');
-            
-            statusItems.forEach((item, index) => {
-                const indicator = item.querySelector('.status-indicator');
-                const detail = item.querySelector('.status-detail');
-                
-                if (!indicator || !detail) return;
-
-                // Simulate different status checks based on item index
-                let status, detailText, statusClass;
-                
-                switch (index) {
-                    case 0: // Server
-                        status = Math.random() > 0.05; // 95% uptime
-                        detailText = status ? 'Online' : 'Offline';
-                        statusClass = status ? 'status-online' : 'status-error';
-                        break;
-                    case 1: // Database
-                        status = Math.random() > 0.02; // 98% uptime
-                        detailText = status ? 'Connected' : 'Disconnected';
-                        statusClass = status ? 'status-online' : 'status-error';
-                        break;
-                    case 2: // Sync
-                        status = Math.random() > 0.1; // 90% active
-                        detailText = status ? 'Active' : 'Inactive';
-                        statusClass = status ? 'status-online' : 'status-warning';
-                        break;
-                    case 3: // Uptime
-                        const uptime = (Math.random() * 5 + 95).toFixed(1); // 95-100%
-                        detailText = `${uptime}%`;
-                        statusClass = uptime > 98 ? 'status-online' : uptime > 95 ? 'status-warning' : 'status-error';
-                        break;
-                    default:
-                        status = true;
-                        detailText = 'OK';
-                        statusClass = 'status-online';
-                }
-                
-                // Update indicator and detail text
-                indicator.className = `status-indicator ${statusClass}`;
-                detail.textContent = detailText;
-                
-                // Add animation
-                item.style.transform = 'scale(0.95)';
-                setTimeout(() => {
-                    item.style.transform = 'scale(1)';
-                }, 100);
-            });
-            
-            // Remove loading state
-            if (refreshBtn) {
-                refreshBtn.classList.remove('refreshing');
-                refreshBtn.style.pointerEvents = 'auto';
-            }
-            
-            // Show success notification
-            this.showNotification('System status updated', 'success', 2000);
-            
-        }, 800); // Simulate network delay
+        // This would typically fetch real system status
+        const statusItems = document.querySelectorAll('.status-indicator');
+        statusItems.forEach(indicator => {
+            // Simulate status check
+            const isOnline = Math.random() > 0.1; // 90% uptime simulation
+            indicator.className = `status-indicator ${isOnline ? 'status-online' : 'status-error'}`;
+        });
     }
 
     /**

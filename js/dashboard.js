@@ -72,15 +72,13 @@ class DashboardController {
      * Wait for required dependencies to be available
      */
     async waitForDependencies() {
-        const maxWait = 15000; // Increased to 15 seconds to prevent premature fallback
+        const maxWait = 10000; // 10 seconds
         const checkInterval = 200;
         let waited = 0;
 
         return new Promise((resolve, reject) => {
             const check = () => {
                 const dependencies = {
-                    // Check for unified employee manager first (newest)
-                    unifiedEmployeeManager: typeof window.unifiedEmployeeManager !== 'undefined' && window.unifiedEmployeeManager.initialized,
                     // Check for unified data service first (preferred)
                     unifiedDataService: typeof window.dataService !== 'undefined' && window.dataService.initialized,
                     // Legacy data sources as fallback
@@ -93,25 +91,25 @@ class DashboardController {
                 };
                 
                 console.log('DashboardController checking dependencies...', dependencies);
-                console.log('window.unifiedEmployeeManager:', window.unifiedEmployeeManager ? 'exists' : 'undefined');
-                console.log('unifiedEmployeeManager.initialized:', window.unifiedEmployeeManager?.initialized);
+                console.log('window.dataService:', window.dataService);
+                console.log('dataService global:', typeof dataService !== 'undefined' ? dataService : 'undefined');
                 
-                // Check data sources in priority order: unified employee manager → unified service → data manager → original data service
-                const hasDataSource = dependencies.unifiedEmployeeManager || dependencies.unifiedDataService || dependencies.dataManager || dependencies.dataService;
+                // Check data sources in priority order: unified service → data manager → original data service
+                const hasDataSource = dependencies.unifiedDataService || dependencies.dataManager || dependencies.dataService;
                 
                 console.log('hasDataSource:', hasDataSource);
                 console.log('DashboardCalendar available:', dependencies.DashboardCalendar);
                 console.log('ApexCharts available:', dependencies.ApexCharts);
                 
                 if (hasDataSource && dependencies.DashboardCalendar && dependencies.ApexCharts) {
-                    console.log('✅ Core dependencies available - proceeding with dashboard initialization');
+                    console.log('Core dependencies available - proceeding with initialization');
                     resolve();
                 } else if (waited >= maxWait) {
-                    console.warn('⚠️ Dependencies not available after 15 seconds:', dependencies);
+                    console.warn('Dependencies not available after 10 seconds:', dependencies);
                     
                     // Try to proceed with minimal functionality
                     if (hasDataSource) {
-                        console.log('📊 Proceeding with minimal functionality (no charts)');
+                        console.log('Proceeding with minimal functionality');
                         resolve();
                     } else {
                         reject(new Error('Critical dependencies missing: No data source available'));
@@ -129,78 +127,33 @@ class DashboardController {
      * Setup event listeners for dashboard interactions
      */
     setupEventListeners() {
-        // Listen for unified employee manager updates (highest priority)
-        if (window.unifiedEmployeeManager) {
-            console.log('[DATA SYNC] Dashboard setting up UnifiedEmployeeManager event listeners');
-            
-            window.unifiedEmployeeManager.addEventListener('attendanceUpdate', (data) => {
-                console.log('[DATA SYNC] Dashboard received attendance update from unified employee manager:', data);
-                this.handleDataUpdate();
-            });
-            
-            window.unifiedEmployeeManager.addEventListener('employeeUpdate', (data) => {
-                console.log('[DATA SYNC] Dashboard received employee update from unified employee manager:', data);
-                this.handleDataUpdate();
-            });
-            
-            window.unifiedEmployeeManager.addEventListener('employeeDeleted', (data) => {
-                console.log('[DATA SYNC] Dashboard received employee deletion from unified employee manager:', data);
-                this.handleDataUpdate();
-            });
-            
-            window.unifiedEmployeeManager.addEventListener('employeeAdded', (data) => {
-                console.log('[DATA SYNC] Dashboard received employee addition from unified employee manager:', data);
-                this.handleDataUpdate();
-            });
-            
-            window.unifiedEmployeeManager.addEventListener('dataSync', (data) => {
-                console.log('[DATA SYNC] Dashboard received data sync from unified employee manager:', data);
-                if (data && (data.action === 'delete' || data.action === 'add' || data.action === 'update' || data.action === 'forceCleanup')) {
-                    this.handleDataUpdate();
-                }
-            });
-            
-            // Listen for system-wide broadcasts
-            document.addEventListener('bricksSystemUpdate', (event) => {
-                const { type, data } = event.detail;
-                console.log('[DATA SYNC] Dashboard received system update:', type, data);
-                if (type.includes('employee') || type.includes('Employee') || type.includes('attendance') || type.includes('Attendance')) {
-                    this.handleDataUpdate();
-                }
-            });
-        }
-        
         // Listen for unified data service updates
         if (window.dataService) {
-            console.log('[DATA SYNC] Dashboard setting up dataService event listeners');
-            
             window.dataService.addEventListener('attendanceUpdate', (data) => {
-                console.log('[DATA SYNC] Dashboard received attendance update from unified service:', data);
+                console.log('Dashboard received attendance update from unified service:', data);
                 this.handleDataUpdate();
             });
             
             window.dataService.addEventListener('dataChange', (data) => {
-                console.log('[DATA SYNC] Dashboard received data change from unified service:', data);
+                console.log('Dashboard received data change from unified service:', data);
                 this.handleDataUpdate();
             });
             
             window.dataService.addEventListener('employeeUpdate', (data) => {
-                console.log('[DATA SYNC] Dashboard received employee update from unified service:', data);
+                console.log('Dashboard received employee update from unified service:', data);
                 this.handleDataUpdate();
             });
         }
         
         // Also listen for legacy data manager updates for backwards compatibility
         if (window.dataManager) {
-            console.log('[DATA SYNC] Dashboard setting up legacy dataManager event listeners');
-            
             window.dataManager.addEventListener('attendanceUpdate', (data) => {
-                console.log('[DATA SYNC] Dashboard received attendance update from legacy manager:', data);
+                console.log('Dashboard received attendance update from legacy manager:', data);
                 this.handleDataUpdate();
             });
             
             window.dataManager.addEventListener('dataSync', (data) => {
-                console.log('[DATA SYNC] Dashboard received data sync from legacy manager:', data);
+                console.log('Dashboard received data sync from legacy manager:', data);
                 this.handleDataUpdate();
             });
         }
@@ -282,25 +235,8 @@ class DashboardController {
             const today = new Date().toISOString().split('T')[0];
             console.log('Loading attendance stats for date:', today);
             
-            // Prioritize the unified employee manager (newest)
-            if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
-                console.log('Loading attendance stats from unified employee manager');
-                
-                // Get attendance stats
-                this.currentStats = window.unifiedEmployeeManager.getAttendanceStats();
-                console.log('Received stats from unified employee manager:', this.currentStats);
-                
-                // Get today's attendance records
-                const todayRecords = window.unifiedEmployeeManager.getAttendanceRecords({ date: today });
-                console.log('Today\'s attendance records:', todayRecords);
-                
-                // Process today's data
-                this.currentStats.today = await this.processTodayAttendance(todayRecords);
-                
-                console.log('Dashboard loaded stats from unified employee manager:', this.currentStats);
-            }
             // Prioritize the unified data service
-            else if (window.dataService && window.dataService.initialized) {
+            if (window.dataService && window.dataService.initialized) {
                 console.log('Loading attendance stats from unified data service');
                 console.log('dataService methods:', Object.getOwnPropertyNames(window.dataService).filter(name => typeof window.dataService[name] === 'function'));
                 
@@ -403,23 +339,15 @@ class DashboardController {
      */
     async processTodayAttendance(records) {
         try {
-            // Get total number of active employees - prioritize unified employee manager
+            // Get total number of active employees from the data service
             let totalEmployees = 0;
             
-            if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
-                // Use UnifiedEmployeeManager for consistency with employees page
-                const employees = window.unifiedEmployeeManager.getEmployees();
-                totalEmployees = employees.filter(emp => emp.status === 'active').length;
-                console.log('[DATA INTEGRITY] Dashboard using UnifiedEmployeeManager for employee count:', totalEmployees);
-            } else if (window.dataService && window.dataService.getEmployees) {
-                // Fallback to data service if UnifiedEmployeeManager not available
+            if (window.dataService && window.dataService.getEmployees) {
                 const employees = await window.dataService.getEmployees();
                 totalEmployees = employees.filter(emp => emp.status === 'active').length;
-                console.log('[DATA INTEGRITY] Dashboard falling back to dataService for employee count:', totalEmployees);
             } else {
                 // Fallback: assume a reasonable number if we can't get the actual count
                 totalEmployees = Math.max(6, records.length);
-                console.warn('[DATA INTEGRITY] Dashboard using fallback employee count:', totalEmployees);
             }
             
             let present = 0;
@@ -471,8 +399,7 @@ class DashboardController {
                 present,
                 late,
                 absent,
-                attendanceRate: Math.round(attendanceRate * 10) / 10,
-                dataFullyLoaded: true  // 🎯 Mark that attendance data is fully processed
+                attendanceRate: Math.round(attendanceRate * 10) / 10
             };
         } catch (error) {
             console.error('Error processing today\'s attendance:', error);
@@ -481,8 +408,7 @@ class DashboardController {
                 present: 0,
                 late: 0,
                 absent: 0,
-                attendanceRate: 0,
-                dataFullyLoaded: false  // 🎯 Mark that data failed to load
+                attendanceRate: 0
             };
         }
     }
@@ -528,8 +454,7 @@ class DashboardController {
                 present: 0,
                 absent: 0,
                 late: 0,
-                leave: 0,
-                dataFullyLoaded: false  // 🎯 Default stats are not fully loaded
+                leave: 0
             },
             weekly: {
                 days: [],
@@ -698,7 +623,7 @@ class DashboardController {
      * Render calendar tile
      */
     renderCalendarTile() {
-        // Calendar HTML is already in place in dashboard.html
+        // Calendar HTML is already in place in dashboard.php
         // Just setup the expand button and initialize calendar
         const tile = document.getElementById(this.tiles.calendar.id);
         if (!tile) return;
@@ -1660,26 +1585,17 @@ class DashboardController {
         
         console.log('Stats being used for display:', stats);
         
-        // 🎯 CRITICAL FIX: Don't update UI if attendance data isn't fully loaded yet
-        // This prevents the brief flash of incorrect "absent" counts
-        const totalEmployees = Number(stats.total || stats.totalEmployees) || 0;
-        const present = Number(stats.present || stats.presentToday) || 0;
-        const late = Number(stats.late || stats.tardyToday) || 0;
-        const attendanceRate = Number(stats.attendanceRate || stats.presentPercentage) || 0;
-        
-        // If we have employees but no attendance data processed yet, don't update the UI
-        // This prevents showing "1 absent" when data is still loading
-        if (totalEmployees > 0 && present === 0 && late === 0 && !stats.dataFullyLoaded) {
-            console.log('🎯 Skipping UI update - attendance data not fully loaded yet');
-            console.log('Current state:', { totalEmployees, present, late, dataFullyLoaded: stats.dataFullyLoaded });
-            return;
-        }
-        
         // Update main header quick stats
         const totalEmployeesEl = document.getElementById('total-employees');
         const presentTodayEl = document.getElementById('present-today');
         const lateTodayEl = document.getElementById('late-today');
         const attendanceRateEl = document.getElementById('attendance-rate');
+        
+        // Use safe fallbacks and ensure numbers are displayed, not objects
+        const totalEmployees = Number(stats.total || stats.totalEmployees) || 0;
+        const present = Number(stats.present || stats.presentToday) || 0;
+        const late = Number(stats.late || stats.tardyToday) || 0;
+        const attendanceRate = Number(stats.attendanceRate || stats.presentPercentage) || 0;
         
         console.log('Values being set:', { totalEmployees, present, late, attendanceRate });
         

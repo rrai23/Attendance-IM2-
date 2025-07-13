@@ -10,7 +10,8 @@ class AuthService {
         
         // Default credentials for development
         this.defaultCredentials = {
-            admin: { username: 'admin', password: 'admin', role: 'admin' }
+            admin: { username: 'admin', password: 'admin', role: 'admin' },
+            employee: { username: 'employee', password: 'employee', role: 'employee' }
         };
         
         // Initialize authentication state
@@ -47,7 +48,6 @@ class AuthService {
             localStorage.removeItem(this.storageKey);
             localStorage.removeItem(this.tokenExpiryKey);
             localStorage.removeItem(this.userKey);
-            localStorage.removeItem('currentUser'); // Also clear legacy key
         }
     }
 
@@ -100,24 +100,10 @@ class AuthService {
         }
     }
 
-    // Validate credentials against unified account manager or fallback
+    // Validate credentials against default or data service
     async validateCredentials(username, password) {
         try {
-            // First, try unified account manager if available
-            if (window.unifiedAccountManager && window.unifiedAccountManager.initialized) {
-                console.log('Using unified account manager for authentication');
-                const result = await window.unifiedAccountManager.authenticate(username, password);
-                if (result.success) {
-                    return {
-                        success: true,
-                        user: result.user
-                    };
-                }
-                // If unified account manager fails, continue with fallback
-                console.log('Unified account manager authentication failed, trying fallback');
-            }
-
-            // Fallback: Check default credentials
+            // First check default credentials
             for (const [key, creds] of Object.entries(this.defaultCredentials)) {
                 if (creds.username === username && creds.password === password) {
                     return {
@@ -180,10 +166,7 @@ class AuthService {
             localStorage.setItem(this.storageKey, token);
             localStorage.setItem(this.tokenExpiryKey, expiryTime.toString());
             localStorage.setItem(this.userKey, JSON.stringify(user));
-            
-            // Also store with legacy key for compatibility with employee.html
-            localStorage.setItem('currentUser', JSON.stringify(user));
-            console.log('AuthService: Stored authentication data with both keys');
+            console.log('AuthService: Stored authentication data');
 
             // Set token in data service if available
             if (typeof dataService !== 'undefined' && dataService && typeof dataService.setAuthToken === 'function') {
@@ -231,7 +214,6 @@ class AuthService {
         localStorage.removeItem(this.storageKey);
         localStorage.removeItem(this.tokenExpiryKey);
         localStorage.removeItem(this.userKey);
-        localStorage.removeItem('currentUser'); // Also clear legacy key
 
         // Clear data service token if available
         if (typeof dataService !== 'undefined' && dataService && typeof dataService.setAuthToken === 'function') {
@@ -242,8 +224,8 @@ class AuthService {
         this.triggerAuthEvent('logout', { user, reason });
 
         // Redirect to login page only if we're not already on it
-        if (typeof window !== 'undefined' && window.location && !window.location.pathname.includes('login.html')) {
-            window.location.href = 'login.html';
+        if (typeof window !== 'undefined' && window.location && !window.location.pathname.includes('login.php')) {
+            window.location.href = '/IM2/login.php';
         }
     }
 
@@ -263,7 +245,6 @@ class AuthService {
             localStorage.removeItem(this.storageKey);
             localStorage.removeItem(this.tokenExpiryKey);
             localStorage.removeItem(this.userKey);
-            localStorage.removeItem('currentUser'); // Also clear legacy key
             return false;
         }
 
@@ -286,7 +267,6 @@ class AuthService {
             localStorage.removeItem(this.storageKey);
             localStorage.removeItem(this.tokenExpiryKey);
             localStorage.removeItem(this.userKey);
-            localStorage.removeItem('currentUser'); // Also clear legacy key
             return null;
         }
     }
@@ -343,11 +323,11 @@ class AuthService {
     getRedirectUrl(role) {
         switch (role) {
             case 'admin':
-                return '/dashboard.html';
+                return 'dashboard.php';
             case 'employee':
-                return '/employee.html';
+                return 'employee.php';
             default:
-                return '/login.html';
+                return '/IM2/login.php';
         }
     }
 
@@ -356,10 +336,10 @@ class AuthService {
         if (!this.isAuthenticated()) {
             // If we're not on the login page, redirect there
             if (typeof window !== 'undefined' && window.location && 
-                !window.location.pathname.includes('login.html') &&
-                !window.location.pathname.includes('index.html')) {
+                !window.location.pathname.includes('login.php') &&
+                !window.location.pathname.includes('index.php')) {
                 // Don't call logout to avoid circular dependency, just redirect
-                window.location.href = 'login.html';
+                window.location.href = '/IM2/login.php';
             }
         }
     }
@@ -415,33 +395,16 @@ class AuthService {
         }
     }
 
-    // Change password (enhanced with unified account manager support)
+    // Change password (for future backend integration)
     async changePassword(currentPassword, newPassword) {
         if (!this.isAuthenticated()) {
             throw new Error('Not authenticated');
         }
 
         try {
-            const user = this.getCurrentUser();
-            
-            // Try unified account manager first
-            if (window.unifiedAccountManager && window.unifiedAccountManager.initialized) {
-                console.log('Using unified account manager for password change');
-                const result = await window.unifiedAccountManager.changePassword(
-                    user.username, 
-                    currentPassword, 
-                    newPassword
-                );
-                
-                if (result.success) {
-                    // Trigger password change event
-                    this.triggerAuthEvent('password_changed', { username: user.username });
-                    return result;
-                }
-            }
-
-            // Fallback for demo mode
+            // This would call the backend API in production
             if (typeof dataService !== 'undefined') {
+                const user = this.getCurrentUser();
                 // Mock implementation - in production this would be a secure API call
                 console.log('Password change requested for user:', user.username);
                 return { success: true, message: 'Password changed successfully' };
@@ -450,90 +413,6 @@ class AuthService {
             return { success: false, message: 'Password change not available in demo mode' };
         } catch (error) {
             console.error('Password change error:', error);
-            throw error;
-        }
-    }
-
-    // Reset password (admin function)
-    async resetPassword(username, newPassword, forceChange = true) {
-        if (!this.isAuthenticated() || !this.isAdmin()) {
-            throw new Error('Not authorized to reset passwords');
-        }
-
-        try {
-            // Use unified account manager if available
-            if (window.unifiedAccountManager && window.unifiedAccountManager.initialized) {
-                console.log('Using unified account manager for password reset');
-                const result = await window.unifiedAccountManager.resetPassword(
-                    username, 
-                    newPassword, 
-                    forceChange
-                );
-                
-                if (result.success) {
-                    // Trigger password reset event
-                    this.triggerAuthEvent('password_reset', { 
-                        username: username,
-                        resetBy: this.getCurrentUser().username
-                    });
-                    return result;
-                }
-            }
-
-            return { success: false, message: 'Password reset not available' };
-        } catch (error) {
-            console.error('Password reset error:', error);
-            throw error;
-        }
-    }
-
-    // Get account manager instance (for admin interfaces)
-    getAccountManager() {
-        return window.unifiedAccountManager;
-    }
-
-    // Check if password change is required
-    mustChangePassword() {
-        const user = this.getCurrentUser();
-        if (!user) return false;
-
-        // Check unified account manager
-        if (window.unifiedAccountManager && window.unifiedAccountManager.initialized) {
-            const account = window.unifiedAccountManager.getAccount(user.username);
-            return account ? account.mustChangePassword : false;
-        }
-
-        return false;
-    }
-
-    // Create account for new employee (admin function)
-    async createEmployeeAccount(employee, password = null) {
-        if (!this.isAuthenticated() || !this.isAdmin()) {
-            throw new Error('Not authorized to create accounts');
-        }
-
-        try {
-            // Use unified account manager
-            if (window.unifiedAccountManager && window.unifiedAccountManager.initialized) {
-                console.log('Creating account for new employee:', employee.id);
-                
-                // If specific password provided, update it after account creation
-                const account = await window.unifiedAccountManager.createAccountForEmployee(employee);
-                
-                if (password && account) {
-                    await window.unifiedAccountManager.resetPassword(account.username, password, false);
-                }
-                
-                return {
-                    success: true,
-                    account: account,
-                    message: 'Employee account created successfully'
-                };
-            }
-
-            return { success: false, message: 'Account creation not available' };
-        } catch (error) {
-            console.error('Error creating employee account:', error);
             throw error;
         }
     }
@@ -586,7 +465,7 @@ class AuthService {
         if (typeof window === 'undefined') return;
 
         const currentPath = window.location.pathname;
-        const isLoginPage = currentPath.includes('login.html') || currentPath.includes('index.html');
+        const isLoginPage = currentPath.includes('login.php') || currentPath.includes('index.php');
 
         // If user is authenticated and on login page, redirect to dashboard
         if (this.isAuthenticated() && isLoginPage) {
@@ -607,17 +486,17 @@ class AuthService {
             const currentRole = this.getCurrentRole();
             
             // Admin pages
-            if ((currentPath.includes('dashboard.html') || 
-                 currentPath.includes('analytics.html') || 
-                 currentPath.includes('payroll.html') || 
-                 currentPath.includes('settings.html')) && 
+            if ((currentPath.includes('dashboard.php') || 
+                 currentPath.includes('analytics.php') || 
+                 currentPath.includes('payroll.php') || 
+                 currentPath.includes('settings.php')) && 
                 !this.isAdmin()) {
                 window.location.href = this.getRedirectUrl(currentRole);
                 return;
             }
 
             // Employee pages
-            if (currentPath.includes('employee.html') && !this.isEmployee()) {
+            if (currentPath.includes('employee.php') && !this.isEmployee()) {
                 window.location.href = this.getRedirectUrl(currentRole);
                 return;
             }

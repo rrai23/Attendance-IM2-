@@ -16,12 +16,11 @@ class UnifiedEmployeeManager {
         this.eventListeners = {
             employeeUpdate: [],
             attendanceUpdate: [],
-            dataSync: [],
-            settingsUpdate: []
+            dataSync: []
         };
         
-        // Don't auto-initialize in constructor - let the global init function handle it
-        // this.init();
+        // Auto-initialize
+        this.init();
     }
 
     async init() {
@@ -58,31 +57,12 @@ class UnifiedEmployeeManager {
                 const data = JSON.parse(stored);
                 this.employees = data.employees || [];
                 this.attendanceRecords = data.attendanceRecords || [];
-                console.log('Loaded data from localStorage:', {
-                    employees: this.employees.length,
-                    attendance: this.attendanceRecords.length
-                });
-                
-                // 🎯 CRITICAL FIX: Always ensure today's attendance data exists
-                // This was missing when loading from localStorage!
-                console.log('🎯 Ensuring today\'s attendance data after loading from localStorage...');
-                this.ensureTodayAttendanceData();
-                
+                console.log('Loaded data from localStorage');
                 return;
             }
 
-            // If no stored data, try to migrate from existing sources first
+            // If no stored data, migrate from existing sources
             await this.migrateFromExistingSources();
-            
-            // If migration didn't find any data, create initial data
-            if (this.employees.length === 0) {
-                console.log('No data found during migration, creating initial data...');
-                await this.createInitialData();
-            } else {
-                // 🎯 Also ensure today's data exists after migration
-                console.log('🎯 Ensuring today\'s attendance data after migration...');
-                this.ensureTodayAttendanceData();
-            }
             
         } catch (error) {
             console.error('Error loading data:', error);
@@ -92,216 +72,45 @@ class UnifiedEmployeeManager {
     }
 
     async migrateFromExistingSources() {
-        console.log('🔄 Migrating and unifying data from all sources...');
+        console.log('Migrating data from existing sources...');
         
-        // Collect data from ALL possible sources
-        let allEmployees = [];
-        let allAttendanceRecords = [];
-        
-        // Check old localStorage keys that might contain data
-        const oldDataSources = [
-            'bricks_attendance_data',
-            'bricks-attendance-data', 
-            'employee-data',
-            'attendance-data',
-            'employees',
-            'attendanceRecords'
-        ];
-        
-        oldDataSources.forEach(key => {
-            const data = localStorage.getItem(key);
-            if (data) {
-                try {
-                    const parsed = JSON.parse(data);
-                    console.log(`📦 Found data in ${key}:`, { 
-                        employees: parsed.employees?.length || 0, 
-                        attendance: parsed.attendanceRecords?.length || 0 
-                    });
-                    
-                    if (parsed.employees) {
-                        allEmployees = allEmployees.concat(parsed.employees);
-                    }
-                    if (parsed.attendanceRecords) {
-                        allAttendanceRecords = allAttendanceRecords.concat(parsed.attendanceRecords);
-                    }
-                } catch (e) {
-                    console.warn(`Failed to parse data from ${key}:`, e);
-                }
+        // Try to get data from dataService if available
+        if (typeof dataService !== 'undefined') {
+            try {
+                const serviceEmployees = await dataService.getEmployees();
+                this.employees = this.normalizeEmployeeData(serviceEmployees);
+                
+                // Try to get attendance records
+                const serviceAttendance = await dataService.getAttendanceRecords();
+                this.attendanceRecords = this.normalizeAttendanceData(serviceAttendance);
+                
+                console.log('Migrated data from dataService');
+                this.saveData();
+                return;
+            } catch (error) {
+                console.warn('Failed to migrate from dataService:', error);
             }
-        });
-        
+        }
+
         // Try to get data from dataManager if available
         if (typeof dataManager !== 'undefined' && dataManager.initialized) {
             try {
                 const managerEmployees = dataManager.getEmployees();
-                if (managerEmployees && managerEmployees.length > 0) {
-                    console.log('📦 Found employees in dataManager:', managerEmployees.length);
-                    allEmployees = allEmployees.concat(managerEmployees);
-                }
+                this.employees = this.normalizeEmployeeData(managerEmployees);
                 
                 const managerAttendance = dataManager.getAttendanceRecords();
-                if (managerAttendance && managerAttendance.length > 0) {
-                    console.log('📦 Found attendance in dataManager:', managerAttendance.length);
-                    allAttendanceRecords = allAttendanceRecords.concat(managerAttendance);
-                }
+                this.attendanceRecords = this.normalizeAttendanceData(managerAttendance);
+                
+                console.log('Migrated data from dataManager');
+                this.saveData();
+                return;
             } catch (error) {
                 console.warn('Failed to migrate from dataManager:', error);
             }
         }
 
-        // Deduplicate and normalize data
-        this.employees = this.deduplicateEmployees(this.normalizeEmployeeData(allEmployees));
-        this.attendanceRecords = this.deduplicateAttendance(this.normalizeAttendanceData(allAttendanceRecords));
-        
-        console.log('🔄 After deduplication:', { 
-            employees: this.employees.length, 
-            attendance: this.attendanceRecords.length 
-        });
-        
-        // Clean up orphaned attendance records with detailed logging
-        const cleanupResult = this.cleanupOrphanedAttendanceRecords();
-        
-        console.log('🔄 Final unified data:', { 
-            employees: this.employees.length, 
-            attendance: this.attendanceRecords.length,
-            cleanupResult: cleanupResult
-        });
-        
-        // Only save unified data if we actually found some employees
-        if (this.employees.length > 0) {
-            console.log('Migration found data, saving...');
-            this.saveData();
-            
-            // Clean up old data sources to prevent conflicts
-            this.cleanupOldDataSources();
-        } else {
-            console.log('Migration found no employees, will need to create initial data');
-        }
-        
-        return;
-    }
-
-    /**
-     * Remove duplicate employees based on ID
-     */
-    deduplicateEmployees(employees) {
-        const seen = new Set();
-        return employees.filter(emp => {
-            const key = String(emp.id);
-            if (seen.has(key)) {
-                console.log('Removing duplicate employee:', emp.id);
-                return false;
-            }
-            seen.add(key);
-            return true;
-        });
-    }
-
-    /**
-     * Remove duplicate attendance records based on employee ID and date
-     */
-    deduplicateAttendance(records) {
-        const seen = new Set();
-        return records.filter(record => {
-            const key = `${record.employeeId}-${record.date}`;
-            if (seen.has(key)) {
-                console.log('Removing duplicate attendance record:', key);
-                return false;
-            }
-            seen.add(key);
-            return true;
-        });
-    }
-
-    /**
-     * Remove attendance records for employees that don't exist
-     */
-    cleanupOrphanedAttendanceRecords() {
-        console.log('🔍 Checking for orphaned attendance records...');
-        console.log(`Current employees: ${this.employees.length}`);
-        console.log(`Current attendance records: ${this.attendanceRecords.length}`);
-        
-        // Create comprehensive set of valid employee IDs
-        const validEmployeeIds = new Set();
-        this.employees.forEach(emp => {
-            // Add all possible variations of the ID
-            validEmployeeIds.add(emp.id);
-            validEmployeeIds.add(String(emp.id));
-            validEmployeeIds.add(parseInt(emp.id));
-            
-            // Also add employee code as some attendance might use that
-            if (emp.employeeCode) {
-                validEmployeeIds.add(emp.employeeCode);
-            }
-        });
-
-        console.log('Valid employee IDs:', Array.from(validEmployeeIds));
-
-        const beforeCount = this.attendanceRecords.length;
-        const orphanedRecords = [];
-        
-        // Filter and track what gets removed
-        this.attendanceRecords = this.attendanceRecords.filter(record => {
-            const empId = record.employeeId;
-            const isValid = validEmployeeIds.has(empId) || 
-                           validEmployeeIds.has(String(empId)) || 
-                           validEmployeeIds.has(parseInt(empId));
-            
-            if (!isValid) {
-                orphanedRecords.push({
-                    id: record.id,
-                    employeeId: record.employeeId,
-                    employeeName: record.employeeName,
-                    date: record.date,
-                    status: record.status
-                });
-                console.log(`🗑️ Removing orphaned record: Employee ID ${record.employeeId} (${record.employeeName}) - not found in current employees`);
-            }
-            
-            return isValid;
-        });
-        
-        const removedCount = beforeCount - this.attendanceRecords.length;
-        if (removedCount > 0) {
-            console.log(`🧹 Cleaned up ${removedCount} orphaned attendance records`);
-            console.log('Orphaned records details:', orphanedRecords);
-        } else {
-            console.log('✅ No orphaned attendance records found');
-        }
-        
-        console.log(`After cleanup: ${this.attendanceRecords.length} attendance records remaining`);
-        
-        return {
-            removedCount,
-            orphanedRecords,
-            remainingRecords: this.attendanceRecords.length
-        };
-    }
-
-    /**
-     * Remove old conflicting data sources
-     */
-    cleanupOldDataSources() {
-        const oldKeys = [
-            'bricks_attendance_data',
-            'bricks-attendance-data', 
-            'employee-data',
-            'attendance-data',
-            'employees',
-            'attendanceRecords'
-        ];
-        
-        let cleanedKeys = [];
-        oldKeys.forEach(key => {
-            if (localStorage.getItem(key)) {
-                localStorage.removeItem(key);
-                cleanedKeys.push(key);
-            }
-        });
-        
-        if (cleanedKeys.length > 0) {
-            console.log('🗑️ Cleaned up old data sources:', cleanedKeys);
-        }
+        // Fallback to creating initial data
+        await this.createInitialData();
     }
 
     normalizeEmployeeData(employees) {
@@ -357,142 +166,16 @@ class UnifiedEmployeeManager {
     }
 
     async createInitialData() {
-        console.log('Creating initial employee data from preferred data source...');
+        console.log('Creating initial employee data...');
         
-        // Priority 1: Try to load from data.json if available
-        try {
-            const response = await fetch('./mock/data.json');
-            if (response.ok) {
-                const jsonData = await response.json();
-                console.log('✅ Successfully loaded data.json');
-                console.log('Data.json structure:', {
-                    hasEmployees: jsonData.employees ? true : false,
-                    employeesLength: jsonData.employees ? jsonData.employees.length : 0,
-                    hasAttendance: jsonData.attendance ? true : false,
-                    attendanceLength: jsonData.attendance ? jsonData.attendance.length : 0
-                });
-                
-                if (jsonData.employees && Array.isArray(jsonData.employees) && jsonData.employees.length > 0) {
-                    console.log('Using employees from data.json:', jsonData.employees.length);
-                    console.log('Employee names from data.json:', jsonData.employees.map(e => e.fullName || e.name));
-                    
-                    // Convert data.json structure to our expected format
-                    const convertedEmployees = jsonData.employees.map(emp => ({
-                        ...emp,
-                        name: emp.fullName || emp.name || `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
-                        employeeCode: emp.employeeId || emp.employeeCode || `emp_${String(emp.id).padStart(3, '0')}`,
-                        hireDate: emp.dateHired || emp.hireDate,
-                        hourlyRate: emp.wage || emp.hourlyRate || 25.00
-                    }));
-                    
-                    this.employees = this.normalizeEmployeeData(convertedEmployees);
-                    
-                    // Load attendance if available
-                    if (jsonData.attendance && Array.isArray(jsonData.attendance)) {
-                        console.log('Using attendance from data.json:', jsonData.attendance.length);
-                        const convertedAttendance = jsonData.attendance.map(att => ({
-                            ...att,
-                            clockIn: att.timeIn,
-                            clockOut: att.timeOut,
-                            hours: att.hoursWorked,
-                            employeeName: this.employees.find(e => e.id == att.employeeId)?.fullName || 'Unknown'
-                        }));
-                        this.attendanceRecords = this.normalizeAttendanceData(convertedAttendance);
-                    } else {
-                        this.attendanceRecords = [];
-                    }
-                    
-                    console.log(`✅ Loaded from data.json: ${this.employees.length} employees, ${this.attendanceRecords.length} attendance records`);
-                    console.log('Final employee list from data.json:', this.employees.map(e => `${e.fullName || e.name} (${e.id})`));
-                    this.saveData();
-                    return;
-                }
-            }
-        } catch (error) {
-            console.log('⚠️ Could not load data.json:', error.message);
-        }
-        
-        // Priority 2: Fall back to mock-data.js if available
-        if (typeof mockData !== 'undefined') {
-            console.log('Falling back to mock-data.js');
-            console.log('Mock data available?', typeof mockData !== 'undefined');
-            console.log('Mock data structure:', {
-                hasUsers: mockData.users ? true : false,
-                usersLength: mockData.users ? mockData.users.length : 0,
-                hasEmployees: mockData.employees ? true : false,
-                hasAttendance: mockData.attendanceRecords ? true : false
-            });
-            
-            let mockEmployees = [];
-            let mockAttendanceRecords = [];
-            
-            // Extract employees from users array if it exists
-            if (mockData.users && Array.isArray(mockData.users)) {
-                console.log('Extracting employees from mock data users:', mockData.users.length);
-                
-                const usersWithEmployees = mockData.users.filter(user => user.employee);
-                console.log('Users with employee data:', usersWithEmployees.length);
-                
-                mockEmployees = usersWithEmployees.map(user => {
-                    console.log('Processing employee:', user.employee.name, 'ID:', user.employee.id);
-                    return user.employee;
-                });
-                
-                console.log('Extracted employees from users:', mockEmployees.length);
-                console.log('Employee names:', mockEmployees.map(e => e.name));
-            } else if (mockData.employees && Array.isArray(mockData.employees)) {
-                console.log('Using direct mock data employees:', mockData.employees.length);
-                mockEmployees = mockData.employees;
-            } else {
-                console.log('No employee data found in mock data structure');
-            }
-            
-            // Get attendance records if available
-            if (mockData.attendanceRecords && Array.isArray(mockData.attendanceRecords)) {
-                console.log('Using mock data attendance records:', mockData.attendanceRecords.length);
-                mockAttendanceRecords = mockData.attendanceRecords;
-            }
-            
-            if (mockEmployees.length > 0) {
-                console.log('Normalizing employee data from mock-data.js...');
-                this.employees = this.normalizeEmployeeData(mockEmployees);
-                this.attendanceRecords = mockAttendanceRecords.length > 0 ? 
-                    this.normalizeAttendanceData(mockAttendanceRecords) : [];
-                
-                console.log(`Loaded from mock data: ${this.employees.length} employees, ${this.attendanceRecords.length} attendance records`);
-                console.log('Final employee list:', this.employees.map(e => `${e.fullName || e.name} (${e.id})`));
-            } else {
-                console.log('No employee data found in mock data, creating minimal fallback data...');
-                this.createFallbackData();
-            }
-        } else {
-            console.log('Mock data not available, creating minimal fallback data...');
-            this.createFallbackData();
-        }
-        
-        console.log(`Created initial data: ${this.employees.length} employees, ${this.attendanceRecords.length} attendance records`);
-        
-        // Add sample attendance records for today to prevent dashboard showing 0 present
-        this.ensureTodayAttendanceData();
-        
-        this.saveData();
-    }
-
-    /**
-     * Create minimal fallback data when mock data is not available
-     */
-    createFallbackData() {
-        console.warn('🚨 USING FALLBACK DATA - Mock data failed to load!');
-        console.warn('Creating 3 fallback employees instead of full mock data set');
         this.employees = [
             {
                 id: 1,
                 employeeCode: 'emp_001',
-                firstName: 'Fallback',
-                lastName: 'Employee 1',
-                fullName: 'Fallback Employee 1',
-                name: 'Fallback Employee 1',
-                email: 'fallback1@company.com',
+                firstName: 'John',
+                lastName: 'Doe',
+                fullName: 'John Doe',
+                email: 'john.doe@company.com',
                 phone: '(555) 123-4567',
                 department: 'Engineering',
                 position: 'Senior Developer',
@@ -509,11 +192,10 @@ class UnifiedEmployeeManager {
             {
                 id: 2,
                 employeeCode: 'emp_002',
-                firstName: 'Fallback',
-                lastName: 'Employee 2',
-                fullName: 'Fallback Employee 2',
-                name: 'Fallback Employee 2',
-                email: 'fallback2@company.com',
+                firstName: 'Jane',
+                lastName: 'Smith',
+                fullName: 'Jane Smith',
+                email: 'jane.smith@company.com',
                 phone: '(555) 234-5678',
                 department: 'Marketing',
                 position: 'Marketing Manager',
@@ -530,11 +212,10 @@ class UnifiedEmployeeManager {
             {
                 id: 3,
                 employeeCode: 'emp_003',
-                firstName: 'Fallback',
-                lastName: 'Employee 3',
-                fullName: 'Fallback Employee 3',
-                name: 'Fallback Employee 3',
-                email: 'fallback3@company.com',
+                firstName: 'Bob',
+                lastName: 'Johnson',
+                fullName: 'Bob Johnson',
+                email: 'bob.johnson@company.com',
                 phone: '(555) 345-6789',
                 department: 'Sales',
                 position: 'Sales Representative',
@@ -547,145 +228,89 @@ class UnifiedEmployeeManager {
                 schedule: this.getDefaultSchedule(),
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
+            },
+            {
+                id: 4,
+                employeeCode: 'emp_004',
+                firstName: 'Alice',
+                lastName: 'Brown',
+                fullName: 'Alice Brown',
+                email: 'alice.brown@company.com',
+                phone: '(555) 456-7890',
+                department: 'HR',
+                position: 'HR Coordinator',
+                manager: null,
+                hireDate: '2023-04-05',
+                hourlyRate: 38.00,
+                salaryType: 'hourly',
+                status: 'active',
+                role: 'employee',
+                schedule: this.getDefaultSchedule(),
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            },
+            {
+                id: 5,
+                employeeCode: 'emp_005',
+                firstName: 'Charlie',
+                lastName: 'Wilson',
+                fullName: 'Charlie Wilson',
+                email: 'charlie.wilson@company.com',
+                phone: '(555) 567-8901',
+                department: 'Engineering',
+                position: 'Lead Developer',
+                manager: 'John Doe',
+                hireDate: '2023-05-15',
+                hourlyRate: 50.00,
+                salaryType: 'hourly',
+                status: 'active',
+                role: 'employee',
+                schedule: this.getDefaultSchedule(),
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
             }
         ];
-        this.attendanceRecords = [];
-        
-        // Add sample attendance for today
-        this.ensureTodayAttendanceData();
-    }
 
-    /**
-     * Ensure there are attendance records for today to show meaningful dashboard stats
-     */
-    ensureTodayAttendanceData() {
+        // Create some sample attendance records
         const today = new Date().toISOString().split('T')[0];
-        
-        console.log('🎯 ensureTodayAttendanceData() called for date:', today);
-        console.log('🎯 Current attendance records count:', this.attendanceRecords.length);
-        console.log('🎯 Current employees count:', this.employees.length);
-        
-        // Check if we already have attendance records for today
-        const todayRecords = this.attendanceRecords.filter(record => 
-            record.date === today || record.clockInDate === today
-        );
-        
-        console.log('🎯 Existing records for today:', todayRecords.length);
-        if (todayRecords.length > 0) {
-            console.log('🎯 Existing today records:', todayRecords.map(r => `${r.employeeName} (${r.status})`));
-        }
-        
-        if (todayRecords.length === 0 && this.employees.length > 0) {
-            console.log('🎯 Creating sample attendance records for today to show meaningful dashboard stats');
-            console.log('Current date for attendance:', today);
-            console.log('Active employees count:', this.employees.filter(emp => emp.status === 'active').length);
-            
-            // Create sample attendance for most employees (simulate realistic attendance)
-            const activeEmployees = this.employees.filter(emp => emp.status === 'active');
-            const sampleAttendance = [];
-            
-            console.log('🎯 Active employees for attendance creation:', activeEmployees.map(e => e.fullName || e.name));
-            
-            activeEmployees.forEach((emp, index) => {
-                // Use deterministic "randomness" based on employee ID and date
-                // This ensures the same pattern is generated every time for the same day
-                const seed = this.createDateSeed(today, emp.id);
-                const attendanceChance = this.seededRandom(seed, 1);
-                const lateChance = this.seededRandom(seed, 2);
-                const timeVariation = this.seededRandom(seed, 3);
-                
-                // Simulate 80% attendance rate with deterministic pattern
-                if (attendanceChance < 0.8 || index < 3) { // Ensure at least first 3 are present
-                    const isLate = lateChance < 0.2; // 20% chance of being late (but deterministic)
-                    const baseTime = isLate ? '09:15:00' : '09:00:00';
-                    const clockInTime = this.addDeterministicMinutes(baseTime, timeVariation, isLate ? 30 : 15);
-                    
-                    const attendanceRecord = {
-                        id: `att_${today}_${emp.id}`,
-                        employeeId: emp.id,
-                        employeeName: emp.fullName || emp.name,
-                        date: today,  // This is the key field for filtering
-                        clockInDate: today,
-                        clockInTime: clockInTime,
-                        timeIn: clockInTime,
-                        status: isLate ? 'late' : 'present',
-                        clockIn: `${today}T${clockInTime}`,
-                        notes: isLate ? 'Late arrival' : 'On time',
-                        createdAt: new Date().toISOString()
-                    };
-                    
-                    sampleAttendance.push(attendanceRecord);
-                    console.log(`✅ Created attendance for ${emp.fullName || emp.name}: ${attendanceRecord.status} at ${clockInTime}`);
-                }
-            });
-            
-            console.log(`✅ Created ${sampleAttendance.length} sample attendance records for today`);
-            console.log('Sample attendance summary:', sampleAttendance.map(att => `${att.employeeName} (${att.status})`));
-            
-            // Add to existing attendance records
-            const beforeCount = this.attendanceRecords.length;
-            this.attendanceRecords = [...this.attendanceRecords, ...sampleAttendance];
-            
-            console.log('🎯 Total attendance records after adding today\'s data:', this.attendanceRecords.length);
-            console.log(`🎯 Added ${this.attendanceRecords.length - beforeCount} new records`);
-            
-            // Verify the records were added correctly
-            const verifyTodayRecords = this.attendanceRecords.filter(record => record.date === today);
-            console.log('🎯 Verification - Records with today\'s date:', verifyTodayRecords.length);
-            
-        } else if (todayRecords.length > 0) {
-            console.log(`✅ Found ${todayRecords.length} existing attendance records for today`);
-            console.log('Existing records:', todayRecords.map(rec => `${rec.employeeName} (${rec.status})`));
-        } else {
-            console.log('⚠️ No active employees found to create attendance records for');
-        }
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+        this.attendanceRecords = [
+            {
+                id: 1,
+                employeeId: 1,
+                employeeCode: 'emp_001',
+                employeeName: 'John Doe',
+                department: 'Engineering',
+                date: today,
+                clockIn: '09:00',
+                clockOut: '17:30',
+                status: 'present',
+                hours: 8.5,
+                notes: '',
+                lastModified: new Date().toISOString()
+            },
+            {
+                id: 2,
+                employeeId: 2,
+                employeeCode: 'emp_002',
+                employeeName: 'Jane Smith',
+                department: 'Marketing',
+                date: today,
+                clockIn: '09:15',
+                clockOut: '17:45',
+                status: 'late',
+                hours: 8.5,
+                notes: 'Traffic delay',
+                lastModified: new Date().toISOString()
+            }
+        ];
+
+        this.saveData();
     }
 
-    /**
-     * Helper method to add random minutes to a time string
-     */
-    addRandomMinutes(timeStr, maxMinutes) {
-        const [hours, minutes, seconds] = timeStr.split(':').map(Number);
-        const totalMinutes = hours * 60 + minutes + Math.floor(Math.random() * maxMinutes);
-        const newHours = Math.floor(totalMinutes / 60);
-        const newMinutes = totalMinutes % 60;
-        return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}:${String(seconds || 0).padStart(2, '0')}`;
-    }
-
-    /**
-     * Create a deterministic seed based on date and employee ID
-     */
-    createDateSeed(date, employeeId) {
-        // Create a consistent seed from date and employee ID
-        const dateNumber = parseInt(date.replace(/-/g, ''));
-        const empIdNumber = parseInt(employeeId) || 1;
-        return dateNumber + empIdNumber;
-    }
-
-    /**
-     * Generate a deterministic "random" number between 0 and 1 based on a seed
-     */
-    seededRandom(seed, variation = 1) {
-        // Simple deterministic pseudo-random generator
-        const x = Math.sin(seed * variation) * 10000;
-        return x - Math.floor(x);
-    }
-
-    /**
-     * Add deterministic minutes to a time string (replaces Math.random())
-     */
-    addDeterministicMinutes(timeStr, randomValue, maxMinutes) {
-        const [hours, minutes, seconds] = timeStr.split(':').map(Number);
-        const additionalMinutes = Math.floor(randomValue * maxMinutes);
-        const totalMinutes = hours * 60 + minutes + additionalMinutes;
-        const newHours = Math.floor(totalMinutes / 60);
-        const newMinutes = totalMinutes % 60;
-        return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}:${String(seconds || 0).padStart(2, '0')}`;
-    }
-
-    /**
-     * Save data to localStorage and sync across all potential data sources
-     */
     saveData() {
         try {
             const data = {
@@ -694,146 +319,22 @@ class UnifiedEmployeeManager {
                 lastUpdated: new Date().toISOString(),
                 version: '1.0'
             };
-            
-            // Save to primary unified storage
             localStorage.setItem(this.storageKey, JSON.stringify(data));
-            
-            // Sync to all other potential data sources to prevent conflicts
-            // This ensures any legacy code will get the correct unified data
-            try {
-                // Sync employees to potential legacy sources
-                if (this.employees && this.employees.length > 0) {
-                    localStorage.setItem('employees', JSON.stringify(this.employees));
-                    localStorage.setItem('bricks_employees', JSON.stringify(this.employees));
-                    
-                    // Update global objects if they exist
-                    if (window.employees) {
-                        window.employees = [...this.employees];
-                    }
-                    if (window.bricksEmployees) {
-                        window.bricksEmployees = [...this.employees];
-                    }
-                }
-                
-                // Sync attendance records to potential legacy sources
-                if (this.attendanceRecords && this.attendanceRecords.length > 0) {
-                    localStorage.setItem('attendanceRecords', JSON.stringify(this.attendanceRecords));
-                    localStorage.setItem('bricks_attendance_records', JSON.stringify(this.attendanceRecords));
-                    
-                    // Update global objects if they exist
-                    if (window.attendanceRecords) {
-                        window.attendanceRecords = [...this.attendanceRecords];
-                    }
-                    if (window.bricksAttendanceRecords) {
-                        window.bricksAttendanceRecords = [...this.attendanceRecords];
-                    }
-                }
-                
-                // Remove old conflicting data sources to prevent future issues
-                const conflictingSources = [
-                    'bricks_attendance_data',
-                    'bricks_legacy_data',
-                    'old_employee_data',
-                    'temp_employee_data'
-                ];
-                
-                conflictingSources.forEach(source => {
-                    if (localStorage.getItem(source)) {
-                        console.log(`Removing conflicting data source: ${source}`);
-                        localStorage.removeItem(source);
-                    }
-                });
-                
-            } catch (syncError) {
-                console.warn('Warning: Some data sync operations failed:', syncError);
-                // Continue with main save even if sync fails
-            }
             
             // Trigger sync event
             localStorage.setItem(this.syncKey, JSON.stringify({
                 action: 'update',
-                timestamp: Date.now(),
-                employeeCount: this.employees.length,
-                attendanceCount: this.attendanceRecords.length
+                timestamp: Date.now()
             }));
             
-            console.log(`Data saved to unified storage - ${this.employees.length} employees, ${this.attendanceRecords.length} attendance records`);
-            
+            console.log('Data saved to localStorage');
         } catch (error) {
             console.error('Failed to save data:', error);
         }
     }
 
-    /**
-     * Normalize employee data to unified format
-     */
-    normalizeEmployeeData(employees) {
-        if (!Array.isArray(employees)) {
-            console.warn('normalizeEmployeeData: input is not an array, returning empty array');
-            return [];
-        }
-
-        return employees.map(emp => {
-            // Ensure basic required fields
-            const normalized = {
-                id: emp.id,
-                employeeCode: emp.employeeCode || emp.employeeId || emp.code || `emp_${String(emp.id).padStart(3, '0')}`,
-                firstName: emp.firstName || emp.first_name || '',
-                lastName: emp.lastName || emp.last_name || '',
-                fullName: emp.fullName || emp.name || `${emp.firstName || emp.first_name || ''} ${emp.lastName || emp.last_name || ''}`.trim(),
-                name: emp.name || emp.fullName || `${emp.firstName || emp.first_name || ''} ${emp.lastName || emp.last_name || ''}`.trim(),
-                email: emp.email || '',
-                phone: emp.phone || '',
-                department: emp.department || '',
-                position: emp.position || emp.title || '',
-                manager: emp.manager || null,
-                hireDate: emp.hireDate || emp.hire_date || new Date().toISOString().split('T')[0],
-                hourlyRate: parseFloat(emp.hourlyRate || emp.hourly_rate || 0),
-                salaryType: emp.salaryType || emp.salary_type || 'hourly',
-                status: emp.status || 'active',
-                role: emp.role || 'employee',
-                schedule: emp.schedule || this.getDefaultSchedule(),
-                createdAt: emp.createdAt || new Date().toISOString(),
-                updatedAt: emp.updatedAt || new Date().toISOString()
-            };
-
-            return normalized;
-        });
-    }
-
-    /**
-     * Normalize attendance data to unified format
-     */
-    normalizeAttendanceData(records) {
-        if (!Array.isArray(records)) {
-            console.warn('normalizeAttendanceData: input is not an array, returning empty array');
-            return [];
-        }
-
-        return records.map(record => ({
-            id: record.id,
-            employeeId: record.employeeId || record.employee_id,
-            employeeCode: record.employeeCode || record.employee_code || `emp_${String(record.employeeId).padStart(3, '0')}`,
-            employeeName: record.employeeName || record.employee_name || '',
-            department: record.department || '',
-            date: record.date,
-            clockIn: record.clockIn || record.timeIn || record.time_in,
-            clockOut: record.clockOut || record.timeOut || record.time_out,
-            status: record.status || 'present',
-            hours: parseFloat(record.hours || record.hoursWorked || record.hours_worked || 0),
-            overtimeHours: parseFloat(record.overtimeHours || record.overtime_hours || 0),
-            notes: record.notes || '',
-            lastModified: record.lastModified || new Date().toISOString()
-        }));
-    }
-
-    /**
-     * Delete an employee and their associated attendance records
-     */
     deleteEmployee(id) {
         try {
-            console.log(`Attempting to delete employee with ID: ${id}`);
-            
             // Robust ID matching using utility or fallback
             const index = window.IdUtility ? 
                 window.IdUtility.findEmployeeIndex(this.employees, id) :
@@ -852,30 +353,13 @@ class UnifiedEmployeeManager {
             }
 
             const deletedEmployee = this.employees.splice(index, 1)[0];
-            console.log(`Deleted employee:`, deletedEmployee);
             
             // Also remove their attendance records - use robust matching
-            const initialAttendanceCount = this.attendanceRecords.length;
+            const removedAttendanceCount = this.attendanceRecords.length;
             this.attendanceRecords = window.IdUtility ?
                 this.attendanceRecords.filter(record => !window.IdUtility.idsMatch(record.employeeId, deletedEmployee.id)) :
-                this.attendanceRecords.filter(record => {
-                    // Use multiple comparison methods for robust matching
-                    if (record.employeeId === deletedEmployee.id) return false;
-                    const numericRecordId = parseInt(record.employeeId);
-                    const numericEmpId = parseInt(deletedEmployee.id);
-                    if (!isNaN(numericRecordId) && !isNaN(numericEmpId)) {
-                        return numericRecordId !== numericEmpId;
-                    }
-                    return String(record.employeeId) !== String(deletedEmployee.id);
-                });
-            
-            const removedAttendanceCount = initialAttendanceCount - this.attendanceRecords.length;
-            console.log(`Removed ${removedAttendanceCount} attendance records for deleted employee`);
-            
-            // Force cleanup to ensure no orphaned records remain
-            console.log('🔧 Running additional cleanup after employee deletion...');
-            const cleanupResult = this.cleanupOrphanedAttendanceRecords();
-            console.log('🔧 Additional cleanup result:', cleanupResult);
+                this.attendanceRecords.filter(record => record.employeeId !== deletedEmployee.id);
+            const currentAttendanceCount = this.attendanceRecords.length;
             
             this.saveData();
             
@@ -883,20 +367,28 @@ class UnifiedEmployeeManager {
             this.emit('employeeUpdate', { 
                 action: 'delete', 
                 employee: deletedEmployee,
-                removedAttendanceRecords: removedAttendanceCount
+                removedAttendanceRecords: removedAttendanceCount - currentAttendanceCount
             });
             
             // Also emit specific delete event for systems that need it
             this.emit('employeeDeleted', { 
-                employeeId: deletedEmployee.id,
+                employeeId: deletedEmployee.id, // Use the actual employee ID found
                 employee: deletedEmployee,
-                removedAttendanceRecords: removedAttendanceCount
+                removedAttendanceRecords: removedAttendanceCount - currentAttendanceCount
             });
             
-            console.log(`Successfully deleted employee ${deletedEmployee.name || deletedEmployee.fullName} and ${removedAttendanceCount} attendance records`);
+            // Broadcast data sync event for cross-tab/page updates
+            this.broadcastSystemWide('employeeDeleted', {
+                employeeId: deletedEmployee.id, // Use the actual employee ID found
+                employee: deletedEmployee,
+                timestamp: new Date().toISOString()
+            });
+            
+            console.log('Employee deleted:', deletedEmployee);
+            console.log(`Removed ${removedAttendanceCount - currentAttendanceCount} attendance records`);
             return deletedEmployee;
         } catch (error) {
-            console.error('Failed to delete employee:', error);
+            console.error('Error deleting employee:', error);
             throw error;
         }
     }
@@ -1052,16 +544,6 @@ class UnifiedEmployeeManager {
         return [...this.employees];
     }
 
-    // Alias for compatibility with debug tools and dashboard
-    getAllEmployees() {
-        return this.getEmployees();
-    }
-
-    // Alias for compatibility with debug tools and dashboard  
-    getAllAttendanceRecords() {
-        return [...this.attendanceRecords];
-    }
-
     getEmployee(id) {
         return window.IdUtility ? 
             window.IdUtility.findEmployeeById(this.employees, id) :
@@ -1095,54 +577,19 @@ class UnifiedEmployeeManager {
             };
 
             this.employees.push(newEmployee);
-            
-            // Create initial attendance record with "waiting" status for today
-            const today = new Date().toISOString().split('T')[0];
-            const initialAttendanceRecord = {
-                id: Date.now(),
-                employeeId: newEmployee.id,
-                employeeCode: newEmployee.employeeCode,
-                employeeName: newEmployee.fullName,
-                department: newEmployee.department || 'Unassigned',
-                date: today,
-                clockIn: null,
-                clockOut: null,
-                status: 'waiting',
-                hours: 0,
-                notes: 'New employee - waiting for first check-in',
-                lastModified: new Date().toISOString()
-            };
-            
-            this.attendanceRecords.push(initialAttendanceRecord);
             this.saveData();
             
             // Broadcast employee addition to all systems
             this.emit('employeeUpdate', { action: 'add', employee: newEmployee });
             this.emit('employeeAdded', { employee: newEmployee });
             
-            // Broadcast attendance record creation
-            this.emit('attendanceUpdate', { action: 'add', record: initialAttendanceRecord });
-            this.emit('attendanceRecordSaved', { record: initialAttendanceRecord, isUpdate: false });
-            
             // System-wide broadcast
             this.broadcastSystemWide('employeeAdded', {
                 employee: newEmployee,
-                initialAttendance: initialAttendanceRecord,
                 timestamp: new Date().toISOString()
             });
             
-            console.log('Employee added with initial attendance record:', {
-                employee: newEmployee,
-                attendance: initialAttendanceRecord
-            });
-            
-            // Trigger account creation through unified account manager
-            if (window.unifiedAccountManager && window.unifiedAccountManager.initialized) {
-                console.log('Triggering account creation for new employee...');
-                // The account manager listens to employeeAdded events, so it will automatically create the account
-                // No need to call it directly here to avoid double processing
-            }
-            
+            console.log('Employee added:', newEmployee);
             return newEmployee;
         } catch (error) {
             console.error('Error adding employee:', error);
@@ -1277,148 +724,6 @@ class UnifiedEmployeeManager {
         }
     }
 
-    /**
-     * Delete an attendance record by employee ID and date
-     */
-    deleteAttendanceRecord(employeeId, date) {
-        try {
-            console.log(`Attempting to delete attendance record: employeeId=${employeeId}, date=${date}`);
-            
-            // Find the record to delete
-            const recordIndex = this.attendanceRecords.findIndex(record => {
-                // Use robust ID matching
-                const recordEmpId = record.employeeId;
-                const targetEmpId = employeeId;
-                
-                // Direct comparison
-                if (recordEmpId === targetEmpId && record.date === date) return true;
-                
-                // String comparison
-                if (String(recordEmpId) === String(targetEmpId) && record.date === date) return true;
-                
-                // Numeric comparison (handle string vs number IDs)
-                if (!isNaN(recordEmpId) && !isNaN(targetEmpId)) {
-                    if (parseInt(recordEmpId) === parseInt(targetEmpId) && record.date === date) return true;
-                }
-                
-                return false;
-            });
-            
-            if (recordIndex === -1) {
-                throw new Error(`Attendance record not found for employee ID ${employeeId} on date ${date}`);
-            }
-            
-            // Remove the record
-            const deletedRecord = this.attendanceRecords.splice(recordIndex, 1)[0];
-            console.log('Deleted attendance record:', deletedRecord);
-            
-            // Save the updated data
-            this.saveData();
-            
-            // Broadcast attendance deletion to all systems
-            this.emit('attendanceUpdate', { 
-                action: 'delete', 
-                record: deletedRecord,
-                employeeId: employeeId,
-                date: date
-            });
-            
-            this.emit('attendanceRecordDeleted', { 
-                record: deletedRecord,
-                employeeId: employeeId,
-                date: date
-            });
-            
-            // System-wide broadcast
-            this.broadcastSystemWide('attendanceDeleted', {
-                record: deletedRecord,
-                employeeId: employeeId,
-                date: date,
-                timestamp: new Date().toISOString()
-            });
-            
-            console.log(`Successfully deleted attendance record for employee ${employeeId} on ${date}`);
-            return deletedRecord;
-            
-        } catch (error) {
-            console.error('Error deleting attendance record:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Delete an attendance record by record ID
-     */
-    deleteAttendanceRecordById(recordId) {
-        try {
-            console.log(`Attempting to delete attendance record by ID: ${recordId} (type: ${typeof recordId})`);
-            console.log('Current attendance records count:', this.attendanceRecords.length);
-            console.log('All current record IDs:', this.attendanceRecords.map(r => ({ id: r.id, type: typeof r.id })));
-            
-            // Find the record to delete with flexible ID comparison
-            const recordIndex = this.attendanceRecords.findIndex(record => {
-                // Compare both strict equality and string equality
-                return record.id === recordId || 
-                       String(record.id) === String(recordId) ||
-                       Number(record.id) === Number(recordId);
-            });
-            
-            if (recordIndex === -1) {
-                const error = `Attendance record not found with ID ${recordId} (type: ${typeof recordId})`;
-                console.error(error);
-                console.log('Available record IDs for comparison:', this.attendanceRecords.map(r => ({ id: r.id, type: typeof r.id })));
-                throw new Error(error);
-            }
-            
-            // Remove the record
-            const deletedRecord = this.attendanceRecords.splice(recordIndex, 1)[0];
-            console.log('Successfully removed attendance record:', deletedRecord);
-            console.log('Attendance records count after deletion:', this.attendanceRecords.length);
-            
-            // Save the updated data synchronously
-            this.saveData();
-            console.log('Data saved after deletion');
-            
-            // Verify deletion was successful
-            const stillExists = this.attendanceRecords.find(record => {
-                return record.id === recordId || 
-                       String(record.id) === String(recordId) ||
-                       Number(record.id) === Number(recordId);
-            });
-            
-            if (stillExists) {
-                console.error('CRITICAL: Record still exists after deletion and save!', stillExists);
-                throw new Error('Failed to delete record - still exists after removal and save');
-            }
-            
-            // Broadcast attendance deletion to all systems
-            this.emit('attendanceUpdate', { 
-                action: 'delete', 
-                record: deletedRecord,
-                recordId: recordId
-            });
-            
-            this.emit('attendanceRecordDeleted', { 
-                record: deletedRecord,
-                recordId: recordId
-            });
-            
-            // System-wide broadcast
-            this.broadcastSystemWide('attendanceDeleted', {
-                record: deletedRecord,
-                recordId: recordId,
-                timestamp: new Date().toISOString()
-            });
-            
-            console.log(`Successfully deleted and verified attendance record with ID ${recordId}`);
-            return deletedRecord;
-            
-        } catch (error) {
-            console.error('Error deleting attendance record by ID:', error);
-            throw error;
-        }
-    }
-
     calculateHours(clockIn, clockOut) {
         if (!clockIn || !clockOut) return 0;
         
@@ -1455,28 +760,7 @@ class UnifiedEmployeeManager {
 
     getAttendanceStats(date = null) {
         const targetDate = date || new Date().toISOString().split('T')[0];
-        
-        // Get all attendance records for the target date
-        const allRecords = this.getAttendanceRecords({ date: targetDate });
-        
-        // Create set of current employee IDs for filtering
-        const currentEmployeeIds = new Set();
-        this.employees.forEach(emp => {
-            currentEmployeeIds.add(emp.id);
-            currentEmployeeIds.add(String(emp.id));
-            if (!isNaN(emp.id)) {
-                currentEmployeeIds.add(parseInt(emp.id));
-            }
-        });
-        
-        // Filter records to only include current employees
-        const records = allRecords.filter(record => {
-            const empId = record.employeeId;
-            return currentEmployeeIds.has(empId) || 
-                   currentEmployeeIds.has(String(empId)) || 
-                   currentEmployeeIds.has(parseInt(empId));
-        });
-        
+        const records = this.getAttendanceRecords({ date: targetDate });
         const totalEmployees = this.employees.filter(emp => emp.status === 'active').length;
         
         const present = records.filter(r => r.status === 'present').length;
@@ -1563,146 +847,23 @@ class UnifiedEmployeeManager {
     }
 
     clearAllData() {
-        console.log('Clearing all unified employee manager data...');
         this.employees = [];
         this.attendanceRecords = [];
-        this.initialized = false; // Mark as not initialized to force proper re-init
         localStorage.removeItem(this.storageKey);
         localStorage.removeItem(this.syncKey);
         this.emit('dataSync', { action: 'clear' });
-        console.log('All data cleared - manager will re-initialize with original mock data on next init()');
-    }
-
-    /**
-     * Force cleanup of all orphaned data - public method for manual cleanup
-     */
-    forceCleanupOrphanedData() {
-        console.log('🔧 FORCE CLEANUP: Starting comprehensive data cleanup...');
-        
-        const beforeEmployees = this.employees.length;
-        const beforeAttendance = this.attendanceRecords.length;
-        
-        // First, deduplicate employees
-        const uniqueEmployees = this.deduplicateEmployees(this.employees);
-        this.employees = uniqueEmployees;
-        
-        // Then, deduplicate attendance
-        const uniqueAttendance = this.deduplicateAttendance(this.attendanceRecords);
-        this.attendanceRecords = uniqueAttendance;
-        
-        // Finally, cleanup orphaned records
-        const cleanupResult = this.cleanupOrphanedAttendanceRecords();
-        
-        // Save the cleaned data
-        this.saveData();
-        
-        const result = {
-            beforeEmployees,
-            beforeAttendance,
-            afterEmployees: this.employees.length,
-            afterAttendance: this.attendanceRecords.length,
-            removedEmployees: beforeEmployees - this.employees.length,
-            removedAttendance: beforeAttendance - this.attendanceRecords.length,
-            orphanedRecords: cleanupResult.orphanedRecords
-        };
-        
-        console.log('🔧 FORCE CLEANUP COMPLETE:', result);
-        
-        // Broadcast the cleanup
-        this.emit('dataSync', { 
-            action: 'forceCleanup', 
-            result: result,
-            timestamp: new Date().toISOString()
-        });
-        
-        return result;
-    }
-
-    /**
-     * Save application settings
-     */
-    async saveSettings(settings) {
-        try {
-            console.log('Saving settings through unified manager...');
-            
-            // Store settings with a consistent key
-            localStorage.setItem('attendance-settings', JSON.stringify(settings));
-            
-            // Also store in the unified data structure for consistency
-            const unifiedData = JSON.parse(localStorage.getItem(this.storageKey) || '{}');
-            unifiedData.settings = settings;
-            localStorage.setItem(this.storageKey, JSON.stringify(unifiedData));
-            
-            // Emit settings update event
-            this.emit('settingsUpdate', { 
-                action: 'save', 
-                settings: settings,
-                timestamp: new Date().toISOString()
-            });
-            
-            console.log('Settings saved successfully through unified manager');
-            return { success: true, message: 'Settings saved successfully' };
-        } catch (error) {
-            console.error('Failed to save settings:', error);
-            return { success: false, message: 'Failed to save settings: ' + error.message };
-        }
-    }
-
-    /**
-     * Get application settings
-     */
-    async getSettings() {
-        try {
-            const settingsData = localStorage.getItem('attendance-settings');
-            if (settingsData) {
-                return { success: true, data: JSON.parse(settingsData) };
-            }
-            
-            // Fallback to unified data structure
-            const unifiedData = JSON.parse(localStorage.getItem(this.storageKey) || '{}');
-            if (unifiedData.settings) {
-                return { success: true, data: unifiedData.settings };
-            }
-            
-            return { success: true, data: null };
-        } catch (error) {
-            console.error('Failed to get settings:', error);
-            return { success: false, message: 'Failed to load settings: ' + error.message };
-        }
-    }
-
-    /**
-     * Add event listener for settings updates
-     */
-    onSettingsUpdate(callback) {
-        if (!this.eventListeners.settingsUpdate) {
-            this.eventListeners.settingsUpdate = [];
-        }
-        this.eventListeners.settingsUpdate.push(callback);
+        console.log('All data cleared');
     }
 }
 
 // Global instance
 window.unifiedEmployeeManager = new UnifiedEmployeeManager();
 
-// Auto-initialize with proper timing to ensure mock data is available
-function initializeUnifiedManager() {
-    // Check if mock data is available
-    if (typeof mockData !== 'undefined') {
-        console.log('Mock data available, initializing unified employee manager...');
-        window.unifiedEmployeeManager.init().catch(console.error);
-    } else {
-        console.log('Mock data not yet available, retrying in 100ms...');
-        setTimeout(initializeUnifiedManager, 100);
-    }
-}
-
+// Auto-initialize
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        // Give a short delay to ensure all scripts are loaded
-        setTimeout(initializeUnifiedManager, 50);
+        window.unifiedEmployeeManager.init().catch(console.error);
     });
 } else {
-    // Give a short delay to ensure all scripts are loaded
-    setTimeout(initializeUnifiedManager, 50);
+    window.unifiedEmployeeManager.init().catch(console.error);
 }

@@ -1235,7 +1235,6 @@ class EmployeeController {
             'present': 'status-present',
             'late': 'status-late',
             'absent': 'status-absent',
-            'waiting': 'status-waiting',
             'on-leave': 'status-leave'
         };
         return classes[status] || 'status-unknown';
@@ -1249,7 +1248,6 @@ class EmployeeController {
             'present': '✅',
             'late': '⏰',
             'absent': '❌',
-            'waiting': '⏳',
             'on-leave': '🏖️'
         };
         return icons[status] || '❓';
