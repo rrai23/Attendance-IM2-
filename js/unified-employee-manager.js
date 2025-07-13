@@ -1135,6 +1135,13 @@ class UnifiedEmployeeManager {
                 attendance: initialAttendanceRecord
             });
             
+            // Trigger account creation through unified account manager
+            if (window.unifiedAccountManager && window.unifiedAccountManager.initialized) {
+                console.log('Triggering account creation for new employee...');
+                // The account manager listens to employeeAdded events, so it will automatically create the account
+                // No need to call it directly here to avoid double processing
+            }
+            
             return newEmployee;
         } catch (error) {
             console.error('Error adding employee:', error);

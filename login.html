@@ -105,13 +105,16 @@
 
             <!-- Login Footer -->
             <div class="login-footer">
-                <p>Demo Credentials:</p>
+                <p>Login Information:</p>
                 <div class="demo-credentials">
                     <div class="demo-credential">
                         <strong>Admin:</strong> admin / admin
                     </div>
                     <div class="demo-credential">
-                        <strong>Employee:</strong> employee / employee
+                        <strong>Employee ID:</strong> Use employee ID as username (e.g., emp_003)
+                    </div>
+                    <div class="demo-credential">
+                        <strong>Default Password:</strong> "employee" for new accounts
                     </div>
                 </div>
             </div>
@@ -127,6 +130,7 @@
     <script src="js/core/data-service-factory.js"></script>
     <script src="js/unified-data-service.js"></script>
     <script src="js/unified-employee-manager.js"></script>
+    <script src="js/unified-account-manager.js"></script>
     <script src="js/data-manager.js"></script>
     <script src="js/global-system-sync.js"></script>
     <script src="js/theme.js"></script>
@@ -455,11 +459,8 @@
                         if (text.includes('admin')) {
                             this.usernameInput.value = 'admin';
                             this.passwordInput.value = 'admin';
-                        } else if (text.includes('employee')) {
-                            this.usernameInput.value = 'employee';
-                            this.passwordInput.value = 'employee';
+                            this.usernameInput.focus();
                         }
-                        this.usernameInput.focus();
                     });
                 });
 
@@ -538,13 +539,12 @@
                     
                     // Simple credential check first (fallback)
                     const testCredentials = {
-                        admin: { username: 'admin', password: 'admin', role: 'admin' },
-                        employee: { username: 'employee', password: 'employee', role: 'employee' }
+                        admin: { username: 'admin', password: 'admin', role: 'admin' }
                     };
                     
                     if (testCredentials[username] && testCredentials[username].password === password) {
                         // Direct success without complex auth service
-                        const redirectUrl = username === 'admin' ? '/dashboard.html' : '/employee.html';
+                        const redirectUrl = '/dashboard.html'; // Admin always goes to dashboard
                         this.showSuccess('Login successful! Redirecting...');
                         
                         // Store basic session info

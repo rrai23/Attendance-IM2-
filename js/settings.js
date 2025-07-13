@@ -1143,6 +1143,27 @@ class SettingsController {
             </div>
 
             <div class="settings-section">
+                <h3>Account Management</h3>
+                <p>Manage user accounts and login credentials.</p>
+                
+                <div class="user-management-actions">
+                    <button type="button" class="btn btn-secondary" id="view-accounts-btn">
+                        View All Accounts
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="sync-accounts-btn">
+                        Sync Accounts
+                    </button>
+                    <button type="button" class="btn btn-warning" id="reset-passwords-btn">
+                        Reset All Passwords
+                    </button>
+                </div>
+                
+                <div id="accounts-summary" class="accounts-summary">
+                    <!-- Account summary will be loaded here -->
+                </div>
+            </div>
+
+            <div class="settings-section">
                 <h3>User Statistics</h3>
                 <div id="user-stats" class="stats-grid">
                     <!-- User statistics will be loaded here -->
@@ -1150,7 +1171,280 @@ class SettingsController {
             </div>
         `;
 
+        // Setup account management event listeners
+        this.setupAccountManagementHandlers();
+
         this.loadUserStats();
+    }
+
+    /**
+     * Setup account management event handlers
+     */
+    setupAccountManagementHandlers() {
+        const viewAccountsBtn = document.getElementById('view-accounts-btn');
+        const syncAccountsBtn = document.getElementById('sync-accounts-btn');
+        const resetPasswordsBtn = document.getElementById('reset-passwords-btn');
+
+        if (viewAccountsBtn) {
+            viewAccountsBtn.addEventListener('click', () => this.showAccountsModal());
+        }
+
+        if (syncAccountsBtn) {
+            syncAccountsBtn.addEventListener('click', () => this.syncAccounts());
+        }
+
+        if (resetPasswordsBtn) {
+            resetPasswordsBtn.addEventListener('click', () => this.showResetPasswordsModal());
+        }
+
+        // Load initial account summary
+        this.loadAccountSummary();
+    }
+
+    /**
+     * Load and display account summary
+     */
+    async loadAccountSummary() {
+        try {
+            if (!window.unifiedAccountManager || !window.unifiedAccountManager.initialized) {
+                return;
+            }
+
+            const stats = window.unifiedAccountManager.getAccountStats();
+            const container = document.getElementById('accounts-summary');
+            
+            if (container) {
+                container.innerHTML = `
+                    <div class="stats-row">
+                        <div class="stat-item">
+                            <span class="stat-number">${stats.total}</span>
+                            <span class="stat-label">Total Accounts</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">${stats.active}</span>
+                            <span class="stat-label">Active Accounts</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">${stats.employees}</span>
+                            <span class="stat-label">Employee Accounts</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">${stats.admins}</span>
+                            <span class="stat-label">Admin Accounts</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">${stats.mustChangePassword}</span>
+                            <span class="stat-label">Need Password Change</span>
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error loading account summary:', error);
+        }
+    }
+
+    /**
+     * Show accounts modal with detailed account information
+     */
+    showAccountsModal() {
+        if (!window.unifiedAccountManager || !window.unifiedAccountManager.initialized) {
+            this.showErrorMessage('Account manager not available');
+            return;
+        }
+
+        const accounts = window.unifiedAccountManager.getAllAccounts();
+        
+        const modalContent = `
+            <div class="accounts-table-container">
+                <table class="accounts-table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Full Name</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Employee ID</th>
+                            <th>Password Change Required</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${accounts.map(account => `
+                            <tr>
+                                <td>${account.username}</td>
+                                <td>${account.fullName || 'N/A'}</td>
+                                <td>${account.role}</td>
+                                <td>
+                                    <span class="status-badge status-${account.status}">
+                                        ${account.status}
+                                    </span>
+                                </td>
+                                <td>${account.employeeId || 'N/A'}</td>
+                                <td>
+                                    ${account.mustChangePassword ? 
+                                        '<span class="status-badge status-warning">Yes</span>' : 
+                                        '<span class="status-badge status-success">No</span>'}
+                                </td>
+                                <td>
+                                    ${!account.isSystemAccount ? `
+                                        <button class="btn btn-sm btn-secondary" onclick="settingsController.resetAccountPassword('${account.username}')">
+                                            Reset Password
+                                        </button>
+                                    ` : 'System Account'}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        this.showModal('User Accounts', modalContent, 'large');
+    }
+
+    /**
+     * Sync accounts with employees
+     */
+    async syncAccounts() {
+        try {
+            if (!window.unifiedAccountManager || !window.unifiedAccountManager.initialized) {
+                this.showErrorMessage('Account manager not available');
+                return;
+            }
+
+            this.showSuccessMessage('Syncing accounts with employees...');
+            await window.unifiedAccountManager.syncWithEmployeeManager();
+            await this.loadAccountSummary();
+            await this.loadUserStats();
+            this.showSuccessMessage('Account sync completed successfully');
+
+        } catch (error) {
+            console.error('Error syncing accounts:', error);
+            this.showErrorMessage('Failed to sync accounts: ' + error.message);
+        }
+    }
+
+    /**
+     * Show reset passwords modal
+     */
+    showResetPasswordsModal() {
+        const modalContent = `
+            <div class="reset-passwords-form">
+                <div class="form-group">
+                    <label class="form-label">Reset Type</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="resetType" value="all" checked>
+                            Reset all employee passwords to default
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="resetType" value="expired">
+                            Reset only accounts that need password change
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="newPassword" class="form-label">New Password</label>
+                    <input type="password" id="newPassword" class="form-input" value="employee" placeholder="Enter new password">
+                    <small class="field-help">Default password for all reset accounts</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="forceChange" checked>
+                        <span class="checkmark"></span>
+                        Force password change on next login
+                    </label>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="settingsController.closeModal()">
+                        Cancel
+                    </button>
+                    <button type="button" class="btn btn-warning" onclick="settingsController.executePasswordReset()">
+                        Reset Passwords
+                    </button>
+                </div>
+            </div>
+        `;
+
+        this.showModal('Reset Passwords', modalContent);
+    }
+
+    /**
+     * Execute password reset
+     */
+    async executePasswordReset() {
+        try {
+            const resetType = document.querySelector('input[name="resetType"]:checked').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const forceChange = document.getElementById('forceChange').checked;
+
+            if (!newPassword) {
+                this.showErrorMessage('Please enter a new password');
+                return;
+            }
+
+            if (!window.unifiedAccountManager || !window.unifiedAccountManager.initialized) {
+                this.showErrorMessage('Account manager not available');
+                return;
+            }
+
+            const accounts = window.unifiedAccountManager.getAllAccounts();
+            let resetCount = 0;
+
+            for (const account of accounts) {
+                if (account.isSystemAccount) continue; // Skip system accounts
+                
+                const shouldReset = resetType === 'all' || 
+                                  (resetType === 'expired' && account.mustChangePassword);
+                
+                if (shouldReset) {
+                    await window.unifiedAccountManager.resetPassword(account.username, newPassword, forceChange);
+                    resetCount++;
+                }
+            }
+
+            this.closeModal();
+            await this.loadAccountSummary();
+            this.showSuccessMessage(`Successfully reset ${resetCount} account passwords`);
+
+        } catch (error) {
+            console.error('Error resetting passwords:', error);
+            this.showErrorMessage('Failed to reset passwords: ' + error.message);
+        }
+    }
+
+    /**
+     * Reset individual account password
+     */
+    async resetAccountPassword(username) {
+        try {
+            const newPassword = prompt('Enter new password for ' + username + ':', 'employee');
+            if (!newPassword) return;
+
+            const forceChange = confirm('Force password change on next login?');
+
+            if (!window.unifiedAccountManager || !window.unifiedAccountManager.initialized) {
+                this.showErrorMessage('Account manager not available');
+                return;
+            }
+
+            const result = await window.unifiedAccountManager.resetPassword(username, newPassword, forceChange);
+            
+            if (result.success) {
+                this.showSuccessMessage(`Password reset for ${username}`);
+                await this.loadAccountSummary();
+            } else {
+                this.showErrorMessage('Failed to reset password: ' + result.message);
+            }
+
+        } catch (error) {
+            console.error('Error resetting account password:', error);
+            this.showErrorMessage('Failed to reset password: ' + error.message);
+        }
     }
 
     /**
@@ -1171,27 +1465,44 @@ class SettingsController {
                 admins: employees.filter(emp => emp.role === 'admin').length
             };
 
+            // Get account statistics if available
+            let accountStats = null;
+            if (window.unifiedAccountManager && window.unifiedAccountManager.initialized) {
+                accountStats = window.unifiedAccountManager.getAccountStats();
+            }
+
             console.log('User stats loaded from unified employee manager:', stats);
+            console.log('Account stats loaded from unified account manager:', accountStats);
 
             const container = document.getElementById('user-stats');
             if (container) {
                 container.innerHTML = `
                     <div class="stat-card">
                         <div class="stat-value">${stats.total}</div>
-                        <div class="stat-label">Total Users</div>
+                        <div class="stat-label">Total Employees</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value">${stats.active}</div>
-                        <div class="stat-label">Active Users</div>
+                        <div class="stat-label">Active Employees</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value">${stats.inactive}</div>
-                        <div class="stat-label">Inactive Users</div>
+                        <div class="stat-label">Inactive Employees</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value">${stats.admins}</div>
                         <div class="stat-label">Administrators</div>
                     </div>
+                    ${accountStats ? `
+                        <div class="stat-card">
+                            <div class="stat-value">${accountStats.total}</div>
+                            <div class="stat-label">User Accounts</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${accountStats.mustChangePassword}</div>
+                            <div class="stat-label">Need Password Change</div>
+                        </div>
+                    ` : ''}
                 `;
             }
 
@@ -1238,1072 +1549,6 @@ class SettingsController {
         totalUsersElements.forEach(el => el.textContent = stats.total);
         activeUsersElements.forEach(el => el.textContent = stats.active);
     }
-
-    /**
-     * Generate timezone options
-     */
-    generateTimezoneOptions(selectedTimezone) {
-        const timezones = [
-            'America/New_York',
-            'America/Chicago',
-            'America/Denver',
-            'America/Los_Angeles',
-            'America/Toronto',
-            'Europe/London',
-            'Europe/Paris',
-            'Europe/Berlin',
-            'Asia/Tokyo',
-            'Asia/Shanghai',
-            'Australia/Sydney'
-        ];
-
-        return timezones.map(tz => 
-            `<option value="${tz}" ${tz === selectedTimezone ? 'selected' : ''}>${tz.replace('_', ' ')}</option>`
-        ).join('');
-    }
-
-    /**
-     * Setup form validation
-     */
-    setupFormValidation() {
-        // Real-time validation rules
-        this.validationRules = {
-            'general.companyName': {
-                required: true,
-                minLength: 2,
-                maxLength: 100
-            },
-            'payroll.overtimeRate': {
-                required: true,
-                min: 1,
-                max: 3
-            },
-            'payroll.overtimeThreshold': {
-                required: true,
-                min: 30,
-                max: 60
-            },
-            'security.sessionTimeout': {
-                required: true,
-                min: 30,
-                max: 1440
-            },
-            'security.passwordMinLength': {
-                required: true,
-                min: 4,
-                max: 20
-            }
-        };
-    }
-
-    /**
-     * Validate a specific field
-     */
-    validateField(field) {
-        const name = field.name;
-        const value = field.type === 'checkbox' ? field.checked : field.value;
-        const rules = this.validationRules[name];
-
-        if (!rules) return true;
-
-        const errors = [];
-
-        // Required validation
-        if (rules.required && (!value || value === '')) {
-            errors.push('This field is required');
-        }
-
-        // String length validation
-        if (value && typeof value === 'string') {
-            if (rules.minLength && value.length < rules.minLength) {
-                errors.push(`Minimum length is ${rules.minLength} characters`);
-            }
-            if (rules.maxLength && value.length > rules.maxLength) {
-                errors.push(`Maximum length is ${rules.maxLength} characters`);
-            }
-        }
-
-        // Number validation
-        if (value && (rules.min !== undefined || rules.max !== undefined)) {
-            const numValue = parseFloat(value);
-            if (isNaN(numValue)) {
-                errors.push('Must be a valid number');
-            } else {
-                if (rules.min !== undefined && numValue < rules.min) {
-                    errors.push(`Minimum value is ${rules.min}`);
-                }
-                if (rules.max !== undefined && numValue > rules.max) {
-                    errors.push(`Maximum value is ${rules.max}`);
-                }
-            }
-        }
-
-        // Update field validation state
-        this.updateFieldValidation(field, errors);
-
-        // Store validation result
-        if (errors.length > 0) {
-            this.validationErrors[name] = errors;
-        } else {
-            delete this.validationErrors[name];
-        }
-
-        return errors.length === 0;
-    }
-
-    /**
-     * Update field validation UI
-     */
-    updateFieldValidation(field, errors) {
-        const fieldGroup = field.closest('.form-group');
-        const errorContainer = fieldGroup?.querySelector('.field-error');
-
-        if (errors.length > 0) {
-            field.classList.add('error');
-            if (errorContainer) {
-                errorContainer.textContent = errors[0];
-                errorContainer.style.display = 'block';
-            }
-        } else {
-            field.classList.remove('error');
-            if (errorContainer) {
-                errorContainer.textContent = '';
-                errorContainer.style.display = 'none';
-            }
-        }
-    }
-
-    /**
-     * Validate all forms
-     */
-    validateAllForms() {
-        const forms = document.querySelectorAll('.settings-form');
-        let isValid = true;
-
-        forms.forEach(form => {
-            const fields = form.querySelectorAll('input, select, textarea');
-            fields.forEach(field => {
-                if (!this.validateField(field)) {
-                    isValid = false;
-                }
-            });
-        });
-
-        return isValid;
-    }
-
-    /**
-     * Mark settings as dirty (unsaved changes)
-     */
-    markDirty() {
-        this.isDirty = true;
-        this.updateSaveButtonState();
-    }
-
-    /**
-     * Mark settings as clean (saved)
-     */
-    markClean() {
-        this.isDirty = false;
-        this.updateSaveButtonState();
-    }
-
-    /**
-     * Update save button state
-     */
-    updateSaveButtonState() {
-        const saveBtn = document.getElementById('save-settings-btn');
-        if (saveBtn) {
-            saveBtn.disabled = !this.isDirty || Object.keys(this.validationErrors).length > 0;
-            
-            // Find the text node after the SVG icon
-            const textNodes = [...saveBtn.childNodes].filter(node => 
-                node.nodeType === Node.TEXT_NODE && node.textContent.trim()
-            );
-            
-            if (textNodes.length > 0) {
-                // Update the last text node (after the icon)
-                textNodes[textNodes.length - 1].textContent = this.isDirty ? ' Save Changes' : ' Saved';
-            } else {
-                // Fallback: update innerHTML while preserving the icon
-                const iconSVG = saveBtn.querySelector('svg');
-                if (iconSVG) {
-                    saveBtn.innerHTML = iconSVG.outerHTML + (this.isDirty ? ' Save Changes' : ' Saved');
-                } else {
-                    saveBtn.textContent = this.isDirty ? 'Save Changes' : 'Saved';
-                }
-            }
-            
-            // Add visual feedback
-            if (this.isDirty) {
-                saveBtn.classList.add('btn-primary');
-                saveBtn.classList.remove('btn-secondary');
-            } else {
-                saveBtn.classList.add('btn-secondary');
-                saveBtn.classList.remove('btn-primary');
-            }
-        }
-    }
-
-    /**
-     * Setup auto-save functionality
-     */
-    setupAutoSave() {
-        // Auto-save every 30 seconds if there are changes
-        setInterval(() => {
-            if (this.isDirty && Object.keys(this.validationErrors).length === 0) {
-                this.saveSettings(true); // Silent save
-            }
-        }, 30000);
-    }
-
-    /**
-     * Collect form data
-     */
-    collectFormData() {
-        const formData = {};
-        const forms = document.querySelectorAll('.settings-form');
-
-        forms.forEach(form => {
-            const fields = form.querySelectorAll('input, select, textarea');
-            fields.forEach(field => {
-                const name = field.name;
-                if (!name) return;
-
-                const value = field.type === 'checkbox' ? field.checked : 
-                             field.type === 'number' ? parseFloat(field.value) || 0 : 
-                             field.value;
-
-                // Handle nested object notation (e.g., "general.companyName")
-                const parts = name.split('.');
-                let current = formData;
-                
-                for (let i = 0; i < parts.length - 1; i++) {
-                    if (!current[parts[i]]) {
-                        current[parts[i]] = {};
-                    }
-                    current = current[parts[i]];
-                }
-                
-                current[parts[parts.length - 1]] = value;
-            });
-        });
-
-        return formData;
-    }
-
-    /**
-     * Save settings to unified data system
-     */
-    async saveSettings(silent = false) {
-        try {
-            console.log('Saving settings to unified data system...', { silent, isDirty: this.isDirty });
-            
-            // Validate all forms
-            if (!this.validateAllForms()) {
-                if (!silent) {
-                    this.showErrorMessage('Please fix validation errors before saving');
-                }
-                console.log('Validation failed, not saving');
-                return false;
-            }
-
-            // Collect form data
-            const formData = this.collectFormData();
-            console.log('Collected form data:', formData);
-            
-            // Merge with current settings
-            const updatedSettings = this.deepMerge(this.currentSettings, formData);
-            console.log('Updated settings:', updatedSettings);
-
-            // Save to unified data system
-            try {
-                localStorage.setItem('bricks-unified-settings', JSON.stringify(updatedSettings));
-                console.log('Settings saved successfully to unified data system');
-            } catch (error) {
-                console.error('Failed to save settings to unified data system:', error);
-                throw error;
-            }
-
-            // Update local settings
-            this.currentSettings = updatedSettings;
-            this.markClean();
-
-            // Apply theme changes if needed
-            if (formData.theme) {
-                this.applyThemeChanges(formData.theme);
-            }
-
-            // Broadcast settings update to other components
-            if (this.unifiedEmployeeManager) {
-                this.unifiedEmployeeManager.emit('settingsUpdated', {
-                    settings: updatedSettings,
-                    timestamp: new Date().toISOString()
-                });
-            }
-
-            if (!silent) {
-                this.showSuccessMessage('Settings saved successfully');
-            }
-
-            return true;
-        } catch (error) {
-            console.error('Failed to save settings:', error);
-            if (!silent) {
-                this.showErrorMessage('Failed to save settings: ' + error.message);
-            }
-            return false;
-        }
-    }
-
-    /**
-     * Reset settings to defaults
-     */
-    async resetSettings() {
-        if (!confirm('Are you sure you want to reset all settings to defaults? This action cannot be undone.')) {
-            return;
-        }
-
-        try {
-            // Reset to default settings
-            await this.loadSettings();
-            this.renderAllSections();
-            this.markClean();
-            
-            this.showSuccessMessage('Settings reset to defaults');
-        } catch (error) {
-            console.error('Failed to reset settings:', error);
-            this.showErrorMessage('Failed to reset settings');
-        }
-    }
-
-    /**
-     * Export settings
-     */
-    exportSettings() {
-        try {
-            const exportData = {
-                settings: this.currentSettings,
-                exportDate: new Date().toISOString(),
-                version: '1.0.0'
-            };
-
-            const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-                type: 'application/json'
-            });
-
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `brix-settings-${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-
-            this.showSuccessMessage('Settings exported successfully');
-        } catch (error) {
-            console.error('Failed to export settings:', error);
-            this.showErrorMessage('Failed to export settings');
-        }
-    }
-
-    /**
-     * Import settings
-     */
-    importSettings() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        
-        input.onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            try {
-                const text = await file.text();
-                const importData = JSON.parse(text);
-
-                if (!importData.settings) {
-                    throw new Error('Invalid settings file format');
-                }
-
-                // Validate imported settings
-                if (await this.validateImportedSettings(importData.settings)) {
-                    this.currentSettings = importData.settings;
-                    await this.saveSettings();
-                    this.renderAllSections();
-                    
-                    this.showSuccessMessage('Settings imported successfully');
-                } else {
-                    this.showErrorMessage('Invalid settings data');
-                }
-            } catch (error) {
-                console.error('Failed to import settings:', error);
-                this.showErrorMessage('Failed to import settings');
-            }
-        };
-
-        input.click();
-    }
-
-    /**
-     * Validate imported settings
-     */
-    async validateImportedSettings(settings) {
-        // Basic structure validation
-        const requiredSections = ['general', 'payroll', 'attendance', 'notifications', 'security', 'theme'];
-        
-        for (const section of requiredSections) {
-            if (!settings[section] || typeof settings[section] !== 'object') {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * Handle theme changes
-     */
-    handleThemeChange(theme) {
-        if (this.themeManager) {
-            this.themeManager.setTheme(theme);
-        }
-    }
-
-    /**
-     * Apply theme changes
-     */
-    applyThemeChanges(themeSettings) {
-        if (this.themeManager) {
-            if (themeSettings.defaultTheme) {
-                this.themeManager.setTheme(themeSettings.defaultTheme);
-            }
-            
-            if (themeSettings.accentColor) {
-                // Update accent color if theme manager supports it
-                document.documentElement.style.setProperty('--accent-primary', themeSettings.accentColor);
-            }
-        }
-    }
-
-    /**
-     * Test email settings
-     */
-    async testEmailSettings() {
-        try {
-            const testBtn = document.getElementById('test-email-btn');
-            const originalText = testBtn.textContent;
-            
-            testBtn.textContent = 'Sending...';
-            testBtn.disabled = true;
-
-            // Simulate email test (would be actual API call in production)
-            await new Promise(resolve => setTimeout(resolve, 2000));
-
-            this.showSuccessMessage('Test email sent successfully');
-            
-            testBtn.textContent = originalText;
-            testBtn.disabled = false;
-        } catch (error) {
-            console.error('Failed to send test email:', error);
-            this.showErrorMessage('Failed to send test email');
-            
-            const testBtn = document.getElementById('test-email-btn');
-            testBtn.textContent = 'Send Test Email';
-            testBtn.disabled = false;
-        }
-    }
-
-    /**
-     * Create backup using unified data system
-     */
-    async createBackup() {
-        try {
-            // Get all data from unified employee manager (EXCLUSIVE MODE)
-            if (!this.unifiedEmployeeManager || !this.unifiedEmployeeManager.initialized) {
-                throw new Error('UnifiedEmployeeManager not available for backup');
-            }
-            
-            const backupData = {
-                settings: this.currentSettings,
-                employees: this.unifiedEmployeeManager.getAllEmployees(),
-                attendanceRecords: this.unifiedEmployeeManager.getAllAttendanceRecords(),
-                backupDate: new Date().toISOString(),
-                version: '2.0.0',
-                source: 'unified-data-system'
-            };
-
-            console.log('Creating backup with unified data:', {
-                settingsKeys: Object.keys(backupData.settings),
-                employeeCount: backupData.employees.length,
-                attendanceCount: backupData.attendanceRecords.length
-            });
-
-            const blob = new Blob([JSON.stringify(backupData, null, 2)], {
-                type: 'application/json'
-            });
-
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `brix-backup-unified-${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-
-            this.showSuccessMessage('Backup created successfully from unified data system');
-        } catch (error) {
-            console.error('Failed to create backup from unified data system:', error);
-            this.showErrorMessage('Failed to create backup: ' + error.message);
-        }
-    }
-
-    /**
-     * Restore backup to unified data system
-     */
-    restoreBackup() {
-        if (!confirm('Are you sure you want to restore from backup? This will overwrite all current data.')) {
-            return;
-        }
-
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        
-        input.onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            try {
-                const text = await file.text();
-                const backupData = JSON.parse(text);
-
-                if (!backupData.settings || !backupData.employees) {
-                    throw new Error('Invalid backup file format');
-                }
-
-                console.log('Restoring backup to unified data system:', {
-                    version: backupData.version,
-                    source: backupData.source,
-                    employeeCount: backupData.employees.length,
-                    attendanceCount: backupData.attendanceRecords?.length || 0
-                });
-
-                // Ensure unified employee manager is available
-                if (!this.unifiedEmployeeManager || !this.unifiedEmployeeManager.initialized) {
-                    throw new Error('UnifiedEmployeeManager not available for restore');
-                }
-
-                // Restore settings
-                this.currentSettings = backupData.settings;
-                await this.saveSettings(true);
-
-                // Restore employees to unified data system
-                if (backupData.employees && backupData.employees.length > 0) {
-                    // Clear existing employees
-                    this.unifiedEmployeeManager.employees = [];
-                    
-                    // Add restored employees
-                    for (const employee of backupData.employees) {
-                        this.unifiedEmployeeManager.employees.push(employee);
-                    }
-                }
-
-                // Restore attendance records to unified data system
-                if (backupData.attendanceRecords && backupData.attendanceRecords.length > 0) {
-                    // Clear existing attendance records
-                    this.unifiedEmployeeManager.attendanceRecords = [];
-                    
-                    // Add restored attendance records
-                    for (const record of backupData.attendanceRecords) {
-                        this.unifiedEmployeeManager.attendanceRecords.push(record);
-                    }
-                }
-
-                // Save all restored data
-                this.unifiedEmployeeManager.saveData();
-
-                // Re-render settings interface
-                this.renderAllSections();
-                
-                // Update user stats
-                await this.loadUserStats();
-
-                this.showSuccessMessage('Backup restored successfully to unified data system');
-                
-                console.log('Backup restore completed. Current state:', {
-                    employees: this.unifiedEmployeeManager.employees.length,
-                    attendance: this.unifiedEmployeeManager.attendanceRecords.length
-                });
-                
-            } catch (error) {
-                console.error('Failed to restore backup to unified data system:', error);
-                this.showErrorMessage('Failed to restore backup: ' + error.message);
-            }
-        };
-
-        input.click();
-    }
-
-    /**
-     * Deep merge objects
-     */
-    deepMerge(target, source) {
-        const result = { ...target };
-        
-        for (const key in source) {
-            if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-                result[key] = this.deepMerge(result[key] || {}, source[key]);
-            } else {
-                result[key] = source[key];
-            }
-        }
-        
-        return result;
-    }
-
-    /**
-     * Show success message
-     */
-    showSuccessMessage(message) {
-        this.showNotification(message, 'success');
-    }
-
-    /**
-     * Show error message
-     */
-    showErrorMessage(message) {
-        this.showNotification(message, 'error');
-    }
-
-    /**
-     * Show notification
-     */
-    showNotification(message, type = 'info') {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
-        notification.style.opacity = '0';
-        notification.style.transform = 'translateX(100%)';
-        notification.innerHTML = `
-            <div class="notification-content">
-                <svg class="notification-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    ${type === 'success' ? 
-                        '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22,4 12,14.01 9,11.01"></polyline>' :
-                        type === 'error' ?
-                        '<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>' :
-                        '<circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path>'
-                    }
-                </svg>
-                <span class="notification-message">${message}</span>
-            </div>
-            <button class="notification-close" aria-label="Close">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
-        `;
-
-        // Find or create notification container
-        let container = document.getElementById('notification-container');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'notification-container';
-            container.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                z-index: 1000;
-                pointer-events: none;
-            `;
-            document.body.appendChild(container);
-        }
-
-        // Allow pointer events on the notification itself
-        notification.style.pointerEvents = 'auto';
-
-        // Calculate position based on existing notifications
-        const existingNotifications = container.querySelectorAll('.notification');
-        let topOffset = 0;
-        existingNotifications.forEach(existing => {
-            topOffset += existing.offsetHeight + 8; // 8px gap between notifications
-        });
-        
-        notification.style.position = 'relative';
-        notification.style.top = topOffset + 'px';
-        notification.style.marginTop = existingNotifications.length > 0 ? '8px' : '0';
-
-        // Add to container
-        container.appendChild(notification);
-
-        // Bind close event
-        notification.querySelector('.notification-close').addEventListener('click', () => {
-            notification.style.opacity = '0';
-            notification.style.transform = 'translateX(100%)';
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.remove();
-                }
-            }, 300);
-        });
-
-        // Auto-remove after 4 seconds (reduced from 5)
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.style.opacity = '0';
-                notification.style.transform = 'translateX(100%)';
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.remove();
-                    }
-                }, 300);
-            }
-        }, 4000);
-
-        // Animate in
-        requestAnimationFrame(() => {
-            notification.style.opacity = '1';
-            notification.style.transform = 'translateX(0)';
-            notification.style.transition = 'all 0.3s ease-out';
-        });
-    }
-
-    /**
-     * Destroy controller and cleanup
-     */
-    destroy() {
-        // Remove event listeners
-        window.removeEventListener('beforeunload', this.beforeUnloadHandler);
-        window.removeEventListener('hashchange', this.hashChangeHandler);
-        
-        // Clear any intervals
-        if (this.autoSaveInterval) {
-            clearInterval(this.autoSaveInterval);
-        }
-    }
-
-    /**
-     * Render sections that are missing content (only empty containers)
-     */
-    renderMissingSections() {
-        const sections = ['general', 'payroll', 'attendance', 'notifications', 'security', 'theme', 'users'];
-        
-        sections.forEach(sectionId => {
-            const container = document.getElementById(`${sectionId}-settings`);
-            if (container && (!container.innerHTML.trim() || container.children.length === 0)) {
-                console.log(`Rendering missing section: ${sectionId}`);
-                this.renderSection(sectionId);
-            } else {
-                console.log(`Preserving existing content for section: ${sectionId}`);
-            }
-        });
-    }
-
-    /**
-     * Initialize event listeners for unified data integration
-     */
-    setupUnifiedDataListeners() {
-        // Listen for employee updates from unified manager
-        if (this.unifiedEmployeeManager) {
-            this.unifiedEmployeeManager.addEventListener('employeeUpdate', (data) => {
-                console.log('Employee update received in settings:', data);
-                this.loadUserStats(); // Refresh user stats when employees change
-            });
-
-            this.unifiedEmployeeManager.addEventListener('dataSync', (data) => {
-                console.log('Data sync received in settings:', data);
-                if (data.action === 'initialized' || data.action === 'update') {
-                    this.loadUserStats(); // Refresh stats on data sync
-                }
-            });
-        }
-    }
-
-    /**
-     * Get employee management statistics from unified data
-     */
-    getEmployeeManagementStats() {
-        if (!this.unifiedEmployeeManager || !this.unifiedEmployeeManager.initialized) {
-            return {
-                total: 0,
-                active: 0,
-                inactive: 0,
-                departments: 0,
-                recentHires: 0
-            };
-        }
-
-        const employees = this.unifiedEmployeeManager.getAllEmployees();
-        const attendanceRecords = this.unifiedEmployeeManager.getAllAttendanceRecords();
-        
-        // Calculate recent hires (last 30 days)
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const recentHires = employees.filter(emp => {
-            const hireDate = new Date(emp.hireDate);
-            return hireDate >= thirtyDaysAgo;
-        }).length;
-
-        // Get unique departments
-        const departments = [...new Set(employees.map(emp => emp.department))].length;
-
-        return {
-            total: employees.length,
-            active: employees.filter(emp => emp.status === 'active').length,
-            inactive: employees.filter(emp => emp.status === 'inactive').length,
-            departments: departments,
-            recentHires: recentHires,
-            attendanceRecords: attendanceRecords.length
-        };
-    }
-
-    /**
-     * Handle user management actions (redirect to employee management page)
-     */
-    handleUserManagementActions() {
-        // Add Employee button
-        const addEmployeeBtn = document.getElementById('add-employee-btn');
-        if (addEmployeeBtn) {
-            addEmployeeBtn.addEventListener('click', () => {
-                window.location.href = 'employees.html';
-            });
-        }
-
-        // Manage Users button
-        const manageUsersBtn = document.getElementById('manage-users-btn');
-        if (manageUsersBtn) {
-            manageUsersBtn.addEventListener('click', () => {
-                window.location.href = 'employee-management.html';
-            });
-        }
-
-        // Export Users button
-        const exportUsersBtn = document.getElementById('export-users-btn');
-        if (exportUsersBtn) {
-            exportUsersBtn.addEventListener('click', () => {
-                this.exportUsers();
-            });
-        }
-
-        // Import Users button
-        const importUsersBtn = document.getElementById('import-users-btn');
-        if (importUsersBtn) {
-            importUsersBtn.addEventListener('click', () => {
-                this.importUsers();
-            });
-        }
-    }
-
-    /**
-     * Export users data from unified employee manager
-     */
-    async exportUsers() {
-        try {
-            if (!this.unifiedEmployeeManager || !this.unifiedEmployeeManager.initialized) {
-                throw new Error('UnifiedEmployeeManager not available for user export');
-            }
-
-            const employees = this.unifiedEmployeeManager.getAllEmployees();
-            const exportData = {
-                employees: employees,
-                exportDate: new Date().toISOString(),
-                source: 'unified-employee-manager',
-                version: '2.0.0'
-            };
-
-            const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-                type: 'application/json'
-            });
-
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `employees-export-${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-
-            this.showSuccessMessage(`Successfully exported ${employees.length} employees`);
-        } catch (error) {
-            console.error('Failed to export users:', error);
-            this.showErrorMessage('Failed to export users: ' + error.message);
-        }
-    }
-
-    /**
-     * Import users data to unified employee manager
-     */
-    importUsers() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        
-        input.onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            try {
-                if (!this.unifiedEmployeeManager || !this.unifiedEmployeeManager.initialized) {
-                    throw new Error('UnifiedEmployeeManager not available for user import');
-                }
-
-                const text = await file.text();
-                const importData = JSON.parse(text);
-
-                if (!importData.employees || !Array.isArray(importData.employees)) {
-                    throw new Error('Invalid import file format');
-                }
-
-                let importedCount = 0;
-                for (const employee of importData.employees) {
-                    try {
-                        await this.unifiedEmployeeManager.addEmployee(employee);
-                        importedCount++;
-                    } catch (error) {
-                        console.warn('Failed to import employee:', employee, error);
-                    }
-                }
-
-                await this.loadUserStats(); // Refresh stats
-                this.showSuccessMessage(`Successfully imported ${importedCount} employees`);
-                
-            } catch (error) {
-                console.error('Failed to import users:', error);
-                this.showErrorMessage('Failed to import users: ' + error.message);
-            }
-        };
-
-        input.click();
-    }
-
-    /**
-     * Reset all local storage data
-     */
-    async resetLocalStorage() {
-        const confirmMessage = `⚠️ WARNING: This will permanently delete ALL stored data including:
-
-• All employee records
-• All attendance data  
-• All settings
-• All cached data
-
-This action CANNOT be undone!
-
-Are you absolutely sure you want to proceed?`;
-
-        if (!confirm(confirmMessage)) {
-            return;
-        }
-
-        // Second confirmation for safety
-        const secondConfirm = confirm('This is your FINAL warning. All data will be permanently lost. Click OK to proceed or Cancel to abort.');
-        if (!secondConfirm) {
-            return;
-        }
-
-        try {
-            console.log('🗑️ Starting complete local storage reset...');
-            
-            // Show loading state
-            const resetBtn = document.getElementById('reset-localstorage-btn');
-                       const originalText = resetBtn.innerHTML;
-            resetBtn.disabled = true;
-            resetBtn.innerHTML = `
-                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
-                </svg>
-                Resetting...
-            `;
-
-            // Get all localStorage keys before clearing
-            const keysToRemove = [];
-            for (let i = 0; i < localStorage.length; i++) {
-                keysToRemove.push(localStorage.key(i));
-            }
-            
-            console.log('📋 Found localStorage keys:', keysToRemove);
-
-            // Clear all localStorage data first
-            console.log('🗑️ Clearing all localStorage data...');
-            localStorage.clear();
-
-            // Verify localStorage is empty
-            console.log('✅ localStorage cleared. Remaining items:', localStorage.length);
-
-            // Clear unified employee manager data and set initialized flag to false to force proper re-initialization
-            if (this.unifiedEmployeeManager) {
-                console.log('🔄 Clearing unified employee manager data...');
-                this.unifiedEmployeeManager.employees = [];
-                this.unifiedEmployeeManager.attendanceRecords = [];
-                this.unifiedEmployeeManager.initialized = false; // Force re-initialization
-                this.unifiedEmployeeManager.clearAllData();
-            }
-
-            // Reset current settings to defaults
-            console.log('🔄 Resetting settings to defaults...');
-            this.currentSettings = {};
-            await this.loadSettings(); // This will load defaults
-
-            // Clear any cached data in memory
-            if (window.employees) window.employees = [];
-            if (window.attendanceRecords) window.attendanceRecords = [];
-            if (window.bricksEmployees) window.bricksEmployees = [];
-            if (window.bricksAttendanceRecords) window.bricksAttendanceRecords = [];
-
-            // Re-initialize unified employee manager with clean state - this will restore original mock data
-            if (this.unifiedEmployeeManager) {
-                console.log('🔄 Reinitializing unified employee manager with original mock data...');
-                await this.unifiedEmployeeManager.init();
-            }
-
-            // Refresh all UI components
-            console.log('🔄 Refreshing UI components...');
-            this.renderAllSections();
-            await this.loadUserStats();
-
-            // Reset button state
-            resetBtn.disabled = false;
-            resetBtn.innerHTML = originalText;
-
-            // Show success message
-            this.showSuccessMessage('✅ Local storage reset successfully! All data has been cleared and defaults restored.');
-
-            console.log('✅ Local storage reset completed successfully');
-
-            // Optional: Reload page after a short delay to ensure clean state
-            setTimeout(() => {
-                if (confirm('Would you like to reload the page to ensure a completely clean state?')) {
-                    window.location.reload();
-                }
-            }, 2000);
-
-        } catch (error) {
-            console.error('❌ Failed to reset local storage:', error);
-            this.showErrorMessage('Failed to reset local storage: ' + error.message);
-
-            // Reset button state on error
-            const resetBtn = document.getElementById('reset-localstorage-btn');
-            if (resetBtn) {
-                resetBtn.disabled = false;
-                resetBtn.innerHTML = originalText || `
-                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="3,6 5,6 21,6"></polyline>
-                        <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2v2"></path>
-                        <line x1="10" y1="11" x2="10" y2="17"></line>
-                        <line x1="14" y1="11" x2="14" y2="17"></line>
-                    </svg>
-                    Reset Local Storage
-                `;
-            }
-        }
-    }
-
-    // ...existing code...
 }
 
 // Initialize settings controller when DOM is loaded
