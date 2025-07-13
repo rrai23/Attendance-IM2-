@@ -2385,9 +2385,6 @@ class SettingsController {
                 this.themeManager.setTheme(theme);
             }
             
-            // Show success message
-            this.showSuccessMessage(`Theme changed to ${theme}`);
-            
             console.log('Theme successfully changed to:', theme);
         } catch (error) {
             console.error('Error changing theme:', error);
