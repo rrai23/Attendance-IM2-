@@ -34,6 +34,9 @@ class UnifiedAccountManager {
             // Load existing accounts
             await this.loadAccounts();
             
+            // Remove any legacy default employee accounts
+            await this.removeLegacyEmployeeAccount();
+            
             // Listen to employee manager events to sync accounts
             this.setupEmployeeManagerListeners();
             
@@ -42,6 +45,9 @@ class UnifiedAccountManager {
             
             // Sync with existing employees from unified employee manager
             await this.syncWithEmployeeManager();
+            
+            // Remove legacy default employee accounts
+            await this.removeLegacyEmployeeAccount();
             
             this.initialized = true;
             console.log('Unified Account Manager initialized with:', {
@@ -641,7 +647,10 @@ class UnifiedAccountManager {
                 
                 for (const employee of mockData.employees) {
                     // If mock data has username/password, use it
-                    if (employee.username && employee.password) {
+                    // But exclude any default "employee/employee" accounts
+                    if (employee.username && employee.password && 
+                        !(employee.username === 'employee' && employee.password === 'employee')) {
+                        
                         const existingAccount = this.accounts.find(acc => 
                             acc.username === employee.username
                         );
@@ -675,6 +684,34 @@ class UnifiedAccountManager {
             }
         } catch (error) {
             console.error('Error migrating mock accounts:', error);
+        }
+    }
+
+    /**
+     * Remove legacy default employee account if it exists
+     */
+    async removeLegacyEmployeeAccount() {
+        try {
+            console.log('Checking for legacy employee/employee accounts to remove...');
+            
+            const legacyAccountIndex = this.accounts.findIndex(acc => 
+                acc.username === 'employee' && 
+                acc.password === 'employee' &&
+                !acc.employeeId // No associated employee ID means it's a legacy default account
+            );
+
+            if (legacyAccountIndex !== -1) {
+                const legacyAccount = this.accounts[legacyAccountIndex];
+                this.accounts.splice(legacyAccountIndex, 1);
+                this.saveAccounts();
+                
+                console.log('✅ Removed legacy employee/employee default account');
+                this.emit('accountDeleted', { account: legacyAccount, reason: 'legacy_cleanup' });
+            } else {
+                console.log('✅ No legacy employee/employee accounts found');
+            }
+        } catch (error) {
+            console.error('Error removing legacy employee account:', error);
         }
     }
 }

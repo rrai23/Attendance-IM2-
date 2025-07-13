@@ -10,8 +10,7 @@ class AuthService {
         
         // Default credentials for development
         this.defaultCredentials = {
-            admin: { username: 'admin', password: 'admin', role: 'admin' },
-            employee: { username: 'employee', password: 'employee', role: 'employee' }
+            admin: { username: 'admin', password: 'admin', role: 'admin' }
         };
         
         // Initialize authentication state
