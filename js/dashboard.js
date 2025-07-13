@@ -72,7 +72,7 @@ class DashboardController {
      * Wait for required dependencies to be available
      */
     async waitForDependencies() {
-        const maxWait = 10000; // 10 seconds
+        const maxWait = 15000; // Increased to 15 seconds to prevent premature fallback
         const checkInterval = 200;
         let waited = 0;
 
@@ -93,8 +93,8 @@ class DashboardController {
                 };
                 
                 console.log('DashboardController checking dependencies...', dependencies);
-                console.log('window.dataService:', window.dataService);
-                console.log('dataService global:', typeof dataService !== 'undefined' ? dataService : 'undefined');
+                console.log('window.unifiedEmployeeManager:', window.unifiedEmployeeManager ? 'exists' : 'undefined');
+                console.log('unifiedEmployeeManager.initialized:', window.unifiedEmployeeManager?.initialized);
                 
                 // Check data sources in priority order: unified employee manager → unified service → data manager → original data service
                 const hasDataSource = dependencies.unifiedEmployeeManager || dependencies.unifiedDataService || dependencies.dataManager || dependencies.dataService;
@@ -104,14 +104,14 @@ class DashboardController {
                 console.log('ApexCharts available:', dependencies.ApexCharts);
                 
                 if (hasDataSource && dependencies.DashboardCalendar && dependencies.ApexCharts) {
-                    console.log('Core dependencies available - proceeding with initialization');
+                    console.log('✅ Core dependencies available - proceeding with dashboard initialization');
                     resolve();
                 } else if (waited >= maxWait) {
-                    console.warn('Dependencies not available after 10 seconds:', dependencies);
+                    console.warn('⚠️ Dependencies not available after 15 seconds:', dependencies);
                     
                     // Try to proceed with minimal functionality
                     if (hasDataSource) {
-                        console.log('Proceeding with minimal functionality');
+                        console.log('📊 Proceeding with minimal functionality (no charts)');
                         resolve();
                     } else {
                         reject(new Error('Critical dependencies missing: No data source available'));

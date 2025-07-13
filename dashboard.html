@@ -2125,46 +2125,8 @@
             }
         });
         
-        // Emergency fallback to ensure dashboard has data
-        window.addEventListener('load', function() {
-            setTimeout(async function() {
-                console.log('Emergency dashboard data check...');
-                
-                // Check if dashboard elements are still showing default values
-                const totalEmployeesEl = document.getElementById('total-employees');
-                const presentTodayEl = document.getElementById('present-today');
-                
-                if (totalEmployeesEl && (totalEmployeesEl.textContent === '--' || totalEmployeesEl.textContent === '0')) {
-                    console.log('Dashboard showing default values, attempting emergency fix...');
-                    
-                    // Force initialize unified employee manager if needed
-                    if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
-                        try {
-                            console.log('Emergency data access through unified manager');
-                            
-                            // Force refresh dashboard if DashboardController exists
-                            if (window.dashboardController && window.dashboardController.loadInitialData) {
-                                await window.dashboardController.loadInitialData();
-                                window.dashboardController.updateQuickStats();
-                                console.log('Dashboard data refreshed');
-                            }
-                        } catch (error) {
-                            console.error('Emergency data initialization failed:', error);
-                            
-                            // Last resort: set basic display values
-                            if (totalEmployeesEl) totalEmployeesEl.textContent = '6';
-                            if (presentTodayEl) presentTodayEl.textContent = '4';
-                            const lateTodayEl = document.getElementById('late-today');
-                            if (lateTodayEl) lateTodayEl.textContent = '1';
-                            const attendanceRateEl = document.getElementById('attendance-rate');
-                            if (attendanceRateEl) attendanceRateEl.textContent = '83%';
-                            
-                            console.log('Set fallback display values');
-                        }
-                    }
-                }
-            }, 2000); // Wait 2 seconds for normal initialization
-        });
+        // Disabled emergency fallback to prevent data flashing
+        // The real solution is to ensure today's attendance data exists during initialization
     </script>
 </body>
 </html>

@@ -61,6 +61,12 @@ class UnifiedEmployeeManager {
                     employees: this.employees.length,
                     attendance: this.attendanceRecords.length
                 });
+                
+                // 🎯 CRITICAL FIX: Always ensure today's attendance data exists
+                // This was missing when loading from localStorage!
+                console.log('🎯 Ensuring today\'s attendance data after loading from localStorage...');
+                this.ensureTodayAttendanceData();
+                
                 return;
             }
 
@@ -71,6 +77,10 @@ class UnifiedEmployeeManager {
             if (this.employees.length === 0) {
                 console.log('No data found during migration, creating initial data...');
                 await this.createInitialData();
+            } else {
+                // 🎯 Also ensure today's data exists after migration
+                console.log('🎯 Ensuring today\'s attendance data after migration...');
+                this.ensureTodayAttendanceData();
             }
             
         } catch (error) {
@@ -550,30 +560,50 @@ class UnifiedEmployeeManager {
     ensureTodayAttendanceData() {
         const today = new Date().toISOString().split('T')[0];
         
+        console.log('🎯 ensureTodayAttendanceData() called for date:', today);
+        console.log('🎯 Current attendance records count:', this.attendanceRecords.length);
+        console.log('🎯 Current employees count:', this.employees.length);
+        
         // Check if we already have attendance records for today
         const todayRecords = this.attendanceRecords.filter(record => 
             record.date === today || record.clockInDate === today
         );
         
+        console.log('🎯 Existing records for today:', todayRecords.length);
+        if (todayRecords.length > 0) {
+            console.log('🎯 Existing today records:', todayRecords.map(r => `${r.employeeName} (${r.status})`));
+        }
+        
         if (todayRecords.length === 0 && this.employees.length > 0) {
             console.log('🎯 Creating sample attendance records for today to show meaningful dashboard stats');
+            console.log('Current date for attendance:', today);
+            console.log('Active employees count:', this.employees.filter(emp => emp.status === 'active').length);
             
             // Create sample attendance for most employees (simulate realistic attendance)
             const activeEmployees = this.employees.filter(emp => emp.status === 'active');
             const sampleAttendance = [];
             
+            console.log('🎯 Active employees for attendance creation:', activeEmployees.map(e => e.fullName || e.name));
+            
             activeEmployees.forEach((emp, index) => {
-                // Simulate 80% attendance rate with some variety
-                if (Math.random() < 0.8 || index < 3) { // Ensure at least first 3 are present
-                    const isLate = Math.random() < 0.2; // 20% chance of being late
+                // Use deterministic "randomness" based on employee ID and date
+                // This ensures the same pattern is generated every time for the same day
+                const seed = this.createDateSeed(today, emp.id);
+                const attendanceChance = this.seededRandom(seed, 1);
+                const lateChance = this.seededRandom(seed, 2);
+                const timeVariation = this.seededRandom(seed, 3);
+                
+                // Simulate 80% attendance rate with deterministic pattern
+                if (attendanceChance < 0.8 || index < 3) { // Ensure at least first 3 are present
+                    const isLate = lateChance < 0.2; // 20% chance of being late (but deterministic)
                     const baseTime = isLate ? '09:15:00' : '09:00:00';
-                    const clockInTime = this.addRandomMinutes(baseTime, isLate ? 30 : 15);
+                    const clockInTime = this.addDeterministicMinutes(baseTime, timeVariation, isLate ? 30 : 15);
                     
-                    sampleAttendance.push({
+                    const attendanceRecord = {
                         id: `att_${today}_${emp.id}`,
                         employeeId: emp.id,
                         employeeName: emp.fullName || emp.name,
-                        date: today,
+                        date: today,  // This is the key field for filtering
                         clockInDate: today,
                         clockInTime: clockInTime,
                         timeIn: clockInTime,
@@ -581,17 +611,32 @@ class UnifiedEmployeeManager {
                         clockIn: `${today}T${clockInTime}`,
                         notes: isLate ? 'Late arrival' : 'On time',
                         createdAt: new Date().toISOString()
-                    });
+                    };
+                    
+                    sampleAttendance.push(attendanceRecord);
+                    console.log(`✅ Created attendance for ${emp.fullName || emp.name}: ${attendanceRecord.status} at ${clockInTime}`);
                 }
             });
             
             console.log(`✅ Created ${sampleAttendance.length} sample attendance records for today`);
-            console.log('Sample attendance for:', sampleAttendance.map(att => `${att.employeeName} (${att.status})`));
+            console.log('Sample attendance summary:', sampleAttendance.map(att => `${att.employeeName} (${att.status})`));
             
             // Add to existing attendance records
+            const beforeCount = this.attendanceRecords.length;
             this.attendanceRecords = [...this.attendanceRecords, ...sampleAttendance];
+            
+            console.log('🎯 Total attendance records after adding today\'s data:', this.attendanceRecords.length);
+            console.log(`🎯 Added ${this.attendanceRecords.length - beforeCount} new records`);
+            
+            // Verify the records were added correctly
+            const verifyTodayRecords = this.attendanceRecords.filter(record => record.date === today);
+            console.log('🎯 Verification - Records with today\'s date:', verifyTodayRecords.length);
+            
         } else if (todayRecords.length > 0) {
             console.log(`✅ Found ${todayRecords.length} existing attendance records for today`);
+            console.log('Existing records:', todayRecords.map(rec => `${rec.employeeName} (${rec.status})`));
+        } else {
+            console.log('⚠️ No active employees found to create attendance records for');
         }
     }
 
@@ -601,6 +646,37 @@ class UnifiedEmployeeManager {
     addRandomMinutes(timeStr, maxMinutes) {
         const [hours, minutes, seconds] = timeStr.split(':').map(Number);
         const totalMinutes = hours * 60 + minutes + Math.floor(Math.random() * maxMinutes);
+        const newHours = Math.floor(totalMinutes / 60);
+        const newMinutes = totalMinutes % 60;
+        return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}:${String(seconds || 0).padStart(2, '0')}`;
+    }
+
+    /**
+     * Create a deterministic seed based on date and employee ID
+     */
+    createDateSeed(date, employeeId) {
+        // Create a consistent seed from date and employee ID
+        const dateNumber = parseInt(date.replace(/-/g, ''));
+        const empIdNumber = parseInt(employeeId) || 1;
+        return dateNumber + empIdNumber;
+    }
+
+    /**
+     * Generate a deterministic "random" number between 0 and 1 based on a seed
+     */
+    seededRandom(seed, variation = 1) {
+        // Simple deterministic pseudo-random generator
+        const x = Math.sin(seed * variation) * 10000;
+        return x - Math.floor(x);
+    }
+
+    /**
+     * Add deterministic minutes to a time string (replaces Math.random())
+     */
+    addDeterministicMinutes(timeStr, randomValue, maxMinutes) {
+        const [hours, minutes, seconds] = timeStr.split(':').map(Number);
+        const additionalMinutes = Math.floor(randomValue * maxMinutes);
+        const totalMinutes = hours * 60 + minutes + additionalMinutes;
         const newHours = Math.floor(totalMinutes / 60);
         const newMinutes = totalMinutes % 60;
         return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}:${String(seconds || 0).padStart(2, '0')}`;
