@@ -511,11 +511,11 @@
     </div>
 
     <!-- Overtime Request Modal -->
-    <div class="modal-overlay" id="overtime-form-modal">
+    <div class="modal-overlay" id="overtime-form-modal" onclick="if(event.target === this) window.employeePage.hideOvertimeForm()">
         <div class="modal">
             <div class="modal-header">
                 <h3 class="modal-title">Request Overtime</h3>
-                <button class="modal-close" aria-label="Close modal">&times;</button>
+                <button class="modal-close" aria-label="Close modal" onclick="window.employeePage.hideOvertimeForm()">&times;</button>
             </div>
             <div class="modal-body">
                 <form id="overtime-form" class="overtime-form">
@@ -551,7 +551,7 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="employeePage.hideOvertimeForm()">Cancel</button>
+                <button type="button" class="btn btn-secondary" onclick="window.employeePage.hideOvertimeForm()">Cancel</button>
                 <button type="submit" form="overtime-form" class="btn btn-primary">Submit Request</button>
             </div>
         </div>
@@ -2307,6 +2307,12 @@
                     overtimeForm.addEventListener('submit', (e) => this.handleOvertimeSubmit(e));
                 }
 
+                // Overtime button
+                const overtimeBtn = document.getElementById('quickOvertimeBtn');
+                if (overtimeBtn) {
+                    overtimeBtn.addEventListener('click', () => this.showOvertimeForm());
+                }
+
                 // Refresh button
                 const refreshBtn = document.getElementById('refresh-btn');
                 if (refreshBtn) {
@@ -2412,6 +2418,11 @@
                                 this.navigateToSchedule();
                                 break;
                         }
+                    }
+                    
+                    // Close modal with Escape key
+                    if (e.key === 'Escape') {
+                        this.hideOvertimeForm();
                     }
                 });
             }
@@ -2887,18 +2898,39 @@
              * Show/hide overtime form
              */
             showOvertimeForm() {
-                const modal = document.getElementById('overtime-modal');
+                const modal = document.getElementById('overtime-form-modal');
                 if (modal) {
                     modal.classList.remove('hidden');
+                    modal.classList.add('active');
                     modal.style.display = 'flex';
+                    
+                    // Set today's date as default
+                    const dateInput = document.getElementById('overtime-date');
+                    if (dateInput) {
+                        dateInput.value = new Date().toISOString().split('T')[0];
+                    }
+                    
+                    // Focus on first input
+                    setTimeout(() => {
+                        if (dateInput) {
+                            dateInput.focus();
+                        }
+                    }, 100);
                 }
             }
 
             hideOvertimeForm() {
-                const modal = document.getElementById('overtime-modal');
+                const modal = document.getElementById('overtime-form-modal');
                 if (modal) {
                     modal.classList.add('hidden');
+                    modal.classList.remove('active');
                     modal.style.display = 'none';
+                    
+                    // Reset form
+                    const form = document.getElementById('overtime-form');
+                    if (form) {
+                        form.reset();
+                    }
                 }
             }
 
