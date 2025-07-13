@@ -1541,8 +1541,29 @@ class SettingsController {
      * Handle theme changes
      */
     handleThemeChange(theme) {
+<<<<<<< HEAD
         if (this.themeManager) {
             this.themeManager.setTheme(theme);
+=======
+        try {
+            console.log('Theme change requested:', theme);
+            
+            // Apply theme immediately
+            document.documentElement.setAttribute('data-theme', theme);
+            
+            // Save to localStorage
+            localStorage.setItem('theme', theme);
+            
+            // Update theme manager if available
+            if (this.themeManager) {
+                this.themeManager.setTheme(theme);
+            }
+            
+            console.log('Theme successfully changed to:', theme);
+        } catch (error) {
+            console.error('Error changing theme:', error);
+            this.showErrorMessage('Failed to change theme: ' + error.message);
+>>>>>>> 229033b43053322d058929ca0127d85dd699d80e
         }
     }
 

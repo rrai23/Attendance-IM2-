@@ -467,7 +467,11 @@ a:hover {
 /* Sidebar Navigation */
 .sidebar-nav {
   flex: 1;
+<<<<<<< HEAD
   padding: var(--spacing-md) 0;
+=======
+  padding: var(--spacing-xs) 0;
+>>>>>>> 229033b43053322d058929ca0127d85dd699d80e
   overflow-y: auto;
 }
 
@@ -485,7 +489,11 @@ a:hover {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
+<<<<<<< HEAD
   padding: var(--spacing-md) var(--spacing-lg);
+=======
+  padding: var(--spacing-md) var(--spacing-xl);
+>>>>>>> 229033b43053322d058929ca0127d85dd699d80e
   color: var(--text-secondary);
   text-decoration: none;
   transition: all var(--transition-fast);
@@ -503,7 +511,12 @@ a:hover {
 .nav-link.active {
   background-color: var(--accent-light);
   color: var(--accent-primary);
+<<<<<<< HEAD
   font-weight: var(--font-weight-medium);
+=======
+  font-weight: var(--font-weight-semibold);
+  transform: translateX(6px);
+>>>>>>> 229033b43053322d058929ca0127d85dd699d80e
 }
 
 .nav-link.active::before {
@@ -597,7 +610,11 @@ a:hover {
 
 /* Sidebar footer */
 .sidebar-footer {
+<<<<<<< HEAD
   padding: var(--spacing-lg);
+=======
+  padding: var(--spacing-sm) var(--spacing-md);
+>>>>>>> 229033b43053322d058929ca0127d85dd699d80e
   border-top: 1px solid var(--border-color);
   margin-top: auto;
 }
@@ -607,7 +624,11 @@ a:hover {
   align-items: center;
   gap: var(--spacing-sm);
   width: 100%;
+<<<<<<< HEAD
   padding: var(--spacing-md);
+=======
+  padding: var(--spacing-xs) var(--spacing-md);
+>>>>>>> 229033b43053322d058929ca0127d85dd699d80e
   background: none;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
