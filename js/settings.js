@@ -300,10 +300,10 @@ class SettingsController {
             }
         });
 
-        // Theme toggle
-        const themeToggle = document.getElementById('theme-toggle-setting');
-        if (themeToggle) {
-            themeToggle.addEventListener('change', (e) => {
+        // Theme selector
+        const themeSelector = document.getElementById('default-theme');
+        if (themeSelector) {
+            themeSelector.addEventListener('change', (e) => {
                 this.handleThemeChange(e.target.value);
             });
         }
@@ -2365,6 +2365,73 @@ class SettingsController {
         
         totalUsersElements.forEach(el => el.textContent = stats.total);
         activeUsersElements.forEach(el => el.textContent = stats.active);
+    }
+
+    /**
+     * Handle theme change when user selects a different theme
+     */
+    handleThemeChange(theme) {
+        try {
+            console.log('Theme change requested:', theme);
+            
+            // Apply theme immediately
+            document.documentElement.setAttribute('data-theme', theme);
+            
+            // Save to localStorage
+            localStorage.setItem('theme', theme);
+            
+            // Update theme manager if available
+            if (this.themeManager) {
+                this.themeManager.setTheme(theme);
+            }
+            
+            // Show success message
+            this.showSuccessMessage(`Theme changed to ${theme}`);
+            
+            console.log('Theme successfully changed to:', theme);
+        } catch (error) {
+            console.error('Error changing theme:', error);
+            this.showErrorMessage('Failed to change theme: ' + error.message);
+        }
+    }
+
+    /**
+     * Reset all localStorage data after confirmation
+     */
+    resetLocalStorage() {
+        try {
+            console.log('Reset localStorage requested');
+            
+            // Show confirmation dialog
+            const confirmed = confirm('Are you sure you want to reset all local storage data? This action cannot be undone and will clear all saved settings, preferences, and cached data.');
+            
+            if (!confirmed) {
+                console.log('Reset localStorage cancelled by user');
+                return;
+            }
+            
+            // Get current theme before clearing
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            
+            // Clear all localStorage
+            localStorage.clear();
+            
+            // Restore essential items
+            localStorage.setItem('theme', currentTheme);
+            
+            // Show success message
+            this.showSuccessMessage('Local storage has been reset successfully. The page will reload to apply changes.');
+            
+            // Reload page after a short delay
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+            
+            console.log('Local storage reset completed');
+        } catch (error) {
+            console.error('Error resetting localStorage:', error);
+            this.showErrorMessage('Failed to reset local storage: ' + error.message);
+        }
     }
 }
 
