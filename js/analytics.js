@@ -10,7 +10,7 @@ class AnalyticsController {
         this.analyticsData = null;
         this.charts = new Map();
         this.isInitialized = false;
-        this.dataService = null;
+        this.unifiedManager = null;
         this.unifiedManager = null;
         this.filters = {
             employeeId: null,
@@ -100,11 +100,14 @@ class AnalyticsController {
         try {
             // Wait for unified employee manager to be ready (same approach as other pages)
             let waitCount = 0;
-            const maxWait = 50; // 5 seconds max wait
+            const maxWait = 100; // 10 seconds max wait
             
             while ((!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) && waitCount < maxWait) {
                 await new Promise(resolve => setTimeout(resolve, 100));
                 waitCount++;
+                if (waitCount % 10 === 0) {
+                    console.log(`Analytics waiting for unified manager... (${waitCount/10}s)`);
+                }
             }
             
             if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
@@ -1797,13 +1800,13 @@ if (typeof module !== 'undefined' && module.exports) {
 
 // Wait for dependencies to be ready before initializing
 function initializeWhenReady() {
-    // Check if unified data service is available, or fallback to legacy dataService
-    if (typeof window.UnifiedDataService !== 'undefined' || typeof dataService !== 'undefined') {
+    // Check if unified data service is available
+    if (typeof window.UnifiedDataService !== 'undefined') {
         if (!analyticsController.isInitialized) {
             analyticsController.init().catch(console.error);
         }
     } else {
-        console.log('Analytics waiting for dependencies... UnifiedDataService:', typeof window.UnifiedDataService, 'dataService:', typeof dataService);
+        console.log('Analytics waiting for dependencies... UnifiedDataService:', typeof window.UnifiedDataService);
         setTimeout(initializeWhenReady, 100);
     }
 }

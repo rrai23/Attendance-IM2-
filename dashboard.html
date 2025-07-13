@@ -17,7 +17,6 @@
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     
     <!-- Preload critical resources -->
-    <link rel="preload" href="/js/data-service.js" as="script">
     <link rel="preload" href="/js/auth.js" as="script">
     <link rel="preload" href="/js/theme.js" as="script">
 </head>
@@ -588,7 +587,6 @@
     <script src="js/core/api-service.js" onerror="console.error('Failed to load api-service.js')"></script>
     <script src="js/core/data-service-factory.js" onerror="console.error('Failed to load data-service-factory.js')"></script>
     <script src="js/unified-data-service.js" onerror="console.error('Failed to load unified-data-service.js')"></script>
-    <script src="js/data-service.js" onerror="console.error('Failed to load data-service.js')"></script>
     <script src="js/unified-employee-manager.js" onerror="console.error('Failed to load unified-employee-manager.js')"></script>
     <script src="js/global-system-sync.js" onerror="console.error('Failed to load global-system-sync.js')"></script>
     <script src="js/auth.js" onerror="console.error('Failed to load auth.js')"></script>
@@ -2139,11 +2137,10 @@
                 if (totalEmployeesEl && (totalEmployeesEl.textContent === '--' || totalEmployeesEl.textContent === '0')) {
                     console.log('Dashboard showing default values, attempting emergency fix...');
                     
-                    // Force initialize data service if needed
-                    if (window.dataService && window.dataService.createDefaultData) {
+                    // Force initialize unified employee manager if needed
+                    if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
                         try {
-                            await window.dataService.createDefaultData();
-                            console.log('Emergency data initialization completed');
+                            console.log('Emergency data access through unified manager');
                             
                             // Force refresh dashboard if DashboardController exists
                             if (window.dashboardController && window.dashboardController.loadInitialData) {

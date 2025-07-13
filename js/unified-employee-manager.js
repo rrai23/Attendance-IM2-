@@ -19,8 +19,8 @@ class UnifiedEmployeeManager {
             dataSync: []
         };
         
-        // Auto-initialize
-        this.init();
+        // Don't auto-initialize in constructor - let the global init function handle it
+        // this.init();
     }
 
     async init() {
@@ -57,12 +57,21 @@ class UnifiedEmployeeManager {
                 const data = JSON.parse(stored);
                 this.employees = data.employees || [];
                 this.attendanceRecords = data.attendanceRecords || [];
-                console.log('Loaded data from localStorage');
+                console.log('Loaded data from localStorage:', {
+                    employees: this.employees.length,
+                    attendance: this.attendanceRecords.length
+                });
                 return;
             }
 
-            // If no stored data, migrate from existing sources
+            // If no stored data, try to migrate from existing sources first
             await this.migrateFromExistingSources();
+            
+            // If migration didn't find any data, create initial data
+            if (this.employees.length === 0) {
+                console.log('No data found during migration, creating initial data...');
+                await this.createInitialData();
+            }
             
         } catch (error) {
             console.error('Error loading data:', error);
@@ -110,25 +119,6 @@ class UnifiedEmployeeManager {
             }
         });
         
-        // Try to get data from dataService if available
-        if (typeof dataService !== 'undefined') {
-            try {
-                const serviceEmployees = await dataService.getEmployees();
-                if (serviceEmployees && serviceEmployees.length > 0) {
-                    console.log('📦 Found employees in dataService:', serviceEmployees.length);
-                    allEmployees = allEmployees.concat(serviceEmployees);
-                }
-                
-                const serviceAttendance = await dataService.getAttendanceRecords();
-                if (serviceAttendance && serviceAttendance.length > 0) {
-                    console.log('📦 Found attendance in dataService:', serviceAttendance.length);
-                    allAttendanceRecords = allAttendanceRecords.concat(serviceAttendance);
-                }
-            } catch (error) {
-                console.warn('Failed to migrate from dataService:', error);
-            }
-        }
-
         // Try to get data from dataManager if available
         if (typeof dataManager !== 'undefined' && dataManager.initialized) {
             try {
@@ -166,11 +156,16 @@ class UnifiedEmployeeManager {
             cleanupResult: cleanupResult
         });
         
-        // Save unified data
-        this.saveData();
-        
-        // Clean up old data sources to prevent conflicts
-        this.cleanupOldDataSources();
+        // Only save unified data if we actually found some employees
+        if (this.employees.length > 0) {
+            console.log('Migration found data, saving...');
+            this.saveData();
+            
+            // Clean up old data sources to prevent conflicts
+            this.cleanupOldDataSources();
+        } else {
+            console.log('Migration found no employees, will need to create initial data');
+        }
         
         return;
     }
@@ -465,6 +460,10 @@ class UnifiedEmployeeManager {
         }
         
         console.log(`Created initial data: ${this.employees.length} employees, ${this.attendanceRecords.length} attendance records`);
+        
+        // Add sample attendance records for today to prevent dashboard showing 0 present
+        this.ensureTodayAttendanceData();
+        
         this.saveData();
     }
 
@@ -472,15 +471,17 @@ class UnifiedEmployeeManager {
      * Create minimal fallback data when mock data is not available
      */
     createFallbackData() {
+        console.warn('🚨 USING FALLBACK DATA - Mock data failed to load!');
+        console.warn('Creating 3 fallback employees instead of full mock data set');
         this.employees = [
             {
                 id: 1,
                 employeeCode: 'emp_001',
-                firstName: 'John',
-                lastName: 'Doe',
-                fullName: 'John Doe',
-                name: 'John Doe',
-                email: 'john.doe@company.com',
+                firstName: 'Fallback',
+                lastName: 'Employee 1',
+                fullName: 'Fallback Employee 1',
+                name: 'Fallback Employee 1',
+                email: 'fallback1@company.com',
                 phone: '(555) 123-4567',
                 department: 'Engineering',
                 position: 'Senior Developer',
@@ -497,11 +498,11 @@ class UnifiedEmployeeManager {
             {
                 id: 2,
                 employeeCode: 'emp_002',
-                firstName: 'Jane',
-                lastName: 'Smith',
-                fullName: 'Jane Smith',
-                name: 'Jane Smith',
-                email: 'jane.smith@company.com',
+                firstName: 'Fallback',
+                lastName: 'Employee 2',
+                fullName: 'Fallback Employee 2',
+                name: 'Fallback Employee 2',
+                email: 'fallback2@company.com',
                 phone: '(555) 234-5678',
                 department: 'Marketing',
                 position: 'Marketing Manager',
@@ -518,11 +519,11 @@ class UnifiedEmployeeManager {
             {
                 id: 3,
                 employeeCode: 'emp_003',
-                firstName: 'Bob',
-                lastName: 'Johnson',
-                fullName: 'Bob Johnson',
-                name: 'Bob Johnson',
-                email: 'bob.johnson@company.com',
+                firstName: 'Fallback',
+                lastName: 'Employee 3',
+                fullName: 'Fallback Employee 3',
+                name: 'Fallback Employee 3',
+                email: 'fallback3@company.com',
                 phone: '(555) 345-6789',
                 department: 'Sales',
                 position: 'Sales Representative',
@@ -538,6 +539,71 @@ class UnifiedEmployeeManager {
             }
         ];
         this.attendanceRecords = [];
+        
+        // Add sample attendance for today
+        this.ensureTodayAttendanceData();
+    }
+
+    /**
+     * Ensure there are attendance records for today to show meaningful dashboard stats
+     */
+    ensureTodayAttendanceData() {
+        const today = new Date().toISOString().split('T')[0];
+        
+        // Check if we already have attendance records for today
+        const todayRecords = this.attendanceRecords.filter(record => 
+            record.date === today || record.clockInDate === today
+        );
+        
+        if (todayRecords.length === 0 && this.employees.length > 0) {
+            console.log('🎯 Creating sample attendance records for today to show meaningful dashboard stats');
+            
+            // Create sample attendance for most employees (simulate realistic attendance)
+            const activeEmployees = this.employees.filter(emp => emp.status === 'active');
+            const sampleAttendance = [];
+            
+            activeEmployees.forEach((emp, index) => {
+                // Simulate 80% attendance rate with some variety
+                if (Math.random() < 0.8 || index < 3) { // Ensure at least first 3 are present
+                    const isLate = Math.random() < 0.2; // 20% chance of being late
+                    const baseTime = isLate ? '09:15:00' : '09:00:00';
+                    const clockInTime = this.addRandomMinutes(baseTime, isLate ? 30 : 15);
+                    
+                    sampleAttendance.push({
+                        id: `att_${today}_${emp.id}`,
+                        employeeId: emp.id,
+                        employeeName: emp.fullName || emp.name,
+                        date: today,
+                        clockInDate: today,
+                        clockInTime: clockInTime,
+                        timeIn: clockInTime,
+                        status: isLate ? 'late' : 'present',
+                        clockIn: `${today}T${clockInTime}`,
+                        notes: isLate ? 'Late arrival' : 'On time',
+                        createdAt: new Date().toISOString()
+                    });
+                }
+            });
+            
+            console.log(`✅ Created ${sampleAttendance.length} sample attendance records for today`);
+            console.log('Sample attendance for:', sampleAttendance.map(att => `${att.employeeName} (${att.status})`));
+            
+            // Add to existing attendance records
+            this.attendanceRecords = [...this.attendanceRecords, ...sampleAttendance];
+        } else if (todayRecords.length > 0) {
+            console.log(`✅ Found ${todayRecords.length} existing attendance records for today`);
+        }
+    }
+
+    /**
+     * Helper method to add random minutes to a time string
+     */
+    addRandomMinutes(timeStr, maxMinutes) {
+        const [hours, minutes, seconds] = timeStr.split(':').map(Number);
+        const totalMinutes = hours * 60 + minutes + Math.floor(Math.random() * maxMinutes);
+        const newHours = Math.floor(totalMinutes / 60);
+        const newMinutes = totalMinutes % 60;
+        return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}:${String(seconds || 0).padStart(2, '0')}`;
     }
 
     /**

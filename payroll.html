@@ -681,21 +681,25 @@
             try {
                 console.log('Initializing unified data integration for payroll...');
                 
-                // ONLY use unified employee manager - no fallbacks allowed
-                if (window.unifiedEmployeeManager) {
-                    // Use existing global instance
-                    if (!window.unifiedEmployeeManager.initialized) {
-                        await window.unifiedEmployeeManager.init();
+                // ONLY use existing global unified employee manager - wait for it to be ready
+                console.log('Waiting for global UnifiedEmployeeManager to be ready...');
+                let waitCount = 0;
+                const maxWait = 100; // 10 seconds total (100 * 100ms)
+                
+                while ((!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) && waitCount < maxWait) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    waitCount++;
+                    if (waitCount % 10 === 0) {
+                        console.log(`Still waiting for global UnifiedEmployeeManager... (${waitCount/10}s)`);
                     }
-                    console.log('Unified Employee Manager ready for payroll (EXCLUSIVE MODE)');
-                } else if (typeof UnifiedEmployeeManager !== 'undefined') {
-                    // Create instance if global one doesn't exist
-                    window.unifiedEmployeeManager = new UnifiedEmployeeManager();
-                    await window.unifiedEmployeeManager.init();
-                    console.log('Unified Employee Manager initialized for payroll (EXCLUSIVE MODE)');
-                } else {
-                    throw new Error('UnifiedEmployeeManager not available, payroll cannot function without unified data');
                 }
+                
+                if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
+                    throw new Error('Global UnifiedEmployeeManager failed to initialize within timeout');
+                }
+                
+                console.log('Global Unified Employee Manager ready for payroll (EXCLUSIVE MODE)');
+                console.log('Employee count from global manager:', window.unifiedEmployeeManager.getEmployees().length);
                 
                 // Initialize payroll controller with unified employee manager ONLY
                 if (typeof PayrollController !== 'undefined') {

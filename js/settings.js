@@ -2307,11 +2307,23 @@ Are you absolutely sure you want to proceed?`;
 }
 
 // Initialize settings controller when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    if (typeof window.dataService !== 'undefined') {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Wait for unified employee manager to be ready
+    let waitCount = 0;
+    const maxWait = 100; // 10 seconds max wait
+    
+    while ((!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) && waitCount < maxWait) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        waitCount++;
+        if (waitCount % 10 === 0) {
+            console.log(`Settings waiting for unified manager... (${waitCount/10}s)`);
+        }
+    }
+    
+    if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
         window.settingsController = new SettingsController();
     } else {
-        console.error('DataService not found. Please ensure data-service.js is loaded first.');
+        console.error('UnifiedEmployeeManager not found or not initialized after timeout.');
     }
 });
 

@@ -61,7 +61,10 @@
 
         async function forceCreateData() {
             try {
-                const manager = new UnifiedEmployeeManager();
+                const manager = window.unifiedEmployeeManager;
+                if (!manager) {
+                    throw new Error('Global UnifiedEmployeeManager not available');
+                }
                 // Force creation of initial data by clearing existing
                 manager.employees = [];
                 manager.attendanceRecords = [];
@@ -79,12 +82,17 @@
             clearResults();
             
             try {
-                addResult('Step 1', 'Creating UnifiedEmployeeManager instance...');
+                addResult('Step 1', 'Using global UnifiedEmployeeManager instance...');
                 
-                const manager = new UnifiedEmployeeManager();
-                addResult('Step 2', 'Instance created, initializing...');
+                const manager = window.unifiedEmployeeManager;
+                if (!manager) {
+                    throw new Error('Global UnifiedEmployeeManager not available');
+                }
+                addResult('Step 2', 'Instance found, checking initialization...');
                 
-                await manager.init();
+                if (!manager.initialized) {
+                    await manager.init();
+                }
                 addResult('Step 3', 'Manager initialized successfully');
                 
                 const employees = manager.getEmployees();
