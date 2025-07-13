@@ -743,6 +743,11 @@ a:hover {
   box-shadow: 0 0 0 2px rgba(255, 59, 48, 0.2);
 }
 
+.status-indicator.status-waiting {
+  background-color: var(--color-gray-500);
+  box-shadow: 0 0 0 2px rgba(107, 114, 128, 0.2);
+}
+
 .status-text {
   font-size: var(--font-size-xs);
   color: var(--text-secondary);
@@ -2267,4 +2272,25 @@ select.form-select {
     transform: translateX(100%);
     opacity: 0;
   }
+}
+
+/* Attendance status styles */
+.status-waiting,
+.attendance-status.waiting {
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
+  border: 1px solid var(--color-gray-400);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+[data-theme="dark"] .status-waiting,
+[data-theme="dark"] .attendance-status.waiting {
+  background: var(--color-gray-700);
+  color: var(--color-gray-300);
+  border: 1px solid var(--color-gray-500);
 }

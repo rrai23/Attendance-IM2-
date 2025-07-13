@@ -644,6 +644,11 @@ const statusBadgeStyles = `
     color: white;
 }
 
+.status-waiting {
+    background-color: var(--color-gray-500);
+    color: white;
+}
+
 .status-partial {
     background-color: var(--color-secondary);
     color: white;

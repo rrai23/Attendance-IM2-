@@ -1094,19 +1094,47 @@ class UnifiedEmployeeManager {
             };
 
             this.employees.push(newEmployee);
+            
+            // Create initial attendance record with "waiting" status for today
+            const today = new Date().toISOString().split('T')[0];
+            const initialAttendanceRecord = {
+                id: Date.now(),
+                employeeId: newEmployee.id,
+                employeeCode: newEmployee.employeeCode,
+                employeeName: newEmployee.fullName,
+                department: newEmployee.department || 'Unassigned',
+                date: today,
+                clockIn: null,
+                clockOut: null,
+                status: 'waiting',
+                hours: 0,
+                notes: 'New employee - waiting for first check-in',
+                lastModified: new Date().toISOString()
+            };
+            
+            this.attendanceRecords.push(initialAttendanceRecord);
             this.saveData();
             
             // Broadcast employee addition to all systems
             this.emit('employeeUpdate', { action: 'add', employee: newEmployee });
             this.emit('employeeAdded', { employee: newEmployee });
             
+            // Broadcast attendance record creation
+            this.emit('attendanceUpdate', { action: 'add', record: initialAttendanceRecord });
+            this.emit('attendanceRecordSaved', { record: initialAttendanceRecord, isUpdate: false });
+            
             // System-wide broadcast
             this.broadcastSystemWide('employeeAdded', {
                 employee: newEmployee,
+                initialAttendance: initialAttendanceRecord,
                 timestamp: new Date().toISOString()
             });
             
-            console.log('Employee added:', newEmployee);
+            console.log('Employee added with initial attendance record:', {
+                employee: newEmployee,
+                attendance: initialAttendanceRecord
+            });
+            
             return newEmployee;
         } catch (error) {
             console.error('Error adding employee:', error);
