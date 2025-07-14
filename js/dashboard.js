@@ -81,10 +81,9 @@ class DashboardController {
                 const dependencies = {
                     // Check for unified employee manager first (newest)
                     unifiedEmployeeManager: typeof window.unifiedEmployeeManager !== 'undefined' && window.unifiedEmployeeManager.initialized,
-                    // Check for unified data service first (preferred)
+                    // Check for unified data service (preferred)
                     unifiedDataService: typeof window.dataService !== 'undefined' && window.dataService.initialized,
-                    // Legacy data sources as fallback
-                    dataManager: typeof window.dataManager !== 'undefined' && window.dataManager.initialized,
+                    // Legacy data service as fallback
                     dataService: typeof dataService !== 'undefined',
                     // Other dependencies
                     chartsManager: typeof chartsManager !== 'undefined' || typeof window.chartsManager !== 'undefined',
@@ -96,8 +95,8 @@ class DashboardController {
                 console.log('window.unifiedEmployeeManager:', window.unifiedEmployeeManager ? 'exists' : 'undefined');
                 console.log('unifiedEmployeeManager.initialized:', window.unifiedEmployeeManager?.initialized);
                 
-                // Check data sources in priority order: unified employee manager → unified service → data manager → original data service
-                const hasDataSource = dependencies.unifiedEmployeeManager || dependencies.unifiedDataService || dependencies.dataManager || dependencies.dataService;
+                // Check data sources in priority order: unified employee manager → unified service → original data service
+                const hasDataSource = dependencies.unifiedEmployeeManager || dependencies.unifiedDataService || dependencies.dataService;
                 
                 console.log('hasDataSource:', hasDataSource);
                 console.log('DashboardCalendar available:', dependencies.DashboardCalendar);
@@ -190,20 +189,7 @@ class DashboardController {
             });
         }
         
-        // Also listen for legacy data manager updates for backwards compatibility
-        if (window.dataManager) {
-            console.log('[DATA SYNC] Dashboard setting up legacy dataManager event listeners');
-            
-            window.dataManager.addEventListener('attendanceUpdate', (data) => {
-                console.log('[DATA SYNC] Dashboard received attendance update from legacy manager:', data);
-                this.handleDataUpdate();
-            });
-            
-            window.dataManager.addEventListener('dataSync', (data) => {
-                console.log('[DATA SYNC] Dashboard received data sync from legacy manager:', data);
-                this.handleDataUpdate();
-            });
-        }
+        // Note: Legacy dataManager support removed - using UnifiedEmployeeManager exclusively
         
         // Refresh button
         const refreshBtn = document.getElementById('refresh-dashboard');
@@ -339,18 +325,6 @@ class DashboardController {
                 
                 console.log('Dashboard loaded stats from unified data service:', this.currentStats);
             }
-            // Fallback to legacy data manager if unified service isn't available
-            else if (window.dataManager && window.dataManager.initialized) {
-                console.log('Loading attendance stats from legacy data manager');
-                
-                this.currentStats = window.dataManager.getAttendanceStats(today);
-                
-                // Get today's records for detailed processing
-                const todayRecords = window.dataManager.getTodayAttendance();
-                this.currentStats.today = await this.processTodayAttendance(todayRecords);
-                
-                console.log('Dashboard loaded stats from legacy data manager:', this.currentStats);
-            } 
             // Fallback to original dataService as last resort
             else if (typeof dataService !== 'undefined') {
                 console.log('Loading attendance stats from original dataService');
@@ -370,7 +344,6 @@ class DashboardController {
                 console.error('No data service available for loading attendance stats');
                 console.log('Available globals:', {
                     'window.dataService': typeof window.dataService,
-                    'window.dataManager': typeof window.dataManager,
                     'dataService': typeof dataService
                 });
                 

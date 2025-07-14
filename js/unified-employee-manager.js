@@ -130,24 +130,7 @@ class UnifiedEmployeeManager {
             }
         });
         
-        // Try to get data from dataManager if available
-        if (typeof dataManager !== 'undefined' && dataManager.initialized) {
-            try {
-                const managerEmployees = dataManager.getEmployees();
-                if (managerEmployees && managerEmployees.length > 0) {
-                    console.log('📦 Found employees in dataManager:', managerEmployees.length);
-                    allEmployees = allEmployees.concat(managerEmployees);
-                }
-                
-                const managerAttendance = dataManager.getAttendanceRecords();
-                if (managerAttendance && managerAttendance.length > 0) {
-                    console.log('📦 Found attendance in dataManager:', managerAttendance.length);
-                    allAttendanceRecords = allAttendanceRecords.concat(managerAttendance);
-                }
-            } catch (error) {
-                console.warn('Failed to migrate from dataManager:', error);
-            }
-        }
+        // Note: Legacy dataManager support removed - using direct data service integration
 
         // Deduplicate and normalize data
         this.employees = this.deduplicateEmployees(this.normalizeEmployeeData(allEmployees));

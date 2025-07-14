@@ -638,8 +638,8 @@ class SettingsController {
      */
     handleUserManagementActions() {
         try {
-            // Add user button
-            const addUserBtn = document.getElementById('add-user-btn');
+            // Add employee button (fixed ID to match HTML)
+            const addUserBtn = document.getElementById('add-employee-btn');
             if (addUserBtn) {
                 addUserBtn.addEventListener('click', () => this.showAddUserDialog());
             }
