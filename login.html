@@ -108,33 +108,126 @@
             <div class="login-footer">
                 <p>Login Information:</p>
                 <div class="demo-credentials">
-                    <div class="demo-credential">
-                        <strong>Admin:</strong> admin / admin
+                    <div class="demo-credential" data-username="admin" data-password="admin123">
+                        <strong>Admin:</strong> admin / admin123
+                    </div>
+                    <div class="demo-credential" data-username="john.smith" data-password="john123">
+                        <strong>Manager:</strong> john.smith / john123
                     </div>
                     <div class="demo-credential">
-                        <strong>Employee ID:</strong> Use employee ID as username (e.g., emp_003)
-                    </div>
-                    <div class="demo-credential">
-                        <strong>Default Password:</strong> "employee" for new accounts
+                        <strong>Backend Authentication:</strong> Uses separate user_accounts table
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="js/mock-data.js"></script>
-    <script src="js/utils/id-utility.js"></script>
-    <script src="js/core/data-service-api.js"></script>
-    <script src="js/core/local-storage-service.js"></script>
-    <script src="js/core/api-service.js"></script>
-    <script src="js/core/data-service-factory.js"></script>
-    <script src="js/unified-data-service.js"></script>
-    <!-- Removed unified-employee-manager.js - not needed on login page -->
-    <script src="js/unified-account-manager.js"></script>
-    <script src="js/global-system-sync.js"></script>
+    <!-- Scripts for Login Page -->
     <script src="js/theme.js"></script>
-    <script src="js/auth.js"></script>
+    <!-- Minimal backend authentication service for login -->
+    <script>
+        // Simple backend authentication service for login page
+        class BackendAuthService {
+            constructor() {
+                this.baseUrl = 'http://localhost:3000/api';
+                this.token = null;
+                this.user = null;
+            }
+
+            async login(username, password, rememberMe = false) {
+                try {
+                    console.log('🔐 Backend login attempt:', { username, rememberMe });
+                    
+                    const response = await fetch(`${this.baseUrl}/auth/login`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            username: username,
+                            password: password,
+                            rememberMe: rememberMe
+                        })
+                    });
+
+                    const data = await response.json();
+                    console.log('🔐 Backend login response:', { success: data.success, status: response.status });
+
+                    if (data.success && data.data) {
+                        // Store authentication data
+                        this.token = data.data.token;
+                        this.user = data.data.user;
+                        
+                        // Store in localStorage for session persistence
+                        localStorage.setItem('auth_token', this.token);
+                        localStorage.setItem('auth_user', JSON.stringify(this.user));
+                        localStorage.setItem('auth_expires', data.data.expiresIn);
+                        
+                        console.log('✅ Login successful, user:', this.user);
+                        return {
+                            success: true,
+                            user: this.user,
+                            token: this.token,
+                            redirectUrl: this.getRedirectUrl(this.user.role)
+                        };
+                    } else {
+                        console.log('❌ Login failed:', data.message);
+                        return {
+                            success: false,
+                            message: data.message || 'Login failed'
+                        };
+                    }
+                } catch (error) {
+                    console.error('🔐 Login error:', error);
+                    return {
+                        success: false,
+                        message: 'Network error. Please check your connection and try again.'
+                    };
+                }
+            }
+
+            getRedirectUrl(role) {
+                switch (role) {
+                    case 'admin':
+                        return '/dashboard.html';
+                    case 'manager':
+                        return '/dashboard.html';
+                    case 'hr':
+                        return '/employees.html';
+                    default:
+                        return '/employee.html';
+                }
+            }
+
+            isAuthenticated() {
+                const token = localStorage.getItem('auth_token');
+                const user = localStorage.getItem('auth_user');
+                return !!(token && user);
+            }
+
+            getCurrentUser() {
+                try {
+                    const userStr = localStorage.getItem('auth_user');
+                    return userStr ? JSON.parse(userStr) : null;
+                } catch (error) {
+                    console.error('Error parsing user data:', error);
+                    return null;
+                }
+            }
+
+            logout() {
+                this.token = null;
+                this.user = null;
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('auth_user');
+                localStorage.removeItem('auth_expires');
+            }
+        }
+
+        // Create global instance for login page
+        window.authService = new BackendAuthService();
+        console.log('🔐 Backend auth service initialized for login page');
+    </script>
     <script>
         // Login page specific functionality
         class LoginPage {
@@ -455,11 +548,19 @@
                 // Add demo credential click handlers
                 document.querySelectorAll('.demo-credential').forEach(credential => {
                     credential.addEventListener('click', () => {
-                        const text = credential.textContent;
-                        if (text.includes('admin')) {
-                            this.usernameInput.value = 'admin';
-                            this.passwordInput.value = 'admin';
+                        const username = credential.getAttribute('data-username');
+                        const password = credential.getAttribute('data-password');
+                        
+                        if (username && password) {
+                            this.usernameInput.value = username;
+                            this.passwordInput.value = password;
                             this.usernameInput.focus();
+                            
+                            // Visual feedback
+                            credential.style.background = 'var(--accent-light)';
+                            setTimeout(() => {
+                                credential.style.background = '';
+                            }, 200);
                         }
                     });
                 });
@@ -532,40 +633,15 @@
                 this.hideAlert();
 
                 try {
-                    // Check if authService exists
-                    if (typeof authService === 'undefined') {
-                        throw new Error('Authentication service not available. Please refresh the page.');
-                    }
+                    console.log('🔐 Starting login process...');
                     
-                    // Simple credential check first (fallback)
-                    const testCredentials = {
-                        admin: { username: 'admin', password: 'admin', role: 'admin' }
-                    };
-                    
-                    if (testCredentials[username] && testCredentials[username].password === password) {
-                        // Direct success without complex auth service
-                        const redirectUrl = '/dashboard.html'; // Admin always goes to dashboard
-                        this.showSuccess('Login successful! Redirecting...');
-                        
-                        // Store basic session info
-                        localStorage.setItem('bricks_auth_user', JSON.stringify({
-                            username: username,
-                            role: testCredentials[username].role
-                        }));
-                        localStorage.setItem('bricks_auth_session', 'simple_token_' + Date.now());
-                        localStorage.setItem('bricks_auth_expiry', (Date.now() + 8 * 60 * 60 * 1000).toString());
-                        
-                        setTimeout(() => {
-                            window.location.href = redirectUrl;
-                        }, 1000);
-                        return;
-                    }
-                    
-                    // If simple check fails, try auth service
+                    // Use backend authentication service
                     const result = await authService.login(username, password, rememberMe);
 
                     if (result && result.success) {
                         this.showSuccess('Login successful! Redirecting...');
+                        console.log('✅ Login successful, redirecting to:', result.redirectUrl);
+                        
                         setTimeout(() => {
                             window.location.href = result.redirectUrl;
                         }, 1000);
@@ -574,7 +650,7 @@
                         this.shakeForm();
                     }
                 } catch (error) {
-                    console.error('Login error:', error);
+                    console.error('❌ Login error:', error);
                     this.showError(`Login failed: ${error.message || 'Please check your credentials and try again.'}`);
                     this.shakeForm();
                 } finally {
@@ -685,55 +761,74 @@
             }
 
             checkExistingAuth() {
+                // Prevent redirect loops by checking if we just came from another page
+                const urlParams = new URLSearchParams(window.location.search);
+                const fromPage = urlParams.get('from');
+                const noRedirect = urlParams.get('noRedirect');
+                
+                // If we have a noRedirect flag or came from another page recently, don't auto-redirect
+                if (noRedirect === 'true' || fromPage) {
+                    console.log('🔐 Skipping auto-redirect due to URL params');
+                    return;
+                }
+                
+                // Rate limit check - prevent rapid redirects
+                const lastRedirect = localStorage.getItem('lastAuthRedirect');
+                const now = Date.now();
+                if (lastRedirect && (now - parseInt(lastRedirect)) < 5000) {
+                    console.log('🔐 Rate limiting auth redirects');
+                    localStorage.removeItem('auth_token');
+                    localStorage.removeItem('auth_user');
+                    return;
+                }
+                
                 // If user is already authenticated, redirect to appropriate page
                 try {
-                    if (typeof authService !== 'undefined' && authService.isAuthenticated()) {
+                    if (authService && authService.isAuthenticated()) {
                         const user = authService.getCurrentUser();
-                        const redirectUrl = authService.getRedirectUrl(user.role);
-                        window.location.href = redirectUrl;
+                        if (user && user.role) {
+                            const redirectUrl = authService.getRedirectUrl(user.role);
+                            console.log('🔐 User already authenticated, redirecting to:', redirectUrl);
+                            
+                            // Store redirect timestamp
+                            localStorage.setItem('lastAuthRedirect', now.toString());
+                            
+                            // Use replace instead of href to avoid back button issues
+                            window.location.replace(redirectUrl);
+                        }
                     }
                 } catch (error) {
-                    console.warn('Auth check failed:', error);
+                    console.warn('🔐 Auth check failed:', error);
                     // Clear any corrupted session data
-                    localStorage.removeItem('bricks_auth_session');
-                    localStorage.removeItem('bricks_auth_user');
-                    localStorage.removeItem('bricks_auth_expiry');
+                    if (authService && authService.logout) {
+                        authService.logout();
+                    }
+                    localStorage.removeItem('auth_token');
+                    localStorage.removeItem('auth_user');
+                    localStorage.removeItem('auth_expires');
                 }
             }
         }
 
         // Initialize login page when DOM is loaded
         document.addEventListener('DOMContentLoaded', () => {
-            // Function to check if required services are available
-            function checkServicesAndInitialize() {
-                if (typeof authService !== 'undefined') {
-                    try {
-                        console.log('Initializing login page...');
-                        console.log('Available services:', {
-                            dataService: typeof dataService !== 'undefined',
-                            themeManager: typeof themeManager !== 'undefined',
-                            authService: typeof authService !== 'undefined'
-                        });
-                        
-                        new LoginPage();
-                    } catch (error) {
-                        console.error('Failed to initialize login page:', error);
-                        // Show basic error message
-                        const alert = document.getElementById('loginAlert');
-                        const message = document.getElementById('loginAlertMessage');
-                        if (alert && message) {
-                            alert.classList.remove('hidden');
-                            message.textContent = 'Page initialization failed. Scripts may not have loaded properly.';
-                        }
-                    }
-                } else {
-                    // If authService is not available yet, wait a bit more
-                    setTimeout(checkServicesAndInitialize, 50);
+            console.log('🔐 Initializing login page with backend authentication...');
+            
+            try {
+                // Initialize login page immediately since authService is already available
+                new LoginPage();
+                console.log('✅ Login page initialized successfully');
+            } catch (error) {
+                console.error('❌ Failed to initialize login page:', error);
+                
+                // Show basic error message
+                const alert = document.getElementById('loginAlert');
+                const message = document.getElementById('loginAlertMessage');
+                if (alert && message) {
+                    alert.classList.remove('hidden');
+                    message.textContent = 'Page initialization failed. Please refresh the page.';
                 }
             }
-            
-            // Start checking after a small delay
-            setTimeout(checkServicesAndInitialize, 100);
         });
 
         // Set page theme

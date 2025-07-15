@@ -10,6 +10,9 @@ require('dotenv').config();
 // Import database connection
 const db = require('./backend/database/connection');
 
+// Import middleware
+const customRateLimit = require('./backend/middleware/rateLimit');
+
 // Import routes
 const authRoutes = require('./backend/routes/auth');
 const employeeRoutes = require('./backend/routes/employees');
@@ -47,15 +50,23 @@ app.use(compression());
 // Rate limiting - More permissive for development
 const limiter = rateLimit({
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 200, // Increased for development
+    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 500, // Increased for development
     message: {
         success: false,
         message: 'Too many requests from this IP, please try again later.'
     },
     standardHeaders: true,
     legacyHeaders: false,
+    skip: (req) => {
+        // Skip rate limiting for static files to prevent issues
+        return req.url.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/) ||
+               req.url.includes('/assets/');
+    }
 });
-app.use('/api/', limiter);
+
+// Apply both rate limiters - custom one for API routes, express one for general protection
+app.use(limiter);
+app.use('/api', customRateLimit);
 
 // CORS configuration - More permissive for development
 app.use(cors({

@@ -164,6 +164,14 @@ router.post('/logout', auth, async (req, res) => {
 // Verify token endpoint
 router.get('/verify', auth, async (req, res) => {
     try {
+        // Check if user data exists (should be attached by auth middleware)
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: 'User data not found'
+            });
+        }
+
         // User data is already attached by auth middleware
         const userData = {
             employee_id: req.user.employee_id,

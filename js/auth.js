@@ -243,7 +243,10 @@ class AuthService {
 
         // Redirect to login page only if we're not already on it
         if (typeof window !== 'undefined' && window.location && !window.location.pathname.includes('login.html')) {
-            window.location.href = 'login.html';
+            // Add flag to prevent redirect loops
+            const redirectUrl = 'login.html?noRedirect=true&logout=true';
+            console.log('🔐 Logout redirect to:', redirectUrl);
+            window.location.href = redirectUrl;
         }
     }
 
@@ -353,13 +356,28 @@ class AuthService {
 
     // Check session validity and handle expired sessions
     checkSessionValidity() {
+        // DISABLE OLD AUTH REDIRECTS - Login page now handles this with BackendAuthService
+        if (window.location.pathname.includes('login.html')) {
+            console.log('🔐 On login page, skipping old auth redirect check');
+            return;
+        }
+        
+        // Skip redirect check if we're using the new backend auth system
+        if (typeof window.authService !== 'undefined' && window.authService.constructor.name === 'BackendAuthService') {
+            console.log('🔐 Using BackendAuthService, skipping old auth check');
+            return;
+        }
+        
         if (!this.isAuthenticated()) {
             // If we're not on the login page, redirect there
             if (typeof window !== 'undefined' && window.location && 
                 !window.location.pathname.includes('login.html') &&
                 !window.location.pathname.includes('index.html')) {
-                // Don't call logout to avoid circular dependency, just redirect
-                window.location.href = 'login.html';
+                
+                // Add noRedirect flag to prevent redirect loops
+                const redirectUrl = 'login.html?noRedirect=true&from=' + encodeURIComponent(window.location.pathname);
+                console.log('🔐 Old auth system redirecting to:', redirectUrl);
+                window.location.href = redirectUrl;
             }
         }
     }

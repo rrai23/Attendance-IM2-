@@ -76,7 +76,7 @@ const auth = async (req, res, next) => {
         }
 
         // Get user data from user_accounts joined with employees
-        const [users] = await db.execute(`
+        const result = await db.execute(`
             SELECT 
                 ua.*,
                 e.first_name,
@@ -92,13 +92,26 @@ const auth = async (req, res, next) => {
             WHERE ua.employee_id = ? AND ua.is_active = TRUE AND e.status = 'active'
         `, [decoded.employee_id]);
 
+        // Handle different result structures (mysql2 returns [rows, fields])
+        let users;
+        if (Array.isArray(result) && result.length > 0) {
+            users = Array.isArray(result[0]) ? result[0] : result;
+        } else {
+            users = [];
+        }
+
         console.log('🔍 Auth middleware user lookup:', {
             employee_id: decoded.employee_id,
-            usersFound: users.length,
-            queryResult: users.length > 0 ? 'User found' : 'No user found'
+            rawResultType: typeof result,
+            rawResultIsArray: Array.isArray(result),
+            rawResultLength: result ? result.length : 'undefined',
+            usersFound: users ? users.length : 'users is null/undefined',
+            queryResult: users && users.length > 0 ? 'User found' : 'No user found',
+            usersType: typeof users,
+            usersIsArray: Array.isArray(users)
         });
 
-        if (users.length === 0) {
+        if (!users || users.length === 0) {
             return res.status(401).json({
                 success: false,
                 message: 'User not found or inactive'
