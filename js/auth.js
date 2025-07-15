@@ -100,24 +100,52 @@ class AuthService {
         }
     }
 
-    // Validate credentials against unified account manager or fallback
+    // Validate credentials against backend or fallback
     async validateCredentials(username, password) {
         try {
-            // First, try unified account manager if available
+            // First, try backend authentication API
+            try {
+                console.log('Trying backend authentication API...');
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+                console.log('Backend auth response:', data);
+
+                if (data.success && data.data) {
+                    return {
+                        success: true,
+                        user: data.data.user,
+                        token: data.data.token  // Use the real JWT token from backend
+                    };
+                }
+            } catch (backendError) {
+                console.log('Backend authentication failed, trying fallback:', backendError.message);
+            }
+
+            // Second, try unified account manager if available
             if (window.unifiedAccountManager && window.unifiedAccountManager.initialized) {
                 console.log('Using unified account manager for authentication');
                 const result = await window.unifiedAccountManager.authenticate(username, password);
                 if (result.success) {
                     return {
                         success: true,
-                        user: result.user
+                        user: result.user,
+                        token: result.token
                     };
                 }
-                // If unified account manager fails, continue with fallback
                 console.log('Unified account manager authentication failed, trying fallback');
             }
 
-            // Fallback: Check default credentials
+            // Third, fallback: Check default credentials
             for (const [key, creds] of Object.entries(this.defaultCredentials)) {
                 if (creds.username === username && creds.password === password) {
                     return {
@@ -134,11 +162,12 @@ class AuthService {
                                 position: 'Staff'
                             }
                         }
+                        // Note: No token provided for fallback auth
                     };
                 }
             }
 
-            // If data service is available, check against it
+            // Fourth, if data service is available, check against it
             if (typeof dataService !== 'undefined') {
                 const result = await dataService.login(username, password);
                 return result;
@@ -216,22 +245,27 @@ class AuthService {
         }
     }
 
-    // Logout function
+    // Logout function (clear both auth systems)
     logout(reason = 'user_logout') {
         // Get user data before clearing (avoid circular dependency)
         let user = null;
         try {
-            const userData = localStorage.getItem(this.userKey);
+            const userData = localStorage.getItem(this.userKey) || localStorage.getItem('auth_user');
             user = userData ? JSON.parse(userData) : null;
         } catch (error) {
             console.error('Error getting user data for logout:', error);
         }
         
-        // Clear all authentication data
+        // Clear ALL authentication data (both old and new systems)
         localStorage.removeItem(this.storageKey);
         localStorage.removeItem(this.tokenExpiryKey);
         localStorage.removeItem(this.userKey);
-        localStorage.removeItem('currentUser'); // Also clear legacy key
+        localStorage.removeItem('currentUser'); // Legacy key
+        
+        // Clear backend authentication data
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+        localStorage.removeItem('auth_expires');
 
         // Clear data service token if available
         if (typeof dataService !== 'undefined' && dataService && typeof dataService.setAuthToken === 'function') {
@@ -250,8 +284,18 @@ class AuthService {
         }
     }
 
-    // Check if user is authenticated
+    // Check if user is authenticated (check both old and new auth systems)
     isAuthenticated() {
+        // First, check for backend authentication tokens (preferred)
+        const backendToken = localStorage.getItem('auth_token');
+        const backendUser = localStorage.getItem('auth_user');
+        
+        if (backendToken && backendUser) {
+            console.log('✅ Backend authentication found');
+            return true;
+        }
+        
+        // Fallback: Check old authentication system
         const token = localStorage.getItem(this.storageKey);
         const expiry = localStorage.getItem(this.tokenExpiryKey);
         
@@ -273,13 +317,21 @@ class AuthService {
         return true;
     }
 
-    // Get current user data
+    // Get current user data (check both auth systems)
     getCurrentUser() {
         if (!this.isAuthenticated()) {
             return null;
         }
 
         try {
+            // First, try backend authentication user data
+            const backendUser = localStorage.getItem('auth_user');
+            if (backendUser) {
+                console.log('✅ Using backend user data');
+                return JSON.parse(backendUser);
+            }
+            
+            // Fallback: Try old authentication system
             const userData = localStorage.getItem(this.userKey);
             return userData ? JSON.parse(userData) : null;
         } catch (error) {
@@ -290,6 +342,7 @@ class AuthService {
             localStorage.removeItem(this.tokenExpiryKey);
             localStorage.removeItem(this.userKey);
             localStorage.removeItem('currentUser'); // Also clear legacy key
+            localStorage.removeItem('auth_user'); // Also clear backend user
             return null;
         }
     }
@@ -300,9 +353,21 @@ class AuthService {
         return user ? user.role : null;
     }
 
-    // Get current authentication token
+    // Get current authentication token (check both auth systems)
     getToken() {
-        return this.isAuthenticated() ? localStorage.getItem(this.storageKey) : null;
+        if (!this.isAuthenticated()) {
+            return null;
+        }
+        
+        // First, try backend authentication token (preferred)
+        const backendToken = localStorage.getItem('auth_token');
+        if (backendToken) {
+            console.log('✅ Using backend auth token');
+            return backendToken;
+        }
+        
+        // Fallback: Use old authentication system token
+        return localStorage.getItem(this.storageKey);
     }
 
     // Check if user has specific role

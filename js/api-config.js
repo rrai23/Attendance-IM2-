@@ -37,9 +37,17 @@ class APIConfig {
     
     getStoredToken() {
         try {
-            // Try to get token from various storage methods
+            // First, try backend authentication token (preferred)
+            const backendToken = localStorage.getItem('auth_token');
+            if (backendToken) {
+                console.log('✅ API Config using backend auth token');
+                return backendToken;
+            }
+            
+            // Fallback: Try to get token from various storage methods
             return localStorage.getItem('authToken') || 
                    localStorage.getItem('token') ||
+                   localStorage.getItem('bricks_auth_session') ||
                    sessionStorage.getItem('authToken') ||
                    sessionStorage.getItem('token');
         } catch (error) {
@@ -98,9 +106,22 @@ class APIConfig {
             
             // Handle authentication errors
             if (response.status === 401) {
+                console.warn('🔐 Authentication failed - clearing tokens and redirecting to login');
                 this.clearToken();
-                if (window.location.pathname !== '/login.html') {
-                    window.location.href = '/login.html';
+                
+                // Clear all authentication data from both systems
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('auth_user');
+                localStorage.removeItem('auth_expires');
+                localStorage.removeItem('bricks_auth_session');
+                localStorage.removeItem('bricks_auth_expiry');
+                localStorage.removeItem('bricks_auth_user');
+                localStorage.removeItem('currentUser');
+                
+                // Only redirect if we're not already on the login page
+                if (window.location.pathname !== '/login.html' && !window.location.pathname.includes('login.html')) {
+                    console.log('🔐 Redirecting to login due to authentication failure');
+                    window.location.href = '/login.html?expired=true';
                 }
                 throw new Error('Authentication required');
             }
