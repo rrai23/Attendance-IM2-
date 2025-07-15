@@ -1,0 +1,656 @@
+const express = require('express');
+const router = express.Router();
+const db = require('../database/connection');
+const { auth, requireManagerOrAdmin } = require('../middleware/auth');
+
+// Get attendance records with filtering
+router.get('/', auth, async (req, res) => {
+    try {
+        const {
+            employee_id,
+            date,
+            start_date,
+            end_date,
+            status,
+            department,
+            page = 1,
+            limit = 50
+        } = req.query;
+
+        let query = `
+            SELECT 
+                ar.*,
+                e.full_name as employee_name,
+                e.employee_id as employee_code,
+                e.department,
+                e.position
+            FROM attendance_records ar
+            JOIN employees e ON ar.employee_id = e.employee_id
+            WHERE 1=1
+        `;
+        const params = [];
+
+        // Add filters
+        if (employee_id) {
+            query += ' AND ar.employee_id = ?';
+            params.push(employee_id);
+        }
+
+        if (date) {
+            query += ' AND ar.date = ?';
+            params.push(date);
+        }
+
+        if (start_date && end_date) {
+            query += ' AND ar.date BETWEEN ? AND ?';
+            params.push(start_date, end_date);
+        }
+
+        if (status) {
+            query += ' AND ar.status = ?';
+            params.push(status);
+        }
+
+        if (department) {
+            query += ' AND e.department = ?';
+            params.push(department);
+        }
+
+        // Add sorting and pagination
+        query += ' ORDER BY ar.date DESC, ar.created_at DESC';
+        
+        const offset = (parseInt(page) - 1) * parseInt(limit);
+        query += ' LIMIT ? OFFSET ?';
+        params.push(parseInt(limit), offset);
+
+        const [records] = await db.execute(query, params);
+
+        // Transform to match frontend structure
+        const transformedRecords = records.map(record => ({
+            id: record.id,
+            employeeId: record.employee_id,
+            employeeName: record.employee_name,
+            employeeCode: record.employee_code,
+            department: record.department,
+            date: record.date,
+            clockIn: record.time_in,
+            clockOut: record.time_out,
+            timeIn: record.time_in,
+            timeOut: record.time_out,
+            hours: record.hours_worked,
+            hoursWorked: record.hours_worked,
+            overtimeHours: record.overtime_hours,
+            status: record.status,
+            notes: record.notes,
+            createdAt: record.created_at,
+            updatedAt: record.updated_at
+        }));
+
+        res.json({
+            success: true,
+            data: transformedRecords,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total: transformedRecords.length
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching attendance records:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch attendance records'
+        });
+    }
+});
+
+// Clock in/out endpoint
+router.post('/clock', auth, async (req, res) => {
+    try {
+        const { action, location, notes } = req.body; // action: 'in' or 'out'
+        const employee_id = req.user.employee_id;
+
+        if (!action || !['in', 'out'].includes(action)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Action must be "in" or "out"'
+            });
+        }
+
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+        const currentTime = now.toTimeString().split(' ')[0].substring(0, 5);
+
+        // Get today's attendance record
+        const [existingRecords] = await db.execute(`
+            SELECT * FROM attendance_records 
+            WHERE employee_id = ? AND date = ? 
+            ORDER BY created_at DESC LIMIT 1
+        `, [employee_id, today]);
+
+        if (action === 'in') {
+            // Check if already clocked in today
+            if (existingRecords.length > 0 && existingRecords[0].time_in && !existingRecords[0].time_out) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Already clocked in. Please clock out first.'
+                });
+            }
+
+            // Create new attendance record
+            await db.execute(`
+                INSERT INTO attendance_records (
+                    employee_id, date, time_in, clock_in, status, location, notes, created_at
+                ) VALUES (?, ?, ?, ?, 'present', ?, ?, NOW())
+            `, [employee_id, today, currentTime, now, location, notes]);
+
+            res.json({
+                success: true,
+                message: 'Clocked in successfully',
+                data: {
+                    attendance_id: attendanceId,
+                    action: 'in',
+                    time: now,
+                    location: location || null
+                }
+            });
+
+        } else { // action === 'out'
+            // Check if there's an active clock-in record
+            if (existingRecords.length === 0 || !existingRecords[0].time_in || existingRecords[0].time_out) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'No active clock-in record found. Please clock in first.'
+                });
+            }
+
+            const record = existingRecords[0];
+            const timeIn = new Date(record.time_in);
+            const timeOut = now;
+
+            // Calculate hours worked
+            const hoursWorked = ((timeOut - timeIn) / (1000 * 60 * 60)).toFixed(2);
+
+            // Determine if late or early departure
+            const standardWorkHours = 8;
+            let status = 'present';
+            
+            // Check if late (assuming 9 AM start time)
+            const standardStartTime = new Date(timeIn);
+            standardStartTime.setHours(9, 0, 0, 0);
+            
+            if (timeIn > standardStartTime) {
+                status = 'late';
+            }
+
+            // Update the record with clock out time
+            await db.execute(`
+                UPDATE attendance_records 
+                SET time_out = ?, hours_worked = ?, clock_out_location = ?, 
+                    clock_out_notes = ?, status = ?, updated_at = NOW()
+                WHERE attendance_id = ?
+            `, [timeOut, parseFloat(hoursWorked), location, notes, status, record.attendance_id]);
+
+            res.json({
+                success: true,
+                message: 'Clocked out successfully',
+                data: {
+                    attendance_id: record.attendance_id,
+                    action: 'out',
+                    time: timeOut,
+                    hours_worked: parseFloat(hoursWorked),
+                    location: location || null
+                }
+            });
+        }
+
+    } catch (error) {
+        console.error('Clock in/out error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error during clock operation'
+        });
+    }
+});
+
+// Get attendance records with filters
+router.get('/', auth, async (req, res) => {
+    try {
+        const {
+            employee_id,
+            start_date,
+            end_date,
+            status,
+            page = 1,
+            limit = 50,
+            sort = 'date',
+            order = 'DESC'
+        } = req.query;
+
+        // Non-admin users can only see their own records
+        const targetEmployeeId = req.user.role === 'admin' || req.user.role === 'manager' 
+            ? (employee_id || req.user.employee_id) 
+            : req.user.employee_id;
+
+        let query = `
+            SELECT 
+                ar.*,
+                e.first_name,
+                e.last_name,
+                e.department,
+                e.position
+            FROM attendance_records ar
+            JOIN employees e ON ar.employee_id = e.employee_id
+            WHERE ar.employee_id = ?
+        `;
+        const params = [targetEmployeeId];
+
+        // Add date filters
+        if (start_date) {
+            query += ' AND ar.date >= ?';
+            params.push(start_date);
+        }
+
+        if (end_date) {
+            query += ' AND ar.date <= ?';
+            params.push(end_date);
+        }
+
+        if (status) {
+            query += ' AND ar.status = ?';
+            params.push(status);
+        }
+
+        // Add sorting
+        const validSortFields = ['date', 'time_in', 'time_out', 'hours_worked', 'status'];
+        const sortField = validSortFields.includes(sort) ? sort : 'date';
+        const sortOrder = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+        query += ` ORDER BY ar.${sortField} ${sortOrder}`;
+
+        // Add pagination
+        const offset = (parseInt(page) - 1) * parseInt(limit);
+        query += ' LIMIT ? OFFSET ?';
+        params.push(parseInt(limit), offset);
+
+        const records = await db.execute(query, params);
+
+        // Get total count
+        let countQuery = `
+            SELECT COUNT(*) as total
+            FROM attendance_records ar
+            WHERE ar.employee_id = ?
+        `;
+        const countParams = [targetEmployeeId];
+
+        if (start_date) {
+            countQuery += ' AND ar.date >= ?';
+            countParams.push(start_date);
+        }
+
+        if (end_date) {
+            countQuery += ' AND ar.date <= ?';
+            countParams.push(end_date);
+        }
+
+        if (status) {
+            countQuery += ' AND ar.status = ?';
+            countParams.push(status);
+        }
+
+        const countResult = await db.execute(countQuery, countParams);
+        const total = countResult[0].total;
+
+        res.json({
+            success: true,
+            data: {
+                records,
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total,
+                    totalPages: Math.ceil(total / parseInt(limit))
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Get attendance records error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error getting attendance records'
+        });
+    }
+});
+
+// Get current status (clocked in/out)
+router.get('/status', auth, async (req, res) => {
+    try {
+        const employee_id = req.user.employee_id;
+        const today = new Date().toISOString().split('T')[0];
+
+        const records = await db.execute(`
+            SELECT * FROM attendance_records 
+            WHERE employee_id = ? AND DATE(date) = ? 
+            ORDER BY created_at DESC LIMIT 1
+        `, [employee_id, today]);
+
+        let status = 'clocked_out';
+        let currentRecord = null;
+
+        if (records.length > 0) {
+            const record = records[0];
+            if (record.time_in && !record.time_out) {
+                status = 'clocked_in';
+                currentRecord = record;
+            }
+        }
+
+        res.json({
+            success: true,
+            data: {
+                status,
+                current_record: currentRecord,
+                employee_id
+            }
+        });
+
+    } catch (error) {
+        console.error('Get attendance status error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error getting attendance status'
+        });
+    }
+});
+
+// Manual attendance entry (admin/manager only)
+router.post('/manual', requireManagerOrAdmin, async (req, res) => {
+    try {
+        const {
+            employee_id,
+            date,
+            time_in,
+            time_out,
+            hours_worked,
+            status = 'present',
+            notes,
+            reason
+        } = req.body;
+
+        if (!employee_id || !date || !time_in) {
+            return res.status(400).json({
+                success: false,
+                message: 'employee_id, date, and time_in are required'
+            });
+        }
+
+        // Check if employee exists
+        const employees = await db.execute(
+            'SELECT employee_id FROM employees WHERE employee_id = ? AND status = ?',
+            [employee_id, 'active']
+        );
+
+        if (employees.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Employee not found'
+            });
+        }
+
+        // Check if attendance record already exists for this date
+        const existing = await db.execute(
+            'SELECT attendance_id FROM attendance_records WHERE employee_id = ? AND DATE(date) = ?',
+            [employee_id, date]
+        );
+
+        if (existing.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Attendance record already exists for this date'
+            });
+        }
+
+        // Calculate hours worked if not provided
+        let calculatedHours = hours_worked;
+        if (!calculatedHours && time_in && time_out) {
+            const timeInDate = new Date(`${date}T${time_in}`);
+            const timeOutDate = new Date(`${date}T${time_out}`);
+            calculatedHours = ((timeOutDate - timeInDate) / (1000 * 60 * 60)).toFixed(2);
+        }
+
+        const attendanceId = `ATT${Date.now()}${Math.floor(Math.random() * 1000)}`;
+
+        await db.execute(`
+            INSERT INTO attendance_records (
+                attendance_id, employee_id, date, time_in, time_out,
+                hours_worked, status, manual_entry, manual_entry_by,
+                manual_entry_reason, clock_in_notes, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?, ?, NOW())
+        `, [
+            attendanceId, employee_id, date, 
+            time_in ? `${date}T${time_in}` : null,
+            time_out ? `${date}T${time_out}` : null,
+            calculatedHours ? parseFloat(calculatedHours) : null,
+            status, req.user.employee_id, reason, notes
+        ]);
+
+        // Get the created record with employee info
+        const newRecord = await db.execute(`
+            SELECT 
+                ar.*,
+                e.first_name,
+                e.last_name,
+                e.department,
+                e.position
+            FROM attendance_records ar
+            JOIN employees e ON ar.employee_id = e.employee_id
+            WHERE ar.attendance_id = ?
+        `, [attendanceId]);
+
+        res.status(201).json({
+            success: true,
+            message: 'Manual attendance record created successfully',
+            data: { record: newRecord[0] }
+        });
+
+    } catch (error) {
+        console.error('Manual attendance entry error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error creating manual attendance record'
+        });
+    }
+});
+
+// Update attendance record
+router.put('/:attendanceId', requireManagerOrAdmin, async (req, res) => {
+    try {
+        const { attendanceId } = req.params;
+        const {
+            time_in,
+            time_out,
+            hours_worked,
+            status,
+            notes,
+            reason
+        } = req.body;
+
+        // Check if record exists
+        const existing = await db.execute(
+            'SELECT * FROM attendance_records WHERE attendance_id = ?',
+            [attendanceId]
+        );
+
+        if (existing.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Attendance record not found'
+            });
+        }
+
+        // Build update query dynamically
+        const updateFields = [];
+        const updateParams = [];
+
+        if (time_in !== undefined) {
+            updateFields.push('time_in = ?');
+            updateParams.push(time_in);
+        }
+
+        if (time_out !== undefined) {
+            updateFields.push('time_out = ?');
+            updateParams.push(time_out);
+        }
+
+        if (hours_worked !== undefined) {
+            updateFields.push('hours_worked = ?');
+            updateParams.push(parseFloat(hours_worked));
+        }
+
+        if (status !== undefined) {
+            updateFields.push('status = ?');
+            updateParams.push(status);
+        }
+
+        if (notes !== undefined) {
+            updateFields.push('clock_in_notes = ?');
+            updateParams.push(notes);
+        }
+
+        // Add manual entry tracking
+        updateFields.push('manual_entry = TRUE');
+        updateFields.push('manual_entry_by = ?');
+        updateParams.push(req.user.employee_id);
+
+        if (reason) {
+            updateFields.push('manual_entry_reason = ?');
+            updateParams.push(reason);
+        }
+
+        updateFields.push('updated_at = NOW()');
+        updateParams.push(attendanceId);
+
+        if (updateFields.length <= 3) { // Only manual entry fields
+            return res.status(400).json({
+                success: false,
+                message: 'No fields to update'
+            });
+        }
+
+        await db.execute(
+            `UPDATE attendance_records SET ${updateFields.join(', ')} WHERE attendance_id = ?`,
+            updateParams
+        );
+
+        // Get updated record
+        const updatedRecord = await db.execute(`
+            SELECT 
+                ar.*,
+                e.first_name,
+                e.last_name,
+                e.department,
+                e.position
+            FROM attendance_records ar
+            JOIN employees e ON ar.employee_id = e.employee_id
+            WHERE ar.attendance_id = ?
+        `, [attendanceId]);
+
+        res.json({
+            success: true,
+            message: 'Attendance record updated successfully',
+            data: { record: updatedRecord[0] }
+        });
+
+    } catch (error) {
+        console.error('Update attendance record error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error updating attendance record'
+        });
+    }
+});
+
+// Get attendance summary/statistics
+router.get('/summary/:employeeId?', auth, async (req, res) => {
+    try {
+        const { employeeId } = req.params;
+        const { start_date, end_date, period = 'month' } = req.query;
+
+        // Determine target employee
+        const targetEmployeeId = req.user.role === 'admin' || req.user.role === 'manager' 
+            ? (employeeId || req.user.employee_id) 
+            : req.user.employee_id;
+
+        // Set date range based on period
+        let startDate, endDate;
+        if (start_date && end_date) {
+            startDate = start_date;
+            endDate = end_date;
+        } else {
+            const now = new Date();
+            if (period === 'week') {
+                startDate = new Date(now.setDate(now.getDate() - 7)).toISOString().split('T')[0];
+            } else if (period === 'month') {
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+            } else {
+                startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+            }
+            endDate = new Date().toISOString().split('T')[0];
+        }
+
+        const summaryData = await Promise.all([
+            // Total records
+            db.execute(`
+                SELECT COUNT(*) as total_days
+                FROM attendance_records 
+                WHERE employee_id = ? AND date >= ? AND date <= ?
+            `, [targetEmployeeId, startDate, endDate]),
+
+            // Total hours worked
+            db.execute(`
+                SELECT SUM(hours_worked) as total_hours
+                FROM attendance_records 
+                WHERE employee_id = ? AND date >= ? AND date <= ? AND hours_worked IS NOT NULL
+            `, [targetEmployeeId, startDate, endDate]),
+
+            // Status breakdown
+            db.execute(`
+                SELECT status, COUNT(*) as count
+                FROM attendance_records 
+                WHERE employee_id = ? AND date >= ? AND date <= ?
+                GROUP BY status
+            `, [targetEmployeeId, startDate, endDate]),
+
+            // Average hours per day
+            db.execute(`
+                SELECT AVG(hours_worked) as avg_hours
+                FROM attendance_records 
+                WHERE employee_id = ? AND date >= ? AND date <= ? 
+                AND hours_worked IS NOT NULL AND hours_worked > 0
+            `, [targetEmployeeId, startDate, endDate])
+        ]);
+
+        res.json({
+            success: true,
+            data: {
+                employee_id: targetEmployeeId,
+                period: { start_date: startDate, end_date: endDate },
+                summary: {
+                    total_days: summaryData[0][0].total_days,
+                    total_hours: parseFloat(summaryData[1][0].total_hours || 0),
+                    average_hours_per_day: parseFloat(summaryData[3][0].avg_hours || 0),
+                    status_breakdown: summaryData[2]
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Get attendance summary error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error getting attendance summary'
+        });
+    }
+});
+
+module.exports = router;
