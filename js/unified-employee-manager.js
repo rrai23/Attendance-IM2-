@@ -24,6 +24,46 @@ class UnifiedEmployeeManager {
         // this.init();
     }
 
+    // Event Management Methods
+    addEventListener(event, callback) {
+        if (!this.eventListeners[event]) {
+            this.eventListeners[event] = [];
+        }
+        this.eventListeners[event].push(callback);
+    }
+
+    removeEventListener(event, callback) {
+        if (!this.eventListeners[event]) return;
+        const index = this.eventListeners[event].indexOf(callback);
+        if (index > -1) {
+            this.eventListeners[event].splice(index, 1);
+        }
+    }
+
+    emit(event, data) {
+        if (!this.eventListeners[event]) return;
+        this.eventListeners[event].forEach(callback => {
+            try {
+                callback(data);
+            } catch (error) {
+                console.error(`Error in event listener for ${event}:`, error);
+            }
+        });
+    }
+
+    // Alias methods for compatibility
+    on(event, callback) {
+        return this.addEventListener(event, callback);
+    }
+
+    off(event, callback) {
+        return this.removeEventListener(event, callback);
+    }
+
+    trigger(event, data) {
+        return this.emit(event, data);
+    }
+
     async init() {
         if (this.initialized) return;
         
@@ -67,26 +107,39 @@ class UnifiedEmployeeManager {
 
     async loadData() {
         try {
-            // 🎯 PRIORITY 1: Try to load from backend database first
+            // 🎯 PRIORITY 1: Try to load from backend database first (only if authenticated)
             if (window.backendApiService && window.backendApiService.isAvailable) {
-                console.log('🔗 Attempting to load data from backend database...');
-                const backendData = await window.backendApiService.loadFromBackend();
+                console.log('🔗 Backend API service available, checking authentication...');
                 
-                if (backendData && backendData.employees && backendData.attendanceRecords) {
-                    this.employees = backendData.employees;
-                    this.attendanceRecords = backendData.attendanceRecords;
-                    
-                    console.log('✅ Loaded data from backend database:', {
-                        employees: this.employees.length,
-                        attendance: this.attendanceRecords.length
-                    });
+                // Check if user is authenticated before trying to load from backend
+                const isAuthenticated = localStorage.getItem('auth_token') || localStorage.getItem('jwt_token');
+                
+                if (isAuthenticated) {
+                    console.log('🔐 User is authenticated, attempting to load from backend...');
+                    try {
+                        const backendData = await window.backendApiService.loadFromBackend();
+                        
+                        if (backendData && backendData.employees && backendData.attendanceRecords) {
+                            this.employees = backendData.employees;
+                            this.attendanceRecords = backendData.attendanceRecords;
+                            
+                            console.log('✅ Loaded data from backend database:', {
+                                employees: this.employees.length,
+                                attendance: this.attendanceRecords.length
+                            });
 
-                    // Ensure today's attendance data exists
-                    this.ensureTodayAttendanceData();
-                    
-                    // Save to localStorage as backup
-                    this.saveToLocalStorage();
-                    return;
+                            // Ensure today's attendance data exists
+                            this.ensureTodayAttendanceData();
+                            
+                            // Save to localStorage as backup
+                            this.saveToLocalStorage();
+                            return;
+                        }
+                    } catch (backendError) {
+                        console.warn('🚧 Backend load failed (auth issue?), falling back to local data:', backendError.message);
+                    }
+                } else {
+                    console.log('🔓 No authentication token found, skipping backend load for now');
                 }
             }
 
@@ -2060,4 +2113,16 @@ class UnifiedEmployeeManager {
             return { success: false, message: error.message };
         }
     }
+}
+// Create global instance
+console.log('Creating global UnifiedEmployeeManager instance...');
+if (!window.unifiedEmployeeManager) {
+    window.unifiedEmployeeManager = new UnifiedEmployeeManager();
+    // Initialize the instance immediately (using correct method name)
+    window.unifiedEmployeeManager.init().catch(error => {
+        console.error('Failed to initialize UnifiedEmployeeManager:', error);
+    });
+    console.log('✅ Global UnifiedEmployeeManager instance created and initializing...');
+} else {
+    console.log('? Global UnifiedEmployeeManager instance already exists');
 }

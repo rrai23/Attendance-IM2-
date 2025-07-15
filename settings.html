@@ -1016,6 +1016,7 @@
     <script src="js/core/api-service.js"></script>
     <script src="js/core/data-service-factory.js"></script>
     <script src="js/unified-data-service.js"></script>
+    <script src="js/backend-api-service.js"></script>
     <script src="js/unified-employee-manager.js"></script>
     <script src="js/unified-account-manager.js"></script>
     <script src="js/global-system-sync.js"></script>
@@ -1802,17 +1803,24 @@
             console.log('Settings page DOM loaded, starting initialization...');
             
             try {
-                // Initialize unified employee manager first (EXCLUSIVE MODE)
-                if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
-                    console.log('✅ UnifiedEmployeeManager already initialized');
-                } else if (window.unifiedEmployeeManager) {
-                    console.log('🔄 Initializing UnifiedEmployeeManager...');
-                    await window.unifiedEmployeeManager.init();
-                    console.log('✅ UnifiedEmployeeManager initialized');
-                } else {
-                    console.error('❌ UnifiedEmployeeManager not available - settings page requires unified data system');
-                    throw new Error('UnifiedEmployeeManager not available');
+                // Wait for UnifiedEmployeeManager to be fully initialized
+                console.log('Waiting for UnifiedEmployeeManager to initialize...');
+                let waitCount = 0;
+                const maxWait = 100; // 10 seconds max wait
+                
+                while ((!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) && waitCount < maxWait) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    waitCount++;
+                    if (waitCount % 10 === 0) {
+                        console.log(`Still waiting for UnifiedEmployeeManager... (${waitCount/10}s)`);
+                    }
                 }
+                
+                if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
+                    throw new Error('UnifiedEmployeeManager failed to initialize within timeout');
+                }
+                
+                console.log('UnifiedEmployeeManager is ready! Employee count:', window.unifiedEmployeeManager.getEmployees().length);
                 
                 // Initialize theme manager
                 if (typeof ThemeManager !== 'undefined' && !window.themeManager) {
