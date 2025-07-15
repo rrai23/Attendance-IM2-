@@ -6,12 +6,13 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "setup-db": "node setup-database.js",
+    "test-db": "node test-db-connection.js",
     "migrate": "node backend/database/migrate-updated.js",
     "update-schema": "node backend/database/update-schema.js",
     "setup-data": "node backend/database/insert-compatible-data.js",
     "seed": "node backend/database/seed.js",
-    "test": "jest",
-    "test-db": "node test-connection.js"
+    "test": "jest"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

@@ -1,126 +1,96 @@
 @echo off
-echo 🚀 Setting up Bricks Attendance System with XAMPP
+REM BRICKS ATTENDANCE SYSTEM - XAMPP SETUP SCRIPT
+REM This script sets up the complete database for XAMPP MySQL
+
+echo.
+echo ================================================================
+echo  BRICKS ATTENDANCE SYSTEM - XAMPP DATABASE SETUP
+echo ================================================================
 echo.
 
 REM Check if Node.js is installed
-where node >nul 2>nul
-if %ERRORLEVEL% NEQ 0 (
-    echo ❌ Node.js is not installed. Please install Node.js first.
+echo [1/4] Checking Node.js installation...
+node --version >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: Node.js is not installed or not in PATH
+    echo Please install Node.js from https://nodejs.org/
     pause
     exit /b 1
 )
+echo ✓ Node.js is installed
 
-echo ✅ Node.js found
-
+REM Check if we're in the correct directory
 echo.
-echo 📋 XAMPP Setup Instructions:
-echo.
-echo 🔧 Step 1: Start XAMPP Services
-echo    1. Open XAMPP Control Panel
-echo    2. Click "Start" for Apache
-echo    3. Click "Start" for MySQL
-echo    4. Both should show green "Running" status
-echo.
-echo 💡 If XAMPP is not installed:
-echo    1. Download from: https://www.apachefriends.org/
-echo    2. Install XAMPP
-echo    3. Run this script again
-echo.
-
-pause
+echo [2/4] Checking project files...
+if not exist "package.json" (
+    echo ERROR: package.json not found
+    echo Please run this script from the project root directory
+    pause
+    exit /b 1
+)
+if not exist "server.js" (
+    echo ERROR: server.js not found
+    echo Please run this script from the project root directory
+    pause
+    exit /b 1
+)
+echo ✓ Project files found
 
 REM Install dependencies
 echo.
-echo 📦 Installing dependencies...
-call npm install
-
-if %ERRORLEVEL% NEQ 0 (
-    echo ❌ Failed to install dependencies
+echo [3/4] Installing Node.js dependencies...
+echo This may take a few minutes...
+npm install
+if errorlevel 1 (
+    echo ERROR: Failed to install dependencies
+    echo Please check your internet connection and try again
     pause
     exit /b 1
 )
+echo ✓ Dependencies installed successfully
 
-echo ✅ Dependencies installed successfully
-
-REM Create .env file with XAMPP defaults
+REM Run database setup
 echo.
-echo 📝 Creating .env file with XAMPP defaults...
-if exist .env (
-    echo    .env file already exists, backing up to .env.backup
-    copy .env .env.backup
-)
-
-echo # Database Configuration for XAMPP > .env
-echo DB_HOST=localhost >> .env
-echo DB_PORT=3306 >> .env
-echo DB_USER=root >> .env
-echo DB_PASSWORD= >> .env
-echo DB_NAME=bricks_attendance >> .env
-echo. >> .env
-echo # Server Configuration >> .env
-echo PORT=3000 >> .env
-echo NODE_ENV=development >> .env
-echo. >> .env
-echo # JWT Configuration >> .env
-echo JWT_SECRET=bricks_attendance_secret_key_change_in_production_2025 >> .env
-echo JWT_EXPIRES_IN=24h >> .env
-echo. >> .env
-echo # Rate Limiting >> .env
-echo RATE_LIMIT_WINDOW_MS=900000 >> .env
-echo RATE_LIMIT_MAX_REQUESTS=200 >> .env
-echo. >> .env
-echo # Security >> .env
-echo BCRYPT_ROUNDS=12 >> .env
-
-echo ✅ .env file created with XAMPP defaults
-
+echo [4/4] Setting up database...
+echo ----------------------------------------------------------------
+echo IMPORTANT: Make sure XAMPP is running with MySQL service started
+echo ----------------------------------------------------------------
 echo.
-echo 🔍 Testing XAMPP MySQL connection...
-call npm run test-db
+pause
 
-if %ERRORLEVEL% NEQ 0 (
+node setup-database.js
+if errorlevel 1 (
     echo.
-    echo ❌ XAMPP MySQL connection failed
+    echo ERROR: Database setup failed
     echo.
-    echo 🔧 Please check:
-    echo    1. XAMPP Control Panel shows MySQL as "Running" (green)
-    echo    2. No other MySQL services are running on port 3306
-    echo    3. Windows Firewall isn't blocking XAMPP
+    echo Common issues:
+    echo - XAMPP is not running
+    echo - MySQL service is not started
+    echo - Database connection failed
     echo.
-    echo 💡 Try these solutions:
-    echo    1. Restart XAMPP as Administrator
-    echo    2. Change MySQL port in XAMPP (if 3306 is busy)
-    echo    3. Check XAMPP error logs
+    echo Please:
+    echo 1. Start XAMPP Control Panel
+    echo 2. Start Apache and MySQL services
+    echo 3. Run this script again
     echo.
     pause
     exit /b 1
 )
-
-echo ✅ XAMPP MySQL connection successful!
-
 echo.
-echo 🗄️  Setting up database structure...
-echo    Database name: bricks_attendance
-echo    This will create all necessary tables and sample data
-
-call npm run migrate
-
-if %ERRORLEVEL% NEQ 0 (
-    echo ❌ Database creation failed
-    pause
-    exit /b 1
-)
-
-echo ✅ Database tables created successfully
-
+echo ================================================================
+echo  SETUP COMPLETED SUCCESSFULLY!
+echo ================================================================
 echo.
-echo 🌱 Adding sample data (employees, attendance records)...
-call npm run seed
-
-if %ERRORLEVEL% NEQ 0 (
-    echo ❌ Database seeding failed
-    pause
-    exit /b 1
+echo Your Bricks Attendance System is now ready to use!
+echo.
+echo NEXT STEPS:
+echo 1. Start the server: npm start
+echo 2. Open your browser: http://localhost:3000
+echo 3. Login with admin credentials (see above)
+echo.
+echo For development with auto-reload: npm run dev
+echo.
+pause
 )
 
 echo ✅ Sample data added successfully
