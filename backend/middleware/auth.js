@@ -77,21 +77,21 @@ const auth = async (req, res, next) => {
             });
         }
 
-        // Get user data from user_accounts joined with employees
+        // Get user data from user_accounts (with optional employee join)
         const result = await db.execute(`
             SELECT 
                 ua.*,
-                e.first_name,
-                e.last_name,
-                e.full_name,
-                e.email,
-                e.department,
-                e.position,
-                e.date_hired as hire_date,
-                e.status as employee_status
+                COALESCE(e.first_name, ua.first_name) as first_name,
+                COALESCE(e.last_name, ua.last_name) as last_name,
+                COALESCE(e.full_name, ua.full_name) as full_name,
+                COALESCE(e.email, ua.email) as email,
+                COALESCE(e.department, ua.department) as department,
+                COALESCE(e.position, ua.position) as position,
+                COALESCE(e.date_hired, ua.hire_date) as hire_date,
+                COALESCE(e.status, ua.employee_status) as employee_status
             FROM user_accounts ua
-            JOIN employees e ON ua.employee_id = e.employee_code
-            WHERE ua.employee_id = ? AND ua.is_active = TRUE AND e.status = 'active'
+            LEFT JOIN employees e ON ua.employee_id = e.employee_code
+            WHERE ua.employee_id = ? AND ua.is_active = TRUE
         `, [decoded.employee_id]);
 
         // Handle different result structures (mysql2 returns [rows, fields])
@@ -123,6 +123,8 @@ const auth = async (req, res, next) => {
         // Attach user data to request
         req.user = users[0];
         req.token = token;
+        console.log('✅ req.user set to:', req.user);
+        console.log('✅ req.user role:', req.user.role);
         next();
 
     } catch (error) {
@@ -159,12 +161,28 @@ const requireAdmin = (req, res, next) => {
 
 // Manager or admin role check middleware
 const requireManagerOrAdmin = (req, res, next) => {
+    console.log('🔍 requireManagerOrAdmin middleware called');
+    console.log('req.user:', req.user);
+    console.log('req.user type:', typeof req.user);
+    console.log('req.user keys:', req.user ? Object.keys(req.user) : 'req.user is null/undefined');
+    
+    if (!req.user || !req.user.role) {
+        console.log('❌ No user or no role found');
+        return res.status(401).json({
+            success: false,
+            message: 'Authentication required'
+        });
+    }
+    
     if (!['admin', 'manager'].includes(req.user.role)) {
+        console.log('❌ User role not admin or manager:', req.user.role);
         return res.status(403).json({
             success: false,
             message: 'Manager or admin access required'
         });
     }
+    
+    console.log('✅ User authorized:', req.user.role);
     next();
 };
 

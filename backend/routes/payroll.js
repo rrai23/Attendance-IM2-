@@ -734,4 +734,70 @@ router.delete('/:payrollId', requireManagerOrAdmin, async (req, res) => {
     }
 });
 
+// Get next payday information for dashboard
+router.get('/next-payday', auth, async (req, res) => {
+    try {
+        // Get the most recent payroll record to determine next payday
+        const [lastPayroll] = await db.execute(`
+            SELECT 
+                period_end,
+                pay_date,
+                pay_frequency
+            FROM payroll_records
+            ORDER BY pay_date DESC
+            LIMIT 1
+        `);
+
+        let nextPayday = null;
+        let daysUntilPayday = null;
+
+        if (lastPayroll.length > 0) {
+            const lastPayDate = new Date(lastPayroll[0].pay_date);
+            const frequency = lastPayroll[0].pay_frequency || 'monthly';
+            
+            // Calculate next payday based on frequency
+            switch (frequency) {
+                case 'weekly':
+                    nextPayday = new Date(lastPayDate.getTime() + (7 * 24 * 60 * 60 * 1000));
+                    break;
+                case 'bi-weekly':
+                    nextPayday = new Date(lastPayDate.getTime() + (14 * 24 * 60 * 60 * 1000));
+                    break;
+                case 'monthly':
+                default:
+                    nextPayday = new Date(lastPayDate);
+                    nextPayday.setMonth(nextPayday.getMonth() + 1);
+                    break;
+            }
+            
+            // Calculate days until next payday
+            const today = new Date();
+            const timeDiff = nextPayday.getTime() - today.getTime();
+            daysUntilPayday = Math.ceil(timeDiff / (1000 * 3600 * 24));
+        } else {
+            // No payroll records found, use default monthly from end of month
+            const today = new Date();
+            nextPayday = new Date(today.getFullYear(), today.getMonth() + 1, 0); // Last day of next month
+            const timeDiff = nextPayday.getTime() - today.getTime();
+            daysUntilPayday = Math.ceil(timeDiff / (1000 * 3600 * 24));
+        }
+
+        res.json({
+            success: true,
+            data: {
+                nextPayday: nextPayday ? nextPayday.toISOString().split('T')[0] : null,
+                daysUntilPayday: daysUntilPayday,
+                frequency: lastPayroll.length > 0 ? lastPayroll[0].pay_frequency : 'monthly'
+            }
+        });
+
+    } catch (error) {
+        console.error('Get next payday error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error getting next payday information'
+        });
+    }
+});
+
 module.exports = router;

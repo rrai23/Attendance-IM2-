@@ -41,8 +41,15 @@ class DirectFlow {
                     this.initialized = false;
                     return;
                 } else {
-                    console.warn('⚠️ DirectFlow on authenticated page without token - redirecting to login');
-                    window.location.href = '/login.html';
+                    console.warn('⚠️ DirectFlow on authenticated page without token - waiting for auth fix');
+                    // Don't redirect immediately, let the auth fix handle it
+                    this.initialized = false;
+                    
+                    // Try to get token again after a delay
+                    setTimeout(() => {
+                        this.retryInitialization();
+                    }, 2000);
+                    
                     return;
                 }
             }
@@ -58,6 +65,14 @@ class DirectFlow {
             console.error('❌ DirectFlow initialization failed:', error);
             this.initialized = false;
             
+            // If it's an auth error, try to re-initialize after a delay
+            if (error.message.includes('Authentication')) {
+                console.log('🔄 Scheduling DirectFlow re-initialization...');
+                setTimeout(() => {
+                    this.retryInitialization();
+                }, 3000);
+            }
+            
             // Don't throw error on public pages
             const currentPage = window.location.pathname;
             const publicPages = ['/login.html', '/index.html', '/'];
@@ -70,11 +85,20 @@ class DirectFlow {
     }
 
     /**
+     * Retry initialization (called by auth fix or after failures)
+     */
+    async retryInitialization() {
+        console.log('🔄 DirectFlow retrying initialization...');
+        await this.init();
+    }
+
+    /**
      * Get authentication token
      */
     getAuthToken() {
         // Check multiple possible token storage locations
         const tokenSources = [
+            'bricks_auth_session',  // Primary auth system token
             'auth-token',
             'auth_token', 
             'jwt_token',
@@ -88,6 +112,19 @@ class DirectFlow {
             }
         }
         
+        // Also check if we have a user session with embedded token
+        try {
+            const userData = localStorage.getItem('bricks_auth_user');
+            if (userData) {
+                const user = JSON.parse(userData);
+                if (user.token) {
+                    return user.token;
+                }
+            }
+        } catch (error) {
+            console.warn('Error parsing user data for token:', error);
+        }
+        
         return null;
     }
 
@@ -96,7 +133,20 @@ class DirectFlow {
      */
     setAuthToken(token) {
         this.authToken = token;
-        localStorage.setItem('auth-token', token);
+        localStorage.setItem('bricks_auth_session', token);
+    }
+
+    /**
+     * Check if user is authenticated using the auth service
+     */
+    isAuthenticated() {
+        // Check if auth service is available
+        if (typeof window !== 'undefined' && window.authService) {
+            return window.authService.isAuthenticated();
+        }
+        
+        // Fallback: check token existence
+        return !!this.authToken;
     }
 
     /**
@@ -111,6 +161,11 @@ class DirectFlow {
      * Make authenticated request to backend
      */
     async request(endpoint, options = {}) {
+        // Try to refresh token if not available
+        if (!this.authToken) {
+            this.authToken = this.getAuthToken();
+        }
+        
         if (!this.authToken) {
             throw new Error('Authentication required - no token available');
         }
@@ -137,6 +192,16 @@ class DirectFlow {
             
             if (!response.ok) {
                 if (response.status === 401) {
+                    // Try to refresh the token once
+                    this.authToken = this.getAuthToken();
+                    if (this.authToken) {
+                        config.headers.Authorization = `Bearer ${this.authToken}`;
+                        const retryResponse = await fetch(url, config);
+                        if (retryResponse.ok) {
+                            return await retryResponse.json();
+                        }
+                    }
+                    
                     this.emit('auth-error', { status: response.status, message: 'Authentication failed' });
                     throw new Error('Authentication failed - please log in again');
                 }
@@ -162,6 +227,17 @@ class DirectFlow {
      * Get all employees
      */
     async getEmployees() {
+        // Try unified data endpoint first (includes both employees and attendance)
+        try {
+            const unifiedData = await this.request('/unified/data');
+            if (unifiedData.success && unifiedData.data.employees) {
+                return unifiedData.data.employees;
+            }
+        } catch (error) {
+            console.warn('Unified data endpoint failed, trying employees endpoint:', error.message);
+        }
+        
+        // Fallback to employees endpoint
         return await this.request('/employees');
     }
 
@@ -218,6 +294,17 @@ class DirectFlow {
      * Get attendance records
      */
     async getAttendanceRecords(filters = {}) {
+        // Try unified data endpoint first (includes both employees and attendance)
+        try {
+            const unifiedData = await this.request('/unified/data');
+            if (unifiedData.success && unifiedData.data.attendanceRecords) {
+                return unifiedData.data.attendanceRecords;
+            }
+        } catch (error) {
+            console.warn('Unified data endpoint failed, trying attendance endpoint:', error.message);
+        }
+        
+        // Fallback to attendance endpoint with filters
         const params = new URLSearchParams();
         
         if (filters.employeeId) params.append('employee_id', filters.employeeId);

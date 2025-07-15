@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .debug-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .debug-section h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Authentication Debug</h1>
+        
+        <div class="debug-section">
+            <h3>LocalStorage Auth Data</h3>
+            <div id="localStorage-data"></div>
+        </div>
+        
+        <div class="debug-section">
+            <h3>Auth Service Status</h3>
+            <div id="auth-service-status"></div>
+        </div>
+        
+        <div class="debug-section">
+            <h3>DirectFlow Status</h3>
+            <div id="directflow-status"></div>
+        </div>
+        
+        <div class="debug-section">
+            <h3>Actions</h3>
+            <button onclick="loginAdmin()">Login as Admin</button>
+            <button onclick="refreshAll()">Refresh All</button>
+            <button onclick="testDirectFlowAPI()">Test DirectFlow API</button>
+        </div>
+        
+        <div class="debug-section">
+            <h3>Results</h3>
+            <pre id="results"></pre>
+        </div>
+    </div>
+
+    <!-- Load Authentication Service -->
+    <script src="js/auth.js"></script>
+    
+    <!-- Load DirectFlow -->
+    <script src="js/directflow.js"></script>
+    
+    <script>
+        function log(message) {
+            const results = document.getElementById('results');
+            const timestamp = new Date().toLocaleTimeString();
+            results.textContent += `[${timestamp}] ${message}\n`;
+            console.log(message);
+        }
+        
+        function checkLocalStorageAuth() {
+            const data = {
+                'bricks_auth_session': localStorage.getItem('bricks_auth_session'),
+                'bricks_auth_user': localStorage.getItem('bricks_auth_user'),
+                'bricks_auth_expiry': localStorage.getItem('bricks_auth_expiry')
+            };
+            
+            let html = '';
+            for (const [key, value] of Object.entries(data)) {
+                const status = value ? 'success' : 'error';
+                html += `<div class="status ${status}">${key}: ${value ? 'Present' : 'Missing'}</div>`;
+            }
+            
+            document.getElementById('localStorage-data').innerHTML = html;
+            return data;
+        }
+        
+        function checkAuthService() {
+            let html = '';
+            
+            if (typeof window.authService === 'undefined') {
+                html = '<div class="status error">Auth Service: Not Available</div>';
+            } else {
+                try {
+                    const isAuth = window.authService.isAuthenticated();
+                    const status = isAuth ? 'success' : 'warning';
+                    html += `<div class="status ${status}">Authenticated: ${isAuth}</div>`;
+                    
+                    if (isAuth) {
+                        const user = window.authService.getCurrentUser();
+                        html += `<div class="status success">Current User: ${user ? user.username : 'Unknown'}</div>`;
+                    }
+                } catch (error) {
+                    html += `<div class="status error">Auth Service Error: ${error.message}</div>`;
+                }
+            }
+            
+            document.getElementById('auth-service-status').innerHTML = html;
+        }
+        
+        function checkDirectFlow() {
+            let html = '';
+            
+            if (typeof window.directFlow === 'undefined') {
+                html = '<div class="status error">DirectFlow: Not Available</div>';
+            } else {
+                try {
+                    const status = window.directFlow.getStatus();
+                    const token = window.directFlow.getAuthToken();
+                    
+                    html += `<div class="status ${status.initialized ? 'success' : 'warning'}">Initialized: ${status.initialized}</div>`;
+                    html += `<div class="status ${status.authenticated ? 'success' : 'warning'}">Authenticated: ${status.authenticated}</div>`;
+                    html += `<div class="status ${token ? 'success' : 'error'}">Token: ${token ? 'Present' : 'Missing'}</div>`;
+                    
+                    if (token) {
+                        html += `<div class="status success">Token Value: ${token.substring(0, 50)}...</div>`;
+                    }
+                } catch (error) {
+                    html += `<div class="status error">DirectFlow Error: ${error.message}</div>`;
+                }
+            }
+            
+            document.getElementById('directflow-status').innerHTML = html;
+        }
+        
+        async function loginAdmin() {
+            log('Attempting admin login...');
+            
+            try {
+                if (!window.authService) {
+                    throw new Error('Auth service not available');
+                }
+                
+                const result = await window.authService.login('admin', 'admin');
+                log(`Login result: ${JSON.stringify(result)}`);
+                
+                // Refresh all status displays
+                refreshAll();
+                
+            } catch (error) {
+                log(`Login error: ${error.message}`);
+            }
+        }
+        
+        async function testDirectFlowAPI() {
+            log('Testing DirectFlow API...');
+            
+            try {
+                if (!window.directFlow) {
+                    throw new Error('DirectFlow not available');
+                }
+                
+                const health = await window.directFlow.healthCheck();
+                log(`Health check result: ${JSON.stringify(health)}`);
+                
+            } catch (error) {
+                log(`DirectFlow API error: ${error.message}`);
+            }
+        }
+        
+        function refreshAll() {
+            log('Refreshing all status displays...');
+            checkLocalStorageAuth();
+            checkAuthService();
+            checkDirectFlow();
+        }
+        
+        // Initialize on load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                refreshAll();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

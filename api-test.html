@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Endpoint Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>API Endpoint Test</h1>
+        
+        <div class="test-section">
+            <h3>Authentication Status</h3>
+            <div id="auth-status"></div>
+            <button onclick="loginAdmin()">Login as Admin</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>API Endpoints</h3>
+            <button onclick="testHealthCheck()">Test Health Check</button>
+            <button onclick="testEmployees()">Test Employees</button>
+            <button onclick="testAttendanceStats()">Test Attendance Stats</button>
+            <button onclick="testNextPayday()">Test Next Payday</button>
+            <button onclick="testUnifiedData()">Test Unified Data</button>
+            <button onclick="testDirectFlow()">Test DirectFlow</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Results</h3>
+            <pre id="results"></pre>
+        </div>
+    </div>
+
+    <!-- Load Authentication Service -->
+    <script src="js/auth.js"></script>
+    
+    <!-- Load DirectFlow -->
+    <script src="js/directflow.js"></script>
+    
+    <!-- Load Auth Fix -->
+    <script src="js/directflow-auth-fix.js"></script>
+    
+    <script>
+        let results = [];
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            results.push(logMessage);
+            document.getElementById('results').textContent = results.join('\n');
+            console.log(logMessage);
+        }
+        
+        function updateAuthStatus() {
+            const authStatus = document.getElementById('auth-status');
+            let html = '';
+            
+            if (typeof window.authService === 'undefined') {
+                html = '<div class="status error">Auth Service: Not Available</div>';
+            } else {
+                const isAuth = window.authService.isAuthenticated();
+                const status = isAuth ? 'success' : 'warning';
+                html += `<div class="status ${status}">Authenticated: ${isAuth}</div>`;
+                
+                if (isAuth) {
+                    const user = window.authService.getCurrentUser();
+                    html += `<div class="status success">User: ${user ? user.username : 'Unknown'}</div>`;
+                }
+            }
+            
+            if (typeof window.directFlow !== 'undefined') {
+                const token = window.directFlow.getAuthToken();
+                html += `<div class="status ${token ? 'success' : 'error'}">DirectFlow Token: ${token ? 'Present' : 'Missing'}</div>`;
+            }
+            
+            authStatus.innerHTML = html;
+        }
+        
+        async function loginAdmin() {
+            log('Attempting admin login...');
+            
+            try {
+                if (!window.authService) {
+                    throw new Error('Auth service not available');
+                }
+                
+                const result = await window.authService.login('admin', 'admin');
+                log(`Login result: ${JSON.stringify(result)}`);
+                
+                updateAuthStatus();
+                
+            } catch (error) {
+                log(`Login error: ${error.message}`);
+            }
+        }
+        
+        async function testHealthCheck() {
+            log('Testing health check endpoint...');
+            
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                log(`Health check: ${JSON.stringify(data, null, 2)}`);
+                
+            } catch (error) {
+                log(`Health check error: ${error.message}`);
+            }
+        }
+        
+        async function testEmployees() {
+            log('Testing employees endpoint...');
+            
+            try {
+                const token = localStorage.getItem('bricks_auth_session');
+                if (!token) {
+                    throw new Error('No auth token - please login first');
+                }
+                
+                const response = await fetch('/api/employees', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                log(`Employees: ${JSON.stringify(data, null, 2)}`);
+                
+            } catch (error) {
+                log(`Employees error: ${error.message}`);
+            }
+        }
+        
+        async function testAttendanceStats() {
+            log('Testing attendance stats endpoint...');
+            
+            try {
+                const token = localStorage.getItem('bricks_auth_session');
+                if (!token) {
+                    throw new Error('No auth token - please login first');
+                }
+                
+                const response = await fetch('/api/attendance/stats', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                log(`Attendance stats: ${JSON.stringify(data, null, 2)}`);
+                
+            } catch (error) {
+                log(`Attendance stats error: ${error.message}`);
+            }
+        }
+        
+        async function testNextPayday() {
+            log('Testing next payday endpoint...');
+            
+            try {
+                const token = localStorage.getItem('bricks_auth_session');
+                if (!token) {
+                    throw new Error('No auth token - please login first');
+                }
+                
+                const response = await fetch('/api/payroll/next-payday', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                log(`Next payday: ${JSON.stringify(data, null, 2)}`);
+                
+            } catch (error) {
+                log(`Next payday error: ${error.message}`);
+            }
+        }
+        
+        async function testUnifiedData() {
+            log('Testing unified data endpoint...');
+            
+            try {
+                const token = localStorage.getItem('bricks_auth_session');
+                if (!token) {
+                    throw new Error('No auth token - please login first');
+                }
+                
+                const response = await fetch('/api/unified/data', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                log(`Unified data: ${JSON.stringify(data, null, 2)}`);
+                
+            } catch (error) {
+                log(`Unified data error: ${error.message}`);
+            }
+        }
+        
+        async function testDirectFlow() {
+            log('Testing DirectFlow methods...');
+            
+            try {
+                if (!window.directFlow) {
+                    throw new Error('DirectFlow not available');
+                }
+                
+                log('Testing DirectFlow.getAttendanceStats()...');
+                const stats = await window.directFlow.getAttendanceStats();
+                log(`DirectFlow stats: ${JSON.stringify(stats, null, 2)}`);
+                
+                log('Testing DirectFlow.getNextPayday()...');
+                const payday = await window.directFlow.getNextPayday();
+                log(`DirectFlow payday: ${JSON.stringify(payday, null, 2)}`);
+                
+                log('Testing DirectFlow.getEmployees()...');
+                const employees = await window.directFlow.getEmployees();
+                log(`DirectFlow employees: ${JSON.stringify(employees, null, 2)}`);
+                
+            } catch (error) {
+                log(`DirectFlow error: ${error.message}`);
+            }
+        }
+        
+        // Initialize on load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                updateAuthStatus();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

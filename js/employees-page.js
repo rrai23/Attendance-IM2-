@@ -1,6 +1,6 @@
 /**
  * Employees Page Management Module for Bricks Attendance System
- * Uses Unified Employee Manager for consistent data across the system
+ * Uses DirectFlow for backend data communication
  */
 
 class EmployeesPageManager {
@@ -11,15 +11,15 @@ class EmployeesPageManager {
         this.currentEmployee = null;
         this.currentViewEmployee = null;
         this.currentDeleteEmployee = null;
-        this.unifiedManager = null;
+        this.directFlow = null;
         
         // Don't auto-initialize - will be called manually
     }
 
     async init() {
         try {
-            // Wait for unified manager to be ready
-            await this.waitForUnifiedManager();
+            // Wait for DirectFlow to be ready
+            await this.waitForDirectFlow();
             await this.loadEmployees();
             this.setupEventListeners();
             this.updateStats();
@@ -32,72 +32,47 @@ class EmployeesPageManager {
         }
     }
 
-    async waitForUnifiedManager() {
+    async waitForDirectFlow() {
         const maxWait = 5000; // 5 seconds
         const interval = 100; // Check every 100ms
         let waited = 0;
         
-        // Priority 1: Use UnifiedEmployeeManager for consistency with payroll
-        while (!window.unifiedEmployeeManager?.initialized && waited < maxWait) {
+        // Use DirectFlow for all data operations
+        while (!window.DirectFlow?.initialized && waited < maxWait) {
             await new Promise(resolve => setTimeout(resolve, interval));
             waited += interval;
         }
         
-        if (window.unifiedEmployeeManager?.initialized) {
-            console.log('Using UnifiedEmployeeManager for employees page (consistent with payroll)');
-            this.unifiedManager = window.unifiedEmployeeManager;
+        if (window.DirectFlow?.initialized) {
+            console.log('Using DirectFlow for employees page');
+            this.directFlow = window.DirectFlow;
             return;
         }
         
-        // NO FALLBACK - Strict backend only
-        throw new Error('UnifiedEmployeeManager not available - system requires backend authentication');
+        throw new Error('DirectFlow not available - system requires backend authentication');
     }
 
     async loadEmployees() {
         try {
-            console.log('Loading employees from unified manager...');
+            console.log('Loading employees from DirectFlow...');
             
-            // Handle different manager types
-            if (this.unifiedManager === window.unifiedEmployeeManager) {
-                // Using UnifiedEmployeeManager - synchronous methods
-                this.employees = this.unifiedManager.getEmployees();
-                this.filteredEmployees = [...this.employees];
-                
-                // Get departments from employee data
-                const departmentSet = new Set(this.employees.map(emp => emp.department).filter(Boolean));
-                this.departments = Array.from(departmentSet);
-                
-                console.log('[DATA INTEGRITY] Employees page using UnifiedEmployeeManager data:', {
-                    count: this.employees.length,
-                    source: 'UnifiedEmployeeManager',
-                    employees: this.employees.map(emp => ({ 
-                        id: emp.id, 
-                        name: emp.fullName || emp.name,
-                        department: emp.department 
-                    }))
-                });
-            } else {
-                // Using data service - async methods
-                this.employees = await this.unifiedManager.getEmployees();
-                this.filteredEmployees = [...this.employees];
-                
-                if (this.unifiedManager.getDepartments) {
-                    this.departments = await this.unifiedManager.getDepartments();
-                } else {
-                    const departmentSet = new Set(this.employees.map(emp => emp.department).filter(Boolean));
-                    this.departments = Array.from(departmentSet);
-                }
-                
-                console.log('[DATA INTEGRITY] Employees page using data service:', {
-                    count: this.employees.length,
-                    source: 'dataService',
-                    employees: this.employees.map(emp => ({ 
-                        id: emp.id, 
-                        name: emp.fullName || emp.name,
-                        department: emp.department 
-                    }))
-                });
-            }
+            // Use DirectFlow for all data operations
+            this.employees = await this.directFlow.getEmployees();
+            this.filteredEmployees = [...this.employees];
+            
+            // Get departments from employee data
+            const departmentSet = new Set(this.employees.map(emp => emp.department).filter(Boolean));
+            this.departments = Array.from(departmentSet);
+            
+            console.log('[DATA INTEGRITY] Employees page using DirectFlow data:', {
+                count: this.employees.length,
+                source: 'DirectFlow',
+                employees: this.employees.map(emp => ({ 
+                    id: emp.id, 
+                    name: emp.fullName || emp.name,
+                    department: emp.department 
+                }))
+            });
             
             console.log('Loaded employees:', this.employees.length);
             console.log('Departments:', this.departments);
@@ -636,16 +611,24 @@ class EmployeesPageManager {
             const employeeData = this.getFormData();
             
             if (this.currentEmployee) {
-                // Update existing employee
-                let updatedEmployee;
-                if (this.unifiedManager === window.unifiedEmployeeManager) {
-                    // Using UnifiedEmployeeManager - direct method call
-                    updatedEmployee = this.unifiedManager.updateEmployee(this.currentEmployee.id, employeeData);
-                } else {
-                    // Using data service - async method call
-                    updatedEmployee = await this.unifiedManager.updateEmployee(this.currentEmployee.id, employeeData);
-                }
-                console.log('[DATA INTEGRITY] Employee updated via', this.unifiedManager === window.unifiedEmployeeManager ? 'UnifiedEmployeeManager' : 'dataService', ':', updatedEmployee);
+                // Update existing employee using DirectFlow
+                // Map frontend fields to backend expected fields
+                const backendEmployeeData = {
+                    first_name: employeeData.firstName,
+                    last_name: employeeData.lastName,
+                    email: employeeData.email,
+                    phone: employeeData.phone,
+                    department: employeeData.department,
+                    position: employeeData.position,
+                    date_hired: employeeData.hireDate,
+                    salary: employeeData.salary || employeeData.hourlyRate,
+                    employment_type: 'full-time',
+                    shift_schedule: 'day',
+                    role: employeeData.role || 'employee'
+                };
+                
+                const updatedEmployee = await this.directFlow.updateEmployee(this.currentEmployee.employee_id || this.currentEmployee.id, backendEmployeeData);
+                console.log('[DATA INTEGRITY] Employee updated via DirectFlow:', updatedEmployee.data?.employee);
             } else {
                 // For new employees, don't require employee code - it will be auto-generated
                 if (!employeeData.employeeCode || employeeData.employeeCode.trim() === '') {
@@ -655,19 +638,29 @@ class EmployeesPageManager {
                 // Remove ID field to let the service handle it
                 delete employeeData.id;
                 
-                // Add new employee
-                let newEmployee;
-                if (this.unifiedManager === window.unifiedEmployeeManager) {
-                    // Using UnifiedEmployeeManager - direct method call
-                    newEmployee = this.unifiedManager.addEmployee(employeeData);
-                } else {
-                    // Using data service - async method call
-                    newEmployee = await this.unifiedManager.addEmployee(employeeData);
-                }
-                console.log('[DATA INTEGRITY] Employee added via', this.unifiedManager === window.unifiedEmployeeManager ? 'UnifiedEmployeeManager' : 'dataService', ':', newEmployee.employeeCode);
+                // Add new employee using DirectFlow
+                // Map frontend fields to backend expected fields
+                const backendEmployeeData = {
+                    first_name: employeeData.firstName,
+                    last_name: employeeData.lastName,
+                    email: employeeData.email,
+                    phone: employeeData.phone,
+                    department: employeeData.department,
+                    position: employeeData.position,
+                    date_hired: employeeData.hireDate,
+                    salary: employeeData.salary || employeeData.hourlyRate,
+                    employment_type: 'full-time',
+                    shift_schedule: 'day',
+                    username: employeeData.employeeCode || employeeData.firstName.toLowerCase() + employeeData.lastName.toLowerCase(),
+                    password: 'password123', // Default password
+                    role: employeeData.role || 'employee'
+                };
+                
+                const newEmployee = await this.directFlow.createEmployee(backendEmployeeData);
+                console.log('[DATA INTEGRITY] Employee added via DirectFlow:', newEmployee.data?.employee);
             }
 
-            // Reload data from unified manager
+            // Reload data from DirectFlow
             await this.loadEmployees();
             this.applyFilters();
             this.updateStats();
@@ -694,15 +687,8 @@ class EmployeesPageManager {
      */
     async generateNextEmployeeId() {
         try {
-            // Get employees from appropriate manager
-            let employees;
-            if (this.unifiedManager === window.unifiedEmployeeManager) {
-                // Using UnifiedEmployeeManager - direct method call
-                employees = this.unifiedManager.getEmployees();
-            } else {
-                // Using data service - async method call
-                employees = await this.unifiedManager.getEmployees();
-            }
+            // Get employees from DirectFlow
+            const employees = await this.directFlow.getEmployees();
             
             let maxId = 0;
             
@@ -887,7 +873,8 @@ class EmployeesPageManager {
 
         this.currentDeleteEmployee = employee;
         this.setElementText('deleteEmployeeName', this.getEmployeeName(employee));
-        this.setElementValue('deleteEmployeeId', employee.id);
+        // Use employee_id for backend API compatibility
+        this.setElementValue('deleteEmployeeId', employee.employee_id || employee.id);
         
         modal.classList.remove('hidden');
         modal.classList.add('active');
@@ -902,20 +889,13 @@ class EmployeesPageManager {
         }
 
         try {
-            // Delete employee using unified manager
-            let deletedEmployee;
-            if (this.unifiedManager === window.unifiedEmployeeManager) {
-                // Using UnifiedEmployeeManager - direct method call
-                deletedEmployee = this.unifiedManager.deleteEmployee(employeeId);
-            } else {
-                // Using data service - async method call
-                deletedEmployee = await this.unifiedManager.deleteEmployee(employeeId);
-            }
+            // Delete employee using DirectFlow
+            const deletedEmployee = await this.directFlow.deleteEmployee(employeeId);
             
             const employeeName = deletedEmployee.fullName || deletedEmployee.name || 'Employee';
-            console.log('[DATA INTEGRITY] Employee deleted via', this.unifiedManager === window.unifiedEmployeeManager ? 'UnifiedEmployeeManager' : 'dataService', ':', employeeName);
+            console.log('[DATA INTEGRITY] Employee deleted via DirectFlow:', employeeName);
             
-            // Reload data from unified manager
+            // Reload data from DirectFlow
             await this.loadEmployees();
             this.applyFilters();
             this.updateStats();
@@ -1201,69 +1181,17 @@ class EmployeesPageManager {
      * Set up data service event listeners for auto-sync
      */
     setupDataSyncListeners() {
-        if (this.unifiedManager) {
-            console.log('[DATA SYNC] Setting up data sync listeners for employees page');
-            
-            // Handle UnifiedEmployeeManager events
-            if (this.unifiedManager === window.unifiedEmployeeManager) {
-                console.log('[DATA SYNC] Using UnifiedEmployeeManager events');
-                
-                // Listen for employee updates
-                this.unifiedManager.addEventListener('employeeUpdate', (data) => {
-                    console.log('[DATA SYNC] Employee update received:', data);
-                    this.refreshData();
-                });
-
-                // Listen for employee deletions
-                this.unifiedManager.addEventListener('employeeDeleted', (data) => {
-                    console.log('[DATA SYNC] Employee deleted:', data);
-                    this.refreshData();
-                });
-
-                // Listen for employee additions
-                this.unifiedManager.addEventListener('employeeAdded', (data) => {
-                    console.log('[DATA SYNC] Employee added:', data);
-                    this.refreshData();
-                });
-
-                // Listen for general data sync events (cross-tab updates)
-                this.unifiedManager.addEventListener('dataSync', (data) => {
-                    console.log('[DATA SYNC] Data sync event received:', data);
-                    if (data && (data.action === 'delete' || data.action === 'add' || data.action === 'update' || data.action === 'forceCleanup')) {
-                        this.refreshData();
-                    }
-                });
-
-                // Listen for system-wide broadcasts
-                document.addEventListener('bricksSystemUpdate', (event) => {
-                    const { type, data } = event.detail;
-                    console.log('[DATA SYNC] System update received:', type, data);
-                    if (type.includes('employee') || type.includes('Employee')) {
-                        this.refreshData();
-                    }
-                });
-                
-            } else {
-                // Handle data service events
-                console.log('[DATA SYNC] Using data service events');
-                
-                this.unifiedManager.addEventListener('employeeUpdate', (data) => {
-                    console.log('[DATA SYNC] Employee update received from data service:', data);
-                    this.refreshData();
-                });
-
-                this.unifiedManager.addEventListener('dataSync', (data) => {
-                    console.log('[DATA SYNC] Data sync event received from data service:', data);
-                    this.refreshData();
-                });
+        // DirectFlow doesn't have event listeners - using simple refresh pattern
+        console.log('[DATA SYNC] DirectFlow using simple refresh pattern');
+        
+        // Listen for system-wide broadcasts
+        document.addEventListener('bricksSystemUpdate', (event) => {
+            const { type, data } = event.detail;
+            console.log('[DATA SYNC] System update received:', type, data);
+            if (type.includes('employee') || type.includes('Employee')) {
+                this.refreshData();
             }
-
-            // Listen for attendance updates that might affect employee data
-            this.unifiedManager.addEventListener('attendanceUpdate', (data) => {
-                console.log('[DATA SYNC] Attendance update received, updating stats');
-                this.updateStats();
-            });
-        }
+        });
     }
 
     // Utility functions

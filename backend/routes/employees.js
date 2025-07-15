@@ -26,15 +26,15 @@ router.get('/', auth, async (req, res) => {
                 e.first_name,
                 e.last_name,
                 e.email,
-                null as phone,
+                e.phone,
                 e.department,
                 e.position,
                 null as manager_id,
-                e.hire_date as date_hired,
-                e.employee_status as status,
+                e.date_hired,
+                e.status,
                 null as hourly_rate,
                 null as overtime_rate,
-                null as salary_type,
+                e.salary,
                 null as avatar,
                 null as address,
                 null as emergency_contact,
@@ -42,40 +42,34 @@ router.get('/', auth, async (req, res) => {
                 null as work_schedule,
                 e.created_at,
                 e.updated_at,
-                e.username,
-                e.role,
-                e.is_active as account_active,
-                e.last_login
-            FROM user_accounts e
-            WHERE 1=1
+                ua.username,
+                ua.role,
+                ua.is_active as account_active,
+                ua.last_login
+            FROM employees e
+            LEFT JOIN user_accounts ua ON e.employee_id = ua.employee_id
             WHERE 1=1
         `;
         const params = [];
 
         // Add filters
         if (status && status !== 'all') {
-            query += ' AND status = ?';
+            query += ' AND e.status = ?';
             params.push(status);
         }
 
         if (department) {
-            query += ' AND department = ?';
+            query += ' AND e.department = ?';
             params.push(department);
         }
 
         if (position) {
-            query += ' AND position = ?';
+            query += ' AND e.position = ?';
             params.push(position);
         }
 
         if (search) {
-            query += ' AND (full_name LIKE ? OR employee_id LIKE ? OR email LIKE ?)';
-            const searchTerm = `%${search}%`;
-            params.push(searchTerm, searchTerm, searchTerm);
-        }
-
-        if (search) {
-            query += ' AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.email LIKE ? OR e.employee_id LIKE ?)';
+            query += ' AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.email LIKE ? OR e.employee_code LIKE ?)';
             const searchTerm = `%${search}%`;
             params.push(searchTerm, searchTerm, searchTerm, searchTerm);
         }
@@ -96,7 +90,7 @@ router.get('/', auth, async (req, res) => {
         // Get total count for pagination
         let countQuery = `
             SELECT COUNT(*) as total
-            FROM user_accounts e
+            FROM employees e
             WHERE 1=1
         `;
         const countParams = [];
@@ -117,7 +111,7 @@ router.get('/', auth, async (req, res) => {
         }
 
         if (search) {
-            countQuery += ' AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.email LIKE ? OR e.employee_id LIKE ?)';
+            countQuery += ' AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.email LIKE ? OR e.employee_code LIKE ?)';
             const searchTerm = `%${search}%`;
             countParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
         }
@@ -161,8 +155,8 @@ router.get('/:employeeId', auth, async (req, res) => {
                 ua.last_login,
                 ua.created_at as account_created
             FROM employees e
-            LEFT JOIN user_accounts ua ON e.employee_id = ua.employee_id
-            WHERE e.employee_id = ?
+            LEFT JOIN user_accounts ua ON e.employee_code = ua.employee_id
+            WHERE e.employee_code = ?
         `, [employeeId]);
 
         if (employees.length === 0) {
@@ -187,7 +181,7 @@ router.get('/:employeeId', auth, async (req, res) => {
 });
 
 // Create new employee
-router.post('/', requireManagerOrAdmin, async (req, res) => {
+router.post('/', auth, requireManagerOrAdmin, async (req, res) => {
     try {
         const {
             first_name,
@@ -213,22 +207,22 @@ router.post('/', requireManagerOrAdmin, async (req, res) => {
             });
         }
 
-        // Generate unique employee ID
-        const generateEmployeeId = async () => {
+        // Generate unique employee code
+        const generateEmployeeCode = async () => {
             const year = new Date().getFullYear().toString().slice(-2);
             let counter = 1;
             
             while (true) {
-                const empId = `EMP${year}${counter.toString().padStart(4, '0')}`;
-                const existing = await db.execute('SELECT employee_id FROM employees WHERE employee_id = ?', [empId]);
+                const empCode = `EMP${year}${counter.toString().padStart(4, '0')}`;
+                const existing = await db.execute('SELECT employee_code FROM employees WHERE employee_code = ?', [empCode]);
                 if (existing.length === 0) {
-                    return empId;
+                    return empCode;
                 }
                 counter++;
             }
         };
 
-        const employee_id = await generateEmployeeId();
+        const employee_code = await generateEmployeeCode();
 
         // Check if email already exists
         const existingEmail = await db.execute('SELECT email FROM employees WHERE email = ?', [email]);
@@ -242,17 +236,15 @@ router.post('/', requireManagerOrAdmin, async (req, res) => {
         await db.beginTransaction();
 
         try {
-            // Insert employee
+            // Insert employee record first
             await db.execute(`
                 INSERT INTO employees (
-                    employee_id, first_name, last_name, email, phone, 
-                    department, position, date_hired, salary, 
-                    employment_type, shift_schedule, status, created_at, updated_at
+                    employee_code, first_name, last_name, full_name, email, phone, 
+                    department, position, date_hired, hourly_rate, overtime_rate, status, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW(), NOW())
             `, [
-                employee_id, first_name, last_name, email, phone,
-                department, position, date_hired, salary,
-                employment_type, shift_schedule
+                employee_code, first_name, last_name, `${first_name} ${last_name}`, email, phone,
+                department, position, date_hired, salary ? (salary / 2080) : 15.00, 1.50
             ]);
 
             // Create user account if username and password provided
@@ -275,7 +267,7 @@ router.post('/', requireManagerOrAdmin, async (req, res) => {
                         employee_id, username, password_hash, role, 
                         is_active, created_at, updated_at
                     ) VALUES (?, ?, ?, ?, TRUE, NOW(), NOW())
-                `, [employee_id, username, password_hash, role]);
+                `, [employee_code, username, password_hash, role]);
             }
 
             await db.commit();
@@ -288,9 +280,9 @@ router.post('/', requireManagerOrAdmin, async (req, res) => {
                     ua.role,
                     ua.is_active as account_active
                 FROM employees e
-                LEFT JOIN user_accounts ua ON e.employee_id = ua.employee_id
-                WHERE e.employee_id = ?
-            `, [employee_id]);
+                LEFT JOIN user_accounts ua ON e.employee_code = ua.employee_id
+                WHERE e.employee_code = ?
+            `, [employee_code]);
 
             res.status(201).json({
                 success: true,

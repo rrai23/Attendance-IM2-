@@ -72,6 +72,7 @@
         <div class="status" id="directflow-status">Checking DirectFlow...</div>
         
         <div>
+            <button class="test-button" onclick="testLogin()">Test Login</button>
             <button class="test-button" onclick="testDirectFlow()">Test DirectFlow</button>
             <button class="test-button" onclick="testEmployees()">Test Employees</button>
             <button class="test-button" onclick="testAttendance()">Test Attendance</button>
@@ -84,6 +85,9 @@
         </div>
     </div>
 
+    <!-- Load Authentication Service -->
+    <script src="js/auth.js"></script>
+    
     <!-- Load DirectFlow ONLY - no compatibility layer -->
     <script src="js/directflow.js"></script>
     
@@ -131,6 +135,21 @@
                 return;
             }
             
+            // Check authentication status
+            const authToken = window.directFlow.getAuthToken();
+            log(`Auth token: ${authToken ? 'Present' : 'Missing'}`);
+            
+            if (!authToken) {
+                log('Checking localStorage for auth data...');
+                log(`bricks_auth_session: ${localStorage.getItem('bricks_auth_session') ? 'Present' : 'Missing'}`);
+                log(`bricks_auth_user: ${localStorage.getItem('bricks_auth_user') ? 'Present' : 'Missing'}`);
+                log(`bricks_auth_expiry: ${localStorage.getItem('bricks_auth_expiry') ? 'Present' : 'Missing'}`);
+                
+                if (typeof window.authService !== 'undefined') {
+                    log(`AuthService available: ${window.authService.isAuthenticated() ? 'Authenticated' : 'Not authenticated'}`);
+                }
+            }
+            
             const status = window.directFlow.getStatus();
             log(`DirectFlow status: ${JSON.stringify(status)}`);
             
@@ -149,6 +168,44 @@
             }
         }
         
+        async function testLogin() {
+            log('Testing login functionality...');
+            
+            try {
+                if (!window.authService) {
+                    throw new Error('AuthService not available');
+                }
+                
+                // Check current auth status
+                const isAuth = window.authService.isAuthenticated();
+                log(`Currently authenticated: ${isAuth}`);
+                
+                if (!isAuth) {
+                    log('Attempting login with default credentials...');
+                    const loginResult = await window.authService.login('admin', 'admin');
+                    log(`Login result: ${JSON.stringify(loginResult)}`);
+                    
+                    // Check if DirectFlow picks up the new token
+                    if (window.directFlow) {
+                        const newToken = window.directFlow.getAuthToken();
+                        log(`DirectFlow token after login: ${newToken ? 'Present' : 'Missing'}`);
+                        
+                        // Re-initialize DirectFlow with new token
+                        window.directFlow.authToken = newToken;
+                        log('DirectFlow token updated');
+                    }
+                } else {
+                    log('Already authenticated');
+                }
+                
+                // Update status display
+                checkDirectFlowStatus();
+                
+            } catch (error) {
+                log(`ERROR: ${error.message}`);
+            }
+        }
+
         async function testDirectFlow() {
             log('Testing DirectFlow basic functionality...');
             

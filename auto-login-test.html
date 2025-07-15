@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto-Login Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Auto-Login Test</h1>
+        
+        <div class="status warning">
+            <strong>Note:</strong> This page tests the auto-login functionality. It will attempt to login with default credentials (admin/admin) automatically.
+        </div>
+        
+        <div id="auth-status"></div>
+        
+        <div>
+            <button onclick="checkAuthStatus()">Check Auth Status</button>
+            <button onclick="manualLogin()">Manual Login</button>
+            <button onclick="testAutoLogin()">Test Auto-Login</button>
+            <button onclick="clearAuth()">Clear Auth</button>
+            <button onclick="testDirectFlow()">Test DirectFlow</button>
+        </div>
+        
+        <div>
+            <h3>Console Output:</h3>
+            <pre id="console-output"></pre>
+        </div>
+    </div>
+
+    <!-- Load Authentication Service -->
+    <script src="js/auth.js"></script>
+    
+    <!-- Load DirectFlow -->
+    <script src="js/directflow.js"></script>
+    
+    <!-- Load Auth Fix -->
+    <script src="js/directflow-auth-fix.js"></script>
+    
+    <script>
+        let consoleOutput = [];
+        
+        // Override console.log to capture output
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const timestamp = new Date().toLocaleTimeString();
+            consoleOutput.push(`[${timestamp}] ${args.join(' ')}`);
+            updateConsoleOutput();
+        };
+        
+        function updateConsoleOutput() {
+            const consoleEl = document.getElementById('console-output');
+            consoleEl.textContent = consoleOutput.join('\n');
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+        
+        function updateAuthStatus() {
+            const statusEl = document.getElementById('auth-status');
+            let html = '';
+            
+            // Check AuthService
+            if (typeof window.authService !== 'undefined') {
+                const isAuth = window.authService.isAuthenticated();
+                html += `<div class="status ${isAuth ? 'success' : 'error'}">AuthService: ${isAuth ? 'Authenticated' : 'Not Authenticated'}</div>`;
+                
+                if (isAuth) {
+                    const user = window.authService.getCurrentUser();
+                    html += `<div class="status success">User: ${user ? user.username : 'Unknown'}</div>`;
+                }
+            } else {
+                html += '<div class="status error">AuthService: Not Available</div>';
+            }
+            
+            // Check DirectFlow
+            if (typeof window.directFlow !== 'undefined') {
+                const status = window.directFlow.getStatus();
+                const token = window.directFlow.getAuthToken();
+                html += `<div class="status ${status.initialized ? 'success' : 'warning'}">DirectFlow: ${status.initialized ? 'Initialized' : 'Not Initialized'}</div>`;
+                html += `<div class="status ${token ? 'success' : 'error'}">DirectFlow Token: ${token ? 'Present' : 'Missing'}</div>`;
+            } else {
+                html += '<div class="status error">DirectFlow: Not Available</div>';
+            }
+            
+            // Check localStorage
+            const bricksSession = localStorage.getItem('bricks_auth_session');
+            const bricksUser = localStorage.getItem('bricks_auth_user');
+            html += `<div class="status ${bricksSession ? 'success' : 'error'}">localStorage Token: ${bricksSession ? 'Present' : 'Missing'}</div>`;
+            html += `<div class="status ${bricksUser ? 'success' : 'error'}">localStorage User: ${bricksUser ? 'Present' : 'Missing'}</div>`;
+            
+            statusEl.innerHTML = html;
+        }
+        
+        function checkAuthStatus() {
+            console.log('=== Checking Auth Status ===');
+            updateAuthStatus();
+        }
+        
+        async function manualLogin() {
+            console.log('=== Manual Login ===');
+            
+            try {
+                if (!window.authService) {
+                    throw new Error('AuthService not available');
+                }
+                
+                const result = await window.authService.login('admin', 'admin');
+                console.log('Manual login result:', result);
+                
+                setTimeout(() => {
+                    updateAuthStatus();
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Manual login error:', error);
+            }
+        }
+        
+        async function testAutoLogin() {
+            console.log('=== Test Auto-Login ===');
+            
+            try {
+                if (typeof window.attemptAutoLogin === 'function') {
+                    await window.attemptAutoLogin();
+                    
+                    setTimeout(() => {
+                        updateAuthStatus();
+                    }, 1000);
+                } else {
+                    console.error('attemptAutoLogin function not available');
+                }
+                
+            } catch (error) {
+                console.error('Auto-login test error:', error);
+            }
+        }
+        
+        function clearAuth() {
+            console.log('=== Clearing Auth ===');
+            
+            localStorage.removeItem('bricks_auth_session');
+            localStorage.removeItem('bricks_auth_user');
+            localStorage.removeItem('bricks_auth_expiry');
+            localStorage.removeItem('currentUser');
+            
+            if (window.directFlow) {
+                window.directFlow.authToken = null;
+                window.directFlow.initialized = false;
+            }
+            
+            console.log('Auth cleared');
+            updateAuthStatus();
+        }
+        
+        async function testDirectFlow() {
+            console.log('=== Test DirectFlow ===');
+            
+            try {
+                if (!window.directFlow) {
+                    throw new Error('DirectFlow not available');
+                }
+                
+                console.log('Testing DirectFlow health check...');
+                const health = await window.directFlow.healthCheck();
+                console.log('DirectFlow health:', health);
+                
+                console.log('Testing DirectFlow employees...');
+                const employees = await window.directFlow.getEmployees();
+                console.log('DirectFlow employees:', employees);
+                
+            } catch (error) {
+                console.error('DirectFlow test error:', error);
+            }
+        }
+        
+        // Initialize on load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                console.log('=== Page Loaded ===');
+                updateAuthStatus();
+            }, 2000);
+        });
+    </script>
+</body>
+</html>

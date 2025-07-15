@@ -589,7 +589,7 @@ router.get('/summary/:employeeId?', auth, async (req, res) => {
         } else {
             const now = new Date();
             if (period === 'week') {
-                startDate = new Date(now.setDate(now.getDate() - 7)).toISOString().split('T')[0];
+                startDate = new Date(now.getDate() - 7).toISOString().split('T')[0];
             } else if (period === 'month') {
                 startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
             } else {
@@ -649,6 +649,56 @@ router.get('/summary/:employeeId?', auth, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Server error getting attendance summary'
+        });
+    }
+});
+
+// Get attendance statistics for dashboard
+router.get('/stats', auth, async (req, res) => {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        
+        // Get today's attendance stats
+        const [todayStats] = await db.execute(`
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present,
+                SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END) as absent,
+                SUM(CASE WHEN status = 'late' THEN 1 ELSE 0 END) as late,
+                SUM(CASE WHEN status = 'on_leave' THEN 1 ELSE 0 END) as onLeave
+            FROM attendance_records ar
+            WHERE ar.date = ?
+        `, [today]);
+
+        // Get total employees count
+        const [totalEmployees] = await db.execute(`
+            SELECT COUNT(*) as count
+            FROM employees e
+            JOIN user_accounts ua ON e.id = ua.id
+            WHERE ua.is_active = 1 AND e.status = 'active'
+        `);
+
+        const stats = {
+            present: parseInt(todayStats[0].present || 0),
+            absent: parseInt(todayStats[0].absent || 0),
+            late: parseInt(todayStats[0].late || 0),
+            onLeave: parseInt(todayStats[0].onLeave || 0),
+            total: parseInt(totalEmployees[0].count || 0),
+            attendanceRate: totalEmployees[0].count > 0 
+                ? ((todayStats[0].present || 0) / totalEmployees[0].count * 100).toFixed(1)
+                : 0
+        };
+
+        res.json({
+            success: true,
+            data: stats
+        });
+
+    } catch (error) {
+        console.error('Get attendance stats error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error getting attendance statistics'
         });
     }
 });
