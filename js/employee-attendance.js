@@ -88,7 +88,7 @@ class EmployeeAttendanceManager {
             console.log('Loading employees from unified data service...');
             
             // Get employees from unified manager
-            const employeesData = this.unifiedManager.getAllEmployees();
+            const employeesData = this.unifiedManager.getEmployees();
             
             // Transform data to match the expected format for this module
             this.employees = employeesData.map(emp => ({

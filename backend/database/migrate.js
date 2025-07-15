@@ -262,9 +262,9 @@ const seedDefaultData = async () => {
 
         await db.execute(`
             INSERT IGNORE INTO employees (
-                employee_code, username, password_hash, role, full_name, 
+                employee_id, username, password, role, full_name, 
                 first_name, last_name, email, department, position, 
-                date_hired, hourly_rate, status
+                date_hired, wage, status
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
             adminEmployeeCode,
@@ -324,9 +324,9 @@ const seedDefaultData = async () => {
             
             await db.execute(`
                 INSERT IGNORE INTO employees (
-                    employee_code, username, password_hash, role, full_name,
+                    employee_id, username, password, role, full_name,
                     first_name, last_name, email, department, position, 
-                    date_hired, hourly_rate, status
+                    date_hired, wage, status
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
                 emp.employee_code, emp.username, defaultPassword, 'employee',

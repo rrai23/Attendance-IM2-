@@ -21,7 +21,7 @@ router.get('/', auth, async (req, res) => {
         let query = `
             SELECT 
                 e.id,
-                e.employee_code,
+                e.employee_id,
                 e.full_name,
                 e.first_name,
                 e.last_name,
@@ -32,7 +32,7 @@ router.get('/', auth, async (req, res) => {
                 e.manager_id,
                 e.date_hired,
                 e.status,
-                e.hourly_rate,
+                e.wage as hourly_rate,
                 e.overtime_rate,
                 e.salary_type,
                 e.avatar,
@@ -47,7 +47,7 @@ router.get('/', auth, async (req, res) => {
                 ua.is_active as account_active,
                 ua.last_login
             FROM employees e
-            LEFT JOIN user_accounts ua ON e.employee_code = ua.employee_id
+            LEFT JOIN user_accounts ua ON e.employee_id = ua.employee_id
             WHERE 1=1
         `;
         const params = [];
@@ -75,13 +75,13 @@ router.get('/', auth, async (req, res) => {
         }
 
         if (search) {
-            query += ' AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.email LIKE ? OR e.employee_code LIKE ?)';
+            query += ' AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.email LIKE ? OR e.employee_id LIKE ?)';
             const searchTerm = `%${search}%`;
             params.push(searchTerm, searchTerm, searchTerm, searchTerm);
         }
 
         // Add sorting
-        const validSortFields = ['employee_code', 'first_name', 'last_name', 'department', 'position', 'date_hired', 'created_at'];
+        const validSortFields = ['employee_id', 'first_name', 'last_name', 'department', 'position', 'date_hired', 'created_at'];
         const sortField = validSortFields.includes(sort) ? sort : 'last_name';
         const sortOrder = order.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
         query += ` ORDER BY e.${sortField} ${sortOrder}`;

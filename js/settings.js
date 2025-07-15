@@ -753,7 +753,7 @@ class SettingsController {
                 return;
             }
 
-            const employees = this.unifiedEmployeeManager.getAllEmployees();
+            const employees = this.unifiedEmployeeManager.getEmployees();
             const csvContent = this.convertToCSV(employees);
             this.downloadCSV(csvContent, 'users-export.csv');
         } catch (error) {
@@ -2253,7 +2253,7 @@ class SettingsController {
                 throw new Error('UnifiedEmployeeManager not available for user stats');
             }
             
-            const employees = this.unifiedEmployeeManager.getAllEmployees();
+            const employees = this.unifiedEmployeeManager.getEmployees();
             const stats = {
                 total: employees.length,
                 active: employees.filter(emp => emp.status === 'active').length,

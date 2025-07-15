@@ -152,29 +152,26 @@ router.get('/data', auth, async (req, res) => {
     try {
         console.log('📥 Frontend requesting all data from backend');
 
-        // Get all employees
+        // Get all employees from user_accounts table (which is what actually exists)
         const [employees] = await db.execute(`
             SELECT 
                 id,
-                employee_code as employeeId,
-                employee_code as employeeCode,
+                employee_id as employeeId,
+                employee_id as employeeCode,
                 full_name as name,
                 full_name as fullName,
                 first_name as firstName,
                 last_name as lastName,
                 email,
-                phone,
                 department,
                 position,
-                date_hired as dateHired,
-                date_hired as hireDate,
-                status,
-                address,
-                emergency_contact as emergencyContact,
-                emergency_phone as emergencyPhone,
+                hire_date as dateHired,
+                hire_date as hireDate,
+                employee_status as status,
                 created_at as createdAt,
                 updated_at as updatedAt
-            FROM employees
+            FROM user_accounts
+            WHERE employee_status = 'active'
             ORDER BY full_name
         `);
 
@@ -197,10 +194,10 @@ router.get('/data', auth, async (req, res) => {
                 ar.created_at as createdAt,
                 ar.updated_at as updatedAt,
                 e.full_name as employeeName,
-                e.employee_code as employeeCode,
+                e.employee_id as employeeCode,
                 e.department
             FROM attendance_records ar
-            JOIN employees e ON ar.employee_id = e.employee_code
+            LEFT JOIN user_accounts e ON ar.employee_id = e.employee_id
             ORDER BY ar.date DESC, ar.created_at DESC
         `);
 

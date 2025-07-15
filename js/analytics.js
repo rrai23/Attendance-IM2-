@@ -216,7 +216,7 @@ class AnalyticsController {
      */
     async refreshEmployeeData() {
         try {
-            const employees = await this.unifiedManager.getAllEmployees();
+            const employees = await this.unifiedManager.getEmployees();
             this.populateEmployeeDropdown(employees);
             console.log('Analytics: Employee data refreshed, new count:', employees.length);
         } catch (error) {
@@ -230,7 +230,7 @@ class AnalyticsController {
     async loadInitialData() {
         try {
             // 🎯 DIRECT ACCESS: Load employees directly from unified manager
-            const employees = this.unifiedManager.getAllEmployees();
+            const employees = this.unifiedManager.getEmployees();
             console.log('Analytics: Loaded employees from unified manager:', {
                 count: employees.length,
                 sampleEmployee: employees[0]?.name || employees[0]?.firstName
@@ -447,10 +447,10 @@ class AnalyticsController {
         let employees;
         if (departmentId) {
             // Get all employees from unified manager and filter by department
-            const allEmployees = await this.unifiedManager.getAllEmployees();
+            const allEmployees = await this.unifiedManager.getEmployees();
             employees = allEmployees.filter(emp => emp.department === departmentId);
         } else {
-            employees = await this.unifiedManager.getAllEmployees();
+            employees = await this.unifiedManager.getEmployees();
         }
             
         this.populateEmployeeDropdown(employees);

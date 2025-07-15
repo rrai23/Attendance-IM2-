@@ -71,7 +71,7 @@ class PayrollController {
             console.log('[PAYROLL] Loading data from Unified Employee Manager (EXCLUSIVE MODE)');
             
             // Load data from the unified employee manager ONLY
-            this.employees = window.unifiedEmployeeManager.getAllEmployees();
+            this.employees = window.unifiedEmployeeManager.getEmployees();
             
             // Load overtime requests from localStorage as fallback for now
             const storedRequests = localStorage.getItem('bricks_overtime_requests');
@@ -100,19 +100,19 @@ class PayrollController {
             if (window.unifiedEmployeeManager.addEventListener) {
                 window.unifiedEmployeeManager.addEventListener('employeeUpdate', (data) => {
                     console.log('[PAYROLL] Employee updated in unified manager, refreshing payroll data');
-                    this.employees = window.unifiedEmployeeManager.getAllEmployees();
+                    this.employees = window.unifiedEmployeeManager.getEmployees();
                     this.refreshPayrollDisplay();
                 });
                 
                 window.unifiedEmployeeManager.addEventListener('employeeAdded', (data) => {
                     console.log('[PAYROLL] Employee added in unified manager, refreshing payroll data');
-                    this.employees = window.unifiedEmployeeManager.getAllEmployees();
+                    this.employees = window.unifiedEmployeeManager.getEmployees();
                     this.refreshPayrollDisplay();
                 });
                 
                 window.unifiedEmployeeManager.addEventListener('employeeDeleted', (data) => {
                     console.log('[PAYROLL] Employee deleted in unified manager, refreshing payroll data');
-                    this.employees = window.unifiedEmployeeManager.getAllEmployees();
+                    this.employees = window.unifiedEmployeeManager.getEmployees();
                     this.refreshPayrollDisplay();
                 });
                 
@@ -1391,7 +1391,7 @@ class PayrollController {
             window.unifiedEmployeeManager.addEventListener('employeeUpdate', async (data) => {
                 console.log('Employee data changed, refreshing payroll data');
                 try {
-                    this.employees = window.unifiedEmployeeManager.getAllEmployees();
+                    this.employees = window.unifiedEmployeeManager.getEmployees();
                     await this.calculateCurrentPayrollData();
                     this.refreshPayrollDisplay();
                 } catch (error) {
@@ -1403,7 +1403,7 @@ class PayrollController {
             window.unifiedEmployeeManager.addEventListener('employeeDeleted', async (data) => {
                 console.log('Employee deleted, refreshing payroll data');
                 try {
-                    this.employees = window.unifiedEmployeeManager.getAllEmployees();
+                    this.employees = window.unifiedEmployeeManager.getEmployees();
                     await this.calculateCurrentPayrollData();
                     this.refreshPayrollDisplay();
                 } catch (error) {
@@ -1415,7 +1415,7 @@ class PayrollController {
             window.unifiedEmployeeManager.addEventListener('employeeAdded', async (data) => {
                 console.log('Employee added, refreshing payroll data');
                 try {
-                    this.employees = window.unifiedEmployeeManager.getAllEmployees();
+                    this.employees = window.unifiedEmployeeManager.getEmployees();
                     await this.calculateCurrentPayrollData();
                     this.refreshPayrollDisplay();
                 } catch (error) {

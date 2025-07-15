@@ -175,7 +175,7 @@ class UnifiedAccountManager {
             return;
         }
 
-        const employees = window.unifiedEmployeeManager.getAllEmployees();
+        const employees = window.unifiedEmployeeManager.getEmployees();
         console.log(`Syncing accounts with ${employees.length} employees...`);
 
         for (const employee of employees) {
