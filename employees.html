@@ -837,7 +837,6 @@
     </div>
 
     <!-- Scripts -->
-    <script src="js/mock-data.js"></script>
     <script src="js/utils/id-utility.js"></script>
     <script src="js/core/data-service-api.js"></script>
     <script src="js/core/local-storage-service.js"></script>
@@ -855,15 +854,6 @@
         // Initialize the employees page manager when DOM is loaded
         document.addEventListener('DOMContentLoaded', async function() {
             try {
-                // Debug output to verify the mock-data.js loaded correctly
-                if (typeof mockData !== 'undefined') {
-                    console.log('Mock data loaded successfully:');
-                    console.log('- Users:', mockData.users.length);
-                    console.log('- Attendance records:', mockData.attendanceRecords.length);
-                } else {
-                    console.error('mockData is not defined! Check if mock-data.js is loaded correctly.');
-                }
-                
                 // Wait for UnifiedEmployeeManager to be fully initialized
                 console.log('Waiting for UnifiedEmployeeManager to initialize...');
                 let waitCount = 0;

@@ -49,14 +49,8 @@ class EmployeesPageManager {
             return;
         }
         
-        // Fallback to data service if UnifiedEmployeeManager not available
-        if (window.dataService?.initialized) {
-            console.warn('UnifiedEmployeeManager not available, falling back to data service');
-            this.unifiedManager = window.dataService;
-            return;
-        }
-        
-        throw new Error('No unified data manager available');
+        // NO FALLBACK - Strict backend only
+        throw new Error('UnifiedEmployeeManager not available - system requires backend authentication');
     }
 
     async loadEmployees() {
@@ -534,6 +528,9 @@ class EmployeesPageManager {
     }
 
     capitalizeFirst(str) {
+        if (!str || typeof str !== 'string') {
+            return 'Unknown';
+        }
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
 

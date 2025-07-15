@@ -21,122 +21,165 @@ router.post('/sync', auth, async (req, res) => {
             attendance: attendanceRecords.length
         });
 
-        // Start transaction
-        await db.execute('START TRANSACTION');
+        // Update/Insert employees individually (no destructive delete)
+        for (const emp of employees) {
+            try {
+                // Check if employee exists in employees table
+                const existing = await db.execute(
+                    'SELECT id FROM employees WHERE id = ?',
+                    [emp.id]
+                );
 
-        try {
-            // Clear existing data (in correct order)
-            await db.execute('DELETE FROM attendance_records');
-            await db.execute('DELETE FROM employees');
-
-            // Insert employees
-            const employeeQuery = `
-                INSERT INTO employees (
-                    id, employee_id, username, password, role, full_name,
-                    first_name, last_name, email, phone, department, position,
-                    date_hired, status, wage, overtime_rate, avatar
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE
-                    username = VALUES(username),
-                    role = VALUES(role),
-                    full_name = VALUES(full_name),
-                    first_name = VALUES(first_name),
-                    last_name = VALUES(last_name),
-                    email = VALUES(email),
-                    phone = VALUES(phone),
-                    department = VALUES(department),
-                    position = VALUES(position),
-                    date_hired = VALUES(date_hired),
-                    status = VALUES(status),
-                    wage = VALUES(wage),
-                    overtime_rate = VALUES(overtime_rate),
-                    avatar = VALUES(avatar),
-                    updated_at = CURRENT_TIMESTAMP
-            `;
-
-            for (const emp of employees) {
-                // Extract name parts
-                const nameParts = emp.name ? emp.name.split(' ') : 
-                                emp.fullName ? emp.fullName.split(' ') : ['', ''];
-                const firstName = emp.firstName || nameParts[0] || '';
-                const lastName = emp.lastName || nameParts.slice(1).join(' ') || '';
-
-                // Hash password if provided and not already hashed
-                let hashedPassword = emp.password;
-                if (emp.password && !emp.password.startsWith('$2')) {
-                    hashedPassword = await bcrypt.hash(emp.password, 12);
+                if (existing.length > 0) {
+                    // Update existing employee in employees table
+                    await db.execute(`
+                        UPDATE employees SET
+                            full_name = ?,
+                            first_name = ?,
+                            last_name = ?,
+                            email = ?,
+                            department = ?,
+                            position = ?,
+                            date_hired = ?,
+                            status = ?,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                    `, [
+                        emp.name || emp.fullName,
+                        emp.firstName || emp.name?.split(' ')[0] || '',
+                        emp.lastName || emp.name?.split(' ').slice(1).join(' ') || '',
+                        emp.email,
+                        emp.department,
+                        emp.position,
+                        emp.dateHired || emp.hireDate,
+                        emp.status || 'active',
+                        emp.id
+                    ]);
+                    
+                    // Also update user_accounts if needed
+                    await db.execute(`
+                        UPDATE user_accounts SET
+                            username = ?,
+                            role = ?,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                    `, [
+                        emp.username || emp.email || emp.name,
+                        emp.role || 'employee',
+                        emp.id
+                    ]);
+                    
+                } else {
+                    // Insert new employee in employees table
+                    await db.execute(`
+                        INSERT INTO employees (
+                            id, employee_code, full_name, first_name, last_name, 
+                            email, department, position, date_hired, status, 
+                            created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    `, [
+                        emp.id,
+                        emp.employeeId || emp.employeeCode || emp.id,
+                        emp.name || emp.fullName,
+                        emp.firstName || emp.name?.split(' ')[0] || '',
+                        emp.lastName || emp.name?.split(' ').slice(1).join(' ') || '',
+                        emp.email,
+                        emp.department,
+                        emp.position,
+                        emp.dateHired || emp.hireDate,
+                        emp.status || 'active'
+                    ]);
+                    
+                    // Also insert into user_accounts
+                    await db.execute(`
+                        INSERT INTO user_accounts (
+                            id, employee_id, username, password_hash, role, 
+                            is_active, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    `, [
+                        emp.id,
+                        emp.employeeId || emp.employeeCode || emp.id,
+                        emp.username || emp.email || emp.name,
+                        emp.password ? await bcrypt.hash(emp.password, 12) : null,
+                        emp.role || 'employee',
+                        emp.status === 'active' ? 1 : 0
+                    ]);
                 }
-
-                await db.execute(employeeQuery, [
-                    emp.id,
-                    emp.employeeId || emp.employeeCode,
-                    emp.username,
-                    hashedPassword,
-                    emp.role || 'employee',
-                    emp.name || emp.fullName,
-                    firstName,
-                    lastName,
-                    emp.email,
-                    emp.phone,
-                    emp.department,
-                    emp.position,
-                    emp.dateHired || emp.hireDate,
-                    emp.status || 'active',
-                    emp.wage || emp.hourlyRate || 15.00,
-                    emp.overtimeRate || 1.5,
-                    emp.avatar
-                ]);
+            } catch (empError) {
+                console.error(`Error updating employee ${emp.id}:`, empError.message);
+                // Continue with other employees instead of failing completely
             }
-
-            // Insert attendance records
-            const attendanceQuery = `
-                INSERT INTO attendance_records (
-                    id, employee_id, date, time_in, time_out,
-                    hours_worked, overtime_hours, status, notes
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE
-                    time_in = VALUES(time_in),
-                    time_out = VALUES(time_out),
-                    hours_worked = VALUES(hours_worked),
-                    overtime_hours = VALUES(overtime_hours),
-                    status = VALUES(status),
-                    notes = VALUES(notes),
-                    updated_at = CURRENT_TIMESTAMP
-            `;
-
-            for (const record of attendanceRecords) {
-                await db.execute(attendanceQuery, [
-                    record.id,
-                    record.employeeId,
-                    record.date,
-                    record.timeIn || record.clockIn,
-                    record.timeOut || record.clockOut,
-                    record.hours || record.hoursWorked || 0,
-                    record.overtimeHours || 0,
-                    record.status || 'present',
-                    record.notes
-                ]);
-            }
-
-            // Commit transaction
-            await db.execute('COMMIT');
-
-            console.log('✅ Data sync completed successfully');
-
-            res.json({
-                success: true,
-                message: 'Data synchronized successfully',
-                synced: {
-                    employees: employees.length,
-                    attendance: attendanceRecords.length
-                }
-            });
-
-        } catch (error) {
-            // Rollback on error
-            await db.execute('ROLLBACK');
-            throw error;
         }
+
+        // Update/Insert attendance records individually (no destructive delete)
+        for (const record of attendanceRecords) {
+            try {
+                // Check if record exists
+                const existing = await db.execute(
+                    'SELECT id FROM attendance_records WHERE id = ?',
+                    [record.id]
+                );
+
+                if (existing.length > 0) {
+                    // Update existing record
+                    await db.execute(`
+                        UPDATE attendance_records SET
+                            employee_id = ?,
+                            date = ?,
+                            time_in = ?,
+                            time_out = ?,
+                            hours_worked = ?,
+                            overtime_hours = ?,
+                            status = ?,
+                            notes = ?,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                    `, [
+                        record.employeeId,
+                        record.date,
+                        record.timeIn || record.clockIn,
+                        record.timeOut || record.clockOut,
+                        record.hours || record.hoursWorked || 0,
+                        record.overtimeHours || 0,
+                        record.status || 'present',
+                        record.notes,
+                        record.id
+                    ]);
+                } else {
+                    // Insert new record
+                    await db.execute(`
+                        INSERT INTO attendance_records (
+                            id, employee_id, date, time_in, time_out,
+                            hours_worked, overtime_hours, status, notes, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    `, [
+                        record.id,
+                        record.employeeId,
+                        record.date,
+                        record.timeIn || record.clockIn,
+                        record.timeOut || record.clockOut,
+                        record.hours || record.hoursWorked || 0,
+                        record.overtimeHours || 0,
+                        record.status || 'present',
+                        record.notes
+                    ]);
+                }
+            } catch (recError) {
+                console.error(`Error updating attendance record ${record.id}:`, recError.message);
+                // Continue with other records instead of failing completely
+            }
+        }
+
+        console.log('✅ Data sync completed successfully');
+
+        res.json({
+            success: true,
+            message: 'Data synchronized successfully',
+            synced: {
+                employees: employees.length,
+                attendance: attendanceRecords.length
+            }
+        });
 
     } catch (error) {
         console.error('❌ Error syncing data:', error);
@@ -152,27 +195,30 @@ router.get('/data', auth, async (req, res) => {
     try {
         console.log('📥 Frontend requesting all data from backend');
 
-        // Get all employees from user_accounts table (using only basic columns that exist)
+        // Get all employees with full data by joining user_accounts and employees tables
         const employeeResult = await db.execute(`
             SELECT 
-                id,
-                employee_id as employeeId,
-                employee_id as employeeCode,
-                username as name,
-                username as fullName,
-                username as firstName,
-                username as lastName,
-                username as email,
-                role as department,
-                role as position,
-                created_at as dateHired,
-                created_at as hireDate,
-                is_active as status,
-                created_at as createdAt,
-                updated_at as updatedAt
-            FROM user_accounts
-            WHERE is_active = 1
-            ORDER BY username
+                e.id,
+                ua.employee_id as employeeId,
+                ua.employee_id as employeeCode,
+                e.full_name as name,
+                e.full_name as fullName,
+                e.first_name as firstName,
+                e.last_name as lastName,
+                e.email,
+                e.department,
+                e.position,
+                e.date_hired as dateHired,
+                e.date_hired as hireDate,
+                e.status,
+                e.created_at as createdAt,
+                e.updated_at as updatedAt,
+                ua.username,
+                ua.role
+            FROM employees e
+            JOIN user_accounts ua ON e.id = ua.id
+            WHERE ua.is_active = 1 AND e.status = 'active'
+            ORDER BY e.full_name
         `);
 
         // MySQL2 returns [rows, fields] - we want the rows

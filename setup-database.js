@@ -62,6 +62,11 @@ class DatabaseSetup {
             console.log('🔌 Connecting to MySQL server...');
             this.connection = await mysql.createConnection(tempConfig);
             console.log('✅ Connected to MySQL server successfully');
+            
+            // Test if we can access MySQL
+            const [result] = await this.connection.execute('SELECT VERSION() as version');
+            console.log(`📊 MySQL Version: ${result[0].version}`);
+            
             return true;
         } catch (error) {
             console.error('❌ Failed to connect to MySQL server:', error.message);
@@ -69,6 +74,7 @@ class DatabaseSetup {
             console.error('   - XAMPP is running');
             console.error('   - MySQL service is started');
             console.error('   - Database credentials are correct in .env file');
+            console.error('   - No firewall is blocking port 3306');
             throw error;
         }
     }
@@ -84,9 +90,12 @@ class DatabaseSetup {
             
             console.log('✅ Database created successfully');
             
-            // Switch to the database
-            await this.connection.execute(`USE \`${config.database}\``);
-            console.log(`✅ Switched to database '${config.database}'`);
+            // Close current connection and reconnect with database specified
+            await this.connection.end();
+            
+            console.log(`🔄 Reconnecting to database '${config.database}'...`);
+            this.connection = await mysql.createConnection(config);
+            console.log(`✅ Connected to database '${config.database}'`);
             
         } catch (error) {
             console.error('❌ Failed to create database:', error.message);
@@ -97,6 +106,9 @@ class DatabaseSetup {
     async createTables() {
         try {
             console.log('\n🔧 Creating database tables...');
+            
+            // Disable foreign key checks temporarily
+            await this.connection.execute('SET FOREIGN_KEY_CHECKS = 0');
             
             // 1. USER_ACCOUNTS table (primary authentication table)
             console.log('   📋 Creating user_accounts table...');
@@ -135,7 +147,25 @@ class DatabaseSetup {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             `);
 
-            // 2. EMPLOYEES table (extended employee data)
+            // 2. DEPARTMENTS table (create before employees for foreign key)
+            console.log('   🏢 Creating departments table...');
+            await this.connection.execute(`
+                CREATE TABLE IF NOT EXISTS departments (
+                    id INT PRIMARY KEY AUTO_INCREMENT,
+                    department_code VARCHAR(20) UNIQUE NOT NULL,
+                    department_name VARCHAR(100) NOT NULL,
+                    manager_employee_id VARCHAR(50),
+                    description TEXT,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    
+                    INDEX idx_department_code (department_code),
+                    INDEX idx_active (is_active)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            `);
+
+            // 3. EMPLOYEES table (extended employee data)
             console.log('   👥 Creating employees table...');
             await this.connection.execute(`
                 CREATE TABLE IF NOT EXISTS employees (
@@ -175,27 +205,7 @@ class DatabaseSetup {
                     INDEX idx_email (email),
                     INDEX idx_department (department),
                     INDEX idx_status (status),
-                    INDEX idx_role (role),
-                    FOREIGN KEY (employee_id) REFERENCES user_accounts(employee_id) 
-                        ON DELETE CASCADE ON UPDATE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            `);
-
-            // 3. DEPARTMENTS table (organizational structure)
-            console.log('   🏢 Creating departments table...');
-            await this.connection.execute(`
-                CREATE TABLE IF NOT EXISTS departments (
-                    id INT PRIMARY KEY AUTO_INCREMENT,
-                    department_code VARCHAR(20) UNIQUE NOT NULL,
-                    department_name VARCHAR(100) NOT NULL,
-                    manager_employee_id VARCHAR(50),
-                    description TEXT,
-                    is_active BOOLEAN DEFAULT TRUE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    
-                    INDEX idx_department_code (department_code),
-                    INDEX idx_active (is_active)
+                    INDEX idx_role (role)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             `);
 
@@ -226,8 +236,6 @@ class DatabaseSetup {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     
-                    FOREIGN KEY (employee_id) REFERENCES user_accounts(employee_id) 
-                        ON DELETE CASCADE ON UPDATE CASCADE,
                     UNIQUE KEY unique_employee_date (employee_id, date),
                     INDEX idx_date (date),
                     INDEX idx_status (status),
@@ -249,8 +257,6 @@ class DatabaseSetup {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     
-                    FOREIGN KEY (employee_id) REFERENCES user_accounts(employee_id) 
-                        ON DELETE CASCADE ON UPDATE CASCADE,
                     INDEX idx_employee_id (employee_id),
                     INDEX idx_token_hash (token_hash),
                     INDEX idx_expires_at (expires_at),
@@ -294,8 +300,6 @@ class DatabaseSetup {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     
-                    FOREIGN KEY (employee_id) REFERENCES user_accounts(employee_id) 
-                        ON DELETE CASCADE ON UPDATE CASCADE,
                     INDEX idx_employee_id (employee_id),
                     INDEX idx_pay_period (pay_period_start, pay_period_end),
                     INDEX idx_status (status),
@@ -360,18 +364,25 @@ class DatabaseSetup {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     
-                    FOREIGN KEY (employee_id) REFERENCES user_accounts(employee_id) 
-                        ON DELETE CASCADE ON UPDATE CASCADE,
                     INDEX idx_employee_id (employee_id),
                     INDEX idx_request_date (request_date),
                     INDEX idx_status (status)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             `);
 
+            // Re-enable foreign key checks
+            await this.connection.execute('SET FOREIGN_KEY_CHECKS = 1');
+
             console.log('✅ All tables created successfully');
             
         } catch (error) {
             console.error('❌ Failed to create tables:', error.message);
+            // Re-enable foreign key checks even on error
+            try {
+                await this.connection.execute('SET FOREIGN_KEY_CHECKS = 1');
+            } catch (fkError) {
+                // Ignore foreign key check error
+            }
             throw error;
         }
     }

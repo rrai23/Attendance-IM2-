@@ -108,11 +108,19 @@ class UnifiedEmployeeManager {
         try {
             // Check if backend API service is available
             if (!window.backendApiService || !window.backendApiService.isAvailable) {
-                throw new Error('Backend API service not available - system requires backend connection');
+                // Try to initialize the backend service
+                console.log('🔄 Backend API service not available, attempting to initialize...');
+                if (window.backendApiService) {
+                    await window.backendApiService.retryInit();
+                }
+                
+                if (!window.backendApiService || !window.backendApiService.isAvailable) {
+                    throw new Error('Backend API service not available - system requires backend connection');
+                }
             }
 
             // Check if user is authenticated
-            const authToken = localStorage.getItem('auth_token');
+            const authToken = localStorage.getItem('auth_token') || localStorage.getItem('auth-token') || localStorage.getItem('jwt_token');
             if (!authToken) {
                 throw new Error('No authentication token found - user must be logged in');
             }
