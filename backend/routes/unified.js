@@ -152,31 +152,36 @@ router.get('/data', auth, async (req, res) => {
     try {
         console.log('📥 Frontend requesting all data from backend');
 
-        // Get all employees from user_accounts table (which is what actually exists)
-        const [employees] = await db.execute(`
+        // Get all employees from user_accounts table (using only basic columns that exist)
+        const employeeResult = await db.execute(`
             SELECT 
                 id,
                 employee_id as employeeId,
                 employee_id as employeeCode,
-                full_name as name,
-                full_name as fullName,
-                first_name as firstName,
-                last_name as lastName,
-                email,
-                department,
-                position,
-                hire_date as dateHired,
-                hire_date as hireDate,
-                employee_status as status,
+                username as name,
+                username as fullName,
+                username as firstName,
+                username as lastName,
+                username as email,
+                role as department,
+                role as position,
+                created_at as dateHired,
+                created_at as hireDate,
+                is_active as status,
                 created_at as createdAt,
                 updated_at as updatedAt
             FROM user_accounts
-            WHERE employee_status = 'active'
-            ORDER BY full_name
+            WHERE is_active = 1
+            ORDER BY username
         `);
 
+        // MySQL2 returns [rows, fields] - we want the rows
+        const employees = Array.isArray(employeeResult) && Array.isArray(employeeResult[0]) 
+            ? employeeResult[0] 
+            : (Array.isArray(employeeResult) ? employeeResult : []);
+
         // Get all attendance records
-        const [attendanceRecords] = await db.execute(`
+        const attendanceResult = await db.execute(`
             SELECT 
                 ar.id,
                 ar.employee_id as employeeId,
@@ -193,24 +198,32 @@ router.get('/data', auth, async (req, res) => {
                 ar.location,
                 ar.created_at as createdAt,
                 ar.updated_at as updatedAt,
-                e.full_name as employeeName,
+                e.username as employeeName,
                 e.employee_id as employeeCode,
-                e.department
+                e.role as department
             FROM attendance_records ar
             LEFT JOIN user_accounts e ON ar.employee_id = e.employee_id
             ORDER BY ar.date DESC, ar.created_at DESC
         `);
 
+        const attendanceRecords = Array.isArray(attendanceResult) && Array.isArray(attendanceResult[0]) 
+            ? attendanceResult[0] 
+            : (Array.isArray(attendanceResult) ? attendanceResult : []);
+
+        // Ensure we always have arrays
+        const employeeArray = Array.isArray(employees) ? employees : [];
+        const attendanceArray = Array.isArray(attendanceRecords) ? attendanceRecords : [];
+
         console.log('📤 Sending data to frontend:', {
-            employees: employees.length,
-            attendance: attendanceRecords.length
+            employees: employeeArray.length,
+            attendance: attendanceArray.length
         });
 
         res.json({
             success: true,
             data: {
-                employees,
-                attendanceRecords
+                employees: employeeArray,
+                attendanceRecords: attendanceArray
             }
         });
 

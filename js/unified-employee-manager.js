@@ -69,14 +69,15 @@ class UnifiedEmployeeManager {
                 throw new Error('Backend API service not available - system requires authentication');
             }
             
-            // Initialize backend service
-            await window.backendApiService.init();
+            // Try to ensure authentication is available
+            console.log('🔗 Checking backend authentication...');
+            const authAvailable = await window.backendApiService.ensureAuthenticated();
             
-            if (!window.backendApiService.isAvailable) {
-                throw new Error('Backend is not available - authentication required');
+            if (!authAvailable) {
+                throw new Error('Backend API service not available - system requires authentication');
             }
             
-            console.log('🔗 Backend API Service integrated');
+            console.log('🔗 Backend API Service integrated and authenticated');
             
             // Load data from backend (will throw if auth fails)
             await this.loadData();
@@ -383,6 +384,29 @@ class UnifiedEmployeeManager {
     getEmployeeCount() {
         return this.employees.length;
     }
+
+    /**
+     * Retry initialization after authentication becomes available
+     * Call this method after successful login
+     */
+    async retryInitialization() {
+        try {
+            console.log('🔄 Retrying UnifiedEmployeeManager initialization after authentication...');
+            
+            if (this.initialized) {
+                console.log('✅ UnifiedEmployeeManager already initialized');
+                return true;
+            }
+            
+            await this.init();
+            console.log('✅ UnifiedEmployeeManager successfully initialized after authentication');
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Failed to initialize UnifiedEmployeeManager even after authentication:', error.message);
+            return false;
+        }
+    }
 }
 
 // Global instance creation with authentication requirement
@@ -422,22 +446,37 @@ if (typeof window !== 'undefined') {
                 await window.unifiedEmployeeManager.init();
                 console.log('✅ Global UnifiedEmployeeManager initialized successfully');
             } catch (error) {
-                console.error('❌ Failed to initialize UnifiedEmployeeManager:', error.message);
-                // Display error to user (but not on login pages)
-                if (document.body && shouldAutoInit()) {
-                    const errorDiv = document.createElement('div');
-                    errorDiv.style.cssText = `
-                        position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-                        background: #ff4444; color: white; padding: 15px 25px;
-                        border-radius: 5px; z-index: 10000; font-family: Arial, sans-serif;
-                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                    `;
-                    errorDiv.innerHTML = `
-                        <strong>Authentication Required</strong><br>
-                        ${error.message}<br>
-                        <small>Please log in to continue</small>
-                    `;
-                    document.body.appendChild(errorDiv);
+                console.warn('⚠️ UnifiedEmployeeManager initialization deferred:', error.message);
+                
+                // Don't show intrusive error messages for authentication issues
+                // The user can log in and the system will retry initialization
+                if (error.message.includes('authentication') || error.message.includes('Backend API service not available')) {
+                    console.log('💡 System requires authentication - UnifiedEmployeeManager will initialize after login');
+                } else {
+                    console.error('❌ Unexpected initialization error:', error.message);
+                    // Only show error for unexpected issues, not auth requirements
+                    if (document.body && shouldAutoInit() && !error.message.includes('authentication')) {
+                        const errorDiv = document.createElement('div');
+                        errorDiv.style.cssText = `
+                            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+                            background: #ff4444; color: white; padding: 15px 25px;
+                            border-radius: 5px; z-index: 10000; font-family: Arial, sans-serif;
+                            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                        `;
+                        errorDiv.innerHTML = `
+                            <strong>System Error</strong><br>
+                            ${error.message}<br>
+                            <small>Please refresh the page or contact support</small>
+                        `;
+                        document.body.appendChild(errorDiv);
+                        
+                        // Auto-remove error after 10 seconds
+                        setTimeout(() => {
+                            if (errorDiv.parentNode) {
+                                errorDiv.parentNode.removeChild(errorDiv);
+                            }
+                        }, 10000);
+                    }
                 }
             }
         });
@@ -449,7 +488,14 @@ if (typeof window !== 'undefined') {
                     await window.unifiedEmployeeManager.init();
                     console.log('✅ Global UnifiedEmployeeManager initialized successfully');
                 } catch (error) {
-                    console.error('❌ Failed to initialize UnifiedEmployeeManager:', error.message);
+                    console.warn('⚠️ UnifiedEmployeeManager initialization deferred:', error.message);
+                    
+                    // Don't show intrusive error messages for authentication issues
+                    if (error.message.includes('authentication') || error.message.includes('Backend API service not available')) {
+                        console.log('💡 System requires authentication - UnifiedEmployeeManager will initialize after login');
+                    } else {
+                        console.error('❌ Unexpected initialization error:', error.message);
+                    }
                 }
             }, 100);
         } else {

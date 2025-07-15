@@ -226,6 +226,18 @@ class AuthService {
             this.triggerAuthEvent('login', user);
             console.log('AuthService: Triggered login event');
 
+            // Retry UnifiedEmployeeManager initialization after successful authentication
+            if (window.unifiedEmployeeManager && !window.unifiedEmployeeManager.initialized) {
+                console.log('AuthService: Retrying UnifiedEmployeeManager initialization after login...');
+                setTimeout(async () => {
+                    try {
+                        await window.unifiedEmployeeManager.retryInitialization();
+                    } catch (error) {
+                        console.warn('AuthService: UnifiedEmployeeManager retry failed:', error.message);
+                    }
+                }, 100);
+            }
+
             const redirectUrl = this.getRedirectUrl(user.role);
             console.log('AuthService: Redirect URL:', redirectUrl);
 

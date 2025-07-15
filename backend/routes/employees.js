@@ -22,32 +22,32 @@ router.get('/', auth, async (req, res) => {
             SELECT 
                 e.id,
                 e.employee_id,
-                e.full_name,
+                CONCAT(e.first_name, ' ', e.last_name) as full_name,
                 e.first_name,
                 e.last_name,
                 e.email,
-                e.phone,
+                null as phone,
                 e.department,
                 e.position,
-                e.manager_id,
-                e.date_hired,
-                e.status,
-                e.wage as hourly_rate,
-                e.overtime_rate,
-                e.salary_type,
-                e.avatar,
-                e.address,
-                e.emergency_contact,
-                e.emergency_phone,
-                e.work_schedule,
+                null as manager_id,
+                e.hire_date as date_hired,
+                e.employee_status as status,
+                null as hourly_rate,
+                null as overtime_rate,
+                null as salary_type,
+                null as avatar,
+                null as address,
+                null as emergency_contact,
+                null as emergency_phone,
+                null as work_schedule,
                 e.created_at,
                 e.updated_at,
-                ua.username,
-                ua.role,
-                ua.is_active as account_active,
-                ua.last_login
-            FROM employees e
-            LEFT JOIN user_accounts ua ON e.employee_id = ua.employee_id
+                e.username,
+                e.role,
+                e.is_active as account_active,
+                e.last_login
+            FROM user_accounts e
+            WHERE 1=1
             WHERE 1=1
         `;
         const params = [];
@@ -96,7 +96,7 @@ router.get('/', auth, async (req, res) => {
         // Get total count for pagination
         let countQuery = `
             SELECT COUNT(*) as total
-            FROM employees e
+            FROM user_accounts e
             WHERE 1=1
         `;
         const countParams = [];

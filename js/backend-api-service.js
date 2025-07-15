@@ -38,6 +38,27 @@ class BackendApiService {
         }
     }
 
+    /**
+     * Retry initialization when authentication becomes available
+     */
+    async retryInit() {
+        await this.init();
+        return this.isAvailable;
+    }
+
+    /**
+     * Check if authentication is available and retry init if needed
+     */
+    async ensureAuthenticated() {
+        if (this.isAvailable) {
+            return true;
+        }
+
+        // Try to initialize again
+        await this.retryInit();
+        return this.isAvailable;
+    }
+
     async fetch(endpoint, options = {}) {
         const url = `${this.baseUrl}${endpoint}`;
         
