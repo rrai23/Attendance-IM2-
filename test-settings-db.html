@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Settings Database Test</title>
+</head>
+<body>
+    <h1>Settings Database Integration Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        async function testSettings() {
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                // Get auth token
+                const token = localStorage.getItem('auth_token') || localStorage.getItem('auth-token');
+                if (!token) {
+                    resultsDiv.innerHTML = '<p style="color: red;">❌ No auth token found. Please login first.</p>';
+                    return;
+                }
+                
+                resultsDiv.innerHTML = '<p>🔄 Testing settings database integration...</p>';
+                
+                // Test GET settings
+                const getResponse = await fetch('/api/settings', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!getResponse.ok) {
+                    throw new Error(`GET failed: ${getResponse.status} - ${getResponse.statusText}`);
+                }
+                
+                const getData = await getResponse.json();
+                
+                resultsDiv.innerHTML += `
+                    <h3>✅ GET Settings Success:</h3>
+                    <pre>${JSON.stringify(getData, null, 2)}</pre>
+                `;
+                
+                // Test SET settings
+                const testSettings = {
+                    companyName: 'Bricks Company Test',
+                    timezone: 'Asia/Manila',
+                    testSetting: 'Database Integration Test ' + new Date().toISOString()
+                };
+                
+                const setResponse = await fetch('/api/settings', {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ settings: testSettings })
+                });
+                
+                if (!setResponse.ok) {
+                    throw new Error(`PUT failed: ${setResponse.status} - ${setResponse.statusText}`);
+                }
+                
+                const setData = await setResponse.json();
+                
+                resultsDiv.innerHTML += `
+                    <h3>✅ PUT Settings Success:</h3>
+                    <pre>${JSON.stringify(setData, null, 2)}</pre>
+                `;
+                
+                // Verify settings were saved by getting them again
+                const verifyResponse = await fetch('/api/settings', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const verifyData = await verifyResponse.json();
+                
+                resultsDiv.innerHTML += `
+                    <h3>✅ Verification GET Success:</h3>
+                    <pre>${JSON.stringify(verifyData, null, 2)}</pre>
+                `;
+                
+                // Test UnifiedEmployeeManager methods
+                if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.getSettings) {
+                    const managerData = await window.unifiedEmployeeManager.getSettings();
+                    resultsDiv.innerHTML += `
+                        <h3>✅ UnifiedEmployeeManager.getSettings():</h3>
+                        <pre>${JSON.stringify(managerData, null, 2)}</pre>
+                    `;
+                } else {
+                    resultsDiv.innerHTML += '<p style="color: orange;">⚠️ UnifiedEmployeeManager not available or missing getSettings method</p>';
+                }
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `<p style="color: red;">❌ Error: ${error.message}</p>`;
+                console.error('Settings test error:', error);
+            }
+        }
+        
+        // Auto-run test when page loads
+        window.addEventListener('load', testSettings);
+    </script>
+</body>
+</html>

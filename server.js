@@ -3,7 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
-const rateLimit = require('express-rate-limit');
+// const rateLimit = require('express-rate-limit'); // Rate limiting disabled
 const path = require('path');
 require('dotenv').config();
 
@@ -11,7 +11,7 @@ require('dotenv').config();
 const db = require('./backend/database/connection');
 
 // Import middleware
-const customRateLimit = require('./backend/middleware/rateLimit');
+// const customRateLimit = require('./backend/middleware/rateLimit'); // Rate limiting disabled
 
 // Import routes
 const authRoutes = require('./backend/routes/auth');
@@ -25,7 +25,7 @@ const unifiedRoutes = require('./backend/routes/unified');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Trust proxy for rate limiting and proper IP detection
+// Trust proxy - no longer needed for rate limiting but kept for other middleware
 app.set('trust proxy', 1);
 
 // Security middleware
@@ -34,7 +34,7 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net"],
             scriptSrcAttr: ["'self'", "'unsafe-inline'", "'unsafe-hashes'"],
             fontSrc: ["'self'", "https://fonts.gstatic.com", "https://applesocial.s3.amazonaws.com"],
             imgSrc: ["'self'", "data:", "https:", "blob:"],
@@ -47,7 +47,8 @@ app.use(helmet({
 // Compression middleware
 app.use(compression());
 
-// Rate limiting - More permissive for development
+// Rate limiting - DISABLED for better performance
+/*
 const limiter = rateLimit({
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
     max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 500, // Increased for development
@@ -63,10 +64,11 @@ const limiter = rateLimit({
                req.url.includes('/assets/');
     }
 });
+*/
 
-// Apply both rate limiters - custom one for API routes, express one for general protection
-app.use(limiter);
-app.use('/api', customRateLimit);
+// Rate limiters - DISABLED
+// app.use(limiter);
+// app.use('/api', customRateLimit);
 
 // CORS configuration - More permissive for development
 app.use(cors({

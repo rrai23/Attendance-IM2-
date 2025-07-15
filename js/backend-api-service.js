@@ -15,7 +15,7 @@ class BackendApiService {
     async init() {
         try {
             // Check authentication first
-            const authToken = localStorage.getItem('auth_token') || localStorage.getItem('jwt_token');
+            const authToken = localStorage.getItem('auth-token') || localStorage.getItem('auth_token') || localStorage.getItem('jwt_token');
             if (!authToken) {
                 console.log('🔗 Backend API Service: No authentication token - service unavailable');
                 this.isAvailable = false;

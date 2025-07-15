@@ -863,7 +863,7 @@
                         console.log('Using unified employee manager for data loading (EXCLUSIVE MODE)');
                         
                         this.employees = window.unifiedEmployeeManager.getAllEmployees();
-                        this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
+                        this.attendanceData = window.unifiedEmployeeManager.getAttendanceRecords();
                         
                         console.log('Loaded from unified employee manager:', {
                             employees: this.employees.length,
@@ -929,7 +929,7 @@
                             
                             // Refresh data from unified manager ONLY
                             this.employees = window.unifiedEmployeeManager.getAllEmployees();
-                            this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
+                            this.attendanceData = window.unifiedEmployeeManager.getAttendanceRecords();
                             
                             // Ensure attendance records have employee names populated after update
                             this.attendanceData = this.attendanceData.map(record => {
@@ -957,7 +957,7 @@
                             
                             // Force refresh all data from unified manager ONLY
                             this.employees = window.unifiedEmployeeManager.getAllEmployees();
-                            this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
+                            this.attendanceData = window.unifiedEmployeeManager.getAttendanceRecords();
                             
                             // Ensure attendance records have employee names populated after deletion
                             this.attendanceData = this.attendanceData.map(record => {
@@ -1052,7 +1052,7 @@
                         throw new Error('Unified employee manager not available or not initialized. Cannot load attendance data.');
                     }
 
-                    this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
+                    this.attendanceData = window.unifiedEmployeeManager.getAttendanceRecords();
                     this.filteredData = [...this.attendanceData];
                     console.log(`Loaded attendance data from unified employee manager (EXCLUSIVE): ${this.attendanceData.length} records`);
                 } catch (error) {
@@ -1651,7 +1651,7 @@
                     
                     // Refresh data from unified employee manager ONLY
                     this.employees = window.unifiedEmployeeManager.getAllEmployees();
-                    this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
+                    this.attendanceData = window.unifiedEmployeeManager.getAttendanceRecords();
                     
                     // Ensure attendance records have employee names populated
                     this.attendanceData = this.attendanceData.map(record => {
@@ -1888,7 +1888,7 @@
                     
                     // Refresh data from unified employee manager ONLY
                     this.employees = window.unifiedEmployeeManager.getAllEmployees();
-                    this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
+                    this.attendanceData = window.unifiedEmployeeManager.getAttendanceRecords();
 
                     // Ensure attendance records have employee names populated
                     this.attendanceData = this.attendanceData.map(record => {
@@ -1922,7 +1922,7 @@
                     
                     console.log('Refreshing data from unified employee manager (EXCLUSIVE)');
                     this.employees = window.unifiedEmployeeManager.getAllEmployees();
-                    this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
+                    this.attendanceData = window.unifiedEmployeeManager.getAttendanceRecords();
                     
                     // Ensure attendance records have employee names populated
                     this.attendanceData = this.attendanceData.map(record => {
@@ -2006,7 +2006,7 @@
                     }
                     
                     this.employees = window.unifiedEmployeeManager.getAllEmployees();
-                    this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
+                    this.attendanceData = window.unifiedEmployeeManager.getAttendanceRecords();
                     
                     console.log('Force refreshed from unified employee manager (EXCLUSIVE):', {
                         employees: this.employees.length,
@@ -2060,16 +2060,16 @@
                 if (window.unifiedEmployeeManager) {
                     console.log('UnifiedEmployeeManager methods:', {
                         getAllEmployees: typeof window.unifiedEmployeeManager.getAllEmployees,
-                        getAllAttendanceRecords: typeof window.unifiedEmployeeManager.getAllAttendanceRecords,
+                        getAttendanceRecords: typeof window.unifiedEmployeeManager.getAttendanceRecords,
                         saveAttendanceRecord: typeof window.unifiedEmployeeManager.saveAttendanceRecord,
                         updateAttendanceRecord: typeof window.unifiedEmployeeManager.updateAttendanceRecord,
                         saveData: typeof window.unifiedEmployeeManager.saveData,
                         loadData: typeof window.unifiedEmployeeManager.loadData
                     });
                     
-                    if (window.unifiedEmployeeManager.getAllAttendanceRecords) {
+                    if (window.unifiedEmployeeManager.getAttendanceRecords) {
                         try {
-                            const currentRecords = window.unifiedEmployeeManager.getAllAttendanceRecords();
+                            const currentRecords = window.unifiedEmployeeManager.getAttendanceRecords();
                             console.log('UnifiedEmployeeManager attendance records count:', currentRecords.length);
                         } catch (error) {
                             console.error('Error getting records from UnifiedEmployeeManager:', error);
@@ -2301,7 +2301,7 @@
                     }
                     
                     // Refresh local data
-                    this.attendanceData = window.unifiedEmployeeManager.getAllAttendanceRecords();
+                    this.attendanceData = window.unifiedEmployeeManager.getAttendanceRecords();
                     this.applyFilters();
                     this.updateStats();
                     this.renderTable();
@@ -2326,6 +2326,29 @@
             try {
                 console.log('Initializing employee management page with unified data service...');
                 
+                // ⚠️ AUTHENTICATION CHECK FIRST
+                // Wait for auth service to be available
+                let authCheckAttempts = 0;
+                while (!window.authService && authCheckAttempts < 50) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    authCheckAttempts++;
+                }
+                
+                if (!window.authService) {
+                    console.warn('AuthService not available, redirecting to login...');
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
+                // Check if user is authenticated
+                if (!window.authService.isAuthenticated()) {
+                    console.log('User not authenticated, redirecting to login...');
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
+                console.log('✅ User authenticated, proceeding with initialization...');
+                
                 // Wait for unified data service to be available
                 const maxWaitTime = 15000; // Increased to 15 seconds
                 const checkInterval = 100; // Check every 100ms
@@ -2340,13 +2363,19 @@
                         console.log('Found initialized window.dataManager');
                         break;
                     } else if (window.unifiedEmployeeManager) {
-                        console.log('Found uninitialized window.unifiedEmployeeManager, waiting for initialization...');
+                        console.log('Found uninitialized window.unifiedEmployeeManager, attempting initialization...');
                         try {
                             await window.unifiedEmployeeManager.init();
                             console.log('Successfully initialized unifiedEmployeeManager');
                             break;
                         } catch (initError) {
                             console.warn('Failed to initialize unifiedEmployeeManager:', initError);
+                            // If authentication is the issue, redirect to login
+                            if (initError.message.includes('authentication') || initError.message.includes('auth')) {
+                                console.log('Authentication error detected, redirecting to login...');
+                                window.location.href = '/login.html';
+                                return;
+                            }
                         }
                     } else if (window.dataManager) {
                         console.log('Found uninitialized window.dataManager, waiting for initialization...');

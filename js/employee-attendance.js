@@ -141,7 +141,7 @@ class EmployeeAttendanceManager {
             console.log('Loading attendance records from unified data service...');
             
             // Get all attendance records from unified data service
-            const records = this.unifiedManager.getAllAttendanceRecords();
+            const records = this.unifiedManager.getAttendanceRecords();
             
             // Transform data to match the expected format for this module
             this.attendanceRecords = records.map(record => ({
@@ -164,184 +164,41 @@ class EmployeeAttendanceManager {
             return this.attendanceRecords;
         } catch (error) {
             console.error('Error loading attendance records:', error);
-            // Fallback to generating sample data if loading fails
-            console.warn('Generating sample attendance data as fallback');
-            this.attendanceRecords = this.generateSampleAttendance();
-            console.log(`Generated ${this.attendanceRecords.length} sample attendance records`);
-            return this.attendanceRecords;
+            throw error;
         }
     }
 
     /**
-     * Generate sample attendance data
-     */
-    generateSampleAttendance() {
-        const records = [];
-        const today = new Date();
-        const currentWeekStart = new Date(today);
-        currentWeekStart.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
-
-        // Generate records for the past 7 days
-        for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
-            const date = new Date(currentWeekStart);
-            date.setDate(currentWeekStart.getDate() + dayOffset);
-            const dateString = date.toISOString().split('T')[0];
-
-            this.employees.forEach((employee, empIndex) => {
-                // Skip weekends for most employees
-                if (date.getDay() === 0 || date.getDay() === 6) {
-                    return; // Skip Sunday and Saturday
-                }
-
-                // Randomly generate attendance scenarios
-                const scenarios = [
-                    { status: 'present', probability: 0.7 },
-                    { status: 'late', probability: 0.15 },
-                    { status: 'absent', probability: 0.1 },
-                    { status: 'overtime', probability: 0.05 }
-                ];
-
-                const randomValue = Math.random();
-                let cumulativeProbability = 0;
-                let selectedStatus = 'present';
-
-                for (const scenario of scenarios) {
-                    cumulativeProbability += scenario.probability;
-                    if (randomValue <= cumulativeProbability) {
-                        selectedStatus = scenario.status;
-                        break;
-                    }
-                }
-
-                // Generate times based on status
-                let clockIn = null;
-                let clockOut = null;
-                let hours = 0;
-
-                if (selectedStatus !== 'absent') {
-                    const schedule = employee.schedule[this.getDayName(date.getDay())];
-                    if (schedule) {
-                        // Generate clock-in time
-                        const baseClockIn = new Date(`2000-01-01T${schedule.start}`);
-                        let clockInVariation = 0;
-
-                        if (selectedStatus === 'late') {
-                            clockInVariation = Math.random() * 60 + 15; // 15-75 minutes late
-                        } else {
-                            clockInVariation = (Math.random() - 0.5) * 30; // ±15 minutes variation
-                        }
-
-                        baseClockIn.setMinutes(baseClockIn.getMinutes() + clockInVariation);
-                        clockIn = baseClockIn.toTimeString().substring(0, 5);
-
-                        // Generate clock-out time
-                        const baseClockOut = new Date(`2000-01-01T${schedule.end}`);
-                        let clockOutVariation = 0;
-
-                        if (selectedStatus === 'overtime') {
-                            clockOutVariation = Math.random() * 120 + 60; // 1-3 hours overtime
-                        } else {
-                            clockOutVariation = (Math.random() - 0.5) * 30; // ±15 minutes variation
-                        }
-
-                        baseClockOut.setMinutes(baseClockOut.getMinutes() + clockOutVariation);
-                        clockOut = baseClockOut.toTimeString().substring(0, 5);
-
-                        // Calculate hours
-                        hours = this.calculateWorkHours(clockIn, clockOut);
-                    }
-                }
-
-                const record = {
-                    id: `${employee.id}-${dateString}`,
-                    employeeId: employee.id,
-                    employeeName: employee.name,
-                    employeeCode: employee.employeeId,
-                    department: employee.department,
-                    date: dateString,
-                    clockIn: clockIn,
-                    clockOut: clockOut,
-                    status: selectedStatus,
-                    hours: hours,
-                    overtimeHours: Math.max(0, hours - this.workSettings.standardHours),
-                    notes: this.generateNotes(selectedStatus),
-                    lastModified: new Date().toISOString(),
-                    modifiedBy: 'System'
-                };
-
-                records.push(record);
-            });
-        }
-
-        return records.sort((a, b) => new Date(b.date) - new Date(a.date));
-    }
-
-    /**
-     * Get day name from day number
-     */
-    getDayName(dayNumber) {
-        const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-        return days[dayNumber];
-    }
-
-    /**
-     * Calculate work hours between clock in and clock out
+     * Calculate work hours between clock in and clock out (returns numeric value)
      */
     calculateWorkHours(clockIn, clockOut) {
         if (!clockIn || !clockOut) return 0;
 
-        const start = new Date(`2000-01-01T${clockIn}`);
-        const end = new Date(`2000-01-01T${clockOut}`);
-        
-        // Handle cases where clock out is next day
-        if (end < start) {
-            end.setDate(end.getDate() + 1);
-        }
-
-        const diffMs = end - start;
-        const diffHours = diffMs / (1000 * 60 * 60);
-        
-        return Math.round(diffHours * 100) / 100; // Round to 2 decimal places
-    }
-
-    /**
-     * Calculate hours worked between clock in and clock out times
-     */
-    calculateHours(clockIn, clockOut) {
-        if (!clockIn || !clockOut) {
-            return '0.0h';
-        }
-
         try {
             const start = new Date(`2000-01-01T${clockIn}`);
             const end = new Date(`2000-01-01T${clockOut}`);
-            const diffMs = end - start;
             
-            if (diffMs < 0) {
-                return '0.0h'; // Handle cases where clock out is before clock in
+            // Handle cases where clock out is next day
+            if (end < start) {
+                end.setDate(end.getDate() + 1);
             }
+
+            const diffMs = end - start;
+            const diffHours = diffMs / (1000 * 60 * 60);
             
-            const hours = diffMs / (1000 * 60 * 60);
-            return `${hours.toFixed(1)}h`;
+            return Math.round(diffHours * 100) / 100; // Round to 2 decimal places
         } catch (error) {
-            console.error('Error calculating hours:', error);
-            return '0.0h';
+            console.error('Error calculating work hours:', error);
+            return 0;
         }
     }
 
     /**
-     * Generate appropriate notes based on status
+     * Calculate hours worked between clock in and clock out times (returns formatted string)
      */
-    generateNotes(status) {
-        const noteOptions = {
-            present: ['', '', '', 'On time'],
-            late: ['Traffic delay', 'Public transport delay', 'Personal emergency', 'Overslept'],
-            absent: ['Sick leave', 'Family emergency', 'Medical appointment', 'Personal leave'],
-            overtime: ['Project deadline', 'Client meeting', 'System maintenance', 'Urgent task']
-        };
-
-        const options = noteOptions[status] || [''];
-        return options[Math.floor(Math.random() * options.length)];
+    calculateHours(clockIn, clockOut) {
+        const hours = this.calculateWorkHours(clockIn, clockOut);
+        return `${hours.toFixed(1)}h`;
     }
 
     /**

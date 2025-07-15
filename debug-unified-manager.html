@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug UnifiedEmployeeManager</title>
+</head>
+<body>
+    <h1>UnifiedEmployeeManager Debug</h1>
+    <div id="debug-info"></div>
+    
+    <script>
+        function updateDebugInfo() {
+            const debugDiv = document.getElementById('debug-info');
+            const info = {
+                'window.unifiedEmployeeManager exists': !!window.unifiedEmployeeManager,
+                'window.unifiedEmployeeManager.initialized': window.unifiedEmployeeManager?.initialized,
+                'window.backendApiService exists': !!window.backendApiService,
+                'Current token': localStorage.getItem('authToken') ? 'exists' : 'missing',
+                'Console logs count': 'Check console for initialization logs'
+            };
+            
+            debugDiv.innerHTML = '<pre>' + JSON.stringify(info, null, 2) + '</pre>';
+            
+            // Also log to console
+            console.log('Debug Info:', info);
+            
+            // Try to initialize if not already done
+            if (window.unifiedEmployeeManager && !window.unifiedEmployeeManager.initialized) {
+                console.log('Attempting to initialize UnifiedEmployeeManager...');
+                window.unifiedEmployeeManager.init()
+                    .then(() => {
+                        console.log('Initialization successful!');
+                        updateDebugInfo();
+                    })
+                    .catch(error => {
+                        console.error('Initialization failed:', error);
+                        updateDebugInfo();
+                    });
+            }
+        }
+        
+        // Update info every 2 seconds
+        setInterval(updateDebugInfo, 2000);
+        updateDebugInfo();
+    </script>
+    
+    <!-- Load the same scripts as other pages -->
+    <script src="js/auth.js"></script>
+    <script src="js/backend-api-service.js"></script>
+    <script src="js/unified-employee-manager.js"></script>
+    <script src="js/global-system-sync.js"></script>
+</body>
+</html>

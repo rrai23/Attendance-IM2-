@@ -549,12 +549,12 @@ class AnalyticsController {
             
             if (this.filters.employeeId) {
                 // Filter by specific employee
-                attendanceRecords = this.unifiedManager.getAttendanceRecords({
-                    employeeId: this.filters.employeeId
-                });
+                attendanceRecords = this.unifiedManager.getAttendanceRecords().filter(
+                    record => record.employeeId == this.filters.employeeId
+                );
             } else {
                 // Get all attendance records
-                attendanceRecords = this.unifiedManager.getAllAttendanceRecords();
+                attendanceRecords = this.unifiedManager.getAttendanceRecords();
             }
             
             // Apply date filtering if specified

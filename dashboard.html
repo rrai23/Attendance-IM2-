@@ -483,7 +483,7 @@
                                     </div>
                                     <div class="countdown-amount" id="countdown-amount-container" style="display: none;">
                                         <span class="detail-label">Est. Amount:</span>
-                                        <span class="detail-value" id="payday-amount">₱0</span>
+                                        <span class="detail-value" id="payday-amount">-</span>
                                     </div>
                                 </div>
                                 <div class="countdown-progress">
@@ -1758,11 +1758,11 @@
                         window.sidebarManager = new SidebarManager();
                     }
                     
-                    // Create a fallback dashboard controller that doesn't use charts
+                    // STRICT BACKEND ONLY - NO fallback dashboard controller
                     if (typeof DashboardController !== 'undefined') {
                         window.dashboardController = new DashboardController();
                     } else {
-                        console.error('DashboardController not found');
+                        throw new Error('DashboardController not found - backend components required');
                     }
                     
                     // Hide chart containers and show fallback
@@ -1979,40 +1979,48 @@
 
                 // Save handler
                 if (saveBtn) {
-                    saveBtn.onclick = () => {
-                        const dateKey = modal.dataset.currentDate;
-                        const content = document.getElementById('noteContent')?.value.trim() || '';
-                        
-                        if (window.dashboardController?.calendar) {
-                            window.dashboardController.calendar.saveNote(dateKey, content);
-                        } else {
-                            // Fallback: save to localStorage directly
-                            const notes = JSON.parse(localStorage.getItem('calendar-notes') || '{}');
-                            if (content) {
-                                notes[dateKey] = content;
+                    saveBtn.onclick = async () => {
+                        try {
+                            const dateKey = modal.dataset.currentDate;
+                            const content = document.getElementById('noteContent')?.value.trim() || '';
+                            
+                            if (window.dashboardController?.calendar) {
+                                await window.dashboardController.calendar.saveNote(dateKey, content);
                             } else {
-                                delete notes[dateKey];
+                                // STRICT BACKEND ONLY - NO localStorage fallback
+                                if (!window.calendarManager || !window.calendarManager.saveNote) {
+                                    throw new Error('Calendar manager not available - backend connection required');
+                                }
+                                await window.calendarManager.saveNote(dateKey, content);
                             }
-                            localStorage.setItem('calendar-notes', JSON.stringify(notes));
+                            closeModal();
+                        } catch (error) {
+                            console.error('Failed to save note:', error);
+                            alert('Failed to save note: ' + error.message);
                         }
-                        closeModal();
                     };
                 }
 
                 // Delete handler
                 if (deleteBtn) {
-                    deleteBtn.onclick = () => {
-                        const dateKey = modal.dataset.currentDate;
-                        
-                        if (window.dashboardController?.calendar) {
-                            window.dashboardController.calendar.deleteNote(dateKey);
-                        } else {
-                            // Fallback: delete from localStorage directly
-                            const notes = JSON.parse(localStorage.getItem('calendar-notes') || '{}');
-                            delete notes[dateKey];
-                            localStorage.setItem('calendar-notes', JSON.stringify(notes));
+                    deleteBtn.onclick = async () => {
+                        try {
+                            const dateKey = modal.dataset.currentDate;
+                            
+                            if (window.dashboardController?.calendar) {
+                                await window.dashboardController.calendar.deleteNote(dateKey);
+                            } else {
+                                // STRICT BACKEND ONLY - NO localStorage fallback
+                                if (!window.calendarManager || !window.calendarManager.deleteNote) {
+                                    throw new Error('Calendar manager not available - backend connection required');
+                                }
+                                await window.calendarManager.deleteNote(dateKey);
+                            }
+                            closeModal();
+                        } catch (error) {
+                            console.error('Failed to delete note:', error);
+                            alert('Failed to delete note: ' + error.message);
                         }
-                        closeModal();
                     };
                 }
 

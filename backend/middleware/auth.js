@@ -13,8 +13,10 @@ const auth = async (req, res, next) => {
         });
 
         const authHeader = req.headers.authorization;
+        console.log('🔍 Auth header received:', authHeader ? authHeader.substring(0, 20) + '...' : 'None');
         
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            console.log('❌ Invalid auth header format');
             return res.status(401).json({
                 success: false,
                 message: 'Access denied. No token provided.'
@@ -22,7 +24,7 @@ const auth = async (req, res, next) => {
         }
 
         const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-        console.log('🎫 Token extracted:', token.substring(0, 20) + '...');
+        console.log('🎫 Token extracted:', token ? token.substring(0, 20) + '...' : 'undefined/empty');
 
         // Verify JWT token
         const decoded = jwt.verify(token, JWT_SECRET);

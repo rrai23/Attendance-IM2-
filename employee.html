@@ -2841,7 +2841,7 @@
                     console.log('Loading employee data from unified employee manager...');
                     
                     // Get all attendance records and filter for this employee
-                    const allAttendanceRecords = window.unifiedEmployeeManager.getAllAttendanceRecords();
+                    const allAttendanceRecords = window.unifiedEmployeeManager.getAttendanceRecords();
                     this.attendanceData = allAttendanceRecords.filter(record => record.employeeId == this.employeeId);
                     
                     // If no data available, add some sample data for demonstration

@@ -7,7 +7,7 @@ const { auth, requireAdmin } = require('../middleware/auth');
 router.get('/', auth, async (req, res) => {
     try {
         const settings = await db.execute(
-            'SELECT setting_key, setting_value, description FROM system_settings WHERE is_active = TRUE ORDER BY setting_key'
+            'SELECT setting_key, setting_value, description FROM system_settings ORDER BY setting_key'
         );
 
         // Convert to object format
@@ -41,7 +41,7 @@ router.get('/:key', auth, async (req, res) => {
         const { key } = req.params;
 
         const settings = await db.execute(
-            'SELECT setting_key, setting_value, description FROM system_settings WHERE setting_key = ? AND is_active = TRUE',
+            'SELECT setting_key, setting_value, description FROM system_settings WHERE setting_key = ?',
             [key]
         );
 
@@ -79,7 +79,7 @@ router.get('/:key', auth, async (req, res) => {
 });
 
 // Update system settings (admin only)
-router.put('/', requireAdmin, async (req, res) => {
+router.put('/', auth, requireAdmin, async (req, res) => {
     try {
         const { settings } = req.body;
 
@@ -117,8 +117,8 @@ router.put('/', requireAdmin, async (req, res) => {
                     } else {
                         // Create new setting
                         await db.execute(`
-                            INSERT INTO system_settings (setting_key, setting_value, is_active, created_at, updated_at)
-                            VALUES (?, ?, TRUE, NOW(), NOW())
+                            INSERT INTO system_settings (setting_key, setting_value, created_at, updated_at)
+                            VALUES (?, ?, NOW(), NOW())
                         `, [key, jsonValue]);
                     }
 
@@ -156,7 +156,7 @@ router.put('/', requireAdmin, async (req, res) => {
 });
 
 // Update single setting (admin only)
-router.put('/:key', requireAdmin, async (req, res) => {
+router.put('/:key', auth, requireAdmin, async (req, res) => {
     try {
         const { key } = req.params;
         const { value, description } = req.body;
@@ -196,8 +196,8 @@ router.put('/:key', requireAdmin, async (req, res) => {
         } else {
             // Create new setting
             await db.execute(`
-                INSERT INTO system_settings (setting_key, setting_value, description, is_active, created_at, updated_at)
-                VALUES (?, ?, ?, TRUE, NOW(), NOW())
+                INSERT INTO system_settings (setting_key, setting_value, description, created_at, updated_at)
+                VALUES (?, ?, ?, NOW(), NOW())
             `, [key, jsonValue, description || null]);
         }
 

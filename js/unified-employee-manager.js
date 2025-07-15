@@ -1,6 +1,6 @@
 /**
- * Unified Employee Manager - Authentication Required Version
- * This version requires backend authentication and provides NO fallbacks
+ * Unified Employee Manager - Strict Backend Only Version
+ * This version ONLY works with backend authentication - NO fallbacks, NO defaults, NO localStorage
  */
 
 class UnifiedEmployeeManager {
@@ -102,17 +102,17 @@ class UnifiedEmployeeManager {
     }
 
     async loadData() {
-        // ⚠️ AUTHENTICATION REQUIRED - NO FALLBACKS
-        // This system requires valid backend authentication to function
+        // ⚠️ STRICT BACKEND ONLY - NO FALLBACKS, NO DEFAULTS, NO LOCALSTORAGE
+        // This system ONLY works with valid backend authentication
         
         try {
             // Check if backend API service is available
             if (!window.backendApiService || !window.backendApiService.isAvailable) {
-                throw new Error('Backend API service not available - authentication required');
+                throw new Error('Backend API service not available - system requires backend connection');
             }
 
             // Check if user is authenticated
-            const authToken = localStorage.getItem('auth_token') || localStorage.getItem('jwt_token');
+            const authToken = localStorage.getItem('auth_token');
             if (!authToken) {
                 throw new Error('No authentication token found - user must be logged in');
             }
@@ -140,37 +140,29 @@ class UnifiedEmployeeManager {
             return;
             
         } catch (error) {
-            console.error('❌ Authentication failed or backend unavailable:', error.message);
+            console.error('❌ Backend authentication failed or unavailable:', error.message);
             
             // Clear any existing data to prevent unauthorized access
             this.employees = [];
             this.attendanceRecords = [];
-            
-            // Clear localStorage to prevent cached data access
-            localStorage.removeItem('bricks-unified-employee-data');
-            localStorage.removeItem('employees');
-            localStorage.removeItem('attendanceRecords');
             
             // Re-throw the error to fail initialization
             throw new Error(`System initialization failed: ${error.message}`);
         }
     }
 
-    /**
-     * Save data - only to backend with authentication
-     */
     async saveData() {
         try {
             if (!window.backendApiService || !window.backendApiService.isAvailable) {
                 throw new Error('Backend not available - cannot save data');
             }
 
-            const authToken = localStorage.getItem('auth_token') || localStorage.getItem('jwt_token');
+            const authToken = localStorage.getItem('auth_token');
             if (!authToken) {
                 throw new Error('No authentication token - cannot save data');
             }
 
-            // Sync to backend
+            // Sync to backend - ONLY option
             const result = await this.syncToBackend();
             if (!result.success) {
                 throw new Error(`Backend save failed: ${result.message}`);
@@ -184,17 +176,37 @@ class UnifiedEmployeeManager {
         }
     }
 
-    // Employee Management Methods
+    // Employee Management Methods - BACKEND DATA ONLY
     getEmployees() {
+        if (!this.initialized) {
+            throw new Error('System not initialized - backend connection required');
+        }
+        
+        if (!this.employees) {
+            throw new Error('No employee data available from backend');
+        }
+        
         return this.employees;
     }
 
     getEmployeeById(id) {
+        if (!this.initialized) {
+            throw new Error('System not initialized - backend connection required');
+        }
+        
+        if (!this.employees) {
+            throw new Error('No employee data available from backend');
+        }
+        
         return this.employees.find(emp => emp.id == id);
     }
 
     async addEmployee(employeeData) {
         try {
+            if (!this.initialized) {
+                throw new Error('System not initialized - backend connection required');
+            }
+
             // Generate ID if not provided
             if (!employeeData.id) {
                 employeeData.id = Math.max(...this.employees.map(e => e.id), 0) + 1;
@@ -203,7 +215,7 @@ class UnifiedEmployeeManager {
             // Add to local array
             this.employees.push(employeeData);
             
-            // Save to backend
+            // Save to backend - REQUIRED
             await this.saveData();
             
             this.emit('employeeUpdate', { action: 'add', employee: employeeData });
@@ -217,6 +229,10 @@ class UnifiedEmployeeManager {
 
     async updateEmployee(id, updateData) {
         try {
+            if (!this.initialized) {
+                throw new Error('System not initialized - backend connection required');
+            }
+
             const index = this.employees.findIndex(emp => emp.id == id);
             if (index === -1) {
                 throw new Error('Employee not found');
@@ -225,7 +241,7 @@ class UnifiedEmployeeManager {
             // Update local data
             this.employees[index] = { ...this.employees[index], ...updateData };
             
-            // Save to backend
+            // Save to backend - REQUIRED
             await this.saveData();
             
             this.emit('employeeUpdate', { action: 'update', employee: this.employees[index] });
@@ -239,6 +255,10 @@ class UnifiedEmployeeManager {
 
     async deleteEmployee(id) {
         try {
+            if (!this.initialized) {
+                throw new Error('System not initialized - backend connection required');
+            }
+
             const index = this.employees.findIndex(emp => emp.id == id);
             if (index === -1) {
                 throw new Error('Employee not found');
@@ -252,7 +272,7 @@ class UnifiedEmployeeManager {
             // Remove related attendance records
             this.attendanceRecords = this.attendanceRecords.filter(record => record.employeeId != id);
             
-            // Save to backend
+            // Save to backend - REQUIRED
             await this.saveData();
             
             this.emit('employeeUpdate', { action: 'delete', employee });
@@ -264,21 +284,49 @@ class UnifiedEmployeeManager {
         }
     }
 
-    // Attendance Management Methods
+    // Attendance Management Methods - BACKEND DATA ONLY
     getAttendanceRecords() {
+        if (!this.initialized) {
+            throw new Error('System not initialized - backend connection required');
+        }
+        
+        if (!this.attendanceRecords) {
+            throw new Error('No attendance data available from backend');
+        }
+        
         return this.attendanceRecords;
     }
 
     getAttendanceByDate(date) {
+        if (!this.initialized) {
+            throw new Error('System not initialized - backend connection required');
+        }
+        
+        if (!this.attendanceRecords) {
+            throw new Error('No attendance data available from backend');
+        }
+        
         return this.attendanceRecords.filter(record => record.date === date);
     }
 
     getAttendanceByEmployee(employeeId) {
+        if (!this.initialized) {
+            throw new Error('System not initialized - backend connection required');
+        }
+        
+        if (!this.attendanceRecords) {
+            throw new Error('No attendance data available from backend');
+        }
+        
         return this.attendanceRecords.filter(record => record.employeeId == employeeId);
     }
 
     async addAttendanceRecord(recordData) {
         try {
+            if (!this.initialized) {
+                throw new Error('System not initialized - backend connection required');
+            }
+
             // Generate ID if not provided
             if (!recordData.id) {
                 recordData.id = `att_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -287,7 +335,7 @@ class UnifiedEmployeeManager {
             // Add to local array
             this.attendanceRecords.push(recordData);
             
-            // Save to backend
+            // Save to backend - REQUIRED
             await this.saveData();
             
             this.emit('attendanceUpdate', { action: 'add', record: recordData });
@@ -301,6 +349,10 @@ class UnifiedEmployeeManager {
 
     async updateAttendanceRecord(id, updateData) {
         try {
+            if (!this.initialized) {
+                throw new Error('System not initialized - backend connection required');
+            }
+
             const index = this.attendanceRecords.findIndex(record => record.id === id);
             if (index === -1) {
                 throw new Error('Attendance record not found');
@@ -309,7 +361,7 @@ class UnifiedEmployeeManager {
             // Update local data
             this.attendanceRecords[index] = { ...this.attendanceRecords[index], ...updateData };
             
-            // Save to backend
+            // Save to backend - REQUIRED
             await this.saveData();
             
             this.emit('attendanceUpdate', { action: 'update', record: this.attendanceRecords[index] });
@@ -318,6 +370,101 @@ class UnifiedEmployeeManager {
         } catch (error) {
             console.error('Failed to update attendance record:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Get attendance statistics for a specific date - BACKEND DATA ONLY
+     * @param {string} date - Required date (YYYY-MM-DD)
+     * @returns {Object} Attendance statistics from backend data only
+     */
+    getAttendanceStats(date) {
+        try {
+            if (!this.initialized) {
+                throw new Error('System not initialized - backend connection required');
+            }
+
+            if (!date) {
+                throw new Error('Date parameter is required');
+            }
+
+            const employees = this.employees;
+            if (!employees || employees.length === 0) {
+                throw new Error('No employee data available from backend');
+            }
+
+            const employeeCount = employees.filter(emp => emp.status === 'active').length;
+            if (employeeCount === 0) {
+                throw new Error('No active employees found in backend data');
+            }
+            
+            // Filter attendance records for the target date
+            const attendanceRecords = this.attendanceRecords;
+            if (!attendanceRecords) {
+                throw new Error('No attendance data available from backend');
+            }
+
+            const records = attendanceRecords.filter(record => record && record.date === date);
+            
+            // Calculate attendance statistics - backend data only
+            const present = records.filter(record => 
+                record.status === 'present'
+            ).length;
+            
+            const late = records.filter(record => 
+                record.status === 'late'
+            ).length;
+            
+            const absent = employeeCount - present - late;
+            const attendanceRate = Math.round(((present + late) / employeeCount) * 100);
+            
+            // Calculate weekly trend (last 7 days) - backend data only
+            const weeklyTrend = [];
+            for (let i = 6; i >= 0; i--) {
+                const trendDate = new Date();
+                trendDate.setDate(trendDate.getDate() - i);
+                const dateStr = trendDate.toISOString().split('T')[0];
+                
+                const dayRecords = attendanceRecords.filter(record => record && record.date === dateStr);
+                const dayPresent = dayRecords.filter(record => 
+                    record.status === 'present'
+                ).length;
+                const dayLate = dayRecords.filter(record => 
+                    record.status === 'late'
+                ).length;
+                
+                const dayRate = Math.round(((dayPresent + dayLate) / employeeCount) * 100);
+                weeklyTrend.push(dayRate);
+            }
+            
+            return {
+                date: date,
+                totalEmployees: employeeCount,
+                present: present,
+                absent: absent,
+                late: late,
+                presentPercentage: attendanceRate,
+                presentToday: present,
+                absentToday: absent,
+                tardyToday: late,
+                attendanceRate: attendanceRate,
+                tardyRate: Math.round((late / employeeCount) * 100),
+                weeklyTrend,
+                lastUpdated: new Date().toISOString(),
+                today: {
+                    total: employeeCount,
+                    present: present,
+                    late: late,
+                    absent: absent,
+                    attendanceRate: attendanceRate
+                },
+                records: records,
+                dataFullyLoaded: true
+            };
+        } catch (error) {
+            console.error('❌ Error calculating attendance stats:', error);
+            // Re-throw error instead of returning default values
+            throw new Error(`Failed to calculate attendance statistics: ${error.message}`);
         }
     }
 
@@ -351,22 +498,40 @@ class UnifiedEmployeeManager {
         }
     }
 
-    // Utility Methods
+    // Utility Methods - BACKEND DATA ONLY
     calculateHours(clockIn, clockOut) {
-        if (!clockIn || !clockOut) return 0;
+        if (!clockIn || !clockOut) {
+            throw new Error('Both clock in and clock out times are required');
+        }
         
         const start = new Date(clockIn);
         const end = new Date(clockOut);
-        const diffMs = end - start;
-        const hours = diffMs / (1000 * 60 * 60);
         
-        return Math.max(0, Math.round(hours * 100) / 100);
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+            throw new Error('Invalid date format for clock times');
+        }
+        
+        const diffMs = end - start;
+        if (diffMs < 0) {
+            throw new Error('Clock out time cannot be before clock in time');
+        }
+        
+        const hours = diffMs / (1000 * 60 * 60);
+        return Math.round(hours * 100) / 100;
     }
 
-    // Statistics Methods
+    // Statistics Methods - BACKEND DATA ONLY
     getTodayAttendanceStats() {
+        if (!this.initialized) {
+            throw new Error('System not initialized - backend connection required');
+        }
+
         const today = new Date().toISOString().split('T')[0];
         const todayRecords = this.getAttendanceByDate(today);
+        
+        if (!this.employees || this.employees.length === 0) {
+            throw new Error('No employee data available from backend');
+        }
         
         const present = todayRecords.filter(r => r.status === 'present' || r.status === 'late').length;
         const absent = this.employees.length - present;
@@ -382,6 +547,14 @@ class UnifiedEmployeeManager {
     }
 
     getEmployeeCount() {
+        if (!this.initialized) {
+            throw new Error('System not initialized - backend connection required');
+        }
+        
+        if (!this.employees) {
+            throw new Error('No employee data available from backend');
+        }
+        
         return this.employees.length;
     }
 
@@ -407,9 +580,120 @@ class UnifiedEmployeeManager {
             return false;
         }
     }
+
+    // Settings Management Methods - BACKEND ONLY
+    async getSettings() {
+        try {
+            if (!window.backendApiService || !window.backendApiService.isAvailable) {
+                throw new Error('Backend API service not available - settings require backend connection');
+            }
+
+            const authToken = localStorage.getItem('auth_token');
+            if (!authToken) {
+                throw new Error('Authentication required - no token available');
+            }
+
+            const result = await fetch('/api/settings', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!result.ok) {
+                throw new Error(`HTTP ${result.status}: ${result.statusText}`);
+            }
+
+            const data = await result.json();
+            console.log('✅ Settings loaded from database:', data);
+            
+            // Map database keys to frontend expected keys - NO defaults or fallbacks
+            const dbSettings = data.data?.settings;
+            if (!dbSettings) {
+                throw new Error('No settings data received from backend');
+            }
+
+            const mappedSettings = {
+                // Map snake_case database keys to camelCase frontend keys - NO defaults
+                companyName: dbSettings.company_name || dbSettings.companyName,
+                timezone: dbSettings.timezone,
+                dateFormat: dbSettings.dateFormat,
+                timeFormat: dbSettings.timeFormat,
+                currency: dbSettings.currency,
+                currencySymbol: dbSettings.currency_symbol || dbSettings.currencySymbol,
+                // Include all other settings as-is
+                ...dbSettings
+            };
+            
+            return {
+                success: true,
+                data: mappedSettings
+            };
+
+        } catch (error) {
+            console.error('❌ Failed to load settings from database:', error);
+            throw new Error(`Settings unavailable: ${error.message}`);
+        }
+    }
+
+    async saveSettings(settings) {
+        try {
+            console.log('💾 Saving settings to database:', settings);
+
+            if (!window.backendApiService || !window.backendApiService.isAvailable) {
+                throw new Error('Backend API service not available - settings require backend connection');
+            }
+
+            const authToken = localStorage.getItem('auth_token');
+            if (!authToken) {
+                throw new Error('Authentication required - no token available');
+            }
+
+            // Map frontend camelCase keys to database snake_case keys
+            const dbSettings = {
+                ...settings,
+                // Map camelCase frontend keys to snake_case database keys
+                company_name: settings.companyName || settings.company_name,
+                currency_symbol: settings.currencySymbol || settings.currency_symbol,
+                // Remove the camelCase versions to avoid duplication
+                companyName: undefined,
+                currencySymbol: undefined
+            };
+            
+            // Clean up undefined values
+            Object.keys(dbSettings).forEach(key => {
+                if (dbSettings[key] === undefined) {
+                    delete dbSettings[key];
+                }
+            });
+
+            const result = await fetch('/api/settings', {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ settings: dbSettings })
+            });
+
+            if (!result.ok) {
+                throw new Error(`HTTP ${result.status}: ${result.statusText}`);
+            }
+
+            const data = await result.json();
+            console.log('✅ Settings saved to database successfully:', data);
+            
+            return { success: true, data };
+
+        } catch (error) {
+            console.error('❌ Failed to save settings to database:', error);
+            throw new Error(`Settings save failed: ${error.message}`);
+        }
+    }
 }
 
-// Global instance creation with authentication requirement
+// Global instance creation - STRICT BACKEND ONLY
 if (typeof window !== 'undefined') {
     // Initialize global instance
     window.unifiedEmployeeManager = new UnifiedEmployeeManager();
@@ -446,37 +730,30 @@ if (typeof window !== 'undefined') {
                 await window.unifiedEmployeeManager.init();
                 console.log('✅ Global UnifiedEmployeeManager initialized successfully');
             } catch (error) {
-                console.warn('⚠️ UnifiedEmployeeManager initialization deferred:', error.message);
+                console.error('❌ UnifiedEmployeeManager initialization failed:', error.message);
                 
-                // Don't show intrusive error messages for authentication issues
-                // The user can log in and the system will retry initialization
-                if (error.message.includes('authentication') || error.message.includes('Backend API service not available')) {
-                    console.log('💡 System requires authentication - UnifiedEmployeeManager will initialize after login');
-                } else {
-                    console.error('❌ Unexpected initialization error:', error.message);
-                    // Only show error for unexpected issues, not auth requirements
-                    if (document.body && shouldAutoInit() && !error.message.includes('authentication')) {
-                        const errorDiv = document.createElement('div');
-                        errorDiv.style.cssText = `
-                            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-                            background: #ff4444; color: white; padding: 15px 25px;
-                            border-radius: 5px; z-index: 10000; font-family: Arial, sans-serif;
-                            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                        `;
-                        errorDiv.innerHTML = `
-                            <strong>System Error</strong><br>
-                            ${error.message}<br>
-                            <small>Please refresh the page or contact support</small>
-                        `;
-                        document.body.appendChild(errorDiv);
-                        
-                        // Auto-remove error after 10 seconds
-                        setTimeout(() => {
-                            if (errorDiv.parentNode) {
-                                errorDiv.parentNode.removeChild(errorDiv);
-                            }
-                        }, 10000);
-                    }
+                // Show error for ALL failures - no hiding authentication issues
+                if (document.body && shouldAutoInit()) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.style.cssText = `
+                        position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+                        background: #ff4444; color: white; padding: 15px 25px;
+                        border-radius: 5px; z-index: 10000; font-family: Arial, sans-serif;
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                    `;
+                    errorDiv.innerHTML = `
+                        <strong>System Error</strong><br>
+                        ${error.message}<br>
+                        <small>Backend connection required - please ensure proper authentication</small>
+                    `;
+                    document.body.appendChild(errorDiv);
+                    
+                    // Auto-remove error after 8 seconds
+                    setTimeout(() => {
+                        if (errorDiv.parentNode) {
+                            errorDiv.parentNode.removeChild(errorDiv);
+                        }
+                    }, 8000);
                 }
             }
         });
@@ -488,13 +765,30 @@ if (typeof window !== 'undefined') {
                     await window.unifiedEmployeeManager.init();
                     console.log('✅ Global UnifiedEmployeeManager initialized successfully');
                 } catch (error) {
-                    console.warn('⚠️ UnifiedEmployeeManager initialization deferred:', error.message);
+                    console.error('❌ UnifiedEmployeeManager initialization failed:', error.message);
                     
-                    // Don't show intrusive error messages for authentication issues
-                    if (error.message.includes('authentication') || error.message.includes('Backend API service not available')) {
-                        console.log('💡 System requires authentication - UnifiedEmployeeManager will initialize after login');
-                    } else {
-                        console.error('❌ Unexpected initialization error:', error.message);
+                    // Show error for ALL failures - no graceful degradation
+                    if (document.body) {
+                        const errorDiv = document.createElement('div');
+                        errorDiv.style.cssText = `
+                            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+                            background: #ff4444; color: white; padding: 15px 25px;
+                            border-radius: 5px; z-index: 10000; font-family: Arial, sans-serif;
+                            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                        `;
+                        errorDiv.innerHTML = `
+                            <strong>System Error</strong><br>
+                            ${error.message}<br>
+                            <small>Backend connection required - please ensure proper authentication</small>
+                        `;
+                        document.body.appendChild(errorDiv);
+                        
+                        // Auto-remove error after 8 seconds
+                        setTimeout(() => {
+                            if (errorDiv.parentNode) {
+                                errorDiv.parentNode.removeChild(errorDiv);
+                            }
+                        }, 8000);
                     }
                 }
             }, 100);
