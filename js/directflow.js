@@ -552,14 +552,59 @@ class DirectFlow {
             ready: this.isReady()
         };
     }
+
+    /**
+     * Get attendance data (alias for getAttendanceRecords)
+     */
+    async getAttendanceData() {
+        return await this.getAttendanceRecords();
+    }
+
+    /**
+     * Get attendance statistics (for dashboard)
+     */
+    async getAttendanceStats() {
+        return await this.request('/attendance/stats');
+    }
+
+    /**
+     * Get next payday information (for dashboard)
+     */
+    async getNextPayday() {
+        return await this.request('/payroll/next-payday');
+    }
+
+    /**
+     * Refresh all cached data
+     */
+    async refreshData() {
+        try {
+            this.emit('refresh-started');
+            
+            // Clear any cached data
+            this.cache = {};
+            
+            // Re-initialize if needed
+            if (!this.initialized) {
+                await this.initialize();
+            }
+            
+            this.emit('refresh-completed');
+            return true;
+        } catch (error) {
+            this.emit('refresh-failed', error);
+            throw error;
+        }
+    }
 }
 
 // Create global instance
 if (typeof window !== 'undefined') {
-    window.directFlow = new DirectFlow();
+    window.DirectFlow = new DirectFlow();
     
-    // For backward compatibility, also expose as dataManager
-    window.dataManager = window.directFlow;
+    // For backward compatibility, also expose as lowercase
+    window.directFlow = window.DirectFlow;
+    window.dataManager = window.DirectFlow;
     
     // Log initialization
     console.log('🚀 DirectFlow Data Manager initialized');

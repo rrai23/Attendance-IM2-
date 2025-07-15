@@ -583,7 +583,6 @@
     </script>
     <!-- DirectFlow Data Manager - Replaces all old data services -->
     <script src="js/directflow.js" onerror="console.error('Failed to load directflow.js')"></script>
-    <script src="js/directflow-compatibility.js" onerror="console.error('Failed to load directflow-compatibility.js')"></script>
     <script src="js/auth.js" onerror="console.error('Failed to load auth.js')"></script>
     <script src="js/theme.js" onerror="console.error('Failed to load theme.js')"></script>
     <script src="js/modals.js" onerror="console.error('Failed to load modals.js')"></script>
@@ -2074,13 +2073,41 @@
         // Global dashboard controller instance
         let dashboardController;
 
+        // Wait for DirectFlow to be ready
+        async function waitForDirectFlow() {
+            return new Promise((resolve) => {
+                const checkDirectFlow = () => {
+                    if (window.DirectFlow && window.DirectFlow.initialized) {
+                        console.log('✅ DirectFlow is ready');
+                        resolve();
+                    } else if (window.DirectFlow) {
+                        console.log('⏳ DirectFlow exists but not initialized, waiting...');
+                        // Listen for initialization event
+                        window.DirectFlow.addEventListener('initialized', () => {
+                            console.log('✅ DirectFlow initialized via event');
+                            resolve();
+                        });
+                        
+                        // Also keep checking in case we missed the event
+                        setTimeout(checkDirectFlow, 100);
+                    } else {
+                        console.log('⏳ DirectFlow not yet available, waiting...');
+                        setTimeout(checkDirectFlow, 100);
+                    }
+                };
+                
+                checkDirectFlow();
+            });
+        }
+
         // Initialize dashboard when DOM is ready
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 console.log('Initializing dashboard...');
                 
-                // Wait a bit for all scripts to load
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // Wait for DirectFlow to be ready
+                console.log('Waiting for DirectFlow to initialize...');
+                await waitForDirectFlow();
                 
                 // Create and initialize dashboard controller
                 dashboardController = new DashboardController();

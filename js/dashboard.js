@@ -72,12 +72,38 @@ class DashboardController {
      * Wait for required dependencies to be available
      */
     async waitForDependencies() {
-        const maxWait = 15000; // 15 seconds
-        const checkInterval = 200;
+        const maxWait = 20000; // Increased to 20 seconds
+        const checkInterval = 500; // Increased to 500ms for better stability
         let waited = 0;
 
         return new Promise((resolve, reject) => {
-            const check = () => {
+            // Set up event listener for DirectFlow initialization
+            const directFlowInitListener = () => {
+                console.log('📡 DirectFlow initialization event received');
+                checkDependencies();
+            };
+            
+            // Add event listener for DirectFlow initialization
+            if (window.DirectFlow) {
+                window.DirectFlow.addEventListener('initialized', directFlowInitListener);
+            } else {
+                // Listen for DirectFlow to be created
+                const directFlowCreatedListener = () => {
+                    console.log('📡 DirectFlow object created');
+                    window.DirectFlow.addEventListener('initialized', directFlowInitListener);
+                };
+                
+                // Check periodically for DirectFlow creation
+                const checkForDirectFlow = setInterval(() => {
+                    if (window.DirectFlow) {
+                        clearInterval(checkForDirectFlow);
+                        window.DirectFlow.addEventListener('initialized', directFlowInitListener);
+                        checkDependencies();
+                    }
+                }, 100);
+            }
+            
+            const checkDependencies = () => {
                 const dependencies = {
                     // Check for DirectFlow (primary data manager)
                     directFlow: typeof window.DirectFlow !== 'undefined' && window.DirectFlow.initialized,
@@ -90,18 +116,29 @@ class DashboardController {
                 console.log('DashboardController checking dependencies...', dependencies);
                 console.log('window.DirectFlow:', window.DirectFlow ? 'exists' : 'undefined');
                 console.log('DirectFlow.initialized:', window.DirectFlow?.initialized);
+                console.log(`Waited: ${waited}ms / ${maxWait}ms`);
                 
                 if (dependencies.directFlow && dependencies.DashboardCalendar && dependencies.ApexCharts) {
                     console.log('✅ Core dependencies available - proceeding with dashboard initialization');
+                    // Remove event listener
+                    if (window.DirectFlow) {
+                        window.DirectFlow.removeEventListener('initialized', directFlowInitListener);
+                    }
                     resolve();
+                    return true;
                 } else if (waited >= maxWait) {
-                    console.warn('⚠️ Dependencies not available after 15 seconds:', dependencies);
+                    console.warn('⚠️ Dependencies not available after timeout:', dependencies);
+                    
+                    // Remove event listener
+                    if (window.DirectFlow) {
+                        window.DirectFlow.removeEventListener('initialized', directFlowInitListener);
+                    }
                     
                     // Check if DirectFlow exists but isn't initialized (likely authentication issue)
                     if (window.DirectFlow && !window.DirectFlow.initialized) {
                         console.error('❌ DirectFlow exists but not initialized - authentication required');
                         window.location.href = '/login.html';
-                        return;
+                        return true;
                     }
                     
                     // Try to proceed with minimal functionality
@@ -111,11 +148,19 @@ class DashboardController {
                     } else {
                         reject(new Error('Critical dependencies missing: DirectFlow not available'));
                     }
-                } else {
+                    return true;
+                }
+                return false;
+            };
+            
+            const check = () => {
+                if (!checkDependencies()) {
                     waited += checkInterval;
                     setTimeout(check, checkInterval);
                 }
             };
+            
+            // Start checking immediately
             check();
         });
     }
