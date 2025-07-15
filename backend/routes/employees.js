@@ -20,34 +20,34 @@ router.get('/', auth, async (req, res) => {
 
         let query = `
             SELECT 
-                id,
-                employee_id,
-                username,
-                role,
-                full_name,
-                first_name,
-                last_name,
-                email,
-                phone,
-                department,
-                position,
-                manager_id,
-                date_hired,
-                status,
-                wage,
-                overtime_rate,
-                salary_type,
-                avatar,
-                address,
-                emergency_contact,
-                emergency_phone,
-                work_schedule,
-                permissions,
-                is_active,
-                last_login,
-                created_at,
-                updated_at
-            FROM employees
+                e.id,
+                e.employee_code,
+                e.full_name,
+                e.first_name,
+                e.last_name,
+                e.email,
+                e.phone,
+                e.department,
+                e.position,
+                e.manager_id,
+                e.date_hired,
+                e.status,
+                e.hourly_rate,
+                e.overtime_rate,
+                e.salary_type,
+                e.avatar,
+                e.address,
+                e.emergency_contact,
+                e.emergency_phone,
+                e.work_schedule,
+                e.created_at,
+                e.updated_at,
+                ua.username,
+                ua.role,
+                ua.is_active as account_active,
+                ua.last_login
+            FROM employees e
+            LEFT JOIN user_accounts ua ON e.employee_code = ua.employee_id
             WHERE 1=1
         `;
         const params = [];
@@ -75,13 +75,13 @@ router.get('/', auth, async (req, res) => {
         }
 
         if (search) {
-            query += ' AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.email LIKE ? OR e.employee_id LIKE ?)';
+            query += ' AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.email LIKE ? OR e.employee_code LIKE ?)';
             const searchTerm = `%${search}%`;
             params.push(searchTerm, searchTerm, searchTerm, searchTerm);
         }
 
         // Add sorting
-        const validSortFields = ['employee_id', 'first_name', 'last_name', 'department', 'position', 'hire_date', 'created_at'];
+        const validSortFields = ['employee_code', 'first_name', 'last_name', 'department', 'position', 'date_hired', 'created_at'];
         const sortField = validSortFields.includes(sort) ? sort : 'last_name';
         const sortOrder = order.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
         query += ` ORDER BY e.${sortField} ${sortOrder}`;
@@ -196,7 +196,7 @@ router.post('/', requireManagerOrAdmin, async (req, res) => {
             phone,
             department,
             position,
-            hire_date,
+            date_hired,
             salary,
             employment_type = 'full-time',
             shift_schedule = 'day',
@@ -206,10 +206,10 @@ router.post('/', requireManagerOrAdmin, async (req, res) => {
         } = req.body;
 
         // Validate required fields
-        if (!first_name || !last_name || !email || !department || !position || !hire_date) {
+        if (!first_name || !last_name || !email || !department || !position || !date_hired) {
             return res.status(400).json({
                 success: false,
-                message: 'Required fields: first_name, last_name, email, department, position, hire_date'
+                message: 'Required fields: first_name, last_name, email, department, position, date_hired'
             });
         }
 
@@ -246,12 +246,12 @@ router.post('/', requireManagerOrAdmin, async (req, res) => {
             await db.execute(`
                 INSERT INTO employees (
                     employee_id, first_name, last_name, email, phone, 
-                    department, position, hire_date, salary, 
+                    department, position, date_hired, salary, 
                     employment_type, shift_schedule, status, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW(), NOW())
             `, [
                 employee_id, first_name, last_name, email, phone,
-                department, position, hire_date, salary,
+                department, position, date_hired, salary,
                 employment_type, shift_schedule
             ]);
 
@@ -530,7 +530,7 @@ router.get('/stats/overview', requireManagerOrAdmin, async (req, res) => {
             db.execute(`
                 SELECT COUNT(*) as recent_hires 
                 FROM employees 
-                WHERE status = ? AND hire_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                WHERE status = ? AND date_hired >= DATE_SUB(NOW(), INTERVAL 30 DAY)
             `, ['active'])
         ]);
 

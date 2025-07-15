@@ -20,21 +20,37 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        // Get user account with employee data
-        const users = await db.execute(`
+        // Get user from user_accounts table joined with employees
+        const result = await db.execute(`
             SELECT 
                 ua.*,
                 e.first_name,
                 e.last_name,
+                e.full_name,
                 e.email,
                 e.department,
                 e.position,
-                e.hire_date,
+                e.date_hired as hire_date,
                 e.status as employee_status
             FROM user_accounts ua
-            JOIN employees e ON ua.employee_id = e.employee_id
+            JOIN employees e ON ua.employee_id = e.employee_code
             WHERE ua.username = ? AND ua.is_active = TRUE AND e.status = 'active'
         `, [username]);
+
+        const users = Array.isArray(result[0]) ? result[0] : result;
+
+        console.log('🔍 Debug info:');
+        console.log('Result type:', typeof result);
+        console.log('Result is array:', Array.isArray(result));
+        console.log('Result length:', result.length);
+        console.log('Result[0] type:', typeof result[0]);
+        console.log('Result[0] is array:', Array.isArray(result[0]));
+        console.log('Users type:', typeof users);
+        console.log('Users is array:', Array.isArray(users));
+        console.log('Users length:', users.length);
+        if (users.length > 0) {
+            console.log('First user keys:', Object.keys(users[0]));
+        }
 
         if (users.length === 0) {
             return res.status(401).json({
@@ -73,15 +89,19 @@ router.post('/login', async (req, res) => {
         }
 
         // Store session in database
-        await db.execute(`
-            INSERT INTO user_sessions (employee_id, token_hash, expires_at, is_active, created_at)
-            VALUES (?, ?, ?, TRUE, NOW())
-        `, [user.employee_id, token, expiryDate]);
+        try {
+            await db.execute(`
+                INSERT INTO user_sessions (employee_id, token_hash, expires_at, is_active, created_at)
+                VALUES (?, ?, ?, TRUE, NOW())
+            `, [user.employee_id, token, expiryDate]);
+        } catch (sessionError) {
+            console.warn('Could not store session:', sessionError.message);
+        }
 
-        // Update last login
+        // Update last login in user_accounts table
         await db.execute(
-            'UPDATE user_accounts SET last_login = NOW() WHERE employee_id = ?',
-            [user.employee_id]
+            'UPDATE user_accounts SET last_login = NOW(), updated_at = NOW() WHERE id = ?',
+            [user.id]
         );
 
         // Prepare user data for response (exclude sensitive data)
@@ -89,6 +109,7 @@ router.post('/login', async (req, res) => {
             employee_id: user.employee_id,
             username: user.username,
             role: user.role,
+            full_name: user.full_name,
             first_name: user.first_name,
             last_name: user.last_name,
             email: user.email,
@@ -192,7 +213,7 @@ router.post('/change-password', auth, async (req, res) => {
         }
 
         // Get current password hash
-        const users = await db.execute(
+        const [users] = await db.execute(
             'SELECT password_hash FROM user_accounts WHERE employee_id = ?',
             [req.user.employee_id]
         );

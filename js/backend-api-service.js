@@ -14,25 +14,42 @@ class BackendApiService {
 
     async init() {
         try {
-            // Check if backend is available
+            // Check authentication first
+            const authToken = localStorage.getItem('auth_token') || localStorage.getItem('jwt_token');
+            if (!authToken) {
+                console.log('🔗 Backend API Service: No authentication token - service unavailable');
+                this.isAvailable = false;
+                return;
+            }
+
+            // Set auth token
+            this.setAuthToken(authToken);
+
+            // Check if backend is available with authentication
             const response = await this.fetch('/unified/data', { 
-                method: 'GET',
-                skipAuth: true 
+                method: 'GET'
             });
-            this.isAvailable = response.success;
-            console.log('🔗 Backend API Service:', this.isAvailable ? 'Available' : 'Not Available');
+            
+            this.isAvailable = response.success !== false;
+            console.log('🔗 Backend API Service:', this.isAvailable ? 'Available (Authenticated)' : 'Authentication Failed');
         } catch (error) {
-            console.log('🔗 Backend API Service: Not Available (running in local mode)');
+            console.log('🔗 Backend API Service: Authentication failed or backend unavailable');
             this.isAvailable = false;
         }
     }
 
     async fetch(endpoint, options = {}) {
         const url = `${this.baseUrl}${endpoint}`;
+        
+        // Authentication is ALWAYS required
+        if (!this.authToken) {
+            throw new Error('Authentication required - no auth token available');
+        }
+
         const config = {
             headers: {
                 'Content-Type': 'application/json',
-                ...(this.authToken && !options.skipAuth ? { 'Authorization': `Bearer ${this.authToken}` } : {}),
+                'Authorization': `Bearer ${this.authToken}`,
                 ...options.headers
             },
             ...options
@@ -45,6 +62,9 @@ class BackendApiService {
         const response = await fetch(url, config);
         
         if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error('Authentication failed - please log in again');
+            }
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 

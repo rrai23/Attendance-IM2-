@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Demo - Bricks Attendance System</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            margin: 20px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .demo-section {
+            background: var(--bg-secondary);
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .login-form {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        .form-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .btn {
+            padding: 10px 20px;
+            margin: 5px;
+            background: var(--accent-primary, #007bff);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover {
+            background: var(--accent-hover, #0056b3);
+        }
+        .btn-secondary {
+            background: #6c757d;
+        }
+        .status-display {
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+        .credentials-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        .credentials-table th,
+        .credentials-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .credentials-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .error {
+            color: #dc3545;
+        }
+        .success {
+            color: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>🔐 Authentication Demo</h1>
+        <p>This demo shows how to authenticate with the Bricks Attendance System.</p>
+
+        <div class="demo-section">
+            <h2>📋 Available Test Accounts</h2>
+            <table class="credentials-table">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Password</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>admin</code></td>
+                        <td><code>admin123</code></td>
+                        <td>Admin</td>
+                        <td><button class="btn" onclick="quickLogin('admin', 'admin123')">Quick Login</button></td>
+                    </tr>
+                    <tr>
+                        <td><code>john.smith</code></td>
+                        <td><code>john123</code></td>
+                        <td>Employee</td>
+                        <td><button class="btn" onclick="quickLogin('john.smith', 'john123')">Quick Login</button></td>
+                    </tr>
+                    <tr>
+                        <td><code>jane.doe</code></td>
+                        <td><code>jane123</code></td>
+                        <td>Employee</td>
+                        <td><button class="btn" onclick="quickLogin('jane.doe', 'jane123')">Quick Login</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="demo-section">
+            <h2>🔑 Manual Login</h2>
+            <div class="login-form">
+                <div class="form-group">
+                    <label class="form-label" for="username">Username:</label>
+                    <input type="text" id="username" class="form-input" placeholder="Enter username">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="password">Password:</label>
+                    <input type="password" id="password" class="form-input" placeholder="Enter password">
+                </div>
+                <button class="btn" onclick="performLogin()">Login</button>
+                <button class="btn btn-secondary" onclick="checkAuthStatus()">Check Auth Status</button>
+                <button class="btn btn-secondary" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>📊 Authentication Status</h2>
+            <div id="authStatus" class="status-display">
+                Click "Check Auth Status" to see current authentication state...
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>🧪 Test Protected Endpoints</h2>
+            <button class="btn" onclick="testProtectedEndpoint()">Test /api/unified/data</button>
+            <button class="btn" onclick="testEmployeesEndpoint()">Test /api/employees</button>
+            <button class="btn btn-secondary" onclick="initializeUnifiedManager()">Initialize UnifiedEmployeeManager</button>
+            
+            <div id="endpointResults" class="status-display">
+                Test results will appear here...
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>🌐 Navigation</h2>
+            <a href="/login.html" class="btn">Official Login Page</a>
+            <a href="/settings.html" class="btn">Settings (Requires Auth)</a>
+            <a href="/dashboard.html" class="btn">Dashboard (Requires Auth)</a>
+            <a href="/test-auth.html" class="btn btn-secondary">Auth Tests</a>
+        </div>
+    </div>
+
+    <script src="js/backend-api-service.js"></script>
+    <script src="js/unified-employee-manager.js"></script>
+    <script>
+        let authToken = null;
+
+        function updateStatus(message, elementId = 'authStatus') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            element.textContent += `[${timestamp}] ${message}\n`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function clearStatus(elementId = 'authStatus') {
+            document.getElementById(elementId).textContent = '';
+        }
+
+        async function performLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if (!username || !password) {
+                updateStatus('❌ Please enter both username and password');
+                return;
+            }
+
+            clearStatus();
+            updateStatus('🔄 Attempting login...');
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    authToken = result.data.token;
+                    localStorage.setItem('auth_token', authToken);
+                    
+                    updateStatus('✅ Login successful!');
+                    updateStatus(`👤 Welcome, ${result.data.user.full_name} (${result.data.user.role})`);
+                    updateStatus(`🎫 Token: ${authToken.substring(0, 20)}...`);
+                    
+                    // Clear form
+                    document.getElementById('username').value = '';
+                    document.getElementById('password').value = '';
+                } else {
+                    updateStatus(`❌ Login failed: ${result.message}`);
+                }
+            } catch (error) {
+                updateStatus(`❌ Login error: ${error.message}`);
+            }
+        }
+
+        async function quickLogin(username, password) {
+            document.getElementById('username').value = username;
+            document.getElementById('password').value = password;
+            await performLogin();
+        }
+
+        function checkAuthStatus() {
+            clearStatus();
+            
+            const token = localStorage.getItem('auth_token') || localStorage.getItem('jwt_token');
+            
+            if (token) {
+                updateStatus('✅ Authentication token found');
+                updateStatus(`🎫 Token: ${token.substring(0, 30)}...`);
+                
+                // Decode JWT payload (basic decode, no verification)
+                try {
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    updateStatus(`👤 User: ${payload.username} (${payload.role})`);
+                    updateStatus(`📅 Expires: ${new Date(payload.exp * 1000).toLocaleString()}`);
+                } catch (error) {
+                    updateStatus('⚠️ Could not decode token payload');
+                }
+            } else {
+                updateStatus('❌ No authentication token found');
+                updateStatus('💡 Please login first');
+            }
+
+            // Check if UnifiedEmployeeManager is initialized
+            if (window.unifiedEmployeeManager) {
+                if (window.unifiedEmployeeManager.initialized) {
+                    updateStatus('✅ UnifiedEmployeeManager is initialized');
+                    updateStatus(`👥 Employees: ${window.unifiedEmployeeManager.getEmployees().length}`);
+                } else {
+                    updateStatus('⚠️ UnifiedEmployeeManager exists but not initialized');
+                }
+            } else {
+                updateStatus('❌ UnifiedEmployeeManager not found');
+            }
+
+            // Check BackendApiService
+            if (window.backendApiService) {
+                updateStatus(`🔗 BackendApiService available: ${window.backendApiService.isAvailable}`);
+            } else {
+                updateStatus('❌ BackendApiService not found');
+            }
+        }
+
+        async function testProtectedEndpoint() {
+            clearStatus('endpointResults');
+            updateStatus('🧪 Testing /api/unified/data endpoint...', 'endpointResults');
+            
+            const token = localStorage.getItem('auth_token');
+            if (!token) {
+                updateStatus('❌ No auth token found. Please login first.', 'endpointResults');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/unified/data', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                updateStatus(`📡 Response status: ${response.status}`, 'endpointResults');
+
+                if (response.ok) {
+                    const data = await response.json();
+                    updateStatus('✅ Endpoint accessible with authentication', 'endpointResults');
+                    updateStatus(`📊 Employees: ${data.employees ? data.employees.length : 0}`, 'endpointResults');
+                    updateStatus(`📋 Attendance: ${data.attendanceRecords ? data.attendanceRecords.length : 0}`, 'endpointResults');
+                } else {
+                    const error = await response.text();
+                    updateStatus(`❌ Endpoint failed: ${error}`, 'endpointResults');
+                }
+            } catch (error) {
+                updateStatus(`❌ Request error: ${error.message}`, 'endpointResults');
+            }
+        }
+
+        async function testEmployeesEndpoint() {
+            updateStatus('🧪 Testing /api/employees endpoint...', 'endpointResults');
+            
+            const token = localStorage.getItem('auth_token');
+            if (!token) {
+                updateStatus('❌ No auth token found. Please login first.', 'endpointResults');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/employees', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                updateStatus(`📡 Response status: ${response.status}`, 'endpointResults');
+
+                if (response.ok) {
+                    const data = await response.json();
+                    updateStatus('✅ Employees endpoint accessible', 'endpointResults');
+                    updateStatus(`👥 Found ${data.length} employees`, 'endpointResults');
+                } else {
+                    const error = await response.text();
+                    updateStatus(`❌ Employees endpoint failed: ${error}`, 'endpointResults');
+                }
+            } catch (error) {
+                updateStatus(`❌ Request error: ${error.message}`, 'endpointResults');
+            }
+        }
+
+        async function initializeUnifiedManager() {
+            updateStatus('🔄 Initializing UnifiedEmployeeManager...', 'endpointResults');
+            
+            try {
+                if (!window.unifiedEmployeeManager) {
+                    window.unifiedEmployeeManager = new UnifiedEmployeeManager();
+                }
+                
+                await window.unifiedEmployeeManager.init();
+                updateStatus('✅ UnifiedEmployeeManager initialized successfully!', 'endpointResults');
+                updateStatus(`👥 Loaded ${window.unifiedEmployeeManager.getEmployees().length} employees`, 'endpointResults');
+            } catch (error) {
+                updateStatus(`❌ Failed to initialize: ${error.message}`, 'endpointResults');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('jwt_token');
+            authToken = null;
+            
+            clearStatus();
+            updateStatus('🚪 Logged out successfully');
+            updateStatus('💡 All authentication tokens cleared');
+            
+            // Reset UnifiedEmployeeManager if it exists
+            if (window.unifiedEmployeeManager) {
+                window.unifiedEmployeeManager.initialized = false;
+                window.unifiedEmployeeManager.employees = [];
+                window.unifiedEmployeeManager.attendanceRecords = [];
+                updateStatus('🔄 UnifiedEmployeeManager reset');
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStatus('🌐 Authentication Demo loaded');
+            updateStatus('💡 Use the test accounts above to authenticate');
+            checkAuthStatus();
+        });
+    </script>
+</body>
+</html>

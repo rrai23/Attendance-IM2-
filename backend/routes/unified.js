@@ -156,10 +156,8 @@ router.get('/data', auth, async (req, res) => {
         const [employees] = await db.execute(`
             SELECT 
                 id,
-                employee_id as employeeId,
-                employee_id as employeeCode,
-                username,
-                role,
+                employee_code as employeeId,
+                employee_code as employeeCode,
                 full_name as name,
                 full_name as fullName,
                 first_name as firstName,
@@ -168,22 +166,12 @@ router.get('/data', auth, async (req, res) => {
                 phone,
                 department,
                 position,
-                manager_id as managerId,
                 date_hired as dateHired,
                 date_hired as hireDate,
                 status,
-                wage,
-                wage as hourlyRate,
-                overtime_rate as overtimeRate,
-                salary_type as salaryType,
-                avatar,
                 address,
                 emergency_contact as emergencyContact,
                 emergency_phone as emergencyPhone,
-                work_schedule as workSchedule,
-                permissions,
-                is_active as isActive,
-                last_login as lastLogin,
                 created_at as createdAt,
                 updated_at as updatedAt
             FROM employees
@@ -209,10 +197,10 @@ router.get('/data', auth, async (req, res) => {
                 ar.created_at as createdAt,
                 ar.updated_at as updatedAt,
                 e.full_name as employeeName,
-                e.employee_id as employeeCode,
+                e.employee_code as employeeCode,
                 e.department
             FROM attendance_records ar
-            JOIN employees e ON ar.employee_id = e.employee_id
+            JOIN employees e ON ar.employee_id = e.employee_code
             ORDER BY ar.date DESC, ar.created_at DESC
         `);
 
