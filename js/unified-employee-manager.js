@@ -274,14 +274,23 @@ class UnifiedEmployeeManager {
 
             const employee = this.employees[index];
             
-            // Remove from local array
+            // Call specific DELETE endpoint instead of generic sync
+            if (!window.backendApiService || !window.backendApiService.isAvailable) {
+                throw new Error('Backend not available for delete operation');
+            }
+
+            // Make DELETE API call to backend first
+            await window.backendApiService.fetch(`/unified/employees/${id}`, {
+                method: 'DELETE'
+            });
+            
+            // Only remove from local arrays AFTER successful backend deletion
             this.employees.splice(index, 1);
             
             // Remove related attendance records
             this.attendanceRecords = this.attendanceRecords.filter(record => record.employeeId != id);
             
-            // Save to backend - REQUIRED
-            await this.saveData();
+            console.log('✅ Employee deleted from backend and local data');
             
             this.emit('employeeUpdate', { action: 'delete', employee });
             
