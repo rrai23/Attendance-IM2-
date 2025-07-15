@@ -21,8 +21,8 @@ class GlobalSystemSync {
         try {
             console.log('Initializing Global System Synchronizer...');
             
-            // Wait for unified manager to be ready
-            await this.waitForUnifiedManager();
+            // Wait for DirectFlow to be ready
+            await this.waitForDirectFlow();
             
             // Set up global event listeners
             this.setupGlobalEventListeners();
@@ -44,47 +44,64 @@ class GlobalSystemSync {
         }
     }
 
-    async waitForUnifiedManager() {
+    async waitForDirectFlow() {
         const maxWait = 10000; // 10 seconds
         const interval = 100; // Check every 100ms
         let waited = 0;
         
-        while (!window.unifiedEmployeeManager?.initialized && waited < maxWait) {
+        while (!window.DirectFlow?.initialized && waited < maxWait) {
             await new Promise(resolve => setTimeout(resolve, interval));
             waited += interval;
         }
         
-        if (!window.unifiedEmployeeManager?.initialized) {
-            throw new Error('Unified Employee Manager not available');
+        if (!window.DirectFlow?.initialized) {
+            // Check if we're on a public page where DirectFlow might not be initialized
+            const currentPage = window.location.pathname;
+            const publicPages = ['/login.html', '/index.html', '/'];
+            const isPublicPage = publicPages.some(page => currentPage.endsWith(page)) || currentPage === '/';
+            
+            if (isPublicPage) {
+                console.log('Global System Sync: DirectFlow not initialized on public page - continuing with limited functionality');
+                return;
+            }
+            
+            throw new Error('DirectFlow not available after waiting');
         }
         
-        this.unifiedManager = window.unifiedEmployeeManager;
+        this.directFlow = window.DirectFlow;
     }
 
     /**
      * Set up global event listeners for system-wide events
      */
     setupGlobalEventListeners() {
-        // Listen to unified manager events
-        this.unifiedManager.addEventListener('employeeDeleted', (data) => {
-            this.broadcastToAllComponents('employeeDeleted', data);
-        });
+        // Only set up DirectFlow events if DirectFlow is available
+        if (this.directFlow) {
+            // Listen to DirectFlow events
+            this.directFlow.addEventListener('employeeDeleted', (data) => {
+                this.broadcastToAllComponents('employeeDeleted', data);
+            });
 
-        this.unifiedManager.addEventListener('employeeAdded', (data) => {
-            this.broadcastToAllComponents('employeeAdded', data);
-        });
+            this.directFlow.addEventListener('employeeAdded', (data) => {
+                this.broadcastToAllComponents('employeeAdded', data);
+            });
 
-        this.unifiedManager.addEventListener('employeeUpdated', (data) => {
-            this.broadcastToAllComponents('employeeUpdated', data);
-        });
+            this.directFlow.addEventListener('employeeUpdated', (data) => {
+                this.broadcastToAllComponents('employeeUpdated', data);
+            });
 
-        this.unifiedManager.addEventListener('attendanceUpdated', (data) => {
-            this.broadcastToAllComponents('attendanceUpdated', data);
-        });
+            this.directFlow.addEventListener('attendanceUpdate', (data) => {
+                this.broadcastToAllComponents('attendanceUpdate', data);
+            });
 
-        this.unifiedManager.addEventListener('dataSync', (data) => {
-            this.broadcastToAllComponents('dataSync', data);
-        });
+            this.directFlow.addEventListener('attendanceUpdated', (data) => {
+                this.broadcastToAllComponents('attendanceUpdated', data);
+            });
+
+            this.directFlow.addEventListener('dataSync', (data) => {
+                this.broadcastToAllComponents('dataSync', data);
+            });
+        }
 
         // Listen to system-wide DOM events
         document.addEventListener('bricksSystemUpdate', (event) => {
@@ -439,7 +456,7 @@ class GlobalSystemSync {
             initialized: this.initialized,
             componentsCount: this.components.size,
             components: Array.from(this.components.keys()),
-            unifiedManagerReady: !!this.unifiedManager?.initialized,
+            directFlowReady: !!this.directFlow?.initialized,
             crossPageSupport: !!this.broadcastChannel
         };
     }

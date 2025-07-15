@@ -72,19 +72,15 @@ class DashboardController {
      * Wait for required dependencies to be available
      */
     async waitForDependencies() {
-        const maxWait = 15000; // Increased to 15 seconds to prevent premature fallback
+        const maxWait = 15000; // 15 seconds
         const checkInterval = 200;
         let waited = 0;
 
         return new Promise((resolve, reject) => {
             const check = () => {
                 const dependencies = {
-                    // Check for unified employee manager first (newest)
-                    unifiedEmployeeManager: typeof window.unifiedEmployeeManager !== 'undefined' && window.unifiedEmployeeManager.initialized,
-                    // Check for unified data service (preferred)
-                    unifiedDataService: typeof window.dataService !== 'undefined' && window.dataService.initialized,
-                    // Legacy data service as fallback
-                    dataService: typeof dataService !== 'undefined',
+                    // Check for DirectFlow (primary data manager)
+                    directFlow: typeof window.DirectFlow !== 'undefined' && window.DirectFlow.initialized,
                     // Other dependencies
                     chartsManager: typeof chartsManager !== 'undefined' || typeof window.chartsManager !== 'undefined',
                     DashboardCalendar: typeof DashboardCalendar !== 'undefined',
@@ -92,28 +88,28 @@ class DashboardController {
                 };
                 
                 console.log('DashboardController checking dependencies...', dependencies);
-                console.log('window.unifiedEmployeeManager:', window.unifiedEmployeeManager ? 'exists' : 'undefined');
-                console.log('unifiedEmployeeManager.initialized:', window.unifiedEmployeeManager?.initialized);
+                console.log('window.DirectFlow:', window.DirectFlow ? 'exists' : 'undefined');
+                console.log('DirectFlow.initialized:', window.DirectFlow?.initialized);
                 
-                // Check data sources in priority order: unified employee manager → unified service → original data service
-                const hasDataSource = dependencies.unifiedEmployeeManager || dependencies.unifiedDataService || dependencies.dataService;
-                
-                console.log('hasDataSource:', hasDataSource);
-                console.log('DashboardCalendar available:', dependencies.DashboardCalendar);
-                console.log('ApexCharts available:', dependencies.ApexCharts);
-                
-                if (hasDataSource && dependencies.DashboardCalendar && dependencies.ApexCharts) {
+                if (dependencies.directFlow && dependencies.DashboardCalendar && dependencies.ApexCharts) {
                     console.log('✅ Core dependencies available - proceeding with dashboard initialization');
                     resolve();
                 } else if (waited >= maxWait) {
                     console.warn('⚠️ Dependencies not available after 15 seconds:', dependencies);
                     
+                    // Check if DirectFlow exists but isn't initialized (likely authentication issue)
+                    if (window.DirectFlow && !window.DirectFlow.initialized) {
+                        console.error('❌ DirectFlow exists but not initialized - authentication required');
+                        window.location.href = '/login.html';
+                        return;
+                    }
+                    
                     // Try to proceed with minimal functionality
-                    if (hasDataSource) {
+                    if (dependencies.directFlow) {
                         console.log('📊 Proceeding with minimal functionality (no charts)');
                         resolve();
                     } else {
-                        reject(new Error('Critical dependencies missing: No data source available'));
+                        reject(new Error('Critical dependencies missing: DirectFlow not available'));
                     }
                 } else {
                     waited += checkInterval;
@@ -128,32 +124,32 @@ class DashboardController {
      * Setup event listeners for dashboard interactions
      */
     setupEventListeners() {
-        // Listen for unified employee manager updates (highest priority)
-        if (window.unifiedEmployeeManager) {
-            console.log('[DATA SYNC] Dashboard setting up UnifiedEmployeeManager event listeners');
+        // Listen for DirectFlow updates
+        if (window.DirectFlow) {
+            console.log('[DATA SYNC] Dashboard setting up DirectFlow event listeners');
             
-            window.unifiedEmployeeManager.addEventListener('attendanceUpdate', (data) => {
-                console.log('[DATA SYNC] Dashboard received attendance update from unified employee manager:', data);
+            window.DirectFlow.addEventListener('attendanceUpdate', (data) => {
+                console.log('[DATA SYNC] Dashboard received attendance update from DirectFlow:', data);
                 this.handleDataUpdate();
             });
             
-            window.unifiedEmployeeManager.addEventListener('employeeUpdate', (data) => {
-                console.log('[DATA SYNC] Dashboard received employee update from unified employee manager:', data);
+            window.DirectFlow.addEventListener('employeeUpdate', (data) => {
+                console.log('[DATA SYNC] Dashboard received employee update from DirectFlow:', data);
                 this.handleDataUpdate();
             });
             
-            window.unifiedEmployeeManager.addEventListener('employeeDeleted', (data) => {
-                console.log('[DATA SYNC] Dashboard received employee deletion from unified employee manager:', data);
+            window.DirectFlow.addEventListener('employeeDeleted', (data) => {
+                console.log('[DATA SYNC] Dashboard received employee deletion from DirectFlow:', data);
                 this.handleDataUpdate();
             });
             
-            window.unifiedEmployeeManager.addEventListener('employeeAdded', (data) => {
-                console.log('[DATA SYNC] Dashboard received employee addition from unified employee manager:', data);
+            window.DirectFlow.addEventListener('employeeAdded', (data) => {
+                console.log('[DATA SYNC] Dashboard received employee addition from DirectFlow:', data);
                 this.handleDataUpdate();
             });
             
-            window.unifiedEmployeeManager.addEventListener('dataSync', (data) => {
-                console.log('[DATA SYNC] Dashboard received data sync from unified employee manager:', data);
+            window.DirectFlow.addEventListener('dataSync', (data) => {
+                console.log('[DATA SYNC] Dashboard received data sync from DirectFlow:', data);
                 if (data && (data.action === 'delete' || data.action === 'add' || data.action === 'update' || data.action === 'forceCleanup')) {
                     this.handleDataUpdate();
                 }
@@ -168,28 +164,6 @@ class DashboardController {
                 }
             });
         }
-        
-        // Listen for unified data service updates
-        if (window.dataService) {
-            console.log('[DATA SYNC] Dashboard setting up dataService event listeners');
-            
-            window.dataService.addEventListener('attendanceUpdate', (data) => {
-                console.log('[DATA SYNC] Dashboard received attendance update from unified service:', data);
-                this.handleDataUpdate();
-            });
-            
-            window.dataService.addEventListener('dataChange', (data) => {
-                console.log('[DATA SYNC] Dashboard received data change from unified service:', data);
-                this.handleDataUpdate();
-            });
-            
-            window.dataService.addEventListener('employeeUpdate', (data) => {
-                console.log('[DATA SYNC] Dashboard received employee update from unified service:', data);
-                this.handleDataUpdate();
-            });
-        }
-        
-        // Note: Legacy dataManager support removed - using UnifiedEmployeeManager exclusively
         
         // Refresh button
         const refreshBtn = document.getElementById('refresh-dashboard');
@@ -268,83 +242,27 @@ class DashboardController {
             const today = new Date().toISOString().split('T')[0];
             console.log('Loading attendance stats for date:', today);
             
-            // Prioritize the unified employee manager (newest)
-            if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
-                console.log('Loading attendance stats from unified employee manager');
+            // Use DirectFlow for all data operations
+            if (window.DirectFlow && window.DirectFlow.initialized) {
+                console.log('Loading attendance stats from DirectFlow');
                 
                 // Get attendance stats
-                this.currentStats = window.unifiedEmployeeManager.getAttendanceStats();
-                console.log('Received stats from unified employee manager:', this.currentStats);
+                this.currentStats = await window.DirectFlow.getAttendanceStats();
+                console.log('Received stats from DirectFlow:', this.currentStats);
                 
                 // Get today's attendance records
-                const todayRecords = window.unifiedEmployeeManager.getAttendanceRecords({ date: today });
+                const todayRecords = await window.DirectFlow.getAttendanceRecords({ date: today });
                 console.log('Today\'s attendance records:', todayRecords);
                 
                 // Process today's data
                 this.currentStats.today = await this.processTodayAttendance(todayRecords);
                 
-                console.log('Dashboard loaded stats from unified employee manager:', this.currentStats);
-            }
-            // Prioritize the unified data service
-            else if (window.dataService && window.dataService.initialized) {
-                console.log('Loading attendance stats from unified data service');
-                console.log('dataService methods:', Object.getOwnPropertyNames(window.dataService).filter(name => typeof window.dataService[name] === 'function'));
-                
-                // Get attendance stats
-                this.currentStats = await window.dataService.getAttendanceStats();
-                console.log('Received stats from unified service:', this.currentStats);
-                
-                // Get today's attendance records
-                const todayFilters = { 
-                    date: today,
-                    startDate: today, 
-                    endDate: today 
-                };
-                
-                let todayRecords = [];
-                try {
-                    todayRecords = await window.dataService.getAttendanceRecords(todayFilters);
-                    console.log('Today\'s attendance records:', todayRecords);
-                } catch (recordError) {
-                    console.error('Error getting today\'s attendance records:', recordError);
-                    // Try to recreate default data if records are corrupted
-                    if (window.dataService.createDefaultData) {
-                        try {
-                            await window.dataService.createDefaultData();
-                            todayRecords = await window.dataService.getAttendanceRecords(todayFilters);
-                            console.log('Recreated data, got records:', todayRecords);
-                        } catch (retryError) {
-                            console.error('Failed to recreate data:', retryError);
-                            todayRecords = [];
-                        }
-                    }
-                }
-                
-                // Process today's data
-                this.currentStats.today = await this.processTodayAttendance(todayRecords);
-                
-                console.log('Dashboard loaded stats from unified data service:', this.currentStats);
-            }
-            // Fallback to original dataService as last resort
-            else if (typeof dataService !== 'undefined') {
-                console.log('Loading attendance stats from original dataService');
-                console.log('dataService object:', dataService);
-                
-                this.currentStats = await dataService.getAttendanceStats();
-                
-                // Also get today's specific data
-                const todayRecords = await dataService.getAttendanceRecords(null, today, today);
-                
-                // Process today's data
-                this.currentStats.today = await this.processTodayAttendance(todayRecords);
-                
-                console.log('Dashboard loaded stats from original dataService:', this.currentStats);
-            } 
-            else {
-                console.error('No data service available for loading attendance stats');
+                console.log('Dashboard loaded stats from DirectFlow:', this.currentStats);
+            } else {
+                console.error('DirectFlow not available for loading attendance stats');
                 console.log('Available globals:', {
-                    'window.dataService': typeof window.dataService,
-                    'dataService': typeof dataService
+                    'window.DirectFlow': typeof window.DirectFlow,
+                    'DirectFlow.initialized': window.DirectFlow?.initialized
                 });
                 
                 // Create fallback stats
@@ -376,19 +294,14 @@ class DashboardController {
      */
     async processTodayAttendance(records) {
         try {
-            // Get total number of active employees - prioritize unified employee manager
+            // Get total number of active employees using DirectFlow
             let totalEmployees = 0;
             
-            if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
-                // Use UnifiedEmployeeManager for consistency with employees page
-                const employees = window.unifiedEmployeeManager.getEmployees();
+            if (window.DirectFlow && window.DirectFlow.initialized) {
+                // Use DirectFlow for consistent data access
+                const employees = await window.DirectFlow.getEmployees();
                 totalEmployees = employees.filter(emp => emp.status === 'active').length;
-                console.log('[DATA INTEGRITY] Dashboard using UnifiedEmployeeManager for employee count:', totalEmployees);
-            } else if (window.dataService && window.dataService.getEmployees) {
-                // Fallback to data service if UnifiedEmployeeManager not available
-                const employees = await window.dataService.getEmployees();
-                totalEmployees = employees.filter(emp => emp.status === 'active').length;
-                console.log('[DATA INTEGRITY] Dashboard falling back to dataService for employee count:', totalEmployees);
+                console.log('[DATA INTEGRITY] Dashboard using DirectFlow for employee count:', totalEmployees);
             } else {
                 // Fallback: assume a reasonable number if we can't get the actual count
                 totalEmployees = Math.max(6, records.length);
@@ -465,18 +378,12 @@ class DashboardController {
      */
     async loadPaydayData() {
         try {
-            // Try to use the unified data service first
-            if (window.dataService && window.dataService.initialized) {
-                console.log('Loading payday data from unified data service');
-                this.paydayData = await window.dataService.getNextPayday();
-            }
-            // Fallback to original dataService
-            else if (typeof dataService !== 'undefined') {
-                console.log('Loading payday data from original dataService');
-                this.paydayData = await dataService.getNextPayday();
-            }
-            else {
-                console.error('No data service available for loading payday data');
+            // Use DirectFlow for payday data
+            if (window.DirectFlow && window.DirectFlow.initialized) {
+                console.log('Loading payday data from DirectFlow');
+                this.paydayData = await window.DirectFlow.getNextPayday();
+            } else {
+                console.error('DirectFlow not available for loading payday data');
                 this.paydayData = this.getDefaultPaydayData();
             }
         } catch (error) {

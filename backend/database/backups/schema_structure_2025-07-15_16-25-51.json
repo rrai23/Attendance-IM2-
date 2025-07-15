@@ -1,0 +1,1293 @@
+{
+  "database": "bricks_attendance",
+  "tables": {
+    "attendance_records": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "int(11)",
+          "null": "NO",
+          "key": "PRI",
+          "default": null,
+          "extra": "auto_increment"
+        },
+        {
+          "name": "employee_id",
+          "type": "varchar(50)",
+          "null": "NO",
+          "key": "MUL",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "date",
+          "type": "date",
+          "null": "NO",
+          "key": "MUL",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "time_in",
+          "type": "time",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "time_out",
+          "type": "time",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "hours_worked",
+          "type": "decimal(4,2)",
+          "null": "YES",
+          "key": "",
+          "default": "0.00",
+          "extra": ""
+        },
+        {
+          "name": "overtime_hours",
+          "type": "decimal(4,2)",
+          "null": "YES",
+          "key": "",
+          "default": "0.00",
+          "extra": ""
+        },
+        {
+          "name": "status",
+          "type": "varchar(20)",
+          "null": "YES",
+          "key": "",
+          "default": "present",
+          "extra": ""
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "location",
+          "type": "varchar(100)",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "current_timestamp()",
+          "extra": ""
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "current_timestamp()",
+          "extra": "on update current_timestamp()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "PRIMARY",
+          "column": "id",
+          "unique": true
+        },
+        {
+          "name": "idx_employee_id",
+          "column": "employee_id",
+          "unique": false
+        },
+        {
+          "name": "idx_date",
+          "column": "date",
+          "unique": false
+        },
+        {
+          "name": "idx_employee_date",
+          "column": "employee_id",
+          "unique": false
+        },
+        {
+          "name": "idx_employee_date",
+          "column": "date",
+          "unique": false
+        }
+      ],
+      "foreignKeys": []
+    },
+    "audit_log": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "int(11)",
+          "null": "NO",
+          "key": "PRI",
+          "default": null,
+          "extra": "auto_increment"
+        },
+        {
+          "name": "employee_id",
+          "type": "int(11)",
+          "null": "YES",
+          "key": "MUL",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "action",
+          "type": "varchar(100)",
+          "null": "NO",
+          "key": "MUL",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "table_name",
+          "type": "varchar(50)",
+          "null": "YES",
+          "key": "MUL",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "record_id",
+          "type": "int(11)",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "old_values",
+          "type": "longtext",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "new_values",
+          "type": "longtext",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "ip_address",
+          "type": "varchar(45)",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "user_agent",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "MUL",
+          "default": "current_timestamp()",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "PRIMARY",
+          "column": "id",
+          "unique": true
+        },
+        {
+          "name": "idx_employee",
+          "column": "employee_id",
+          "unique": false
+        },
+        {
+          "name": "idx_action",
+          "column": "action",
+          "unique": false
+        },
+        {
+          "name": "idx_table_record",
+          "column": "table_name",
+          "unique": false
+        },
+        {
+          "name": "idx_table_record",
+          "column": "record_id",
+          "unique": false
+        },
+        {
+          "name": "idx_created",
+          "column": "created_at",
+          "unique": false
+        }
+      ],
+      "foreignKeys": [
+        {
+          "column": "employee_id",
+          "constraint": "audit_log_ibfk_1",
+          "referencedTable": "employees",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "departments": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "int(11)",
+          "null": "NO",
+          "key": "PRI",
+          "default": null,
+          "extra": "auto_increment"
+        },
+        {
+          "name": "name",
+          "type": "varchar(50)",
+          "null": "NO",
+          "key": "UNI",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "manager_id",
+          "type": "int(11)",
+          "null": "YES",
+          "key": "MUL",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "budget",
+          "type": "decimal(15,2)",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "current_timestamp()",
+          "extra": ""
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "current_timestamp()",
+          "extra": "on update current_timestamp()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "PRIMARY",
+          "column": "id",
+          "unique": true
+        },
+        {
+          "name": "name",
+          "column": "name",
+          "unique": true
+        },
+        {
+          "name": "manager_id",
+          "column": "manager_id",
+          "unique": false
+        }
+      ],
+      "foreignKeys": [
+        {
+          "column": "manager_id",
+          "constraint": "departments_ibfk_1",
+          "referencedTable": "employees",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "employees": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "int(11)",
+          "null": "NO",
+          "key": "PRI",
+          "default": null,
+          "extra": "auto_increment"
+        },
+        {
+          "name": "employee_code",
+          "type": "varchar(20)",
+          "null": "NO",
+          "key": "UNI",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "full_name",
+          "type": "varchar(100)",
+          "null": "NO",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "first_name",
+          "type": "varchar(50)",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "last_name",
+          "type": "varchar(50)",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "email",
+          "type": "varchar(100)",
+          "null": "NO",
+          "key": "UNI",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "phone",
+          "type": "varchar(20)",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "department",
+          "type": "varchar(50)",
+          "null": "NO",
+          "key": "MUL",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "position",
+          "type": "varchar(100)",
+          "null": "NO",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "date_hired",
+          "type": "date",
+          "null": "NO",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "hourly_rate",
+          "type": "decimal(10,2)",
+          "null": "NO",
+          "key": "",
+          "default": "15.00",
+          "extra": ""
+        },
+        {
+          "name": "overtime_rate",
+          "type": "decimal(3,2)",
+          "null": "NO",
+          "key": "",
+          "default": "1.50",
+          "extra": ""
+        },
+        {
+          "name": "status",
+          "type": "enum('active','inactive','terminated')",
+          "null": "NO",
+          "key": "MUL",
+          "default": "active",
+          "extra": ""
+        },
+        {
+          "name": "avatar_url",
+          "type": "varchar(255)",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "emergency_contact",
+          "type": "varchar(100)",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "emergency_phone",
+          "type": "varchar(20)",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "current_timestamp()",
+          "extra": ""
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "current_timestamp()",
+          "extra": "on update current_timestamp()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "PRIMARY",
+          "column": "id",
+          "unique": true
+        },
+        {
+          "name": "employee_code",
+          "column": "employee_code",
+          "unique": true
+        },
+        {
+          "name": "email",
+          "column": "email",
+          "unique": true
+        },
+        {
+          "name": "idx_department",
+          "column": "department",
+          "unique": false
+        },
+        {
+          "name": "idx_status",
+          "column": "status",
+          "unique": false
+        }
+      ],
+      "foreignKeys": []
+    },
+    "overtime_requests": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "int(11)",
+          "null": "NO",
+          "key": "PRI",
+          "default": null,
+          "extra": "auto_increment"
+        },
+        {
+          "name": "employee_id",
+          "type": "int(11)",
+          "null": "NO",
+          "key": "MUL",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "request_date",
+          "type": "date",
+          "null": "NO",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "hours_requested",
+          "type": "decimal(4,2)",
+          "null": "NO",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "null": "NO",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "status",
+          "type": "enum('pending','approved','rejected')",
+          "null": "NO",
+          "key": "MUL",
+          "default": "pending",
+          "extra": ""
+        },
+        {
+          "name": "approved_by",
+          "type": "int(11)",
+          "null": "YES",
+          "key": "MUL",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "approval_date",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "approval_notes",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "current_timestamp()",
+          "extra": ""
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "current_timestamp()",
+          "extra": "on update current_timestamp()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "PRIMARY",
+          "column": "id",
+          "unique": true
+        },
+        {
+          "name": "idx_employee_date",
+          "column": "employee_id",
+          "unique": false
+        },
+        {
+          "name": "idx_employee_date",
+          "column": "request_date",
+          "unique": false
+        },
+        {
+          "name": "idx_status",
+          "column": "status",
+          "unique": false
+        },
+        {
+          "name": "approved_by",
+          "column": "approved_by",
+          "unique": false
+        }
+      ],
+      "foreignKeys": [
+        {
+          "column": "employee_id",
+          "constraint": "overtime_requests_ibfk_1",
+          "referencedTable": "employees",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "approved_by",
+          "constraint": "overtime_requests_ibfk_2",
+          "referencedTable": "employees",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "payroll_records": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "int(11)",
+          "null": "NO",
+          "key": "PRI",
+          "default": null,
+          "extra": "auto_increment"
+        },
+        {
+          "name": "employee_id",
+          "type": "int(11)",
+          "null": "NO",
+          "key": "MUL",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "pay_period_start",
+          "type": "date",
+          "null": "NO",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "pay_period_end",
+          "type": "date",
+          "null": "NO",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "regular_hours",
+          "type": "decimal(6,2)",
+          "null": "NO",
+          "key": "",
+          "default": "0.00",
+          "extra": ""
+        },
+        {
+          "name": "overtime_hours",
+          "type": "decimal(6,2)",
+          "null": "NO",
+          "key": "",
+          "default": "0.00",
+          "extra": ""
+        },
+        {
+          "name": "regular_pay",
+          "type": "decimal(10,2)",
+          "null": "NO",
+          "key": "",
+          "default": "0.00",
+          "extra": ""
+        },
+        {
+          "name": "overtime_pay",
+          "type": "decimal(10,2)",
+          "null": "NO",
+          "key": "",
+          "default": "0.00",
+          "extra": ""
+        },
+        {
+          "name": "gross_pay",
+          "type": "decimal(10,2)",
+          "null": "NO",
+          "key": "",
+          "default": "0.00",
+          "extra": ""
+        },
+        {
+          "name": "tax_amount",
+          "type": "decimal(10,2)",
+          "null": "NO",
+          "key": "",
+          "default": "0.00",
+          "extra": ""
+        },
+        {
+          "name": "sss_contribution",
+          "type": "decimal(10,2)",
+          "null": "NO",
+          "key": "",
+          "default": "0.00",
+          "extra": ""
+        },
+        {
+          "name": "philhealth_contribution",
+          "type": "decimal(10,2)",
+          "null": "NO",
+          "key": "",
+          "default": "0.00",
+          "extra": ""
+        },
+        {
+          "name": "pagibig_contribution",
+          "type": "decimal(10,2)",
+          "null": "NO",
+          "key": "",
+          "default": "0.00",
+          "extra": ""
+        },
+        {
+          "name": "other_deductions",
+          "type": "decimal(10,2)",
+          "null": "NO",
+          "key": "",
+          "default": "0.00",
+          "extra": ""
+        },
+        {
+          "name": "net_pay",
+          "type": "decimal(10,2)",
+          "null": "NO",
+          "key": "",
+          "default": "0.00",
+          "extra": ""
+        },
+        {
+          "name": "pay_date",
+          "type": "date",
+          "null": "YES",
+          "key": "MUL",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "status",
+          "type": "enum('calculated','approved','paid','cancelled')",
+          "null": "NO",
+          "key": "MUL",
+          "default": "calculated",
+          "extra": ""
+        },
+        {
+          "name": "calculated_by",
+          "type": "int(11)",
+          "null": "YES",
+          "key": "MUL",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "approved_by",
+          "type": "int(11)",
+          "null": "YES",
+          "key": "MUL",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "current_timestamp()",
+          "extra": ""
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "current_timestamp()",
+          "extra": "on update current_timestamp()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "PRIMARY",
+          "column": "id",
+          "unique": true
+        },
+        {
+          "name": "idx_employee_period",
+          "column": "employee_id",
+          "unique": false
+        },
+        {
+          "name": "idx_employee_period",
+          "column": "pay_period_start",
+          "unique": false
+        },
+        {
+          "name": "idx_employee_period",
+          "column": "pay_period_end",
+          "unique": false
+        },
+        {
+          "name": "idx_pay_date",
+          "column": "pay_date",
+          "unique": false
+        },
+        {
+          "name": "idx_status",
+          "column": "status",
+          "unique": false
+        },
+        {
+          "name": "calculated_by",
+          "column": "calculated_by",
+          "unique": false
+        },
+        {
+          "name": "approved_by",
+          "column": "approved_by",
+          "unique": false
+        }
+      ],
+      "foreignKeys": [
+        {
+          "column": "employee_id",
+          "constraint": "payroll_records_ibfk_1",
+          "referencedTable": "employees",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "calculated_by",
+          "constraint": "payroll_records_ibfk_2",
+          "referencedTable": "employees",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "approved_by",
+          "constraint": "payroll_records_ibfk_3",
+          "referencedTable": "employees",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "system_settings": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "int(11)",
+          "null": "NO",
+          "key": "PRI",
+          "default": null,
+          "extra": "auto_increment"
+        },
+        {
+          "name": "setting_key",
+          "type": "varchar(100)",
+          "null": "NO",
+          "key": "UNI",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "setting_value",
+          "type": "text",
+          "null": "NO",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "current_timestamp()",
+          "extra": ""
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "current_timestamp()",
+          "extra": "on update current_timestamp()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "PRIMARY",
+          "column": "id",
+          "unique": true
+        },
+        {
+          "name": "setting_key",
+          "column": "setting_key",
+          "unique": true
+        }
+      ],
+      "foreignKeys": []
+    },
+    "user_accounts": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "int(11)",
+          "null": "NO",
+          "key": "PRI",
+          "default": null,
+          "extra": "auto_increment"
+        },
+        {
+          "name": "employee_id",
+          "type": "varchar(50)",
+          "null": "NO",
+          "key": "UNI",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "username",
+          "type": "varchar(100)",
+          "null": "NO",
+          "key": "UNI",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "password_hash",
+          "type": "varchar(255)",
+          "null": "NO",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "role",
+          "type": "enum('admin','manager','employee')",
+          "null": "YES",
+          "key": "MUL",
+          "default": "employee",
+          "extra": ""
+        },
+        {
+          "name": "is_active",
+          "type": "tinyint(1)",
+          "null": "YES",
+          "key": "MUL",
+          "default": "1",
+          "extra": ""
+        },
+        {
+          "name": "last_login",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "failed_login_attempts",
+          "type": "int(11)",
+          "null": "YES",
+          "key": "",
+          "default": "0",
+          "extra": ""
+        },
+        {
+          "name": "account_locked_until",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "password_reset_token",
+          "type": "varchar(255)",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "password_reset_expires",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "current_timestamp()",
+          "extra": ""
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "current_timestamp()",
+          "extra": "on update current_timestamp()"
+        },
+        {
+          "name": "first_name",
+          "type": "varchar(100)",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "last_name",
+          "type": "varchar(100)",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "full_name",
+          "type": "varchar(255)",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "email",
+          "type": "varchar(255)",
+          "null": "YES",
+          "key": "MUL",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "phone",
+          "type": "varchar(20)",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "department",
+          "type": "varchar(100)",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "position",
+          "type": "varchar(100)",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "hire_date",
+          "type": "date",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "employee_status",
+          "type": "enum('active','inactive','terminated')",
+          "null": "YES",
+          "key": "",
+          "default": "active",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "PRIMARY",
+          "column": "id",
+          "unique": true
+        },
+        {
+          "name": "employee_id",
+          "column": "employee_id",
+          "unique": true
+        },
+        {
+          "name": "username",
+          "column": "username",
+          "unique": true
+        },
+        {
+          "name": "idx_employee_id",
+          "column": "employee_id",
+          "unique": false
+        },
+        {
+          "name": "idx_username",
+          "column": "username",
+          "unique": false
+        },
+        {
+          "name": "idx_email",
+          "column": "email",
+          "unique": false
+        },
+        {
+          "name": "idx_role",
+          "column": "role",
+          "unique": false
+        },
+        {
+          "name": "idx_active",
+          "column": "is_active",
+          "unique": false
+        }
+      ],
+      "foreignKeys": []
+    },
+    "user_sessions": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "int(11)",
+          "null": "NO",
+          "key": "PRI",
+          "default": null,
+          "extra": "auto_increment"
+        },
+        {
+          "name": "employee_id",
+          "type": "varchar(20)",
+          "null": "NO",
+          "key": "MUL",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "token_hash",
+          "type": "varchar(500)",
+          "null": "NO",
+          "key": "MUL",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "device_info",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "ip_address",
+          "type": "varchar(45)",
+          "null": "YES",
+          "key": "",
+          "default": null,
+          "extra": ""
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "MUL",
+          "default": "current_timestamp()",
+          "extra": "on update current_timestamp()"
+        },
+        {
+          "name": "is_active",
+          "type": "tinyint(1)",
+          "null": "NO",
+          "key": "",
+          "default": "1",
+          "extra": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "current_timestamp()",
+          "extra": ""
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "current_timestamp()",
+          "extra": "on update current_timestamp()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "PRIMARY",
+          "column": "id",
+          "unique": true
+        },
+        {
+          "name": "idx_employee_id",
+          "column": "employee_id",
+          "unique": false
+        },
+        {
+          "name": "idx_token_hash",
+          "column": "token_hash",
+          "unique": false
+        },
+        {
+          "name": "idx_expires_active",
+          "column": "expires_at",
+          "unique": false
+        },
+        {
+          "name": "idx_expires_active",
+          "column": "is_active",
+          "unique": false
+        }
+      ],
+      "foreignKeys": [
+        {
+          "column": "employee_id",
+          "constraint": "user_sessions_ibfk_1",
+          "referencedTable": "employees",
+          "referencedColumn": "employee_code"
+        }
+      ]
+    }
+  },
+  "timestamp": "2025-07-15T16:25:51.499Z"
+}

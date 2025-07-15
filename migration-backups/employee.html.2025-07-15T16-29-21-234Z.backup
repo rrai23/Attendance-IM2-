@@ -1,4 +1,4 @@
-    <script src="js/directflow.js"></script>\n    <script src="js/directflow-compatibility.js"></script>\n<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" data-theme="light" class="page-employee">
 <head>
     <meta charset="UTF-8">
@@ -673,9 +673,9 @@
     <script src="js/core/local-storage-service.js"></script>
     <script src="js/core/api-service.js"></script>
     <script src="js/core/data-service-factory.js"></script>
-    
-    
-    
+    <script src="js/unified-data-service.js"></script>
+    <script src="js/backend-api-service.js"></script>
+    <script src="js/unified-employee-manager.js"></script>
     <script src="js/global-system-sync.js"></script>
     <script src="js/unified-account-manager.js"></script>
     <script src="js/auth.js"></script>

@@ -1,4 +1,4 @@
-    <script src="js/directflow.js"></script>\n    <script src="js/directflow-compatibility.js"></script>\n<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -82,8 +82,8 @@
     </div>
 
     <!-- Scripts -->
-    
-    
+    <script src="js/backend-api-service.js"></script>
+    <script src="js/unified-employee-manager.js"></script>
     <script>
         // Capture console output
         const originalLog = console.log;
