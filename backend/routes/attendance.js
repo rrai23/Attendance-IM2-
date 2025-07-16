@@ -19,7 +19,19 @@ router.get('/', auth, async (req, res) => {
 
         let query = `
             SELECT 
-                ar.*,
+                ar.id,
+                ar.employee_id,
+                ar.date,
+                ar.time_in,
+                ar.time_out,
+                ar.break_start,
+                ar.break_end,
+                ar.total_hours as hours_worked,
+                ar.overtime_hours,
+                ar.status,
+                ar.notes,
+                ar.created_at,
+                ar.updated_at,
                 e.full_name as employee_name,
                 e.employee_id as employee_code,
                 e.department,
@@ -65,12 +77,15 @@ router.get('/', auth, async (req, res) => {
 
         const [records] = await db.execute(query, params);
 
+        // Ensure records is an array (in case of empty result)
+        const recordsArray = Array.isArray(records) ? records : [];
+
         // Transform to match frontend structure
-        const transformedRecords = records.map(record => ({
-            id: record.id,
-            employeeId: record.employee_id,
-            employeeName: record.employee_name,
-            employeeCode: record.employee_code,
+        const transformedRecords = recordsArray.map(record => ({
+            id: record.id,                              // attendance record ID
+            employeeId: record.employee_id,             // employee_id from attendance_records
+            employeeName: record.employee_name,         // full_name from employees
+            employeeCode: record.employee_code,         // employee_id from employees (used as code)
             department: record.department,
             date: record.date,
             clockIn: record.time_in,
@@ -186,16 +201,16 @@ router.post('/clock', auth, async (req, res) => {
             // Update the record with clock out time
             await db.execute(`
                 UPDATE attendance_records 
-                SET time_out = ?, hours_worked = ?, clock_out_location = ?, 
+                SET time_out = ?, total_hours = ?, clock_out_location = ?, 
                     clock_out_notes = ?, status = ?, updated_at = NOW()
-                WHERE attendance_id = ?
-            `, [timeOut, parseFloat(hoursWorked), location, notes, status, record.attendance_id]);
+                WHERE id = ?
+            `, [timeOut, parseFloat(hoursWorked), location, notes, status, record.id]);
 
             res.json({
                 success: true,
                 message: 'Clocked out successfully',
                 data: {
-                    attendance_id: record.attendance_id,
+                    id: record.id,
                     action: 'out',
                     time: timeOut,
                     hours_worked: parseFloat(hoursWorked),
@@ -312,7 +327,7 @@ router.post('/manual', requireManagerOrAdmin, async (req, res) => {
         await db.execute(`
             INSERT INTO attendance_records (
                 employee_id, date, time_in, time_out,
-                hours_worked, status, notes, created_at
+                total_hours, status, notes, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
         `, [
             employee_id, date, 
@@ -325,7 +340,19 @@ router.post('/manual', requireManagerOrAdmin, async (req, res) => {
         // Get the created record with employee info
         const newRecord = await db.execute(`
             SELECT 
-                ar.*,
+                ar.id,
+                ar.employee_id,
+                ar.date,
+                ar.time_in,
+                ar.time_out,
+                ar.break_start,
+                ar.break_end,
+                ar.total_hours as hours_worked,
+                ar.overtime_hours,
+                ar.status,
+                ar.notes,
+                ar.created_at,
+                ar.updated_at,
                 e.full_name as employee_name,
                 e.employee_id as employee_code,
                 e.department,
@@ -391,7 +418,7 @@ router.put('/:id', requireManagerOrAdmin, async (req, res) => {
         }
 
         if (hours_worked !== undefined) {
-            updateFields.push('hours_worked = ?');
+            updateFields.push('total_hours = ?');
             updateParams.push(parseFloat(hours_worked));
         }
 
@@ -433,7 +460,19 @@ router.put('/:id', requireManagerOrAdmin, async (req, res) => {
         // Get updated record
         const updatedRecord = await db.execute(`
             SELECT 
-                ar.*,
+                ar.id,
+                ar.employee_id,
+                ar.date,
+                ar.time_in,
+                ar.time_out,
+                ar.break_start,
+                ar.break_end,
+                ar.total_hours as hours_worked,
+                ar.overtime_hours,
+                ar.status,
+                ar.notes,
+                ar.created_at,
+                ar.updated_at,
                 e.full_name as employee_name,
                 e.employee_id as employee_code,
                 e.department,
@@ -496,9 +535,9 @@ router.get('/summary/:employeeId?', auth, async (req, res) => {
 
             // Total hours worked
             db.execute(`
-                SELECT SUM(hours_worked) as total_hours
+                SELECT SUM(total_hours) as total_hours
                 FROM attendance_records 
-                WHERE employee_id = ? AND date >= ? AND date <= ? AND hours_worked IS NOT NULL
+                WHERE employee_id = ? AND date >= ? AND date <= ? AND total_hours IS NOT NULL
             `, [targetEmployeeId, startDate, endDate]),
 
             // Status breakdown
@@ -511,10 +550,10 @@ router.get('/summary/:employeeId?', auth, async (req, res) => {
 
             // Average hours per day
             db.execute(`
-                SELECT AVG(hours_worked) as avg_hours
+                SELECT AVG(total_hours) as avg_hours
                 FROM attendance_records 
                 WHERE employee_id = ? AND date >= ? AND date <= ? 
-                AND hours_worked IS NOT NULL AND hours_worked > 0
+                AND total_hours IS NOT NULL AND total_hours > 0
             `, [targetEmployeeId, startDate, endDate])
         ]);
 

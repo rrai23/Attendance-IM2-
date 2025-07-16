@@ -1008,7 +1008,7 @@
                     console.log('DirectFlow initialized successfully');
                     
                     // Load data from backend in parallel for better performance
-                    const [employees, attendanceData] = await Promise.all([
+                    await Promise.all([
                         this.loadEmployees(),
                         this.loadAttendanceData()
                     ]);
@@ -1134,9 +1134,9 @@
                     
                     console.log('DirectFlow response:', response);
                     
-                    if (response.success) {
-                        // Handle nested data structure from API
-                        this.employees = response.data.employees || response.data || [];
+                    if (Array.isArray(response)) {
+                        // DirectFlow now returns the employees array directly
+                        this.employees = response;
                         
                         // Cache the data
                         this.dataCache.employees = this.employees;
@@ -1145,7 +1145,7 @@
                         console.log(`Loaded ${this.employees.length} employees`);
                         console.log('Employee data:', this.employees);
                     } else {
-                        throw new Error(response.message || 'Failed to load employees');
+                        throw new Error('Invalid response format from DirectFlow');
                     }
                 } catch (error) {
                     console.error('Failed to load employees:', error);
