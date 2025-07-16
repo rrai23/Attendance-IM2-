@@ -32,10 +32,10 @@ router.post('/login', async (req, res) => {
                 e.email,
                 e.department,
                 e.position,
-                e.date_hired as hire_date,
+                e.hire_date,
                 e.status as employee_status
             FROM user_accounts ua
-            JOIN employees e ON ua.employee_id = e.employee_code
+            JOIN employees e ON ua.employee_id = e.employee_id
             WHERE ua.username = ? AND ua.is_active = TRUE AND e.status = 'active'
         `, [username]);
 
