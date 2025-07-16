@@ -7,7 +7,7 @@ class ThemeManager {
     constructor() {
         this.currentTheme = 'light';
         this.currentPage = 'dashboard';
-        this.storageKey = 'brix-theme-preferences';
+        this.storageKey = 'bricks_theme';
         this.transitionDuration = 300;
         
         // Page-specific accent colors
@@ -37,6 +37,16 @@ class ThemeManager {
                 light: 'rgba(90, 200, 250, 0.1)',
                 hover: 'rgba(90, 200, 250, 0.8)'
             },
+            employees: {
+                primary: '#667eea',
+                light: 'rgba(102, 126, 234, 0.1)',
+                hover: 'rgba(102, 126, 234, 0.8)'
+            },
+            'employee-management': {
+                primary: '#667eea',
+                light: 'rgba(102, 126, 234, 0.1)',
+                hover: 'rgba(102, 126, 234, 0.8)'
+            },
             login: {
                 primary: '#007aff',
                 light: 'rgba(0, 122, 255, 0.1)',
@@ -64,11 +74,9 @@ class ThemeManager {
      */
     loadThemePreferences() {
         try {
-            const saved = localStorage.getItem(this.storageKey);
-            if (saved) {
-                const preferences = JSON.parse(saved);
-                this.currentTheme = preferences.theme || this.detectSystemTheme();
-                this.currentPage = preferences.lastPage || this.detectCurrentPage();
+            const savedTheme = localStorage.getItem(this.storageKey);
+            if (savedTheme) {
+                this.currentTheme = savedTheme;
             } else {
                 this.currentTheme = this.detectSystemTheme();
             }
@@ -83,12 +91,7 @@ class ThemeManager {
      */
     saveThemePreferences() {
         try {
-            const preferences = {
-                theme: this.currentTheme,
-                lastPage: this.currentPage,
-                timestamp: Date.now()
-            };
-            localStorage.setItem(this.storageKey, JSON.stringify(preferences));
+            localStorage.setItem(this.storageKey, this.currentTheme);
         } catch (error) {
             console.warn('Failed to save theme preferences:', error);
         }
@@ -143,6 +146,14 @@ class ThemeManager {
 
         // Apply theme data attribute
         root.setAttribute('data-theme', this.currentTheme);
+        
+        // Apply theme class to body for compatibility
+        body.classList.remove('dark-mode', 'light-mode');
+        if (this.currentTheme === 'dark') {
+            body.classList.add('dark-mode');
+        } else {
+            body.classList.add('light-mode');
+        }
         
         // Add page class to body
         body.classList.remove(...Object.keys(this.accentColors).map(page => `page-${page}`));

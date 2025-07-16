@@ -1009,62 +1009,53 @@ class SidebarManager {
      */
     handleThemeChange(theme) {
         console.log('Theme change requested:', theme);
-        console.log('window.setTheme available:', typeof window.setTheme);
-        console.log('themeManager available:', typeof window.themeManager);
         
-        // Try multiple ways to change theme
-        let themeChanged = false;
-        
-        // Method 1: Use window.setTheme if available
-        if (typeof window.setTheme === 'function') {
-            try {
-                window.setTheme(theme);
-                themeChanged = true;
-                console.log('Theme changed using window.setTheme');
-            } catch (error) {
-                console.error('Error using window.setTheme:', error);
-            }
-        }
-        
-        // Method 2: Use themeManager directly if available
-        if (!themeChanged && typeof window.themeManager !== 'undefined' && window.themeManager.setTheme) {
+        // Try to use the centralized theme manager first
+        if (window.themeManager && typeof window.themeManager.setTheme === 'function') {
             try {
                 window.themeManager.setTheme(theme);
-                themeChanged = true;
-                console.log('Theme changed using themeManager.setTheme');
+                console.log('Theme changed using centralized themeManager');
+                
+                // Update theme toggle state
+                const themeToggle = document.querySelector('#sidebar-theme-toggle');
+                if (themeToggle) {
+                    themeToggle.checked = theme === 'dark';
+                }
+                
+                return;
             } catch (error) {
-                console.error('Error using themeManager.setTheme:', error);
+                console.error('Error using themeManager:', error);
             }
         }
         
-        // Method 3: Manual theme change as fallback
-        if (!themeChanged) {
-            try {
-                document.documentElement.setAttribute('data-theme', theme);
-                document.body.className = theme === 'dark' ? 'dark-theme' : 'light-theme';
-                themeChanged = true;
-                console.log('Theme changed manually');
-            } catch (error) {
-                console.error('Error changing theme manually:', error);
+        // Fallback to manual theme change
+        console.log('Falling back to manual theme change');
+        try {
+            document.documentElement.setAttribute('data-theme', theme);
+            // Use dark-mode class for compatibility
+            document.body.classList.remove('dark-mode', 'light-mode');
+            if (theme === 'dark') {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.add('light-mode');
             }
-        }
-        
-        if (themeChanged) {
-            // Update theme toggle
+            // Also save to localStorage for persistence
+            localStorage.setItem('bricks_theme', theme);
+            
+            // Update theme toggle state
             const themeToggle = document.querySelector('#sidebar-theme-toggle');
             if (themeToggle) {
                 themeToggle.checked = theme === 'dark';
-                console.log('Updated theme toggle state');
             }
             
             console.log(`Theme successfully changed to: ${theme}`);
             
-            // Trigger custom event
+            // Trigger custom event for pages that might need it
             const event = new CustomEvent('themeChanged', { detail: theme });
             document.dispatchEvent(event);
             
-        } else {
-            console.warn('Failed to change theme. Available theme functions:', Object.keys(window).filter(k => k.toLowerCase().includes('theme')));
+        } catch (error) {
+            console.error('Error changing theme manually:', error);
         }
     }
 
@@ -1246,16 +1237,31 @@ class SidebarManager {
         try {
             let currentTheme = 'light'; // default
             
-            // Get current theme from various sources
-            if (typeof themeManager !== 'undefined' && themeManager.getCurrentTheme) {
-                currentTheme = themeManager.getCurrentTheme();
+            // Get current theme from theme manager first
+            if (window.themeManager && typeof window.themeManager.getTheme === 'function') {
+                currentTheme = window.themeManager.getTheme();
             } else if (document.documentElement.hasAttribute('data-theme')) {
                 currentTheme = document.documentElement.getAttribute('data-theme');
+            } else if (document.body.classList.contains('dark-mode')) {
+                currentTheme = 'dark';
             } else {
                 // Check localStorage for saved theme
                 const savedTheme = localStorage.getItem('bricks_theme');
                 if (savedTheme) {
                     currentTheme = savedTheme;
+                    // Apply the saved theme if theme manager is available
+                    if (window.themeManager && typeof window.themeManager.setTheme === 'function') {
+                        window.themeManager.setTheme(currentTheme);
+                    } else {
+                        // Manual fallback
+                        document.body.classList.remove('dark-mode', 'light-mode');
+                        if (currentTheme === 'dark') {
+                            document.body.classList.add('dark-mode');
+                        } else {
+                            document.body.classList.add('light-mode');
+                        }
+                        document.documentElement.setAttribute('data-theme', currentTheme);
+                    }
                 }
             }
             
