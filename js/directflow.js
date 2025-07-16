@@ -217,11 +217,21 @@ class DirectFlow {
 
     async updateAttendanceRecord(id, attendanceData) {
         try {
+            console.log('🔍 DirectFlow updateAttendanceRecord called with:', { id, attendanceData });
+            
+            // If called with just one parameter that's an object with id, extract the id
+            if (typeof id === 'object' && id.id) {
+                attendanceData = id;
+                id = attendanceData.id;
+            }
+            
             const response = await this.makeRequest(`/attendance/${id}`, {
                 method: 'PUT',
                 body: JSON.stringify(attendanceData)
             });
             const data = await response.json();
+            
+            console.log('🔍 DirectFlow updateAttendanceRecord response:', data);
             return data;
         } catch (error) {
             console.error('Error updating attendance record:', error);
@@ -231,10 +241,14 @@ class DirectFlow {
 
     async deleteAttendanceRecord(id) {
         try {
+            console.log('🔍 DirectFlow deleteAttendanceRecord called with ID:', id);
+            
             const response = await this.makeRequest(`/attendance/${id}`, {
                 method: 'DELETE'
             });
             const data = await response.json();
+            
+            console.log('🔍 DirectFlow deleteAttendanceRecord response:', data);
             return data;
         } catch (error) {
             console.error('Error deleting attendance record:', error);

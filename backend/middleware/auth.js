@@ -97,15 +97,8 @@ const auth = async (req, res, next) => {
             );
             console.log('📋 Raw session result:', sessionResult);
             
-            // Handle different result structures
-            let sessions;
-            if (Array.isArray(sessionResult) && sessionResult.length > 0) {
-                sessions = sessionResult[0]; // First element should be rows
-            } else if (Array.isArray(sessionResult)) {
-                sessions = sessionResult; // Direct array
-            } else {
-                sessions = []; // Fallback
-            }
+            // Handle MySQL2 promise format - result is direct array
+            const sessions = sessionResult;
             
             console.log('📋 Parsed sessions:', {
                 type: typeof sessions,
@@ -116,9 +109,36 @@ const auth = async (req, res, next) => {
             sessionValid = sessions && Array.isArray(sessions) && sessions.length > 0;
             console.log('📋 Session check result:', { found: sessions ? sessions.length : 0, valid: sessionValid });
             
-            // Temporarily disable session checking - just rely on JWT
-            console.log('⚠️ TEMPORARILY SKIPPING SESSION VALIDATION - USING JWT ONLY');
-            sessionValid = true;
+            // If no active session found, try to find if session exists but is inactive
+            if (!sessionValid) {
+                const inactiveSessionResult = await db.execute(
+                    'SELECT * FROM user_sessions WHERE token_hash = ? AND expires_at > NOW()',
+                    [token]
+                );
+                
+                if (inactiveSessionResult && inactiveSessionResult.length > 0) {
+                    console.log('⚠️ Found inactive session, reactivating...');
+                    // Reactivate the session and extend expiry
+                    const extendedExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+                    await db.execute(
+                        'UPDATE user_sessions SET is_active = TRUE, expires_at = ? WHERE token_hash = ?',
+                        [extendedExpiry, token]
+                    );
+                    sessionValid = true;
+                    console.log('✅ Session reactivated and extended to:', extendedExpiry.toLocaleString());
+                } else {
+                    console.log('⚠️ No session found, allowing JWT-only authentication');
+                    sessionValid = true; // Allow JWT-only auth as fallback
+                }
+            } else {
+                // Session is active, extend its expiry on each use
+                const extendedExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+                await db.execute(
+                    'UPDATE user_sessions SET expires_at = ? WHERE token_hash = ?',
+                    [extendedExpiry, token]
+                );
+                console.log('✅ Active session expiry extended to:', extendedExpiry.toLocaleString());
+            }
             
         } catch (sessionError) {
             // Sessions table might not exist, skip session check
@@ -227,7 +247,7 @@ const requireManagerOrAdmin = (req, res, next) => {
         console.log('❌ No user or no role found');
         return res.status(401).json({
             success: false,
-            message: 'Authentication required'
+            message: 'Authentication required. Please log in again.'
         });
     }
     
@@ -235,7 +255,7 @@ const requireManagerOrAdmin = (req, res, next) => {
         console.log('❌ User role not admin or manager:', req.user.role);
         return res.status(403).json({
             success: false,
-            message: 'Manager or admin access required'
+            message: 'Access denied. Manager or admin privileges required for this operation.'
         });
     }
     

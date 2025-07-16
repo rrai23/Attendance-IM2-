@@ -398,13 +398,19 @@ router.put('/:id', requireManagerOrAdmin, async (req, res) => {
             reason
         } = req.body;
 
-        // Check if record exists
+        console.log('🔍 PUT route called with ID:', id);
+        console.log('🔍 PUT request body:', req.body);
+
+        // Check if record exists - result is directly the array
         const existing = await db.execute(
             'SELECT * FROM attendance_records WHERE id = ?',
             [id]
         );
 
-        if (existing.length === 0) {
+        console.log('🔍 Existing record query result:', existing);
+
+        // Result is directly the array, not [rows, fields]
+        if (!existing || existing.length === 0) {
             return res.status(404).json({
                 success: false,
                 message: 'Attendance record not found'
@@ -436,7 +442,7 @@ router.put('/:id', requireManagerOrAdmin, async (req, res) => {
         }
 
         if (notes !== undefined) {
-            updateFields.push('clock_in_notes = ?');
+            updateFields.push('notes = ?');
             updateParams.push(notes);
         }
 
@@ -460,12 +466,18 @@ router.put('/:id', requireManagerOrAdmin, async (req, res) => {
             });
         }
 
-        await db.execute(
+        console.log('🔍 Update fields:', updateFields);
+        console.log('🔍 Update params:', updateParams);
+
+        // Execute update query
+        const updateResult = await db.execute(
             `UPDATE attendance_records SET ${updateFields.join(', ')} WHERE id = ?`,
             updateParams
         );
 
-        // Get updated record
+        console.log('🔍 Update result:', updateResult);
+
+        // Get updated record - result is directly the array
         const updatedRecord = await db.execute(`
             SELECT 
                 ar.id,
@@ -490,10 +502,33 @@ router.put('/:id', requireManagerOrAdmin, async (req, res) => {
             WHERE ar.id = ?
         `, [id]);
 
+        console.log('🔍 Updated record result:', updatedRecord);
+
+        // Transform the record to match frontend expectations
+        const transformedRecord = updatedRecord.length > 0 ? {
+            id: updatedRecord[0].id,
+            employeeId: updatedRecord[0].employee_id,
+            employeeName: updatedRecord[0].employee_name,
+            employeeCode: updatedRecord[0].employee_code,
+            department: updatedRecord[0].department,
+            date: updatedRecord[0].date,
+            clockIn: updatedRecord[0].time_in,
+            clockOut: updatedRecord[0].time_out,
+            timeIn: updatedRecord[0].time_in,
+            timeOut: updatedRecord[0].time_out,
+            hours: updatedRecord[0].hours_worked,
+            hoursWorked: updatedRecord[0].hours_worked,
+            overtimeHours: updatedRecord[0].overtime_hours,
+            status: updatedRecord[0].status,
+            notes: updatedRecord[0].notes,
+            createdAt: updatedRecord[0].created_at,
+            updatedAt: updatedRecord[0].updated_at
+        } : null;
+
         res.json({
             success: true,
             message: 'Attendance record updated successfully',
-            data: { record: updatedRecord[0] }
+            data: transformedRecord
         });
 
     } catch (error) {
@@ -646,13 +681,18 @@ router.delete('/:id', requireManagerOrAdmin, async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Check if record exists
+        console.log('🔍 DELETE route called with ID:', id);
+
+        // Check if record exists - result is directly the array
         const existing = await db.execute(
             'SELECT * FROM attendance_records WHERE id = ?',
             [id]
         );
 
-        if (existing.length === 0) {
+        console.log('🔍 Existing record query result:', existing);
+
+        // Result is directly the array, not [rows, fields]
+        if (!existing || existing.length === 0) {
             return res.status(404).json({
                 success: false,
                 message: 'Attendance record not found'
@@ -663,10 +703,12 @@ router.delete('/:id', requireManagerOrAdmin, async (req, res) => {
         const recordData = existing[0];
 
         // Delete the record
-        await db.execute(
+        const deleteResult = await db.execute(
             'DELETE FROM attendance_records WHERE id = ?',
             [id]
         );
+
+        console.log('🔍 Delete result:', deleteResult);
 
         // Log the deletion
         console.log(`Attendance record ${id} deleted by user ${req.user.employee_id}`);

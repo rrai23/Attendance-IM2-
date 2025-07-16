@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Attendance CRUD Operations</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        .form-group {
+            margin: 10px 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .btn {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .btn.danger {
+            background-color: #dc3545;
+        }
+        .btn.danger:hover {
+            background-color: #c82333;
+        }
+        .result {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Attendance CRUD Operations</h1>
+    
+    <div class="test-section">
+        <h2>1. Get Attendance Records</h2>
+        <button class="btn" onclick="getAttendanceRecords()">Get All Records</button>
+        <div id="getResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Update Attendance Record</h2>
+        <div class="form-group">
+            <label>Record ID:</label>
+            <input type="number" id="updateId" placeholder="Enter record ID">
+        </div>
+        <div class="form-group">
+            <label>Status:</label>
+            <select id="updateStatus">
+                <option value="present">Present</option>
+                <option value="absent">Absent</option>
+                <option value="late">Late</option>
+                <option value="sick">Sick</option>
+                <option value="vacation">Vacation</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Time In:</label>
+            <input type="time" id="updateTimeIn">
+        </div>
+        <div class="form-group">
+            <label>Time Out:</label>
+            <input type="time" id="updateTimeOut">
+        </div>
+        <div class="form-group">
+            <label>Notes:</label>
+            <input type="text" id="updateNotes" placeholder="Enter notes">
+        </div>
+        <button class="btn" onclick="updateAttendanceRecord()">Update Record</button>
+        <div id="updateResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Delete Attendance Record</h2>
+        <div class="form-group">
+            <label>Record ID:</label>
+            <input type="number" id="deleteId" placeholder="Enter record ID">
+        </div>
+        <button class="btn danger" onclick="deleteAttendanceRecord()">Delete Record</button>
+        <div id="deleteResult" class="result"></div>
+    </div>
+
+    <script src="js/directflow-auth.js"></script>
+    <script src="js/directflow.js"></script>
+    <script>
+        // Global variables
+        let directFlow;
+        let attendanceRecords = [];
+
+        // Initialize DirectFlow
+        async function initDirectFlow() {
+            try {
+                // Wait for DirectFlow to be ready
+                let waitCount = 0;
+                while ((!window.directFlow || !window.directFlow.initialized) && waitCount < 100) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    waitCount++;
+                }
+
+                if (window.directFlow && window.directFlow.initialized) {
+                    directFlow = window.directFlow;
+                    console.log('✅ DirectFlow initialized successfully');
+                    return true;
+                } else {
+                    console.error('❌ DirectFlow not available');
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ Error initializing DirectFlow:', error);
+                return false;
+            }
+        }
+
+        // Get all attendance records
+        async function getAttendanceRecords() {
+            const resultDiv = document.getElementById('getResult');
+            resultDiv.textContent = 'Loading...';
+            
+            try {
+                if (!directFlow) {
+                    const initialized = await initDirectFlow();
+                    if (!initialized) {
+                        throw new Error('DirectFlow not available');
+                    }
+                }
+
+                const response = await directFlow.getAttendanceRecords();
+                console.log('📋 Get attendance records response:', response);
+                
+                if (response.success) {
+                    attendanceRecords = response.data || [];
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ Success: Retrieved ${attendanceRecords.length} records\n\n` + 
+                                           JSON.stringify(attendanceRecords.slice(0, 5), null, 2);
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ Error: ${response.message}`;
+                }
+            } catch (error) {
+                console.error('❌ Error getting attendance records:', error);
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+
+        // Update attendance record
+        async function updateAttendanceRecord() {
+            const resultDiv = document.getElementById('updateResult');
+            resultDiv.textContent = 'Updating...';
+            
+            try {
+                if (!directFlow) {
+                    const initialized = await initDirectFlow();
+                    if (!initialized) {
+                        throw new Error('DirectFlow not available');
+                    }
+                }
+
+                const id = document.getElementById('updateId').value;
+                const status = document.getElementById('updateStatus').value;
+                const timeIn = document.getElementById('updateTimeIn').value;
+                const timeOut = document.getElementById('updateTimeOut').value;
+                const notes = document.getElementById('updateNotes').value;
+
+                if (!id) {
+                    throw new Error('Record ID is required');
+                }
+
+                const updateData = {
+                    status: status,
+                    notes: notes
+                };
+
+                if (timeIn) updateData.time_in = timeIn;
+                if (timeOut) updateData.time_out = timeOut;
+
+                console.log('📝 Updating record:', { id, updateData });
+                
+                const response = await directFlow.updateAttendanceRecord(id, updateData);
+                console.log('📝 Update response:', response);
+                
+                if (response.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ Success: Record updated\n\n` + 
+                                           JSON.stringify(response.data, null, 2);
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ Error: ${response.message}`;
+                }
+            } catch (error) {
+                console.error('❌ Error updating attendance record:', error);
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+
+        // Delete attendance record
+        async function deleteAttendanceRecord() {
+            const resultDiv = document.getElementById('deleteResult');
+            resultDiv.textContent = 'Deleting...';
+            
+            try {
+                if (!directFlow) {
+                    const initialized = await initDirectFlow();
+                    if (!initialized) {
+                        throw new Error('DirectFlow not available');
+                    }
+                }
+
+                const id = document.getElementById('deleteId').value;
+
+                if (!id) {
+                    throw new Error('Record ID is required');
+                }
+
+                if (!confirm(`Are you sure you want to delete record ${id}?`)) {
+                    resultDiv.textContent = 'Cancelled';
+                    return;
+                }
+
+                console.log('🗑️ Deleting record:', id);
+                
+                const response = await directFlow.deleteAttendanceRecord(id);
+                console.log('🗑️ Delete response:', response);
+                
+                if (response.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ Success: Record deleted\n\n` + 
+                                           JSON.stringify(response.data, null, 2);
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ Error: ${response.message}`;
+                }
+            } catch (error) {
+                console.error('❌ Error deleting attendance record:', error);
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', async () => {
+            console.log('🚀 Page loaded, initializing DirectFlow...');
+            await initDirectFlow();
+            
+            // Auto-load attendance records
+            setTimeout(() => {
+                getAttendanceRecords();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

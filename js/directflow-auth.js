@@ -40,6 +40,14 @@ class DirectFlowAuth {
         return true;
     }
 
+    // Check if token is expired without clearing it
+    isTokenExpired() {
+        const expires = localStorage.getItem(this.expiryKey);
+        if (!expires) return true;
+        
+        return Date.now() > parseInt(expires);
+    }
+
     // Clear all authentication data
     clearAuth() {
         localStorage.removeItem(this.tokenKey);
@@ -277,7 +285,42 @@ class DirectFlowAuth {
         });
 
         if (response.status === 401) {
-            console.log('❌ API request unauthorized, logging out');
+            console.log('❌ API request unauthorized');
+            
+            // Check if this is a permission error vs authentication error
+            try {
+                const errorData = await response.clone().json();
+                console.log('🔍 Error response data:', errorData);
+                
+                // If the error message indicates insufficient permissions, don't logout
+                if (errorData.message && 
+                    (errorData.message.includes('permission') || 
+                     errorData.message.includes('not authorized') ||
+                     errorData.message.includes('Access denied') ||
+                     errorData.message.includes('Manager or admin'))) {
+                    console.log('⚠️ Permission denied, not logging out');
+                    throw new Error(errorData.message || 'Access denied');
+                }
+                
+                // If the error is about authentication being required, also don't logout immediately
+                if (errorData.message && errorData.message.includes('Authentication required')) {
+                    console.log('⚠️ Authentication required, checking token validity...');
+                    
+                    // Check if we have a valid token
+                    const token = this.getToken();
+                    if (token && !this.isTokenExpired()) {
+                        console.log('⚠️ Token appears valid, not logging out');
+                        throw new Error('Authentication issue: ' + errorData.message);
+                    }
+                }
+                
+            } catch (parseError) {
+                console.log('Could not parse error response:', parseError.message);
+                // If we can't parse the error, treat it as a general auth error
+            }
+            
+            // This is likely a token expiration or invalid token
+            console.log('❌ Authentication expired, logging out');
             this.logout();
             throw new Error('Authentication expired');
         }
