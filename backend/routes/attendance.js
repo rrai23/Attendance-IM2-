@@ -594,7 +594,7 @@ router.get('/stats', auth, async (req, res) => {
         const today = new Date().toISOString().split('T')[0];
         
         // Get today's attendance stats
-        const [todayStats] = await db.execute(`
+        const todayStatsResult = await db.execute(`
             SELECT 
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present,
@@ -606,21 +606,25 @@ router.get('/stats', auth, async (req, res) => {
         `, [today]);
 
         // Get total employees count
-        const [totalEmployees] = await db.execute(`
+        const totalEmployeesResult = await db.execute(`
             SELECT COUNT(*) as count
             FROM employees e
             JOIN user_accounts ua ON e.employee_id = ua.employee_id
             WHERE ua.is_active = 1 AND e.status = 'active'
         `);
 
+        // Extract data from results (direct array format)
+        const todayStats = todayStatsResult[0] || {};
+        const totalEmployees = totalEmployeesResult[0] || {};
+
         const stats = {
-            present: parseInt((todayStats[0] && todayStats[0].present) || 0),
-            absent: parseInt((todayStats[0] && todayStats[0].absent) || 0),
-            late: parseInt((todayStats[0] && todayStats[0].late) || 0),
-            onLeave: parseInt((todayStats[0] && todayStats[0].onLeave) || 0),
-            total: parseInt((totalEmployees[0] && totalEmployees[0].count) || 0),
-            attendanceRate: (totalEmployees[0] && totalEmployees[0].count > 0) 
-                ? (((todayStats[0] && todayStats[0].present) || 0) / totalEmployees[0].count * 100).toFixed(1)
+            present: parseInt(todayStats.present || 0),
+            absent: parseInt(todayStats.absent || 0),
+            late: parseInt(todayStats.late || 0),
+            onLeave: parseInt(todayStats.onLeave || 0),
+            total: parseInt(totalEmployees.count || 0),
+            attendanceRate: (totalEmployees.count > 0) 
+                ? (((todayStats.present || 0) / totalEmployees.count) * 100).toFixed(1)
                 : 0
         };
 

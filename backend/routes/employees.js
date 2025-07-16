@@ -85,7 +85,8 @@ router.get('/', auth, async (req, res) => {
         query += ' LIMIT ? OFFSET ?';
         params.push(parseInt(limit), offset);
 
-        const employees = await db.execute(query, params);
+        const employeesResult = await db.execute(query, params);
+        const employees = employeesResult; // MySQL2 promise returns data directly
 
         // Get total count for pagination
         let countQuery = `
@@ -111,7 +112,7 @@ router.get('/', auth, async (req, res) => {
         }
 
         if (search) {
-            countQuery += ' AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.email LIKE ? OR e.employee_id LIKE ?)';
+            countQuery += ' AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.employee_id LIKE ?)';
             const searchTerm = `%${search}%`;
             countParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
         }

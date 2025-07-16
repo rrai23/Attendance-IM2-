@@ -92,26 +92,106 @@ const records = result[0]; // This gets the first record object, not the array
 }
 ```
 
-### 2. Employee API (`/api/employees`)
+### 2. Employees API (`/api/employees`)
 
 #### Database Query Response
 ```javascript
-// Raw result from db.execute() - Array of employee records
+// Raw result from db.execute() - Array of employees
 [
   {
     id: 1,
     employee_id: 'admin_001',
-    username: 'admin',
     full_name: 'System Administrator',
+    first_name: 'System',
+    last_name: 'Administrator',
     email: 'admin@brickscompany.com',
+    phone: null,
     department: 'ADMIN',
     position: 'System Administrator',
-    employee_status: 'active',
-    hire_date: '2025-07-17T00:00:00.000Z',
-    // ... other fields
+    manager_id: null,
+    hire_date: 2025-07-17T00:00:00.000Z,
+    status: 'active',                    // Field name: e.status (not e.employee_status)
+    hourly_rate: null,
+    overtime_rate: null,
+    wage: null,
+    avatar: null,
+    address: null,
+    emergency_contact: null,
+    emergency_phone: null,
+    work_schedule: null,
+    created_at: 2025-07-17T02:34:54.000Z,
+    updated_at: 2025-07-17T03:59:38.000Z,
+    username: 'admin',
+    role: 'admin',
+    is_active: 1,
+    last_login: 2025-07-17T04:08:19.000Z
   }
-  // ... more employee records
 ]
+```
+
+#### API Response Structure
+```javascript
+{
+  "success": true,
+  "data": {
+    "employees": [/* Array of employee objects */],
+    "pagination": {
+      "page": 1,
+      "limit": 50,
+      "total": 5,
+      "totalPages": 1
+    }
+  }
+}
+```
+
+#### DirectFlow Integration
+```javascript
+// DirectFlow.getEmployees() method
+async getEmployees() {
+  const response = await this.makeRequest('/employees');
+  const data = await response.json();
+  
+  // Returns the employees array directly
+  if (data.success && data.data && data.data.employees) {
+    return data.data.employees;
+  }
+  return [];
+}
+```
+
+### 3. Attendance Stats API (`/api/attendance/stats`)
+
+#### Database Query Response
+```javascript
+// Today's stats query result
+const todayStatsResult = await db.execute(query, params);
+const todayStats = todayStatsResult[0]; // Get the first (and only) record
+
+// Total employees query result  
+const totalEmployeesResult = await db.execute(query, params);
+const totalEmployees = totalEmployeesResult[0]; // Get the first (and only) record
+```
+
+#### API Response Structure
+```javascript
+{
+  "success": true,
+  "data": {
+    "todayStats": {
+      "date": "2025-07-16",
+      "totalPresent": 3,
+      "totalAbsent": 2,
+      "totalLate": 1,
+      "totalEarly": 0,
+      "totalOvertime": 0,
+      "averageHours": 7.5
+    },
+    "totalEmployees": {
+      "count": 5
+    }
+  }
+}
 ```
 
 ## Database Schema Key Points
