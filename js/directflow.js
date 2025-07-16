@@ -209,12 +209,119 @@ class DirectFlow {
      */
     async getSettings() {
         try {
+            console.log('DirectFlow getSettings called');
+            
             const response = await this.makeRequest('/settings');
             const data = await response.json();
-            return data.success ? data.data.settings : {};
+            
+            console.log('Raw settings response:', data);
+            
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to fetch settings');
+            }
+            
+            // Get flat settings from response
+            const flatSettings = data.data.settings || data.data || {};
+            console.log('Flat settings from API:', flatSettings);
+            
+            // Organize flat settings into categories for the UI
+            const organizedSettings = {
+                general: {
+                    companyName: flatSettings.companyName || flatSettings.company_name || 'My Company',
+                    timezone: flatSettings.timezone || flatSettings.company_timezone || 'UTC',
+                    dateFormat: flatSettings.dateFormat || 'MM/DD/YYYY',
+                    timeFormat: flatSettings.timeFormat || '24',
+                    currency: flatSettings.currency || 'USD',
+                    language: flatSettings.language || 'en'
+                },
+                payroll: {
+                    payPeriod: flatSettings.payPeriod || flatSettings.payroll_frequency || 'monthly',
+                    payday: flatSettings.payday || 'friday',
+                    overtimeRate: parseFloat(flatSettings.overtimeRate || flatSettings.overtime_rate_multiplier || 1.5),
+                    overtimeThreshold: parseInt(flatSettings.overtimeThreshold || flatSettings.overtime_threshold_hours || 40),
+                    roundingRules: flatSettings.roundingRules || 'none',
+                    autoCalculate: flatSettings.autoCalculate === 'true' || flatSettings.autoCalculate === true
+                },
+                attendance: {
+                    clockInGrace: parseInt(flatSettings.clockInGrace || flatSettings.late_grace_period || 15),
+                    clockOutGrace: parseInt(flatSettings.clockOutGrace || 15),
+                    lunchBreakDuration: parseInt(flatSettings.lunchBreakDuration || 60),
+                    autoClockOut: flatSettings.autoClockOut === 'true' || flatSettings.autoClockOut === true,
+                    autoClockOutTime: flatSettings.autoClockOutTime || flatSettings.work_end_time || '17:00',
+                    requireNotes: flatSettings.requireNotes === 'true' || flatSettings.requireNotes === true
+                },
+                notifications: {
+                    emailNotifications: flatSettings.emailNotifications === 'true' || flatSettings.emailNotifications === true,
+                    tardyAlerts: flatSettings.tardyAlerts === 'true' || flatSettings.tardyAlerts === true,
+                    overtimeAlerts: flatSettings.overtimeAlerts === 'true' || flatSettings.overtimeAlerts === true,
+                    payrollReminders: flatSettings.payrollReminders === 'true' || flatSettings.payrollReminders === true,
+                    systemUpdates: flatSettings.systemUpdates === 'true' || flatSettings.systemUpdates === true
+                },
+                security: {
+                    sessionTimeout: parseInt(flatSettings.sessionTimeout || flatSettings.auto_logout_minutes || 60),
+                    passwordMinLength: parseInt(flatSettings.passwordMinLength || 6),
+                    requirePasswordChange: flatSettings.requirePasswordChange === 'true' || flatSettings.requirePasswordChange === true,
+                    passwordChangeInterval: parseInt(flatSettings.passwordChangeInterval || 90),
+                    twoFactorAuth: flatSettings.twoFactorAuth === 'true' || flatSettings.twoFactorAuth === true
+                },
+                theme: {
+                    defaultTheme: flatSettings.defaultTheme || 'light',
+                    allowUserThemes: flatSettings.allowUserThemes === 'true' || flatSettings.allowUserThemes === true,
+                    accentColor: flatSettings.accentColor || '#007bff'
+                }
+            };
+            
+            console.log('Organized settings for UI:', organizedSettings);
+            return organizedSettings;
+            
         } catch (error) {
-            console.error('Error getting settings:', error);
-            return {};
+            console.error('Error fetching settings:', error);
+            // Return default settings structure on error
+            return {
+                general: {
+                    companyName: 'My Company',
+                    timezone: 'UTC',
+                    dateFormat: 'MM/DD/YYYY',
+                    timeFormat: '24',
+                    currency: 'USD',
+                    language: 'en'
+                },
+                payroll: {
+                    payPeriod: 'monthly',
+                    payday: 'friday',
+                    overtimeRate: 1.5,
+                    overtimeThreshold: 40,
+                    roundingRules: 'none',
+                    autoCalculate: false
+                },
+                attendance: {
+                    clockInGrace: 15,
+                    clockOutGrace: 15,
+                    lunchBreakDuration: 60,
+                    autoClockOut: false,
+                    autoClockOutTime: '17:00',
+                    requireNotes: false
+                },
+                notifications: {
+                    emailNotifications: false,
+                    tardyAlerts: false,
+                    overtimeAlerts: false,
+                    payrollReminders: false,
+                    systemUpdates: false
+                },
+                security: {
+                    sessionTimeout: 60,
+                    passwordMinLength: 6,
+                    requirePasswordChange: false,
+                    passwordChangeInterval: 90,
+                    twoFactorAuth: false
+                },
+                theme: {
+                    defaultTheme: 'light',
+                    allowUserThemes: true,
+                    accentColor: '#007bff'
+                }
+            };
         }
     }
 
@@ -266,78 +373,11 @@ class DirectFlow {
         }
     }
 
-    async saveSettings(categorizedSettings) {
+    async saveSettings(flatSettings) {
         try {
-            console.log('DirectFlow saveSettings called with:', categorizedSettings);
+            console.log('DirectFlow saveSettings called with flat settings:', flatSettings);
             
-            // Convert categorized settings to flat key-value pairs for database
-            const flatSettings = {};
-            
-            if (categorizedSettings.general) {
-                flatSettings.companyName = categorizedSettings.general.companyName;
-                flatSettings.company_name = categorizedSettings.general.companyName; // Also save with database key
-                flatSettings.timezone = categorizedSettings.general.timezone;
-                flatSettings.company_timezone = categorizedSettings.general.timezone;
-                flatSettings.dateFormat = categorizedSettings.general.dateFormat;
-                flatSettings.timeFormat = categorizedSettings.general.timeFormat;
-                flatSettings.currency = categorizedSettings.general.currency;
-                flatSettings.language = categorizedSettings.general.language;
-            }
-            
-            if (categorizedSettings.payroll) {
-                flatSettings.payPeriod = categorizedSettings.payroll.payPeriod;
-                flatSettings.payroll_frequency = categorizedSettings.payroll.payPeriod;
-                flatSettings.payday = categorizedSettings.payroll.payday;
-                flatSettings.overtimeRate = categorizedSettings.payroll.overtimeRate;
-                flatSettings.overtime_rate_multiplier = categorizedSettings.payroll.overtimeRate;
-                flatSettings.overtimeThreshold = categorizedSettings.payroll.overtimeThreshold;
-                flatSettings.overtime_threshold_hours = categorizedSettings.payroll.overtimeThreshold;
-                flatSettings.roundingRules = categorizedSettings.payroll.roundingRules;
-                flatSettings.autoCalculate = categorizedSettings.payroll.autoCalculate;
-            }
-            
-            if (categorizedSettings.attendance) {
-                flatSettings.clockInGrace = categorizedSettings.attendance.clockInGrace;
-                flatSettings.late_grace_period = categorizedSettings.attendance.clockInGrace;
-                flatSettings.clockOutGrace = categorizedSettings.attendance.clockOutGrace;
-                flatSettings.lunchBreakDuration = categorizedSettings.attendance.lunchBreakDuration;
-                flatSettings.autoClockOut = categorizedSettings.attendance.autoClockOut;
-                flatSettings.autoClockOutTime = categorizedSettings.attendance.autoClockOutTime;
-                flatSettings.work_end_time = categorizedSettings.attendance.autoClockOutTime;
-                flatSettings.requireNotes = categorizedSettings.attendance.requireNotes;
-            }
-            
-            if (categorizedSettings.notifications) {
-                flatSettings.emailNotifications = categorizedSettings.notifications.emailNotifications;
-                flatSettings.tardyAlerts = categorizedSettings.notifications.tardyAlerts;
-                flatSettings.overtimeAlerts = categorizedSettings.notifications.overtimeAlerts;
-                flatSettings.payrollReminders = categorizedSettings.notifications.payrollReminders;
-                flatSettings.systemUpdates = categorizedSettings.notifications.systemUpdates;
-            }
-            
-            if (categorizedSettings.security) {
-                flatSettings.sessionTimeout = categorizedSettings.security.sessionTimeout;
-                flatSettings.auto_logout_minutes = categorizedSettings.security.sessionTimeout;
-                flatSettings.passwordMinLength = categorizedSettings.security.passwordMinLength;
-                flatSettings.requirePasswordChange = categorizedSettings.security.requirePasswordChange;
-                flatSettings.passwordChangeInterval = categorizedSettings.security.passwordChangeInterval;
-                flatSettings.twoFactorAuth = categorizedSettings.security.twoFactorAuth;
-            }
-            
-            if (categorizedSettings.users) {
-                flatSettings.defaultRole = categorizedSettings.users.defaultRole;
-                flatSettings.defaultHourlyRate = categorizedSettings.users.defaultHourlyRate;
-                flatSettings.autoEnableAccounts = categorizedSettings.users.autoEnableAccounts;
-                flatSettings.requireEmailVerification = categorizedSettings.users.requireEmailVerification;
-                flatSettings.lockoutAttempts = categorizedSettings.users.lockoutAttempts;
-                flatSettings.lockoutDuration = categorizedSettings.users.lockoutDuration;
-                flatSettings.autoInactivate = categorizedSettings.users.autoInactivate;
-                flatSettings.inactiveThreshold = categorizedSettings.users.inactiveThreshold;
-            }
-            
-            console.log('Converted to flat settings:', flatSettings);
-            
-            // Call updateSettings with the flat settings structure
+            // No conversion needed - settings are already flat
             const result = await this.updateSettings({ settings: flatSettings });
             console.log('Update settings result:', result);
             

@@ -20,8 +20,7 @@ class SettingsController {
         
         this.directFlow = window.directFlow;
         
-        // Initialize other managers with fallbacks
-        this.userManager = window.userManager || null;
+        // Only keep essential managers
         this.sidebarManager = window.sidebarManager || null;
         this.themeManager = window.themeManager || null;
         
@@ -937,16 +936,29 @@ class SettingsController {
     }
 
     /**
-     * Collect form data from all sections
+     * Collect form data from all sections (FLAT STRUCTURE)
      */
     collectFormData() {
         const data = {};
         
-        // Collect data from each section
-        const sections = ['general', 'payroll', 'attendance', 'notifications', 'security'];
+        // Collect all form inputs directly as flat key-value pairs
+        const allInputs = document.querySelectorAll('input, select, textarea');
         
-        for (const section of sections) {
-            data[section] = this.collectSectionData(section);
+        for (const input of allInputs) {
+            if (input.name) {
+                // Remove section prefix and use direct key names
+                const key = input.name.replace(/^(general|payroll|attendance|notifications|security)\./, '');
+                
+                if (input.type === 'checkbox') {
+                    data[key] = input.checked;
+                } else if (input.type === 'radio') {
+                    if (input.checked) {
+                        data[key] = input.value;
+                    }
+                } else {
+                    data[key] = input.value;
+                }
+            }
         }
         
         return data;
@@ -1999,15 +2011,23 @@ class SettingsController {
     }
 
     /**
-     * Load and display account summary
+     * Load and display account summary using DirectFlow
      */
     async loadAccountSummary() {
         try {
-            if (!window.unifiedAccountManager || !window.unifiedAccountManager.initialized) {
+            if (!this.directFlow || !this.directFlow.initialized) {
                 return;
             }
 
-            const stats = window.unifiedAccountManager.getAccountStats();
+            // Get user accounts from DirectFlow
+            const employees = await this.directFlow.getEmployees();
+            const stats = {
+                total: employees.length,
+                active: employees.filter(emp => emp.status === 'active').length,
+                inactive: employees.filter(emp => emp.status === 'inactive').length,
+                admins: employees.filter(emp => emp.role === 'admin').length
+            };
+
             const container = document.getElementById('accounts-summary');
             
             if (container) {
@@ -2030,8 +2050,12 @@ class SettingsController {
                             <span class="stat-label">Admin Accounts</span>
                         </div>
                         <div class="stat-item">
-                            <span class="stat-number">${stats.mustChangePassword}</span>
-                            <span class="stat-label">Need Password Change</span>
+                            <span class="stat-number">${stats.inactive}</span>
+                            <span class="stat-label">Inactive</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">${stats.admins}</span>
+                            <span class="stat-label">Administrators</span>
                         </div>
                     </div>
                 `;
@@ -2042,79 +2066,71 @@ class SettingsController {
     }
 
     /**
-     * Show accounts modal with detailed account information
+     * Show accounts modal with detailed account information using DirectFlow
      */
-    showAccountsModal() {
-        if (!window.unifiedAccountManager || !window.unifiedAccountManager.initialized) {
-            this.showErrorMessage('Account manager not available');
+    async showAccountsModal() {
+        if (!this.directFlow || !this.directFlow.initialized) {
+            this.showErrorMessage('DirectFlow not available');
             return;
         }
 
-        const accounts = window.unifiedAccountManager.getAllAccounts();
-        
-        const modalContent = `
-            <div class="accounts-table-container">
-                <table class="accounts-table">
-                    <thead>
-                        <tr>
-                            <th>Username</th>
-                            <th>Full Name</th>
-                            <th>Role</th>
-                            <th>Status</th>
-                            <th>Employee ID</th>
-                            <th>Password Change Required</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${accounts.map(account => `
+        try {
+            const employees = await this.directFlow.getEmployees();
+            
+            const modalContent = `
+                <div class="accounts-table-container">
+                    <table class="accounts-table">
+                        <thead>
                             <tr>
-                                <td>${account.username}</td>
-                                <td>${account.fullName || 'N/A'}</td>
-                                <td>${account.role}</td>
-                                <td>
-                                    <span class="status-badge status-${account.status}">
-                                        ${account.status}
-                                    </span>
-                                </td>
-                                <td>${account.employeeId || 'N/A'}</td>
-                                <td>
-                                    ${account.mustChangePassword ? 
-                                        '<span class="status-badge status-warning">Yes</span>' : 
-                                        '<span class="status-badge status-success">No</span>'}
-                                </td>
-                                <td>
-                                    ${!account.isSystemAccount ? `
-                                        <button class="btn btn-sm btn-secondary" onclick="settingsController.resetAccountPassword('${account.username}')">
-                                            Reset Password
-                                        </button>
-                                    ` : 'System Account'}
-                                </td>
+                                <th>Employee Code</th>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Department</th>
+                                <th>Position</th>
+                                <th>Status</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        `;
+                        </thead>
+                        <tbody>
+                            ${employees.map(employee => `
+                                <tr>
+                                    <td>${employee.employee_code || 'N/A'}</td>
+                                    <td>${employee.full_name || employee.first_name + ' ' + employee.last_name || 'N/A'}</td>
+                                    <td>${employee.email || 'N/A'}</td>
+                                    <td>${employee.department || 'N/A'}</td>
+                                    <td>${employee.position || 'N/A'}</td>
+                                    <td>
+                                        <span class="status-badge status-${employee.status}">
+                                            ${employee.status}
+                                        </span>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
 
-        this.showModal('User Accounts', modalContent, 'large');
+            this.showModal('Employee Accounts', modalContent, 'large');
+        } catch (error) {
+            console.error('Error loading accounts modal:', error);
+            this.showErrorMessage('Failed to load accounts');
+        }
     }
 
     /**
-     * Sync accounts with employees
+     * Sync accounts with employees - Using DirectFlow only
      */
     async syncAccounts() {
         try {
-            if (!window.unifiedAccountManager || !window.unifiedAccountManager.initialized) {
-                this.showErrorMessage('Account manager not available');
+            if (!this.directFlow || !this.directFlow.initialized) {
+                this.showErrorMessage('DirectFlow not available');
                 return;
             }
 
-            this.showSuccessMessage('Syncing accounts with employees...');
-            await window.unifiedAccountManager.syncWithEmployeeManager();
+            this.showSuccessMessage('Syncing employee data...');
             await this.loadAccountSummary();
             await this.loadUserStats();
-            this.showSuccessMessage('Account sync completed successfully');
+            this.showSuccessMessage('Employee data sync completed successfully');
 
         } catch (error) {
             console.error('Error syncing accounts:', error);
@@ -2129,39 +2145,14 @@ class SettingsController {
         const modalContent = `
             <div class="reset-passwords-form">
                 <div class="form-group">
-                    <label class="form-label">Reset Type</label>
-                    <div class="radio-group">
-                        <label class="radio-label">
-                            <input type="radio" name="resetType" value="all" checked>
-                            Reset all employee passwords to default
-                        </label>
-                        <label class="radio-label">
-                            <input type="radio" name="resetType" value="expired">
-                            Reset only accounts that need password change
-                        </label>
-                    </div>
+                    <p class="info-text">
+                        <strong>Note:</strong> Password reset functionality requires direct backend administration.
+                        Please contact your system administrator for password reset operations.
+                    </p>
                 </div>
-                
-                <div class="form-group">
-                    <label for="newPassword" class="form-label">New Password</label>
-                    <input type="password" id="newPassword" class="form-input" value="employee" placeholder="Enter new password">
-                    <small class="field-help">Default password for all reset accounts</small>
-                </div>
-                
-                <div class="form-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="forceChange" checked>
-                        <span class="checkmark"></span>
-                        Force password change on next login
-                    </label>
-                </div>
-                
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="settingsController.closeModal()">
-                        Cancel
-                    </button>
-                    <button type="button" class="btn btn-warning" onclick="settingsController.executePasswordReset()">
-                        Reset Passwords
+                        Close
                     </button>
                 </div>
             </div>
@@ -2269,14 +2260,8 @@ class SettingsController {
                 admins: employees.filter(emp => emp.role === 'admin').length
             };
 
-            // Get account statistics if available
-            let accountStats = null;
-            if (window.unifiedAccountManager && window.unifiedAccountManager.initialized) {
-                accountStats = window.unifiedAccountManager.getAccountStats();
-            }
-
+            // No additional account statistics needed - DirectFlow provides all data
             console.log('User stats loaded from DirectFlow:', stats);
-            console.log('Account stats loaded from unified account manager:', accountStats);
 
             const container = document.getElementById('user-stats');
             if (container) {

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Settings API</title>
+</head>
+<body>
+    <h1>Debug Settings API</h1>
+    <div id="result"></div>
+    
+    <script>
+        async function testAPI() {
+            try {
+                // Test authentication first
+                const authResponse = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'admin123'
+                    })
+                });
+                
+                const authData = await authResponse.json();
+                console.log('Auth response:', authData);
+                
+                if (!authData.success) {
+                    throw new Error('Authentication failed: ' + authData.message);
+                }
+                
+                // Store token
+                localStorage.setItem('authToken', authData.data.token);
+                
+                // Test getting settings
+                const settingsResponse = await fetch('/api/settings', {
+                    headers: {
+                        'Authorization': `Bearer ${authData.data.token}`
+                    }
+                });
+                
+                const settingsData = await settingsResponse.json();
+                console.log('Settings response:', settingsData);
+                
+                // Test updating settings
+                const updateResponse = await fetch('/api/settings', {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${authData.data.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        settings: {
+                            test_setting: 'test_value',
+                            company_name: 'Test Company'
+                        }
+                    })
+                });
+                
+                const updateData = await updateResponse.json();
+                console.log('Update response:', updateData);
+                
+                document.getElementById('result').innerHTML = `
+                    <h2>Auth Result:</h2>
+                    <pre>${JSON.stringify(authData, null, 2)}</pre>
+                    <h2>Settings Result:</h2>
+                    <pre>${JSON.stringify(settingsData, null, 2)}</pre>
+                    <h2>Update Result:</h2>
+                    <pre>${JSON.stringify(updateData, null, 2)}</pre>
+                `;
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML = `<h2>Error:</h2><pre>${error.message}</pre>`;
+            }
+        }
+        
+        testAPI();
+    </script>
+</body>
+</html>

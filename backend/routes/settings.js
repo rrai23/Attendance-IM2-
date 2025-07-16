@@ -81,6 +81,7 @@ router.get('/:key', auth, async (req, res) => {
 // Update system settings (admin only)
 router.put('/', auth, requireAdmin, async (req, res) => {
     try {
+        console.log('PUT /settings called with:', req.body);
         const { settings } = req.body;
 
         if (!settings || typeof settings !== 'object') {
@@ -93,64 +94,68 @@ router.put('/', auth, requireAdmin, async (req, res) => {
         const results = [];
         const errors = [];
 
-        await db.beginTransaction();
+        // Process each setting individually without transaction for now
+        for (const [key, value] of Object.entries(settings)) {
+            try {
+                console.log(`Processing setting: ${key} = ${value}`);
+                
+                // Convert value to string for storage
+                const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
 
-        try {
-            for (const [key, value] of Object.entries(settings)) {
-                try {
-                    // Convert value to JSON string
-                    const jsonValue = typeof value === 'string' ? value : JSON.stringify(value);
+                // Check if setting exists first
+                const existing = await db.execute(
+                    'SELECT setting_id FROM system_settings WHERE setting_key = ?',
+                    [key]
+                );
 
-                    // Check if setting exists
-                    const existing = await db.execute(
-                        'SELECT setting_id FROM system_settings WHERE setting_key = ?',
-                        [key]
+                if (existing.length > 0) {
+                    // Update existing setting
+                    await db.execute(
+                        'UPDATE system_settings SET setting_value = ?, updated_at = NOW() WHERE setting_key = ?',
+                        [stringValue, key]
                     );
-
-                    if (existing.length > 0) {
-                        // Update existing setting
-                        await db.execute(`
-                            UPDATE system_settings 
-                            SET setting_value = ?, updated_at = NOW() 
-                            WHERE setting_key = ?
-                        `, [jsonValue, key]);
-                    } else {
-                        // Create new setting
-                        await db.execute(`
-                            INSERT INTO system_settings (setting_key, setting_value, created_at, updated_at)
-                            VALUES (?, ?, NOW(), NOW())
-                        `, [key, jsonValue]);
-                    }
-
-                    results.push({ key, status: 'updated' });
-
-                } catch (error) {
-                    console.error(`Error updating setting ${key}:`, error);
-                    errors.push({ key, error: 'Failed to update setting' });
+                    console.log(`Updated setting: ${key}`);
+                } else {
+                    // Create new setting
+                    await db.execute(
+                        'INSERT INTO system_settings (setting_key, setting_value, created_at, updated_at) VALUES (?, ?, NOW(), NOW())',
+                        [key, stringValue]
+                    );
+                    console.log(`Created setting: ${key}`);
                 }
+
+                results.push({ key, status: 'updated' });
+
+            } catch (error) {
+                console.error(`Error processing setting ${key}:`, error);
+                errors.push({ key, error: error.message });
             }
-
-            await db.commit();
-
-            res.json({
-                success: true,
-                message: `Updated ${results.length} settings`,
-                data: {
-                    updated: results,
-                    errors: errors
-                }
-            });
-
-        } catch (error) {
-            await db.rollback();
-            throw error;
         }
+
+        if (errors.length > 0) {
+            console.error('Settings update errors:', errors);
+            return res.status(500).json({
+                success: false,
+                message: 'Some settings failed to update',
+                data: { errors }
+            });
+        }
+
+        console.log('Settings update successful:', results);
+        res.json({
+            success: true,
+            message: `Updated ${results.length} settings`,
+            data: {
+                updated: results,
+                errors: errors
+            }
+        });
 
     } catch (error) {
         console.error('Update settings error:', error);
         res.status(500).json({
             success: false,
-            message: 'Server error updating settings'
+            message: 'Server error updating settings: ' + error.message
         });
     }
 });
