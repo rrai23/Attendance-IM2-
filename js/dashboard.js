@@ -284,28 +284,16 @@ class DashboardController {
      */
     async loadAttendanceStats() {
         try {
-            const today = new Date().toISOString().split('T')[0];
-            console.log('Loading attendance stats for date:', today);
-            
             // Use DirectFlow for all data operations
             if (window.directFlow && window.directFlow.initialized) {
                 console.log('Loading attendance stats from DirectFlow');
                 
-                // Get attendance stats directly from backend
+                // Get attendance stats directly from backend (this uses server's "today" calculation)
                 this.currentStats = await window.directFlow.getAttendanceStats();
                 console.log('Received stats from DirectFlow:', this.currentStats);
                 
-                // Get today's attendance records
-                const todayRecords = await window.directFlow.getAttendanceRecords({ date: today });
-                console.log('Today\'s attendance records:', todayRecords);
-                
-                // Get employee count for calculations
-                const employees = await window.directFlow.getEmployees();
-                const activeEmployees = employees.filter(emp => emp.status === 'active').length;
-                
-                // Enhance stats with additional data
-                this.currentStats.totalEmployees = activeEmployees;
-                this.currentStats.todayRecords = todayRecords;
+                // Use backend stats as the source of truth - no need to fetch individual records
+                // The backend already calculates everything correctly based on server time
                 
                 console.log('Dashboard loaded stats from DirectFlow:', this.currentStats);
             } else {
@@ -487,7 +475,8 @@ class DashboardController {
         const tile = document.getElementById(this.tiles.attendanceCount.id);
         if (!tile) return;
 
-        const stats = this.currentStats?.today || this.getDefaultStats().today;
+        // Use backend stats directly
+        const stats = this.currentStats || this.getDefaultStats();
         
         // Ensure all values are numbers, not objects
         const present = Number(stats.present) || 0;
@@ -1565,25 +1554,18 @@ class DashboardController {
     updateQuickStats() {
         console.log('Updating quick stats with currentStats:', this.currentStats);
         
-        // Get stats from currentStats.today or fall back to the main currentStats
-        const stats = this.currentStats?.today || this.currentStats || this.getDefaultStats().today;
+        // Backend stats API returns data directly (not nested under 'today')
+        const stats = this.currentStats || this.getDefaultStats();
         
         console.log('Stats being used for display:', stats);
         
-        // 🎯 CRITICAL FIX: Don't update UI if attendance data isn't fully loaded yet
-        // This prevents the brief flash of incorrect "absent" counts
+        // Use backend stats directly
         const totalEmployees = Number(stats.total || stats.totalEmployees) || 0;
         const present = Number(stats.present || stats.presentToday) || 0;
         const late = Number(stats.late || stats.tardyToday) || 0;
         const attendanceRate = Number(stats.attendanceRate || stats.presentPercentage) || 0;
         
-        // If we have employees but no attendance data processed yet, don't update the UI
-        // This prevents showing "1 absent" when data is still loading
-        if (totalEmployees > 0 && present === 0 && late === 0 && !stats.dataFullyLoaded) {
-            console.log('🎯 Skipping UI update - attendance data not fully loaded yet');
-            console.log('Current state:', { totalEmployees, present, late, dataFullyLoaded: stats.dataFullyLoaded });
-            return;
-        }
+        console.log('Processed stats:', { totalEmployees, present, late, attendanceRate });
         
         // Update main header quick stats
         const totalEmployeesEl = document.getElementById('total-employees');
