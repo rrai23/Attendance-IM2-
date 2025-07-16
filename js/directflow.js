@@ -1,4 +1,4 @@
-/**
+﻿/**
  * DirectFlow Data Manager
  * 
  * A streamlined, backend-only data manager that works directly with DirectFlowAuth
@@ -10,6 +10,7 @@ class DirectFlow {
         this.baseUrl = '/api';
         this.eventListeners = new Map();
         this.initialized = false;
+        this.cachedEmployees = null;
         
         // Initialize immediately
         this.init();
@@ -69,7 +70,23 @@ class DirectFlow {
             throw new Error('Not authenticated');
         }
 
-        return await window.directFlowAuth.apiRequest(this.baseUrl + endpoint, options);
+        // Add cache-busting headers by default
+        const defaultHeaders = {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        };
+
+        // Merge with existing headers
+        const mergedOptions = {
+            ...options,
+            headers: {
+                ...defaultHeaders,
+                ...options.headers
+            }
+        };
+
+        return await window.directFlowAuth.apiRequest(this.baseUrl + endpoint, mergedOptions);
     }
 
     /**
@@ -77,11 +94,131 @@ class DirectFlow {
      */
     async getEmployees() {
         try {
-            const response = await this.makeRequest('/employees');
-            const data = await response.json();
-            return data.success ? data.data : [];
+            console.log('DirectFlow: Making request to /employees');
+            console.log('DirectFlow: Cached employees:', this.cachedEmployees);
+            
+            // Use aggressive cache-busting with multiple parameters
+            const cacheBuster = Date.now();
+            const randomId = Math.random().toString(36).substring(2, 15);
+            const endpoint = `/employees?_t=${cacheBuster}&_r=${randomId}&_cache=no`;
+            console.log('DirectFlow: Using endpoint:', endpoint);
+            
+            // Add If-None-Match header to force fresh data
+            const options = {
+                headers: {
+                    'If-None-Match': ''  // Force ignore etag
+                }
+            };
+            
+            const response = await this.makeRequest(endpoint, options);
+            console.log('DirectFlow: Raw response status:', response.status);
+            console.log('DirectFlow: Raw response ok:', response.ok);
+            
+            // Handle 304 Not Modified by forcing a direct fetch
+            if (response.status === 304) {
+                console.log('DirectFlow: 304 Not Modified - forcing direct fetch...');
+                
+                try {
+                    // Make a direct fetch request bypassing cache entirely
+                    const directUrl = `${this.baseUrl}/employees?_force=${Date.now()}&_direct=${Math.random()}`;
+                    const directResponse = await fetch(directUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${window.directFlowAuth.getToken()}`,
+                            'Cache-Control': 'no-cache, no-store, must-revalidate',
+                            'Pragma': 'no-cache',
+                            'Expires': '0',
+                            'If-None-Match': ''
+                        }
+                    });
+                    
+                    console.log('DirectFlow: Direct fetch response status:', directResponse.status);
+                    
+                    if (directResponse.ok) {
+                        const directData = await directResponse.json();
+                        console.log('DirectFlow: Direct fetch success:', directData);
+                        
+                        // Process the direct response
+                        let result;
+                        if (Array.isArray(directData)) {
+                            result = directData;
+                        } else if (directData && directData.success && directData.data && Array.isArray(directData.data.employees)) {
+                            // New API structure: { success: true, data: { employees: [...], pagination: {...} } }
+                            result = directData.data.employees;
+                        } else if (directData && directData.success && Array.isArray(directData.data)) {
+                            result = directData.data;
+                        } else if (directData && Array.isArray(directData.employees)) {
+                            result = directData.employees;
+                        } else {
+                            console.warn('DirectFlow: Unexpected direct response structure:', directData);
+                            result = [];
+                        }
+                        
+                        this.cachedEmployees = result;
+                        return result;
+                    }
+                } catch (directError) {
+                    console.error('DirectFlow: Direct fetch failed:', directError);
+                }
+                
+                // Fallback to cached data or empty array
+                return this.cachedEmployees || [];
+            }
+            
+            // For successful responses, try to parse JSON
+            if (response.ok) {
+                const data = await response.json();
+                console.log('DirectFlow: Parsed response data:', data);
+                console.log('DirectFlow: Response data type:', typeof data);
+                console.log('DirectFlow: Response is array:', Array.isArray(data));
+                
+                if (data && typeof data === 'object') {
+                    console.log('DirectFlow: Response keys:', Object.keys(data));
+                }
+                
+                let result;
+                if (Array.isArray(data)) {
+                    // Direct array response
+                    result = data;
+                    console.log('DirectFlow: Using direct array response');
+                } else if (data && data.success && data.data && Array.isArray(data.data.employees)) {
+                    // New API structure: { success: true, data: { employees: [...], pagination: {...} } }
+                    result = data.data.employees;
+                    console.log('DirectFlow: Using new API structure data.data.employees');
+                } else if (data && data.success && Array.isArray(data.data)) {
+                    // Wrapped response with success property
+                    result = data.data;
+                    console.log('DirectFlow: Using wrapped success response');
+                } else if (data && Array.isArray(data.employees)) {
+                    // Response with employees property
+                    result = data.employees;
+                    console.log('DirectFlow: Using employees property');
+                } else {
+                    console.warn('DirectFlow: Unexpected response structure:', data);
+                    result = [];
+                }
+                
+                console.log('DirectFlow: Final employees result:', result);
+                console.log('DirectFlow: Final result length:', result.length);
+                console.log('DirectFlow: Final result type:', typeof result);
+                console.log('DirectFlow: Final result is array:', Array.isArray(result));
+                
+                // Cache the result
+                this.cachedEmployees = result;
+                
+                // Ensure we always return an array
+                if (!Array.isArray(result)) {
+                    console.warn('DirectFlow: Expected array but got:', typeof result, result);
+                    return [];
+                }
+                
+                return result;
+            } else {
+                console.error('DirectFlow: HTTP error:', response.status, response.statusText);
+                return [];
+            }
         } catch (error) {
-            console.error('Error getting employees:', error);
+            console.error('DirectFlow: Error getting employees:', error);
             return [];
         }
     }
@@ -583,3 +720,4 @@ window.directFlow = new DirectFlow();
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = DirectFlow;
 }
+// Cache clear: 07/16/2025 23:12:37

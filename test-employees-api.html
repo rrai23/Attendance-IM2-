@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Employees API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>DirectFlow Employees API Test</h1>
+        
+        <div class="status pending" id="authStatus">
+            ⏳ Waiting for authentication...
+        </div>
+        
+        <div class="test-section">
+            <h3>1. Authentication Test</h3>
+            <button class="btn" onclick="testLogin()">Login as Admin</button>
+            <div class="result" id="loginResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Get All Employees</h3>
+            <button class="btn" onclick="testGetEmployees()">Get Employees</button>
+            <div class="result" id="getEmployeesResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. Create Employee</h3>
+            <button class="btn" onclick="testCreateEmployee()">Create Test Employee</button>
+            <div class="result" id="createEmployeeResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4. Update Employee</h3>
+            <button class="btn" onclick="testUpdateEmployee()">Update Test Employee</button>
+            <div class="result" id="updateEmployeeResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>5. Delete Employee</h3>
+            <button class="btn" onclick="testDeleteEmployee()">Delete Test Employee</button>
+            <div class="result" id="deleteEmployeeResult"></div>
+        </div>
+    </div>
+
+    <!-- Include DirectFlow scripts -->
+    <script src="js/directflow-auth.js"></script>
+    <script src="js/directflow.js"></script>
+    <script>
+        let testEmployeeId = null;
+        let testEmployeeCode = null;
+
+        // Wait for DirectFlow to initialize
+        async function waitForDirectFlow() {
+            return new Promise((resolve) => {
+                const checkDirectFlow = () => {
+                    if (window.directFlow && window.directFlow.initialized) {
+                        resolve();
+                    } else {
+                        setTimeout(checkDirectFlow, 100);
+                    }
+                };
+                checkDirectFlow();
+            });
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                await waitForDirectFlow();
+                updateAuthStatus();
+                
+                // Check if already logged in
+                if (window.directFlowAuth && window.directFlowAuth.isAuthenticated()) {
+                    document.getElementById('authStatus').className = 'status success';
+                    document.getElementById('authStatus').textContent = '✅ Already authenticated';
+                }
+            } catch (error) {
+                console.error('Error initializing:', error);
+                document.getElementById('authStatus').className = 'status error';
+                document.getElementById('authStatus').textContent = '❌ Failed to initialize DirectFlow';
+            }
+        });
+
+        function updateAuthStatus() {
+            const authStatus = document.getElementById('authStatus');
+            if (window.directFlowAuth && window.directFlowAuth.isAuthenticated()) {
+                authStatus.className = 'status success';
+                authStatus.textContent = '✅ Authenticated';
+            } else {
+                authStatus.className = 'status error';
+                authStatus.textContent = '❌ Not authenticated';
+            }
+        }
+
+        async function testLogin() {
+            const resultDiv = document.getElementById('loginResult');
+            resultDiv.textContent = 'Testing login...';
+            
+            try {
+                const response = await window.directFlowAuth.login('admin', 'admin123');
+                resultDiv.className = 'result success';
+                resultDiv.textContent = 'Login successful!\n' + JSON.stringify(response, null, 2);
+                updateAuthStatus();
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = 'Login failed: ' + error.message;
+                updateAuthStatus();
+            }
+        }
+
+        async function testGetEmployees() {
+            const resultDiv = document.getElementById('getEmployeesResult');
+            resultDiv.textContent = 'Getting employees...';
+            
+            try {
+                const employees = await window.directFlow.getEmployees();
+                resultDiv.className = 'result success';
+                resultDiv.textContent = 'Employees retrieved successfully!\n' + JSON.stringify(employees, null, 2);
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = 'Failed to get employees: ' + error.message;
+            }
+        }
+
+        async function testCreateEmployee() {
+            const resultDiv = document.getElementById('createEmployeeResult');
+            resultDiv.textContent = 'Creating employee...';
+            
+            try {
+                const employeeData = {
+                    first_name: 'Test',
+                    last_name: 'Employee',
+                    email: 'test.employee@example.com',
+                    phone: '555-1234',
+                    department: 'IT',
+                    position: 'Developer',
+                    hire_date: '2024-01-15',
+                    wage: 25.00,
+                    employment_type: 'full-time',
+                    shift_schedule: 'day',
+                    username: 'testemployee',
+                    password: 'password123',
+                    role: 'employee'
+                };
+                
+                const response = await window.directFlow.createEmployee(employeeData);
+                
+                if (response.success) {
+                    testEmployeeId = response.data.employee_id;
+                    testEmployeeCode = response.data.employee_id;
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = 'Employee created successfully!\n' + JSON.stringify(response, null, 2);
+                } else {
+                    throw new Error(response.message || 'Failed to create employee');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = 'Failed to create employee: ' + error.message;
+            }
+        }
+
+        async function testUpdateEmployee() {
+            const resultDiv = document.getElementById('updateEmployeeResult');
+            
+            if (!testEmployeeId) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = 'Error: No test employee ID available. Create an employee first.';
+                return;
+            }
+            
+            resultDiv.textContent = 'Updating employee...';
+            
+            try {
+                const updateData = {
+                    first_name: 'Updated',
+                    last_name: 'Employee',
+                    email: 'updated.employee@example.com',
+                    phone: '555-5678',
+                    department: 'HR',
+                    position: 'Manager',
+                    wage: 30.00,
+                    status: 'active'
+                };
+                
+                const response = await window.directFlow.updateEmployee(testEmployeeId, updateData);
+                
+                if (response.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = 'Employee updated successfully!\n' + JSON.stringify(response, null, 2);
+                } else {
+                    throw new Error(response.message || 'Failed to update employee');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = 'Failed to update employee: ' + error.message;
+            }
+        }
+
+        async function testDeleteEmployee() {
+            const resultDiv = document.getElementById('deleteEmployeeResult');
+            
+            if (!testEmployeeId) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = 'Error: No test employee ID available. Create an employee first.';
+                return;
+            }
+            
+            resultDiv.textContent = 'Deleting employee...';
+            
+            try {
+                const response = await window.directFlow.deleteEmployee(testEmployeeId);
+                
+                if (response.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = 'Employee deleted successfully!\n' + JSON.stringify(response, null, 2);
+                    testEmployeeId = null;
+                    testEmployeeCode = null;
+                } else {
+                    throw new Error(response.message || 'Failed to delete employee');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = 'Failed to delete employee: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

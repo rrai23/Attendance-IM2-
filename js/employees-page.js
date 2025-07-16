@@ -38,14 +38,14 @@ class EmployeesPageManager {
         let waited = 0;
         
         // Use DirectFlow for all data operations
-        while (!window.DirectFlow?.initialized && waited < maxWait) {
+        while (!window.directFlow?.initialized && waited < maxWait) {
             await new Promise(resolve => setTimeout(resolve, interval));
             waited += interval;
         }
         
-        if (window.DirectFlow?.initialized) {
+        if (window.directFlow?.initialized) {
             console.log('Using DirectFlow for employees page');
-            this.directFlow = window.DirectFlow;
+            this.directFlow = window.directFlow;
             return;
         }
         
@@ -57,12 +57,29 @@ class EmployeesPageManager {
             console.log('Loading employees from DirectFlow...');
             
             // Use DirectFlow for all data operations
-            this.employees = await this.directFlow.getEmployees();
-            this.filteredEmployees = [...this.employees];
+            const employeesData = await this.directFlow.getEmployees();
+            
+            // Ensure we have an array
+            if (Array.isArray(employeesData)) {
+                this.employees = employeesData;
+            } else if (employeesData && typeof employeesData === 'object' && Array.isArray(employeesData.employees)) {
+                // Handle case where data is wrapped in an object
+                this.employees = employeesData.employees;
+            } else {
+                console.warn('Unexpected employees data format:', employeesData);
+                this.employees = [];
+            }
+            
+            // Ensure filteredEmployees is also an array
+            this.filteredEmployees = Array.isArray(this.employees) ? [...this.employees] : [];
             
             // Get departments from employee data
-            const departmentSet = new Set(this.employees.map(emp => emp.department).filter(Boolean));
-            this.departments = Array.from(departmentSet);
+            if (Array.isArray(this.employees)) {
+                const departmentSet = new Set(this.employees.map(emp => emp.department).filter(Boolean));
+                this.departments = Array.from(departmentSet);
+            } else {
+                this.departments = [];
+            }
             
             console.log('[DATA INTEGRITY] Employees page using DirectFlow data:', {
                 count: this.employees.length,
@@ -79,7 +96,7 @@ class EmployeesPageManager {
             
         } catch (error) {
             console.error('Failed to load employees:', error);
-            this.showError('Failed to load employee data');
+            this.showError('Failed to load employee data: ' + (error.message || error));
             // Set empty arrays as fallback
             this.employees = [];
             this.filteredEmployees = [];
@@ -88,17 +105,40 @@ class EmployeesPageManager {
     }
 
     updateStats() {
-        const total = this.employees.length;
-        const active = this.employees.filter(emp => emp.status === 'active').length;
-        const totalDepartments = this.departments.length;
-        const currentDate = new Date();
-        const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-        const newThisMonth = this.employees.filter(emp => new Date(emp.hireDate) >= firstDayOfMonth).length;
+        try {
+            // Ensure employees is an array before calculating stats
+            if (!Array.isArray(this.employees)) {
+                console.warn('Employees data is not an array, using empty array for stats');
+                this.employees = [];
+            }
 
-        document.getElementById('totalEmployees').textContent = total;
-        document.getElementById('activeEmployees').textContent = active;
-        document.getElementById('totalDepartments').textContent = totalDepartments;
-        document.getElementById('newThisMonth').textContent = newThisMonth;
+            const total = this.employees.length;
+            const active = this.employees.filter(emp => emp && emp.status === 'active').length;
+            const totalDepartments = Array.isArray(this.departments) ? this.departments.length : 0;
+            const currentDate = new Date();
+            const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            const newThisMonth = this.employees.filter(emp => {
+                if (!emp || !emp.hireDate) return false;
+                try {
+                    return new Date(emp.hireDate) >= firstDayOfMonth;
+                } catch (error) {
+                    console.warn('Invalid hire date for employee:', emp);
+                    return false;
+                }
+            }).length;
+
+            document.getElementById('totalEmployees').textContent = total;
+            document.getElementById('activeEmployees').textContent = active;
+            document.getElementById('totalDepartments').textContent = totalDepartments;
+            document.getElementById('newThisMonth').textContent = newThisMonth;
+        } catch (error) {
+            console.error('Error updating stats:', error);
+            // Set default values
+            document.getElementById('totalEmployees').textContent = '0';
+            document.getElementById('activeEmployees').textContent = '0';
+            document.getElementById('totalDepartments').textContent = '0';
+            document.getElementById('newThisMonth').textContent = '0';
+        }
     }
 
     populateFilters() {
@@ -399,45 +439,65 @@ class EmployeesPageManager {
     }
 
     applyFilters() {
-        const department = document.getElementById('departmentFilter')?.value || '';
-        const status = document.getElementById('statusFilter')?.value || '';
-        const role = document.getElementById('roleFilter')?.value || '';
-        const search = document.getElementById('searchInput')?.value.toLowerCase() || '';
+        try {
+            const department = document.getElementById('departmentFilter')?.value || '';
+            const status = document.getElementById('statusFilter')?.value || '';
+            const role = document.getElementById('roleFilter')?.value || '';
+            const search = document.getElementById('searchInput')?.value.toLowerCase() || '';
 
-        this.filteredEmployees = this.employees.filter(employee => {
-            let matches = true;
-
-            if (department && employee.department !== department) {
-                matches = false;
+            // Ensure employees is an array before filtering
+            if (!Array.isArray(this.employees)) {
+                console.warn('Employees data is not an array, resetting to empty array');
+                this.employees = [];
+                this.filteredEmployees = [];
+                this.renderTable();
+                return;
             }
 
-            if (status && employee.status !== status) {
-                matches = false;
-            }
+            this.filteredEmployees = this.employees.filter(employee => {
+                if (!employee || typeof employee !== 'object') {
+                    console.warn('Invalid employee data:', employee);
+                    return false;
+                }
 
-            if (role && employee.role !== role) {
-                matches = false;
-            }
+                let matches = true;
 
-            if (search) {
-                const searchableText = [
-                    employee.firstName,
-                    employee.lastName,
-                    employee.email,
-                    employee.employeeCode,
-                    employee.department,
-                    employee.position
-                ].join(' ').toLowerCase();
-
-                if (!searchableText.includes(search)) {
+                if (department && employee.department !== department) {
                     matches = false;
                 }
-            }
 
-            return matches;
-        });
+                if (status && employee.status !== status) {
+                    matches = false;
+                }
 
-        this.renderTable();
+                if (role && employee.role !== role) {
+                    matches = false;
+                }
+
+                if (search) {
+                    const searchableText = [
+                        employee.firstName,
+                        employee.lastName,
+                        employee.email,
+                        employee.employeeCode,
+                        employee.department,
+                        employee.position
+                    ].filter(Boolean).join(' ').toLowerCase();
+
+                    if (!searchableText.includes(search)) {
+                        matches = false;
+                    }
+                }
+
+                return matches;
+            });
+
+            this.renderTable();
+        } catch (error) {
+            console.error('Error applying filters:', error);
+            this.filteredEmployees = [];
+            this.renderTable();
+        }
     }
 
     renderTable() {
@@ -620,15 +680,15 @@ class EmployeesPageManager {
                     phone: employeeData.phone,
                     department: employeeData.department,
                     position: employeeData.position,
-                    date_hired: employeeData.hireDate,
-                    salary: employeeData.salary || employeeData.hourlyRate,
+                    hire_date: employeeData.hireDate,
+                    wage: employeeData.salary || employeeData.hourlyRate,
                     employment_type: 'full-time',
                     shift_schedule: 'day',
-                    role: employeeData.role || 'employee'
+                    status: employeeData.status || 'active'
                 };
                 
-                const updatedEmployee = await this.directFlow.updateEmployee(this.currentEmployee.employee_id || this.currentEmployee.id, backendEmployeeData);
-                console.log('[DATA INTEGRITY] Employee updated via DirectFlow:', updatedEmployee.data?.employee);
+                const updatedEmployee = await this.directFlow.updateEmployee(this.currentEmployee.employeeId || this.currentEmployee.employee_id || this.currentEmployee.id, backendEmployeeData);
+                console.log('[DATA INTEGRITY] Employee updated via DirectFlow:', updatedEmployee);
             } else {
                 // For new employees, don't require employee code - it will be auto-generated
                 if (!employeeData.employeeCode || employeeData.employeeCode.trim() === '') {
@@ -647,8 +707,8 @@ class EmployeesPageManager {
                     phone: employeeData.phone,
                     department: employeeData.department,
                     position: employeeData.position,
-                    date_hired: employeeData.hireDate,
-                    salary: employeeData.salary || employeeData.hourlyRate,
+                    hire_date: employeeData.hireDate,
+                    wage: employeeData.salary || employeeData.hourlyRate,
                     employment_type: 'full-time',
                     shift_schedule: 'day',
                     username: employeeData.employeeCode || employeeData.firstName.toLowerCase() + employeeData.lastName.toLowerCase(),
@@ -657,7 +717,7 @@ class EmployeesPageManager {
                 };
                 
                 const newEmployee = await this.directFlow.createEmployee(backendEmployeeData);
-                console.log('[DATA INTEGRITY] Employee added via DirectFlow:', newEmployee.data?.employee);
+                console.log('[DATA INTEGRITY] Employee added via DirectFlow:', newEmployee);
             }
 
             // Reload data from DirectFlow
@@ -892,19 +952,23 @@ class EmployeesPageManager {
             // Delete employee using DirectFlow
             const deletedEmployee = await this.directFlow.deleteEmployee(employeeId);
             
-            const employeeName = deletedEmployee.fullName || deletedEmployee.name || 'Employee';
-            console.log('[DATA INTEGRITY] Employee deleted via DirectFlow:', employeeName);
-            
-            // Reload data from DirectFlow
-            await this.loadEmployees();
-            this.applyFilters();
-            this.updateStats();
-            this.renderTable();
-            this.populateFilters();
-            
-            // Close modal and show success
-            this.closeDeleteModal();
-            this.showSuccess(`${employeeName} has been successfully deleted from the system.`);
+            if (deletedEmployee.success) {
+                const employeeName = this.currentDeleteEmployee?.fullName || this.currentDeleteEmployee?.name || 'Employee';
+                console.log('[DATA INTEGRITY] Employee deleted via DirectFlow:', employeeName);
+                
+                // Reload data from DirectFlow
+                await this.loadEmployees();
+                this.applyFilters();
+                this.updateStats();
+                this.renderTable();
+                this.populateFilters();
+                
+                // Close modal and show success
+                this.closeDeleteModal();
+                this.showSuccess(`${employeeName} has been successfully deleted from the system.`);
+            } else {
+                throw new Error(deletedEmployee.message || 'Failed to delete employee');
+            }
             
         } catch (error) {
             console.error('Failed to delete employee:', error);
@@ -1349,3 +1413,6 @@ class EmployeesPageManager {
 
 // Note: Initialization is handled in employees.html to ensure proper script loading order
 // This avoids conflicts between multiple initialization points
+
+// Make the class available globally for debugging and external access
+window.EmployeesPageManager = EmployeesPageManager;

@@ -847,32 +847,50 @@
     <script src="js/directflow-auth.js"></script>
     <script src="js/auth-check.js"></script>
     
+    <!-- DirectFlow Data Manager -->
+    <script src="js/directflow.js?v=1752679020"></script>
+    <script src="js/directflow-auth-fix.js"></script>
+    
     <script src="js/global-system-sync.js"></script>
     <script src="js/theme.js"></script>
     <script src="js/sidebar.js"></script>
     <script src="js/employees-page.js"></script>
     <script>
+        // Wait for DirectFlow to be ready
+        async function waitForDirectFlow() {
+            return new Promise((resolve) => {
+                const checkDirectFlow = () => {
+                    if (window.directFlow && window.directFlow.initialized) {
+                        console.log('✅ DirectFlow is ready');
+                        resolve();
+                    } else if (window.directFlow) {
+                        console.log('⏳ DirectFlow exists but not initialized, waiting...');
+                        // Listen for initialization event
+                        window.directFlow.addEventListener('initialized', () => {
+                            console.log('✅ DirectFlow initialized via event');
+                            resolve();
+                        });
+                        
+                        // Also keep checking in case we missed the event
+                        setTimeout(checkDirectFlow, 100);
+                    } else {
+                        console.log('⏳ DirectFlow not yet available, waiting...');
+                        setTimeout(checkDirectFlow, 100);
+                    }
+                };
+                
+                checkDirectFlow();
+            });
+        }
+
         // Initialize the employees page manager when DOM is loaded
         document.addEventListener('DOMContentLoaded', async function() {
             try {
-                // Wait for DirectFlowAuth to be fully initialized
-                console.log('Waiting for DirectFlowAuth to initialize...');
-                let waitCount = 0;
-                const maxWait = 100; // 10 seconds total (100 * 100ms)
+                console.log('Initializing employees page...');
                 
-                while ((!window.directFlowAuth || !window.directFlowAuth.initialized) && waitCount < maxWait) {
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    waitCount++;
-                    if (waitCount % 10 === 0) {
-                        console.log(`Still waiting for DirectFlowAuth... (${waitCount/10}s)`);
-                    }
-                }
-                
-                if (!window.directFlowAuth || !window.directFlowAuth.initialized) {
-                    throw new Error('DirectFlowAuth failed to initialize within timeout');
-                }
-                
-                console.log('DirectFlowAuth is ready!');
+                // Wait for DirectFlow to be ready
+                console.log('Waiting for DirectFlow to initialize...');
+                await waitForDirectFlow();
                 
                 // Check if user is authenticated
                 if (!window.directFlowAuth.isAuthenticated()) {
@@ -889,10 +907,30 @@
                 console.error('Failed to initialize EmployeesPageManager:', error);
                 // Show error to user
                 const errorDiv = document.createElement('div');
-                errorDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #fee; border: 1px solid #f88; color: #c44; padding: 15px; border-radius: 5px; z-index: 9999; max-width: 300px;';
-                errorDiv.textContent = 'Failed to load employee data: ' + error.message;
+                errorDiv.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #ef4444;
+                    color: white;
+                    padding: 16px;
+                    border-radius: 8px;
+                    z-index: 1000;
+                    max-width: 400px;
+                `;
+                errorDiv.innerHTML = `
+                    <strong>Employees Loading Error</strong><br>
+                    ${error.message || 'Unknown error occurred'}<br>
+                    <small>Please refresh the page to try again.</small>
+                `;
                 document.body.appendChild(errorDiv);
-                setTimeout(() => errorDiv.remove(), 5000);
+                
+                // Auto-remove after 10 seconds
+                setTimeout(() => {
+                    if (errorDiv.parentNode) {
+                        errorDiv.parentNode.removeChild(errorDiv);
+                    }
+                }, 10000);
             }
         });
         
@@ -1817,8 +1855,5 @@
         }
     </style>
 
-    <!-- DirectFlow Data Manager -->
-    <script src="js/directflow.js"></script>
-    <script src="js/directflow-auth-fix.js"></script>
 </body>
 </html>
