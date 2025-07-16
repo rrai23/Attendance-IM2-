@@ -1,169 +1,58 @@
-const mysql = require('mysql2/promise');
-require('dotenv').config();
+const db = require('./backend/database/connection');
+const bcrypt = require('bcryptjs');
 
-async function fixEmployeeDeleteAuthentication() {
-    const connection = await mysql.createConnection({
-        host: process.env.DB_HOST || 'localhost',
-        user: process.env.DB_USER || 'root',
-        password: process.env.DB_PASSWORD || '',
-        database: process.env.DB_NAME || 'bricks_attendance',
-        port: process.env.DB_PORT || 3306
-    });
-
+async function restoreAdmin() {
     try {
-        console.log('🔗 Connected to database');
-        
-        // 1. Check admin user exists and has proper role
-        const [adminUsers] = await connection.execute(`
-            SELECT e.employee_id, e.full_name, e.role, e.status,
-                   ua.username, ua.role as auth_role, ua.is_active
-            FROM employees e
-            LEFT JOIN user_accounts ua ON e.employee_id = ua.employee_id
-            WHERE e.role = 'admin' OR ua.role = 'admin'
-        `);
-        
-        console.log('👑 Admin users found:', adminUsers.length);
-        adminUsers.forEach(user => {
-            console.log(`   ${user.full_name} (${user.employee_id})`);
-            console.log(`     Employee Role: ${user.role}`);
-            console.log(`     Auth Role: ${user.auth_role}`);
-            console.log(`     Auth Active: ${user.is_active}`);
-            console.log(`     Status: ${user.status}`);
-        });
-        
-        // 2. Ensure admin user has proper permissions
-        const adminEmployeeId = 'admin_001';
-        
-        // Update employee table
-        await connection.execute(`
-            UPDATE employees 
-            SET role = 'admin', status = 'active' 
-            WHERE employee_id = ?
-        `, [adminEmployeeId]);
-        
-        // Update user_accounts table
-        await connection.execute(`
-            UPDATE user_accounts 
-            SET role = 'admin', is_active = 1 
-            WHERE employee_id = ?
-        `, [adminEmployeeId]);
-        
-        console.log('✅ Admin user permissions updated');
-        
-        // 3. Create active session for admin user
-        const token = `admin_delete_token_${Date.now()}`;
-        const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-        
-        await connection.execute(`
-            INSERT INTO user_sessions (employee_id, token_hash, expires_at, is_active, created_at, user_agent, ip_address)
-            VALUES (?, ?, ?, 1, NOW(), ?, ?)
-        `, [adminEmployeeId, token, expires, 'Employee Delete Fix', '127.0.0.1']);
-        
-        console.log('✅ Admin session created');
-        console.log('🎫 Token:', token);
-        
-        // 4. Check existing employees that can be safely deleted
-        const [employees] = await connection.execute(`
-            SELECT employee_id, full_name, role, status
-            FROM employees
-            WHERE status = 'active' AND role != 'admin'
-            ORDER BY full_name
-        `);
-        
-        console.log('\n👥 Employees available for delete testing:');
-        employees.forEach(emp => {
-            console.log(`   ${emp.full_name} (${emp.employee_id}) - ${emp.role}`);
-        });
-        
-        // 5. Test the delete endpoint directly
-        console.log('\n🧪 Testing delete endpoint...');
-        
-        // Use test employee if available
-        const testEmployee = employees.find(emp => emp.employee_id.startsWith('EMP'));
-        if (testEmployee) {
-            console.log(`📋 Testing delete on: ${testEmployee.full_name} (${testEmployee.employee_id})`);
+        // First, reactivate the admin employee
+        await db.execute('UPDATE employees SET status = ? WHERE employee_id = ?', ['active', 'admin_001']);
+        console.log('✅ Admin employee reactivated');
+
+        // Reactivate admin user account
+        await db.execute('UPDATE user_accounts SET is_active = TRUE WHERE employee_id = ?', ['admin_001']);
+        console.log('✅ Admin user account reactivated');
+
+        // Clear any existing sessions
+        await db.execute('DELETE FROM user_sessions WHERE employee_id = ?', ['admin_001']);
+        console.log('✅ Cleared old admin sessions');
+
+        // Verify admin exists
+        const [admin] = await db.execute('SELECT * FROM employees WHERE employee_id = ?', ['admin_001']);
+        if (admin.length > 0) {
+            console.log('✅ Admin user restored successfully:', admin[0]);
+        } else {
+            console.log('❌ Admin user not found, creating new one...');
             
-            // Check current status
-            const [beforeDelete] = await connection.execute(`
-                SELECT employee_id, full_name, status, role
-                FROM employees
-                WHERE employee_id = ?
-            `, [testEmployee.employee_id]);
+            // Create admin employee
+            const hashedPassword = await bcrypt.hash('admin123', 12);
             
-            console.log('Before delete:', beforeDelete[0]);
-            
-            // Perform soft delete (same as API endpoint)
-            await connection.execute(`
-                UPDATE employees 
-                SET status = 'inactive', updated_at = NOW() 
-                WHERE employee_id = ?
-            `, [testEmployee.employee_id]);
-            
-            await connection.execute(`
-                UPDATE user_accounts 
-                SET is_active = FALSE, updated_at = NOW() 
-                WHERE employee_id = ?
-            `, [testEmployee.employee_id]);
-            
-            const [afterDelete] = await connection.execute(`
-                SELECT employee_id, full_name, status, role
-                FROM employees
-                WHERE employee_id = ?
-            `, [testEmployee.employee_id]);
-            
-            console.log('After delete:', afterDelete[0]);
-            
-            // Restore for testing
-            await connection.execute(`
-                UPDATE employees 
-                SET status = 'active', updated_at = NOW() 
-                WHERE employee_id = ?
-            `, [testEmployee.employee_id]);
-            
-            await connection.execute(`
-                UPDATE user_accounts 
-                SET is_active = TRUE, updated_at = NOW() 
-                WHERE employee_id = ?
-            `, [testEmployee.employee_id]);
-            
-            console.log('✅ Test employee restored for actual testing');
+            await db.execute(`
+                INSERT INTO employees (employee_id, first_name, last_name, email, department, position, hire_date, status, wage, employment_type, shift_schedule) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `, ['admin_001', 'System', 'Administrator', 'admin@brickscompany.com', 'ADMIN', 'System Administrator', new Date(), 'active', 0, 'full-time', 'day']);
+
+            // Create admin user account
+            await db.execute(`
+                INSERT INTO user_accounts (employee_id, username, password_hash, role, is_active) 
+                VALUES (?, ?, ?, ?, ?)
+            `, ['admin_001', 'admin', hashedPassword, 'admin', true]);
+
+            console.log('✅ New admin user created');
         }
-        
-        // 6. Final verification
-        const [finalCheck] = await connection.execute(`
-            SELECT 
-                e.employee_id, e.full_name, e.role as emp_role, e.status,
-                ua.role as auth_role, ua.is_active,
-                COUNT(us.id) as active_sessions
-            FROM employees e
-            LEFT JOIN user_accounts ua ON e.employee_id = ua.employee_id
-            LEFT JOIN user_sessions us ON e.employee_id = us.employee_id AND us.is_active = 1 AND us.expires_at > NOW()
-            WHERE e.employee_id = ?
-            GROUP BY e.employee_id, e.full_name, e.role, e.status, ua.role, ua.is_active
-        `, [adminEmployeeId]);
-        
-        console.log('\n🎯 Final admin user status:');
-        if (finalCheck.length > 0) {
-            const admin = finalCheck[0];
-            console.log(`   Name: ${admin.full_name}`);
-            console.log(`   Employee Role: ${admin.emp_role}`);
-            console.log(`   Auth Role: ${admin.auth_role}`);
-            console.log(`   Status: ${admin.status}`);
-            console.log(`   Auth Active: ${admin.is_active}`);
-            console.log(`   Active Sessions: ${admin.active_sessions}`);
+
+        // Check user account
+        const [userAccount] = await db.execute('SELECT * FROM user_accounts WHERE employee_id = ?', ['admin_001']);
+        if (userAccount.length > 0) {
+            console.log('✅ Admin user account verified:', {
+                username: userAccount[0].username,
+                role: userAccount[0].role,
+                is_active: userAccount[0].is_active
+            });
         }
-        
-        console.log('\n✅ Employee delete authentication fix completed!');
-        console.log('💡 Next steps:');
-        console.log('   1. Use the test token in the frontend');
-        console.log('   2. Try deleting a non-admin employee');
-        console.log('   3. Check the employee-delete-test.html page');
-        
+
     } catch (error) {
-        console.error('❌ Error:', error);
-    } finally {
-        await connection.end();
+        console.error('❌ Error restoring admin:', error);
     }
+    process.exit(0);
 }
 
-fixEmployeeDeleteAuthentication();
+restoreAdmin();
