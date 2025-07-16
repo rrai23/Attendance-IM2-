@@ -5,6 +5,8 @@ const { auth, requireManagerOrAdmin } = require('../middleware/auth');
 
 // Get attendance records with filtering
 router.get('/', auth, async (req, res) => {
+    console.log('🔍 Attendance route called:', req.query);
+    
     try {
         const {
             employee_id,
@@ -75,7 +77,13 @@ router.get('/', auth, async (req, res) => {
         query += ' LIMIT ? OFFSET ?';
         params.push(parseInt(limit), offset);
 
-        const [records] = await db.execute(query, params);
+        console.log('🔍 Attendance query:', query);
+        console.log('🔍 Attendance params:', params);
+        
+        const result = await db.execute(query, params);
+        
+        // Result is directly the array of records (not [rows, fields])
+        const records = result;
 
         // Ensure records is an array (in case of empty result)
         const recordsArray = Array.isArray(records) ? records : [];
@@ -92,8 +100,8 @@ router.get('/', auth, async (req, res) => {
             clockOut: record.time_out,
             timeIn: record.time_in,
             timeOut: record.time_out,
-            hours: record.hours_worked,
-            hoursWorked: record.hours_worked,
+            hours: record.total_hours,
+            hoursWorked: record.total_hours,
             overtimeHours: record.overtime_hours,
             status: record.status,
             notes: record.notes,
