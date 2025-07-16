@@ -1,340 +1,176 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light" class="page-employee-management">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employee Management - Attendance System</title>
+    <title>Employee Management - Bricks Attendance System</title>
+    <meta name="description" content="Manage employee attendance records and track performance">
+    <meta name="author" content="Bricks Attendance System">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
+    
+    <!-- Stylesheets -->
+    <link rel="preload" href="css/styles.css" as="style">
     <link rel="stylesheet" href="css/styles.css">
-    <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Critical CSS for header buttons to prevent FOUC -->
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: white;
-            min-height: 100vh;
-            color: #2d3748;
-        }
-        
-        .container {
-            max-width: 1800px;
-            margin: 0 auto;
-            padding: 10px;
-        }
-        
-        .page-header {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .page-title {
-            font-size: 1.8rem;
-            font-weight: 600;
-            color: #1a202c;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .page-subtitle {
-            font-size: 1rem;
-            color: #718096;
-            font-weight: 400;
-            margin-top: 4px;
-        }
-        
-        .header-actions {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-        
-        .loading-state {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
+        /* Critical header button styles to prevent flash of unstyled content */
+        .mobile-menu-toggle {
             display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        
-        .loading-state.active {
-            display: flex;
-        }
-        
-        .loading-content {
-            background: white;
-            padding: 40px;
-            border-radius: 16px;
-            text-align: center;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25);
-            max-width: 400px;
-            width: 90%;
-        }
-        
-        .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid #e2e8f0;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-        
-        .loading-state h3 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: #1a202c;
-            margin-bottom: 8px;
-        }
-        
-        .loading-state p {
-            color: #718096;
-            font-size: 0.875rem;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-        
-        .stat-card {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-        
-        .stat-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 12px;
-        }
-        
-        .stat-icon {
+            position: fixed;
+            top: var(--spacing-lg, 1rem);
+            left: var(--spacing-lg, 1rem);
+            z-index: 1001;
+            background: var(--bg-primary, #ffffff);
+            border: 1px solid var(--border-color, #e5e7eb);
+            border-radius: var(--radius-sm, 6px);
             width: 40px;
             height: 40px;
-            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+            transition: all var(--transition-fast, 0.15s ease);
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .sidebar-toggle {
+            background: var(--bg-primary, #ffffff);
+            border: 1px solid var(--border-color, #e5e7eb);
+            border-radius: var(--radius-sm, 6px);
+            width: 36px;
+            height: 36px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
-            color: white;
+            cursor: pointer;
+            color: var(--text-secondary, #6b7280);
+            transition: all var(--transition-fast, 0.15s ease);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
         
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 600;
-            color: #1a202c;
-            line-height: 1;
-        }
-        
-        .stat-label {
-            color: #718096;
-            font-size: 0.875rem;
-            font-weight: 500;
-            margin-top: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .controls-section {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-        }
-        
-        .controls-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        
-        .controls-title {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: #1a202c;
+        .theme-option {
             display: flex;
             align-items: center;
-            gap: 8px;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--border-color, #e5e7eb);
+            border-radius: var(--radius-sm, 6px);
+            background: var(--bg-primary, #ffffff);
+            cursor: pointer;
+            transition: all var(--transition-fast, 0.15s ease);
+            padding: 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
         
-        .filters {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 16px;
-            margin-bottom: 20px;
+        .theme-option.active {
+            border-color: var(--accent-primary, #3b82f6);
+            background: var(--accent-primary, #3b82f6);
+            color: var(--color-white, #ffffff);
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-menu-toggle {
+                display: flex !important;
+            }
+        }
+        
+        /* Prevent layout shift and FOUC during loading */
+        body.loading .sidebar-header, 
+        body.loading .sidebar-user, 
+        body.loading .theme-selector {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        
+        body.css-loaded .sidebar-header, 
+        body.css-loaded .sidebar-user, 
+        body.css-loaded .theme-selector {
+            opacity: 1;
+        }
+        
+        /* Ensure buttons maintain size during load */
+        .mobile-menu-toggle,
+        .sidebar-toggle,
+        .theme-option {
+            box-sizing: border-box;
+        }
+    </style>
         }
         
         .filter-group {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 5px;
         }
         
         .filter-group label {
             font-weight: 500;
-            color: #374151;
-            font-size: 0.875rem;
+            color: #495057;
         }
         
         .filter-group select,
         .filter-group input {
-            padding: 12px 16px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
             font-size: 14px;
-            transition: border-color 0.15s ease;
-            background: white;
-        }
-        
-        .filter-group select:focus,
-        .filter-group input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
         
         .actions {
             display: flex;
-            gap: 12px;
+            gap: 10px;
+            margin-bottom: 20px;
             flex-wrap: wrap;
         }
         
         .btn {
-            padding: 12px 24px;
+            padding: 10px 20px;
             border: none;
-            border-radius: 8px;
+            border-radius: 4px;
             cursor: pointer;
             font-size: 14px;
-            font-weight: 500;
             display: flex;
             align-items: center;
             gap: 8px;
-            transition: all 0.2s ease;
-            text-decoration: none;
-            border: 2px solid transparent;
         }
         
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #007bff;
             color: white;
-        }
-        
-        .btn-primary:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
         }
         
         .btn-secondary {
-            background: #f7fafc;
-            color: #4a5568;
-            border-color: #e2e8f0;
-        }
-        
-        .btn-secondary:hover {
-            background: #edf2f7;
-            border-color: #cbd5e0;
+            background: #6c757d;
+            color: white;
         }
         
         .btn-success {
-            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            background: #28a745;
             color: white;
-        }
-        
-        .btn-success:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
         }
         
         .btn-danger {
-            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+            background: #dc3545;
             color: white;
         }
         
-        .btn-danger:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(245, 101, 101, 0.4);
+        .btn:hover {
+            opacity: 0.9;
         }
         
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
-            transform: none;
         }
         
         .table-container {
             background: white;
-            border-radius: 12px;
+            border-radius: 8px;
             overflow: hidden;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-        }
-        
-        .table-header {
-            padding: 20px;
-            border-bottom: 1px solid #e2e8f0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #f8fafc;
-        }
-        
-        .table-title {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: #1a202c;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
         .table {
@@ -344,87 +180,57 @@
         
         .table th,
         .table td {
-            padding: 12px 16px;
+            padding: 12px;
             text-align: left;
-            border-bottom: 1px solid #e2e8f0;
-            font-size: 0.875rem;
+            border-bottom: 1px solid #e9ecef;
         }
         
         .table th {
-            background: #f8fafc;
+            background: #f8f9fa;
             font-weight: 600;
-            color: #374151;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-size: 0.75rem;
+            color: #495057;
         }
         
         .table tr:hover {
-            background: #f8fafc;
-        }
-        
-        .table tr:last-child td {
-            border-bottom: none;
-        }
-        
-        .employee-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .employee-details h4 {
-            font-weight: 500;
-            font-size: 1rem;
-            color: #1a202c;
-            margin-bottom: 2px;
-        }
-        
-        .employee-details p {
-            color: #718096;
-            font-size: 0.75rem;
+            background: #f8f9fa;
         }
         
         .status-badge {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
         }
         
         .status-present {
-            background: #c6f6d5;
-            color: #22543d;
+            background: #d4edda;
+            color: #155724;
         }
         
         .status-late {
-            background: #fed7aa;
-            color: #9c2a00;
+            background: #fff3cd;
+            color: #856404;
         }
         
         .status-absent {
-            background: #feb2b2;
-            color: #742a2a;
+            background: #f8d7da;
+            color: #721c24;
         }
         
         .status-overtime {
-            background: #bee3f8;
-            color: #2a4365;
+            background: #cce5ff;
+            color: #004085;
         }
         
         .status-sick {
-            background: #fbb6ce;
-            color: #97266d;
+            background: #f4cccc;
+            color: #990000;
         }
         
         .status-vacation {
-            background: #a2f5ff;
-            color: #0c4a6e;
+            background: #e1f5fe;
+            color: #01579b;
         }
         
         .action-buttons {
@@ -434,62 +240,7 @@
         
         .btn-sm {
             padding: 6px 12px;
-            font-size: 0.75rem;
-            border-radius: 6px;
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #718096;
-        }
-        
-        .empty-state i {
-            font-size: 4rem;
-            color: #cbd5e0;
-            margin-bottom: 16px;
-        }
-        
-        .empty-state h3 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: #4a5568;
-            margin-bottom: 8px;
-        }
-        
-        .empty-state p {
-            color: #718096;
-        }
-        
-        .badge {
-            background: #edf2f7;
-            color: #4a5568;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 500;
-        }
-        
-        .hidden {
-            display: none;
-        }
-        
-        .spinner {
-            width: 20px;
-            height: 20px;
-            border: 2px solid #e2e8f0;
-            border-top: 2px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .table tbody tr {
-            animation: fadeIn 0.3s ease;
+            font-size: 12px;
         }
         
         .modal-overlay {
@@ -649,17 +400,6 @@
         }
         
         @media (max-width: 768px) {
-            .page-header {
-                flex-direction: column;
-                gap: 16px;
-                align-items: flex-start;
-            }
-            
-            .header-actions {
-                width: 100%;
-                justify-content: flex-end;
-            }
-            
             .filters {
                 flex-direction: column;
                 align-items: stretch;
@@ -696,171 +436,117 @@
     <div class="main-content">
         <!-- Loading State -->
         <div id="loadingState" class="loading-state active">
-            <div class="loading-content">
-                <div class="loading-spinner"></div>
-                <h3>Loading Employee Management</h3>
-                <p>Please wait while we fetch your data...</p>
-            </div>
+            <div class="spinner"></div>
+            <p>Loading employee management data...</p>
         </div>
 
         <!-- Main Content -->
         <div class="container" style="display: none;">
-            <!-- Page Header -->
-            <div class="page-header">
-                <div>
-                    <h1 class="page-title">
-                        <i class="fas fa-users"></i>
-                        Employee Management
-                    </h1>
-                    <p class="page-subtitle">Track attendance, manage records, and monitor employee performance</p>
-                </div>
-                <div class="header-actions">
-                    <button class="btn btn-primary" id="addAttendanceBtn">
-                        <i class="fas fa-plus"></i>
-                        Add Entry
-                    </button>
-                    <button class="btn btn-secondary" onclick="employeeManagement.exportData()">
-                        <i class="fas fa-download"></i>
-                        Export
-                    </button>
-                    <button class="btn btn-secondary" onclick="employeeManagement.refreshData()">
-                        <i class="fas fa-sync-alt"></i>
-                        Refresh
-                    </button>
-                </div>
+        <header class="page-header">
+            <h1>Employee Management</h1>
+            <p>Manage employee attendance records and track performance</p>
+        </header>
+
+        <!-- Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalRecords">0</div>
+                <div class="stat-label">Total Records</div>
             </div>
-
-            <!-- Statistics -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <div>
-                            <div class="stat-value" id="totalRecords">0</div>
-                            <div class="stat-label">Total Records</div>
-                        </div>
-                        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
-                            <i class="fas fa-clipboard-list"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <div>
-                            <div class="stat-value" id="presentCount">0</div>
-                            <div class="stat-label">Present Today</div>
-                        </div>
-                        <div class="stat-icon" style="background: linear-gradient(135deg, #48bb78, #38a169);">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <div>
-                            <div class="stat-value" id="lateCount">0</div>
-                            <div class="stat-label">Late Arrivals</div>
-                        </div>
-                        <div class="stat-icon" style="background: linear-gradient(135deg, #ed8936, #dd6b20);">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <div>
-                            <div class="stat-value" id="absentCount">0</div>
-                            <div class="stat-label">Absences</div>
-                        </div>
-                        <div class="stat-icon" style="background: linear-gradient(135deg, #f56565, #e53e3e);">
-                            <i class="fas fa-user-times"></i>
-                        </div>
-                    </div>
-                </div>
+            <div class="stat-card">
+                <div class="stat-value" id="presentCount">0</div>
+                <div class="stat-label">Present</div>
             </div>
-
-            <!-- Controls Section -->
-            <div class="controls-section">
-                <div class="controls-header">
-                    <h2 class="controls-title">
-                        <i class="fas fa-filter"></i>
-                        Filters
-                    </h2>
-                </div>
-
-                <!-- Filters -->
-                <div class="filters">
-                    <div class="filter-group">
-                        <label for="employeeFilter">Employee</label>
-                        <select id="employeeFilter">
-                            <option value="">All Employees</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label for="dateFilter">Date</label>
-                        <input type="date" id="dateFilter">
-                    </div>
-                    <div class="filter-group">
-                        <label for="statusFilter">Status</label>
-                        <select id="statusFilter">
-                            <option value="">All Status</option>
-                            <option value="present">Present</option>
-                            <option value="late">Late</option>
-                            <option value="absent">Absent</option>
-                            <option value="overtime">Overtime</option>
-                            <option value="sick">Sick</option>
-                            <option value="vacation">Vacation</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label for="searchInput">Search</label>
-                        <input type="text" id="searchInput" placeholder="Search employees...">
-                    </div>
-                </div>
+            <div class="stat-card">
+                <div class="stat-value" id="lateCount">0</div>
+                <div class="stat-label">Late</div>
             </div>
-
-            <!-- Alert Container -->
-            <div id="alertContainer"></div>
-
-            <!-- Table -->
-            <div class="table-container">
-                <div class="table-header">
-                    <h2 class="table-title">
-                        <i class="fas fa-table"></i>
-                        Attendance Records
-                    </h2>
-                    <span class="badge" id="recordCount">0 records</span>
-                </div>
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Employee</th>
-                            <th>Date</th>
-                            <th>Time In</th>
-                            <th>Time Out</th>
-                            <th>Hours</th>
-                            <th>Status</th>
-                            <th>Department</th>
-                            <th>Notes</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="attendanceTableBody">
-                    </tbody>
-                </table>
-
-                <!-- Empty State -->
-                <div id="emptyState" class="empty-state hidden">
-                    <i class="fas fa-calendar-times"></i>
-                    <h3>No attendance records found</h3>
-                    <p id="emptyStateMessage">No attendance records match your current filters.</p>
-                    <div id="emptyStateActions">
-                        <button class="btn btn-primary" onclick="employeeManagement.openModal()">
-                            <i class="fas fa-plus"></i>
-                            Add First Record
-                        </button>
-                    </div>
-                </div>
+            <div class="stat-card">
+                <div class="stat-value" id="absentCount">0</div>
+                <div class="stat-label">Absent</div>
             </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters">
+            <div class="filter-group">
+                <label for="employeeFilter">Employee</label>
+                <select id="employeeFilter">
+                    <option value="">All Employees</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="dateFilter">Date</label>
+                <input type="date" id="dateFilter">
+            </div>
+            <div class="filter-group">
+                <label for="statusFilter">Status</label>
+                <select id="statusFilter">
+                    <option value="">All Status</option>
+                    <option value="present">Present</option>
+                    <option value="late">Late</option>
+                    <option value="absent">Absent</option>
+                    <option value="overtime">Overtime</option>
+                    <option value="sick">Sick</option>
+                    <option value="vacation">Vacation</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="searchInput">Search</label>
+                <input type="text" id="searchInput" placeholder="Search employees...">
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="actions">
+            <button class="btn btn-primary" id="addAttendanceBtn">
+                <span>➕</span>
+                Add Attendance Record
+            </button>
+            <button class="btn btn-secondary" id="refreshBtn">
+                <span>🔄</span>
+                <span class="btn-text">Refresh</span>
+                <span class="btn-loading">
+                    <span class="spinner"></span>
+                    Loading...
+                </span>
+            </button>
+            <button class="btn btn-success" id="exportAttendanceBtn">
+                <span>📊</span>
+                Export Data
+            </button>
+        </div>
+
+        <!-- Alert Container -->
+        <div id="alertContainer"></div>
+
+        <!-- Table -->
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Date</th>
+                        <th>Time In</th>
+                        <th>Time Out</th>
+                        <th>Hours</th>
+                        <th>Status</th>
+                        <th>Department</th>
+                        <th>Notes</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="attendanceTableBody">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state hidden">
+            <h3>No attendance records found</h3>
+            <p id="emptyStateMessage">No attendance records match your current filters.</p>
+            <div id="emptyStateActions">
+                <button class="btn btn-primary" onclick="employeeManagement.openModal()">
                     Add First Record
                 </button>
             </div>
@@ -966,17 +652,18 @@
                     }
                 });
                 
-                // Main initialization after 0.35 seconds if authentication event doesn't fire
+                // Fallback initialization after 2 seconds if authentication event doesn't fire
                 setTimeout(() => {
                     if (!this.initialized) {
-                        console.warn('Authentication event not received, attempting main initialization...');
+                        console.warn('Authentication event not received, attempting fallback initialization...');
                         this.initWithFallback();
                     }
-                }, 350);
+                }, 2000);
             }
             
             showBasicUI() {
-                // Show the loading modal
+                // Show the basic structure immediately
+                document.querySelector('.container').style.display = 'block';
                 this.showLoadingState(true);
             }
 
@@ -1048,7 +735,7 @@
 
             async initWithFallback() {
                 try {
-                    console.log('🔄 Attempting main initialization...');
+                    console.log('🔄 Attempting fallback initialization...');
                     
                     // Check if authentication is available
                     if (window.directFlowAuth && window.directFlowAuth.initialized) {
@@ -1079,7 +766,7 @@
                     }
                     
                 } catch (error) {
-                    console.error('Main initialization failed:', error);
+                    console.error('Fallback initialization failed:', error);
                     this.showLoadingState(false);
                     this.showError('Failed to initialize page. Please try refreshing or logging in again.');
                 }
@@ -1395,12 +1082,6 @@
                         element.textContent = stat.value;
                     }
                 });
-                
-                // Update record count badge
-                const recordCount = document.getElementById('recordCount');
-                if (recordCount) {
-                    recordCount.textContent = `${totalCount} record${totalCount !== 1 ? 's' : ''}`;
-                }
             }
 
             renderTable() {
@@ -1438,11 +1119,10 @@
                     return `
                         <tr>
                             <td>
-                                <div class="employee-info">
-                                    <div class="employee-details">
-                                        <h4>${employeeName}</h4>
-                                        <p>${employeeCode}</p>
-                                    </div>
+                                <div>
+                                    <strong>${employeeName}</strong>
+                                    <br>
+                                    <small>${employeeCode}</small>
                                 </div>
                             </td>
                             <td>${this.formatDate(record.date)}</td>
@@ -1645,109 +1325,19 @@
 
                     let response;
                     if (recordId) {
-                        // Update existing record - try different method names
-                        if (typeof this.directFlow.updateAttendanceRecord === 'function') {
-                            response = await this.directFlow.updateAttendanceRecord(recordId, recordData);
-                        } else if (typeof this.directFlow.updateRecord === 'function') {
-                            response = await this.directFlow.updateRecord('attendance', recordId, recordData);
-                        } else if (typeof this.directFlow.update === 'function') {
-                            response = await this.directFlow.update('attendance', recordId, recordData);
-                        } else {
-                            // Try direct API call for update
-                            console.log('DirectFlow update methods not available, trying direct API call...');
-                            
-                            try {
-                                const apiResponse = await fetch(`/api/attendance/${recordId}`, {
-                                    method: 'PUT',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-                                    },
-                                    body: JSON.stringify(recordData)
-                                });
-                                
-                                if (apiResponse.ok) {
-                                    const data = await apiResponse.json();
-                                    response = { success: true, data };
-                                } else {
-                                    throw new Error(`API request failed: ${apiResponse.status} ${apiResponse.statusText}`);
-                                }
-                            } catch (apiError) {
-                                console.warn('Direct API call failed, using local fallback:', apiError);
-                                
-                                // Fallback: Update local data
-                                const index = this.attendanceData.findIndex(r => r.id == recordId);
-                                if (index !== -1) {
-                                    this.attendanceData[index] = { ...this.attendanceData[index], ...recordData };
-                                    this.dataCache.attendance = this.attendanceData;
-                                    this.dataCache.lastFetch = Date.now();
-                                    response = { success: true };
-                                    this.showInfo('Record updated locally only. Server update failed.');
-                                } else {
-                                    throw new Error('Record not found for update');
-                                }
-                            }
-                        }
+                        // Update existing record
+                        response = await this.directFlow.updateAttendanceRecord(recordId, recordData);
                     } else {
-                        // Create new record - try different method names
-                        if (typeof this.directFlow.createAttendanceRecord === 'function') {
-                            response = await this.directFlow.createAttendanceRecord(recordData);
-                        } else if (typeof this.directFlow.createRecord === 'function') {
-                            response = await this.directFlow.createRecord('attendance', recordData);
-                        } else if (typeof this.directFlow.create === 'function') {
-                            response = await this.directFlow.create('attendance', recordData);
-                        } else {
-                            // Try direct API call for create
-                            console.log('DirectFlow create methods not available, trying direct API call...');
-                            
-                            try {
-                                const apiResponse = await fetch('/api/attendance', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-                                    },
-                                    body: JSON.stringify(recordData)
-                                });
-                                
-                                if (apiResponse.ok) {
-                                    const data = await apiResponse.json();
-                                    response = { success: true, data };
-                                } else {
-                                    throw new Error(`API request failed: ${apiResponse.status} ${apiResponse.statusText}`);
-                                }
-                            } catch (apiError) {
-                                console.warn('Direct API call failed, using local fallback:', apiError);
-                                
-                                // Fallback: Add to local data
-                                const newRecord = { 
-                                    id: Date.now(), // Simple ID generation
-                                    ...recordData 
-                                };
-                                this.attendanceData.push(newRecord);
-                                this.dataCache.attendance = this.attendanceData;
-                                this.dataCache.lastFetch = Date.now();
-                                response = { success: true };
-                                this.showInfo('Record created locally only. Server creation failed.');
-                            }
-                        }
+                        // Create new record
+                        response = await this.directFlow.createAttendanceRecord(recordData);
                     }
 
-                    if (response && response.success) {
+                    if (response.success) {
                         this.showSuccess(recordId ? 'Attendance record updated successfully!' : 'Attendance record created successfully!');
                         this.closeModal();
-                        
-                        // Refresh data if we have API methods, otherwise just update UI
-                        if (typeof this.directFlow.getAttendanceRecords === 'function') {
-                            await this.refreshData();
-                        } else {
-                            // Update filtered data and UI
-                            this.filteredData = [...this.attendanceData];
-                            this.updateStats();
-                            this.renderTable();
-                        }
+                        await this.refreshData();
                     } else {
-                        throw new Error(response?.message || 'Failed to save attendance record');
+                        throw new Error(response.message || 'Failed to save attendance record');
                     }
 
                 } catch (error) {
@@ -1776,70 +1366,13 @@
                 }
 
                 try {
-                    // Try different possible method names for delete
-                    let response;
+                    const response = await this.directFlow.deleteAttendanceRecord(id);
                     
-                    if (typeof this.directFlow.deleteAttendanceRecord === 'function') {
-                        response = await this.directFlow.deleteAttendanceRecord(id);
-                    } else if (typeof this.directFlow.deleteRecord === 'function') {
-                        response = await this.directFlow.deleteRecord('attendance', id);
-                    } else if (typeof this.directFlow.delete === 'function') {
-                        response = await this.directFlow.delete('attendance', id);
-                    } else {
-                        // Try direct API call as fallback
-                        console.log('DirectFlow delete methods not available, trying direct API call...');
-                        
-                        // Try to make a direct HTTP request to the API
-                        try {
-                            const apiResponse = await fetch(`/api/attendance/${id}`, {
-                                method: 'DELETE',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-                                }
-                            });
-                            
-                            if (apiResponse.ok) {
-                                const data = await apiResponse.json();
-                                response = { success: true, data };
-                            } else {
-                                throw new Error(`API request failed: ${apiResponse.status} ${apiResponse.statusText}`);
-                            }
-                        } catch (apiError) {
-                            console.warn('Direct API call failed:', apiError);
-                            
-                            // Final fallback: Remove from local data only
-                            this.attendanceData = this.attendanceData.filter(record => record.id !== id);
-                            this.filteredData = this.filteredData.filter(record => record.id !== id);
-                            
-                            // Update cache
-                            this.dataCache.attendance = this.attendanceData;
-                            this.dataCache.lastFetch = Date.now();
-                            
-                            this.updateStats();
-                            this.renderTable();
-                            
-                            this.showError('Could not delete from server. Record removed locally only. Please refresh to see server state.');
-                            return;
-                        }
-                    }
-                    
-                    if (response && response.success) {
+                    if (response.success) {
                         this.showSuccess('Attendance record deleted successfully!');
-                        // Refresh data to get updated state from server
-                        if (typeof this.directFlow.getAttendanceRecords === 'function') {
-                            await this.refreshData();
-                        } else {
-                            // Remove from local data if API refresh isn't available
-                            this.attendanceData = this.attendanceData.filter(record => record.id !== id);
-                            this.filteredData = this.filteredData.filter(record => record.id !== id);
-                            this.dataCache.attendance = this.attendanceData;
-                            this.dataCache.lastFetch = Date.now();
-                            this.updateStats();
-                            this.renderTable();
-                        }
+                        await this.refreshData();
                     } else {
-                        throw new Error(response?.message || 'Failed to delete attendance record');
+                        throw new Error(response.message || 'Failed to delete attendance record');
                     }
                 } catch (error) {
                     console.error('Failed to delete attendance record:', error);
@@ -1960,11 +1493,6 @@
             showError(message) {
                 console.error(message);
                 this.showAlert(message, 'error');
-                // Ensure container is visible when showing errors
-                const container = document.querySelector('.container');
-                if (container) {
-                    container.style.display = 'block';
-                }
             }
 
             showSuccess(message) {

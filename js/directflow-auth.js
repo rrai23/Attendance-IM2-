@@ -9,6 +9,7 @@ class DirectFlowAuth {
         this.tokenKey = 'directflow_token';
         this.userKey = 'directflow_user';
         this.expiryKey = 'directflow_expires';
+        this.initialized = false;
         
         // Initialize
         this.init();
@@ -18,6 +19,8 @@ class DirectFlowAuth {
     init() {
         this.checkTokenValidity();
         this.startTokenRefreshInterval();
+        this.initialized = true;
+        console.log('✅ DirectFlowAuth initialized');
     }
 
     // Check if current token is valid

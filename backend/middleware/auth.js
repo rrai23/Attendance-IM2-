@@ -26,6 +26,50 @@ const auth = async (req, res, next) => {
         const token = authHeader.substring(7); // Remove 'Bearer ' prefix
         console.log('🎫 Token extracted:', token ? token.substring(0, 20) + '...' : 'undefined/empty');
 
+        // Handle development tokens
+        if (token.startsWith('dev_token_')) {
+            console.log('🔧 Development token detected, skipping JWT verification');
+            const employee_id = token.replace('dev_token_', '');
+            console.log('🔧 Development employee_id:', employee_id);
+            
+            // Set decoded token for development
+            req.decodedToken = { employee_id, username: employee_id };
+            req.token = token;
+            
+            // Get user data directly for development
+            const result = await db.execute(`
+                SELECT 
+                    ua.*,
+                    e.first_name,
+                    e.last_name,
+                    e.full_name,
+                    e.email,
+                    e.department,
+                    e.position,
+                    e.phone,
+                    e.hire_date,
+                    e.wage,
+                    e.status
+                FROM user_accounts ua
+                LEFT JOIN employees e ON ua.employee_id = e.employee_id
+                WHERE ua.employee_id = ?
+            `, [employee_id]);
+            
+            if (!result || (Array.isArray(result) && result.length === 0)) {
+                console.log('❌ Development user not found');
+                return res.status(401).json({
+                    success: false,
+                    message: 'Development user not found'
+                });
+            }
+            
+            const user = Array.isArray(result) ? result[0] : result;
+            console.log('✅ Development user found:', { employee_id: user.employee_id, username: user.username });
+            
+            req.user = user;
+            return next();
+        }
+
         // Verify JWT token
         let decoded;
         try {

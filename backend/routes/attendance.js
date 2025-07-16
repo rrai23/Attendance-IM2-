@@ -213,115 +213,6 @@ router.post('/clock', auth, async (req, res) => {
     }
 });
 
-// Get attendance records with filters
-router.get('/', auth, async (req, res) => {
-    try {
-        const {
-            employee_id,
-            start_date,
-            end_date,
-            status,
-            page = 1,
-            limit = 50,
-            sort = 'date',
-            order = 'DESC'
-        } = req.query;
-
-        // Non-admin users can only see their own records
-        const targetEmployeeId = req.user.role === 'admin' || req.user.role === 'manager' 
-            ? (employee_id || req.user.employee_id) 
-            : req.user.employee_id;
-
-        let query = `
-            SELECT 
-                ar.*,
-                e.first_name,
-                e.last_name,
-                e.department,
-                e.position
-            FROM attendance_records ar
-            JOIN employees e ON ar.employee_id = e.employee_id
-            WHERE ar.employee_id = ?
-        `;
-        const params = [targetEmployeeId];
-
-        // Add date filters
-        if (start_date) {
-            query += ' AND ar.date >= ?';
-            params.push(start_date);
-        }
-
-        if (end_date) {
-            query += ' AND ar.date <= ?';
-            params.push(end_date);
-        }
-
-        if (status) {
-            query += ' AND ar.status = ?';
-            params.push(status);
-        }
-
-        // Add sorting
-        const validSortFields = ['date', 'time_in', 'time_out', 'hours_worked', 'status'];
-        const sortField = validSortFields.includes(sort) ? sort : 'date';
-        const sortOrder = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-        query += ` ORDER BY ar.${sortField} ${sortOrder}`;
-
-        // Add pagination
-        const offset = (parseInt(page) - 1) * parseInt(limit);
-        query += ' LIMIT ? OFFSET ?';
-        params.push(parseInt(limit), offset);
-
-        const records = await db.execute(query, params);
-
-        // Get total count
-        let countQuery = `
-            SELECT COUNT(*) as total
-            FROM attendance_records ar
-            WHERE ar.employee_id = ?
-        `;
-        const countParams = [targetEmployeeId];
-
-        if (start_date) {
-            countQuery += ' AND ar.date >= ?';
-            countParams.push(start_date);
-        }
-
-        if (end_date) {
-            countQuery += ' AND ar.date <= ?';
-            countParams.push(end_date);
-        }
-
-        if (status) {
-            countQuery += ' AND ar.status = ?';
-            countParams.push(status);
-        }
-
-        const countResult = await db.execute(countQuery, countParams);
-        const total = countResult[0].total;
-
-        res.json({
-            success: true,
-            data: {
-                records,
-                pagination: {
-                    page: parseInt(page),
-                    limit: parseInt(limit),
-                    total,
-                    totalPages: Math.ceil(total / parseInt(limit))
-                }
-            }
-        });
-
-    } catch (error) {
-        console.error('Get attendance records error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error getting attendance records'
-        });
-    }
-});
-
 // Get current status (clocked in/out)
 router.get('/status', auth, async (req, res) => {
     try {
@@ -399,7 +290,7 @@ router.post('/manual', requireManagerOrAdmin, async (req, res) => {
 
         // Check if attendance record already exists for this date
         const existing = await db.execute(
-            'SELECT attendance_id FROM attendance_records WHERE employee_id = ? AND DATE(date) = ?',
+            'SELECT id FROM attendance_records WHERE employee_id = ? AND DATE(date) = ?',
             [employee_id, date]
         );
 
@@ -418,34 +309,31 @@ router.post('/manual', requireManagerOrAdmin, async (req, res) => {
             calculatedHours = ((timeOutDate - timeInDate) / (1000 * 60 * 60)).toFixed(2);
         }
 
-        const attendanceId = `ATT${Date.now()}${Math.floor(Math.random() * 1000)}`;
-
         await db.execute(`
             INSERT INTO attendance_records (
-                attendance_id, employee_id, date, time_in, time_out,
-                hours_worked, status, manual_entry, manual_entry_by,
-                manual_entry_reason, clock_in_notes, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?, ?, NOW())
+                employee_id, date, time_in, time_out,
+                hours_worked, status, notes, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
         `, [
-            attendanceId, employee_id, date, 
-            time_in ? `${date}T${time_in}` : null,
-            time_out ? `${date}T${time_out}` : null,
+            employee_id, date, 
+            time_in || null,
+            time_out || null,
             calculatedHours ? parseFloat(calculatedHours) : null,
-            status, req.user.employee_id, reason, notes
+            status, notes
         ]);
 
         // Get the created record with employee info
         const newRecord = await db.execute(`
             SELECT 
                 ar.*,
-                e.first_name,
-                e.last_name,
+                e.full_name as employee_name,
+                e.employee_id as employee_code,
                 e.department,
                 e.position
             FROM attendance_records ar
             JOIN employees e ON ar.employee_id = e.employee_id
-            WHERE ar.attendance_id = ?
-        `, [attendanceId]);
+            WHERE ar.id = LAST_INSERT_ID()
+        `);
 
         res.status(201).json({
             success: true,
@@ -463,9 +351,9 @@ router.post('/manual', requireManagerOrAdmin, async (req, res) => {
 });
 
 // Update attendance record
-router.put('/:attendanceId', requireManagerOrAdmin, async (req, res) => {
+router.put('/:id', requireManagerOrAdmin, async (req, res) => {
     try {
-        const { attendanceId } = req.params;
+        const { id } = req.params;
         const {
             time_in,
             time_out,
@@ -477,8 +365,8 @@ router.put('/:attendanceId', requireManagerOrAdmin, async (req, res) => {
 
         // Check if record exists
         const existing = await db.execute(
-            'SELECT * FROM attendance_records WHERE attendance_id = ?',
-            [attendanceId]
+            'SELECT * FROM attendance_records WHERE id = ?',
+            [id]
         );
 
         if (existing.length === 0) {
@@ -528,7 +416,7 @@ router.put('/:attendanceId', requireManagerOrAdmin, async (req, res) => {
         }
 
         updateFields.push('updated_at = NOW()');
-        updateParams.push(attendanceId);
+        updateParams.push(id);
 
         if (updateFields.length <= 3) { // Only manual entry fields
             return res.status(400).json({
@@ -538,7 +426,7 @@ router.put('/:attendanceId', requireManagerOrAdmin, async (req, res) => {
         }
 
         await db.execute(
-            `UPDATE attendance_records SET ${updateFields.join(', ')} WHERE attendance_id = ?`,
+            `UPDATE attendance_records SET ${updateFields.join(', ')} WHERE id = ?`,
             updateParams
         );
 
@@ -546,14 +434,14 @@ router.put('/:attendanceId', requireManagerOrAdmin, async (req, res) => {
         const updatedRecord = await db.execute(`
             SELECT 
                 ar.*,
-                e.first_name,
-                e.last_name,
+                e.full_name as employee_name,
+                e.employee_id as employee_code,
                 e.department,
                 e.position
             FROM attendance_records ar
             JOIN employees e ON ar.employee_id = e.employee_id
-            WHERE ar.attendance_id = ?
-        `, [attendanceId]);
+            WHERE ar.id = ?
+        `, [id]);
 
         res.json({
             success: true,
@@ -699,6 +587,59 @@ router.get('/stats', auth, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Server error getting attendance statistics'
+        });
+    }
+});
+
+// Delete attendance record (admin/manager only)
+router.delete('/:id', requireManagerOrAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Check if record exists
+        const existing = await db.execute(
+            'SELECT * FROM attendance_records WHERE id = ?',
+            [id]
+        );
+
+        if (existing.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Attendance record not found'
+            });
+        }
+
+        // Store the record data for logging
+        const recordData = existing[0];
+
+        // Delete the record
+        await db.execute(
+            'DELETE FROM attendance_records WHERE id = ?',
+            [id]
+        );
+
+        // Log the deletion
+        console.log(`Attendance record ${id} deleted by user ${req.user.employee_id}`);
+
+        res.json({
+            success: true,
+            message: 'Attendance record deleted successfully',
+            data: { 
+                deleted_record: {
+                    id: recordData.id,
+                    employee_id: recordData.employee_id,
+                    date: recordData.date,
+                    deleted_by: req.user.employee_id,
+                    deleted_at: new Date().toISOString()
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Delete attendance record error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error deleting attendance record'
         });
     }
 });

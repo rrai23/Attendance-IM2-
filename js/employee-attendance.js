@@ -9,8 +9,7 @@ class EmployeeAttendanceManager {
         this.employees = [];
         this.currentViewingRecord = null;
         this.currentEditingRecord = null;
-        this.unifiedManager = null;
-        this.unifiedManager = null;
+        this.directFlow = null;
         this.statusTypes = {
             present: { label: 'Present', icon: '✅', color: '#22c55e' },
             late: { label: 'Late', icon: '⏰', color: '#f59e0b' },
@@ -36,11 +35,15 @@ class EmployeeAttendanceManager {
         try {
             console.log('Initializing EmployeeAttendanceManager...');
             
-            // Initialize unified data service
+            // Initialize DirectFlow API service
             await this.initializeDataService();
             
-            await this.loadEmployees();
-            await this.loadAttendanceRecords();
+            // Load data in parallel for better performance
+            const [employees, attendanceRecords] = await Promise.all([
+                this.loadEmployees(),
+                this.loadAttendanceRecords()
+            ]);
+            
             this.setupEventHandlers();
             
             console.log('EmployeeAttendanceManager initialized successfully');
@@ -52,30 +55,27 @@ class EmployeeAttendanceManager {
     }
 
     /**
-     * Initialize the unified data service
+     * Initialize the data service
      */
     async initializeDataService() {
         try {
-            // Wait for unified employee manager to be ready
+            // Wait for DirectFlow to be ready - optimized with shorter intervals
             let waitCount = 0;
-            const maxWait = 100; // 10 seconds max wait
+            const maxWait = 50; // 5 seconds max wait
             
-            while ((!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) && waitCount < maxWait) {
+            while ((!window.directFlow || !window.directFlow.initialized) && waitCount < maxWait) {
                 await new Promise(resolve => setTimeout(resolve, 100));
                 waitCount++;
-                if (waitCount % 10 === 0) {
-                    console.log(`Employee Attendance waiting for unified manager... (${waitCount/10}s)`);
-                }
             }
             
-            if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
-                throw new Error('UnifiedEmployeeManager not available or not initialized');
+            if (!window.directFlow || !window.directFlow.initialized) {
+                throw new Error('DirectFlow not available or not initialized');
             }
             
-            this.unifiedManager = window.unifiedEmployeeManager;
-            console.log('Employee Attendance using UnifiedEmployeeManager directly');
+            this.directFlow = window.directFlow;
+            console.log('Employee Attendance using DirectFlow API');
         } catch (error) {
-            console.error('Failed to initialize unified employee manager:', error);
+            console.error('Failed to initialize DirectFlow:', error);
             throw error;
         }
     }
@@ -85,16 +85,23 @@ class EmployeeAttendanceManager {
      */
     async loadEmployees() {
         try {
-            console.log('Loading employees from unified data service...');
+            console.log('Loading employees from DirectFlow API...');
             
-            // Get employees from unified manager
-            const employeesData = this.unifiedManager.getEmployees();
+            // Get employees from DirectFlow
+            const employeesResponse = await this.directFlow.getEmployees();
+            
+            if (!employeesResponse.success) {
+                throw new Error(employeesResponse.message || 'Failed to load employees');
+            }
+            
+            // Handle nested data structure
+            const employeesData = employeesResponse.data.employees || employeesResponse.data || [];
             
             // Transform data to match the expected format for this module
             this.employees = employeesData.map(emp => ({
                 id: emp.id,
-                employeeId: emp.employeeCode || emp.id,
-                name: emp.fullName || `${emp.firstName} ${emp.lastName}`,
+                employeeId: emp.employee_id || emp.id,
+                name: emp.full_name || `${emp.first_name} ${emp.last_name}`,
                 department: emp.department,
                 position: emp.position,
                 email: emp.email,
@@ -103,7 +110,7 @@ class EmployeeAttendanceManager {
                 schedule: this.getEmployeeSchedule(emp)
             }));
             
-            console.log(`Loaded ${this.employees.length} employees from unified data service`);
+            console.log(`Loaded ${this.employees.length} employees from DirectFlow API`);
             return this.employees;
         } catch (error) {
             console.error('Error loading employees:', error);
@@ -138,29 +145,47 @@ class EmployeeAttendanceManager {
      */
     async loadAttendanceRecords() {
         try {
-            console.log('Loading attendance records from unified data service...');
+            console.log('Loading attendance records from DirectFlow API...');
             
-            // Get all attendance records from unified data service
-            const records = this.unifiedManager.getAttendanceRecords();
+            // Get all attendance records from DirectFlow
+            const attendanceResponse = await this.directFlow.getAttendanceRecords();
+            
+            console.log('DirectFlow attendance response:', attendanceResponse);
+            
+            let records = [];
+            
+            // Handle different response formats
+            if (Array.isArray(attendanceResponse)) {
+                // Direct array response
+                records = attendanceResponse;
+            } else if (attendanceResponse && attendanceResponse.success) {
+                // Standard response object format
+                records = attendanceResponse.data.attendance || attendanceResponse.data || [];
+            } else if (attendanceResponse && attendanceResponse.data) {
+                // Response object without success flag
+                records = attendanceResponse.data.attendance || attendanceResponse.data || [];
+            } else {
+                throw new Error(attendanceResponse?.message || 'Failed to load attendance records');
+            }
             
             // Transform data to match the expected format for this module
             this.attendanceRecords = records.map(record => ({
                 id: record.id,
-                employeeId: record.employeeId,
+                employeeId: record.employee_id || record.employeeId,
                 date: record.date,
-                clockIn: record.timeIn,
-                clockOut: record.timeOut,
-                lunchStart: record.lunchStart,
-                lunchEnd: record.lunchEnd,
-                hours: record.hoursWorked || 0,
-                regularHours: record.regularHours || 0,
-                overtimeHours: record.overtimeHours || 0,
+                clockIn: record.clock_in || record.timeIn,
+                clockOut: record.clock_out || record.timeOut,
+                lunchStart: record.lunch_start || record.lunchStart,
+                lunchEnd: record.lunch_end || record.lunchEnd,
+                hours: record.hours_worked || record.hoursWorked || 0,
+                regularHours: record.regular_hours || record.regularHours || 0,
+                overtimeHours: record.overtime_hours || record.overtimeHours || 0,
                 status: record.status,
                 notes: record.notes || '',
-                employee: this.employees.find(emp => emp.id === record.employeeId || emp.employeeId === record.employeeId)
+                employee: this.employees.find(emp => emp.id === record.employee_id || emp.employeeId === record.employee_id)
             }));
             
-            console.log(`Loaded ${this.attendanceRecords.length} attendance records from unified data service`);
+            console.log(`Loaded ${this.attendanceRecords.length} attendance records from DirectFlow API`);
             return this.attendanceRecords;
         } catch (error) {
             console.error('Error loading attendance records:', error);
@@ -272,12 +297,16 @@ class EmployeeAttendanceManager {
                 modifiedBy: 'Admin' // In a real app, this would be the current user
             };
 
-            // Save to unified manager
+            // Save to DirectFlow API
             try {
-                this.unifiedManager.addAttendanceRecord(record);
-                console.log('Attendance record saved to unified manager');
+                const response = await this.directFlow.addAttendanceRecord(record);
+                if (response.success) {
+                    console.log('Attendance record saved to DirectFlow API');
+                } else {
+                    console.warn('Failed to save to DirectFlow API:', response.message);
+                }
             } catch (error) {
-                console.warn('Failed to save to unified manager:', error);
+                console.warn('Failed to save to DirectFlow API:', error);
             }
 
             // Update local records
@@ -330,6 +359,15 @@ class EmployeeAttendanceManager {
                 throw new Error('Attendance record not found');
             }
 
+            const record = this.attendanceRecords[recordIndex];
+            
+            // Delete via DirectFlow API
+            const response = await this.directFlow.deleteAttendanceRecord(record.id);
+            
+            if (!response.success) {
+                throw new Error(response.message || 'Failed to delete attendance record');
+            }
+
             const deletedRecord = this.attendanceRecords.splice(recordIndex, 1)[0];
             console.log('Attendance record deleted:', deletedRecord);
             return deletedRecord;
@@ -353,14 +391,16 @@ class EmployeeAttendanceManager {
                 record => record.employeeId === employeeId && record.date === date
             );
 
+            let record;
             if (existingRecord) {
                 existingRecord.status = newStatus;
                 existingRecord.notes = notes;
                 existingRecord.lastModified = new Date().toISOString();
                 existingRecord.modifiedBy = 'Admin';
+                record = existingRecord;
             } else {
                 // Create new record with status override
-                const record = {
+                record = {
                     id: `${employeeId}-${date}`,
                     employeeId: employeeId,
                     employeeName: employee.name,
@@ -381,37 +421,14 @@ class EmployeeAttendanceManager {
                 this.attendanceRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
             }
 
-            console.log(`Status override applied: Employee ${employeeId}, Date ${date}, Status: ${newStatus}`);
-            return true;
-        } catch (error) {
-            console.error('Error overriding status:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Override attendance status for a specific employee and date
-     */
-    async overrideStatus(employeeId, date, newStatus, notes = '') {
-        try {
-            const recordIndex = this.attendanceRecords.findIndex(
-                record => record.employeeId === employeeId && record.date === date
-            );
-
-            if (recordIndex === -1) {
-                throw new Error('Attendance record not found');
+            // Save to DirectFlow API
+            const response = await this.directFlow.updateAttendanceRecord(record);
+            
+            if (!response.success) {
+                throw new Error(response.message || 'Failed to override status');
             }
 
-            const record = this.attendanceRecords[recordIndex];
-            const oldStatus = record.status;
-            
-            // Update the record
-            record.status = newStatus;
-            record.notes = notes || `Status overridden from ${oldStatus} to ${newStatus} on ${new Date().toLocaleString()}`;
-            record.lastModified = new Date().toISOString();
-            record.modifiedBy = 'Admin';
-
-            console.log('Status overridden:', record);
+            console.log(`Status override applied: Employee ${employeeId}, Date ${date}, Status: ${newStatus}`);
             this.broadcastAttendanceUpdate(record);
             return record;
         } catch (error) {
@@ -686,8 +703,12 @@ class EmployeeAttendanceManager {
                 this.setButtonLoading(deleteBtn, true);
             }
 
-            // In a real app, this would make an API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Delete via DirectFlow API
+            const response = await this.directFlow.deleteAttendanceRecord(recordId);
+            
+            if (!response.success) {
+                throw new Error(response.message || 'Failed to delete attendance record');
+            }
 
             const recordIndex = this.attendanceRecords.findIndex(record => record.id === recordId);
             if (recordIndex !== -1) {

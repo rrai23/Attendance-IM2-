@@ -1,0 +1,43 @@
+[2025-07-16T18:34:54.354Z] INFO: ============================================================
+[2025-07-16T18:34:54.358Z] INFO: BRICKS ATTENDANCE SYSTEM - PRODUCTION SETUP
+[2025-07-16T18:34:54.358Z] INFO: ============================================================
+[2025-07-16T18:34:54.358Z] INFO: Connecting to database...
+[2025-07-16T18:34:54.385Z] INFO: Database 'bricks_attendance' created/verified
+[2025-07-16T18:34:54.390Z] INFO: Connected to MySQL database successfully
+[2025-07-16T18:34:54.406Z] INFO: Departments table created/verified
+[2025-07-16T18:34:54.424Z] INFO: Employees table created/verified
+[2025-07-16T18:34:54.440Z] INFO: User accounts table created/verified
+[2025-07-16T18:34:54.455Z] INFO: User sessions table created/verified
+[2025-07-16T18:34:54.470Z] INFO: Attendance records table created/verified
+[2025-07-16T18:34:54.485Z] INFO: Payroll records table created/verified
+[2025-07-16T18:34:54.499Z] INFO: System settings table created/verified
+[2025-07-16T18:34:54.515Z] INFO: Audit log table created/verified
+[2025-07-16T18:34:54.528Z] INFO: Overtime requests table created/verified
+[2025-07-16T18:34:54.535Z] INFO: Default departments inserted/verified
+[2025-07-16T18:34:54.542Z] INFO: Default system settings inserted/verified
+[2025-07-16T18:34:54.543Z] INFO: Creating production users...
+[2025-07-16T18:34:54.776Z] INFO: User created/updated: admin (admin)
+[2025-07-16T18:34:54.996Z] INFO: User created/updated: john.smith (manager)
+[2025-07-16T18:34:55.235Z] INFO: User created/updated: jane.doe (employee)
+[2025-07-16T18:34:55.235Z] INFO: Validating database integrity...
+[2025-07-16T18:34:55.238Z] INFO: Database integrity validation passed
+[2025-07-16T18:34:55.238Z] INFO: ============================================================
+[2025-07-16T18:34:55.238Z] INFO: ✅ PRODUCTION SETUP COMPLETED SUCCESSFULLY
+[2025-07-16T18:34:55.238Z] INFO: ⏱️  Setup completed in 0.88 seconds
+[2025-07-16T18:34:55.238Z] INFO: ============================================================
+[2025-07-16T18:34:55.238Z] INFO: 
+🔐 LOGIN CREDENTIALS:
+[2025-07-16T18:34:55.238Z] INFO: ┌─────────────────┬─────────────────┬─────────────┐
+[2025-07-16T18:34:55.238Z] INFO: │ Username        │ Password        │ Role        │
+[2025-07-16T18:34:55.238Z] INFO: ├─────────────────┼─────────────────┼─────────────┤
+[2025-07-16T18:34:55.238Z] INFO: │ admin           │ admin123        │ admin       │
+[2025-07-16T18:34:55.239Z] INFO: │ john.smith      │ manager123      │ manager     │
+[2025-07-16T18:34:55.239Z] INFO: │ jane.doe        │ employee123     │ employee    │
+[2025-07-16T18:34:55.239Z] INFO: └─────────────────┴─────────────────┴─────────────┘
+[2025-07-16T18:34:55.239Z] INFO: 
+⚠️  IMPORTANT SECURITY NOTES:
+[2025-07-16T18:34:55.239Z] INFO:    - Change default passwords immediately in production
+[2025-07-16T18:34:55.239Z] INFO:    - Review and update system settings as needed
+[2025-07-16T18:34:55.239Z] INFO:    - Enable SSL/TLS for database connections
+[2025-07-16T18:34:55.239Z] INFO:    - Set up proper database user permissions
+[2025-07-16T18:34:55.239Z] INFO:    - Configure firewall rules
