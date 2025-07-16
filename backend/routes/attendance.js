@@ -600,7 +600,7 @@ router.get('/stats', auth, async (req, res) => {
                 SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present,
                 SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END) as absent,
                 SUM(CASE WHEN status = 'late' THEN 1 ELSE 0 END) as late,
-                SUM(CASE WHEN status = 'on_leave' THEN 1 ELSE 0 END) as onLeave
+                SUM(CASE WHEN status IN ('sick', 'vacation', 'on_leave') THEN 1 ELSE 0 END) as onLeave
             FROM attendance_records ar
             WHERE ar.date = ?
         `, [today]);
@@ -609,8 +609,7 @@ router.get('/stats', auth, async (req, res) => {
         const totalEmployeesResult = await db.execute(`
             SELECT COUNT(*) as count
             FROM employees e
-            JOIN user_accounts ua ON e.employee_id = ua.employee_id
-            WHERE ua.is_active = 1 AND e.status = 'active'
+            WHERE e.status = 'active'
         `);
 
         // Extract data from results (direct array format)

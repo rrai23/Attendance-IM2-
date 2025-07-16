@@ -194,6 +194,62 @@ const totalEmployees = totalEmployeesResult[0]; // Get the first (and only) reco
 }
 ```
 
+## Attendance Stats Endpoint Fix
+
+### Issue Identified
+The `/api/attendance/stats` endpoint was showing incorrect data:
+- Dashboard showed 4 present employees
+- Attendance page showed 37+ employees
+- Total employee count was wrong (3 instead of 8)
+
+### Root Cause
+1. **Employee Count Query**: The stats endpoint was only counting employees with user accounts (3) instead of all active employees (8)
+2. **Status Mapping**: The query was looking for `status = 'on_leave'` but actual statuses were `'sick'` and `'vacation'`
+
+### Fix Applied
+1. **Updated Employee Count Query**:
+   ```sql
+   -- OLD (incorrect)
+   SELECT COUNT(*) as count
+   FROM employees e
+   JOIN user_accounts ua ON e.employee_id = ua.employee_id
+   WHERE ua.is_active = 1 AND e.status = 'active'
+   
+   -- NEW (correct)
+   SELECT COUNT(*) as count
+   FROM employees e
+   WHERE e.status = 'active'
+   ```
+
+2. **Updated Status Mapping**:
+   ```sql
+   -- OLD (incorrect)
+   SUM(CASE WHEN status = 'on_leave' THEN 1 ELSE 0 END) as onLeave
+   
+   -- NEW (correct)
+   SUM(CASE WHEN status IN ('sick', 'vacation', 'on_leave') THEN 1 ELSE 0 END) as onLeave
+   ```
+
+### Result
+- Dashboard now shows correct statistics
+- Attendance rate calculation is accurate
+- All status types are properly counted
+
+### API Response Structure
+```json
+{
+  "success": true,
+  "data": {
+    "present": 4,
+    "absent": 2,
+    "late": 0,
+    "onLeave": 2,
+    "total": 8,
+    "attendanceRate": "50.0"
+  }
+}
+```
+
 ## Database Schema Key Points
 
 ### Field Name Mapping
