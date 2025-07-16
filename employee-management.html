@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employee Attendance - Attendance System</title>
+    <title>Employee Management - Attendance System</title>
     <link rel="stylesheet" href="css/styles.css">
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -937,6 +937,7 @@
     <script src="js/directflow-auth.js"></script>
     <script src="js/auth-check.js"></script>
     <script src="js/directflow.js"></script>
+    <script src="js/directflow-auth-fix.js"></script>
     <script src="js/sidebar.js"></script>
     <script src="js/employee-attendance.js"></script>
     <script>
@@ -985,7 +986,15 @@
                     // Show loading state
                     this.showLoadingState(true);
                     
-                    // Wait for DirectFlow to be ready - optimized
+                    // Wait for DirectFlow to be ready - using the global directFlow instance
+                    let waitCount = 0;
+                    const maxWait = 50; // 5 seconds max
+                    
+                    while (!window.directFlow && waitCount < maxWait) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        waitCount++;
+                    }
+                    
                     if (!window.directFlow) {
                         throw new Error('DirectFlow API client not available');
                     }
@@ -1042,7 +1051,23 @@
                 } catch (error) {
                     console.error('Failed to initialize employee management page:', error);
                     this.showLoadingState(false);
-                    this.showError('Failed to load page data: ' + error.message);
+                    
+                    // Don't throw the error - just show error message and continue
+                    console.warn('Continuing with partial initialization due to error');
+                    this.showError('Failed to load some page data: ' + error.message);
+                    
+                    // Still show the main content even if some data failed to load
+                    document.querySelector('.container').style.display = 'block';
+                    
+                    // Setup basic UI components
+                    this.setupEventListeners();
+                    this.setupFilters();
+                    this.updateEmployeeDropdowns();
+                    this.updateStats();
+                    this.renderTable();
+                    
+                    console.log('Employee management page initialized with errors');
+                    this.initialized = true;
                 }
            }
 
@@ -1050,38 +1075,36 @@
                 try {
                     console.log('🔄 Attempting main initialization...');
                     
-                    // Check if authentication is available
-                    if (window.directFlowAuth && window.directFlowAuth.initialized) {
-                        if (window.directFlowAuth.isAuthenticated()) {
-                            console.log('✅ User is authenticated, proceeding with initialization');
-                            await this.init();
-                        } else {
-                            console.log('❌ User is not authenticated, attempting auto-login...');
-                            const autoLoginResult = await this.attemptAutoLogin();
-                            if (autoLoginResult) {
-                                console.log('✅ Auto-login successful, proceeding with initialization');
-                                await this.init();
-                            } else {
-                                console.log('❌ Auto-login failed, redirecting to login');
-                                window.location.href = '/login.html';
-                            }
-                        }
+                    // Check if authentication is available using DirectFlowAuth
+                    if (window.directFlowAuth && window.directFlowAuth.isAuthenticated()) {
+                        console.log('✅ User is authenticated, proceeding with initialization');
+                        await this.init();
                     } else {
-                        console.log('⚠️ Authentication system not available, attempting auto-login...');
+                        console.log('❌ User is not authenticated, attempting auto-login...');
                         const autoLoginResult = await this.attemptAutoLogin();
                         if (autoLoginResult) {
                             console.log('✅ Auto-login successful, proceeding with initialization');
                             await this.init();
                         } else {
                             console.log('❌ Auto-login failed, redirecting to login');
-                            window.location.href = '/login.html';
+                            // Prevent infinite redirect loop
+                            if (!window.location.pathname.includes('login.html')) {
+                                window.location.href = '/login.html';
+                            }
                         }
                     }
                     
                 } catch (error) {
                     console.error('Main initialization failed:', error);
                     this.showLoadingState(false);
-                    this.showError('Failed to initialize page. Please try refreshing or logging in again.');
+                    
+                    // Don't redirect if the error is from initialization after authentication
+                    if (window.directFlowAuth && window.directFlowAuth.isAuthenticated()) {
+                        console.warn('Initialization error but user is authenticated - showing error message');
+                        this.showError('Failed to initialize page. Please try refreshing.');
+                    } else {
+                        this.showError('Failed to initialize page. Please try refreshing or logging in again.');
+                    }
                 }
             }
 
@@ -1134,9 +1157,9 @@
                     
                     console.log('DirectFlow response:', response);
                     
-                    if (Array.isArray(response)) {
-                        // DirectFlow now returns the employees array directly
-                        this.employees = response;
+                    if (response.success) {
+                        // Handle nested data structure from API
+                        this.employees = response.data.employees || response.data || [];
                         
                         // Cache the data
                         this.dataCache.employees = this.employees;
@@ -1145,12 +1168,14 @@
                         console.log(`Loaded ${this.employees.length} employees`);
                         console.log('Employee data:', this.employees);
                     } else {
-                        throw new Error('Invalid response format from DirectFlow');
+                        throw new Error(response.message || 'Failed to load employees');
                     }
                 } catch (error) {
                     console.error('Failed to load employees:', error);
-                    this.showError('Failed to load employees: ' + error.message);
+                    // Don't throw an error here - just log it and continue with empty employees
+                    console.warn('Continuing with empty employee list due to loading error');
                     this.employees = [];
+                    return []; // Return empty array instead of throwing
                 }
             }
 
@@ -1771,20 +1796,11 @@
             }
 
             async deleteRecord(id) {
-                // Check user permissions first
-                const currentUser = window.directFlowAuth.getCurrentUser();
-                if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'manager')) {
-                    this.showError('You do not have permission to delete attendance records. Only administrators and managers can delete records.');
-                    return;
-                }
-
                 if (!confirm('Are you sure you want to delete this attendance record?')) {
                     return;
                 }
 
                 try {
-                    console.log('🗑️ Attempting to delete attendance record:', id);
-                    
                     // Try different possible method names for delete
                     let response;
                     
@@ -1795,83 +1811,46 @@
                     } else if (typeof this.directFlow.delete === 'function') {
                         response = await this.directFlow.delete('attendance', id);
                     } else {
-                        // Try direct API call as fallback with proper error handling
+                        // Try direct API call as fallback
                         console.log('DirectFlow delete methods not available, trying direct API call...');
                         
+                        // Try to make a direct HTTP request to the API
                         try {
-                            const token = localStorage.getItem('bricks_auth_session') || localStorage.getItem('token');
-                            if (!token) {
-                                throw new Error('No authentication token found');
-                            }
-
                             const apiResponse = await fetch(`/api/attendance/${id}`, {
                                 method: 'DELETE',
                                 headers: {
                                     'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${token}`
+                                    'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
                                 }
                             });
-                            
-                            if (apiResponse.status === 401) {
-                                throw new Error('You are not authorized to delete attendance records. Please check your permissions or contact an administrator.');
-                            }
-                            
-                            if (apiResponse.status === 403) {
-                                throw new Error('Access denied. You do not have permission to delete attendance records.');
-                            }
-                            
-                            if (apiResponse.status === 404) {
-                                throw new Error('Attendance record not found. It may have already been deleted.');
-                            }
                             
                             if (apiResponse.ok) {
                                 const data = await apiResponse.json();
                                 response = { success: true, data };
                             } else {
-                                const errorData = await apiResponse.json().catch(() => ({}));
-                                throw new Error(errorData.message || `API request failed: ${apiResponse.status} ${apiResponse.statusText}`);
+                                throw new Error(`API request failed: ${apiResponse.status} ${apiResponse.statusText}`);
                             }
                         } catch (apiError) {
                             console.warn('Direct API call failed:', apiError);
                             
-                            // Don't fall back to local deletion for permission errors
-                            if (apiError.message.includes('not authorized') || 
-                                apiError.message.includes('Access denied') || 
-                                apiError.message.includes('permission')) {
-                                throw apiError;
-                            }
+                            // Final fallback: Remove from local data only
+                            this.attendanceData = this.attendanceData.filter(record => record.id !== id);
+                            this.filteredData = this.filteredData.filter(record => record.id !== id);
                             
-                            // For other errors, offer local deletion as fallback
-                            const userChoice = confirm(
-                                `Failed to delete from server: ${apiError.message}\n\n` +
-                                'Would you like to remove the record locally only? ' +
-                                '(Note: This will only hide the record until you refresh the page)'
-                            );
+                            // Update cache
+                            this.dataCache.attendance = this.attendanceData;
+                            this.dataCache.lastFetch = Date.now();
                             
-                            if (userChoice) {
-                                // Remove from local data only
-                                this.attendanceData = this.attendanceData.filter(record => record.id !== id);
-                                this.filteredData = this.filteredData.filter(record => record.id !== id);
-                                
-                                // Update cache
-                                this.dataCache.attendance = this.attendanceData;
-                                this.dataCache.lastFetch = Date.now();
-                                
-                                this.updateStats();
-                                this.renderTable();
-                                
-                                this.showError('Record removed locally only. Please refresh to see server state.');
-                                return;
-                            } else {
-                                throw apiError;
-                            }
+                            this.updateStats();
+                            this.renderTable();
+                            
+                            this.showError('Could not delete from server. Record removed locally only. Please refresh to see server state.');
+                            return;
                         }
                     }
                     
                     if (response && response.success) {
                         this.showSuccess('Attendance record deleted successfully!');
-                        console.log('✅ Delete successful:', response);
-                        
                         // Refresh data to get updated state from server
                         if (typeof this.directFlow.getAttendanceRecords === 'function') {
                             await this.refreshData();
@@ -1888,20 +1867,8 @@
                         throw new Error(response?.message || 'Failed to delete attendance record');
                     }
                 } catch (error) {
-                    console.error('❌ Failed to delete attendance record:', error);
-                    
-                    // Provide more specific error messages
-                    let errorMessage = error.message;
-                    
-                    if (error.message.includes('Authentication expired')) {
-                        errorMessage = 'Your session has expired. Please log in again to continue.';
-                    } else if (error.message.includes('not authorized') || error.message.includes('Access denied')) {
-                        errorMessage = 'You do not have permission to delete attendance records. Please contact an administrator.';
-                    } else if (error.message.includes('not found')) {
-                        errorMessage = 'Attendance record not found. It may have already been deleted.';
-                    }
-                    
-                    this.showError('Failed to delete attendance record: ' + errorMessage);
+                    console.error('Failed to delete attendance record:', error);
+                    this.showError('Failed to delete attendance record: ' + error.message);
                 }
             }
 

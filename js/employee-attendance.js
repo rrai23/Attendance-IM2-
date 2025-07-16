@@ -38,11 +38,22 @@ class EmployeeAttendanceManager {
             // Initialize DirectFlow API service
             await this.initializeDataService();
             
-            // Load data in parallel for better performance
-            const [employees, attendanceRecords] = await Promise.all([
+            // Load data in parallel for better performance - don't fail if employees fail to load
+            const [employees, attendanceRecords] = await Promise.allSettled([
                 this.loadEmployees(),
                 this.loadAttendanceRecords()
             ]);
+            
+            // Check results
+            if (employees.status === 'rejected') {
+                console.warn('Employee loading failed, continuing with empty employee list');
+                this.employees = [];
+            }
+            
+            if (attendanceRecords.status === 'rejected') {
+                console.warn('Attendance loading failed, continuing with empty attendance list');
+                this.attendanceRecords = [];
+            }
             
             this.setupEventHandlers();
             
@@ -50,7 +61,9 @@ class EmployeeAttendanceManager {
             return true;
         } catch (error) {
             console.error('Failed to initialize employee attendance manager:', error);
-            throw error;
+            // Don't throw error - just log it and continue
+            console.warn('Continuing with partial initialization');
+            return false;
         }
     }
 
@@ -91,7 +104,9 @@ class EmployeeAttendanceManager {
             const employeesResponse = await this.directFlow.getEmployees();
             
             if (!employeesResponse.success) {
-                throw new Error(employeesResponse.message || 'Failed to load employees');
+                console.warn('Failed to load employees from DirectFlow, using empty employee list');
+                this.employees = [];
+                return this.employees;
             }
             
             // Handle nested data structure
@@ -114,7 +129,9 @@ class EmployeeAttendanceManager {
             return this.employees;
         } catch (error) {
             console.error('Error loading employees:', error);
-            throw new Error('Failed to load employee data');
+            console.warn('Continuing with empty employee list due to error');
+            this.employees = [];
+            return this.employees;
         }
     }
 

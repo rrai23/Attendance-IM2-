@@ -57,30 +57,56 @@ class EmployeesPageManager {
             console.log('Loading employees from DirectFlow...');
             
             // Use DirectFlow for all data operations
-            const employeesData = await this.directFlow.getEmployees();
+            const employeesResponse = await this.directFlow.getEmployees();
             
-            // DirectFlow now returns the employees array directly
-            if (Array.isArray(employeesData)) {
-                this.employees = employeesData;
+            console.log('DirectFlow employees response:', employeesResponse);
+            
+            // Handle DirectFlow API response structure
+            let employeesData = [];
+            
+            if (Array.isArray(employeesResponse)) {
+                // Direct array response
+                employeesData = employeesResponse;
+            } else if (employeesResponse && employeesResponse.success) {
+                // Standard API response with success flag
+                if (employeesResponse.data) {
+                    if (Array.isArray(employeesResponse.data)) {
+                        employeesData = employeesResponse.data;
+                    } else if (employeesResponse.data.employees && Array.isArray(employeesResponse.data.employees)) {
+                        employeesData = employeesResponse.data.employees;
+                    } else {
+                        console.warn('Unexpected data structure in response.data:', employeesResponse.data);
+                        employeesData = [];
+                    }
+                } else {
+                    console.warn('API response has no data property');
+                    employeesData = [];
+                }
+            } else if (employeesResponse && typeof employeesResponse === 'object' && Array.isArray(employeesResponse.employees)) {
+                // Handle case where data is wrapped in an object with employees property
+                employeesData = employeesResponse.employees;
             } else {
-                console.warn('Expected array from DirectFlow.getEmployees(), got:', employeesData);
-                this.employees = [];
+                console.warn('Unexpected employees response format:', employeesResponse);
+                employeesData = [];
             }
             
-            // Ensure filteredEmployees is also an array
+            this.employees = employeesData;
             this.filteredEmployees = [...this.employees];
             
             // Get departments from employee data
-            const departmentSet = new Set(this.employees.map(emp => emp.department).filter(Boolean));
-            this.departments = Array.from(departmentSet);
+            if (Array.isArray(this.employees)) {
+                const departmentSet = new Set(this.employees.map(emp => emp.department).filter(Boolean));
+                this.departments = Array.from(departmentSet);
+            } else {
+                this.departments = [];
+            }
             
             console.log('[DATA INTEGRITY] Employees page using DirectFlow data:', {
                 count: this.employees.length,
                 source: 'DirectFlow',
                 employees: this.employees.map(emp => ({ 
                     id: emp.id, 
-                    employee_id: emp.employee_id,
-                    name: emp.full_name || emp.first_name + ' ' + emp.last_name,
+                    name: emp.fullName || emp.name,
                     department: emp.department 
                 }))
             });
@@ -944,9 +970,9 @@ class EmployeesPageManager {
         console.log('🔥 Employee name:', employeeName);
         
         this.setElementText('deleteEmployeeName', employeeName);
-        // Use primary key id for backend API compatibility
-        const employeeId = employee.id; // Use the primary key, not employee_id
-        console.log('🔥 Employee ID to delete (primary key):', employeeId);
+        // Use employee_id for backend API compatibility
+        const employeeId = employee.employee_id || employee.id;
+        console.log('🔥 Employee ID to delete:', employeeId);
         
         this.setElementValue('deleteEmployeeId', employeeId);
         
@@ -968,28 +994,8 @@ class EmployeesPageManager {
             return;
         }
 
-        // Show loading state
-        const confirmBtn = document.getElementById('confirmDeleteBtn');
-        const originalBtnText = confirmBtn?.innerHTML;
-        if (confirmBtn) {
-            confirmBtn.disabled = true;
-            confirmBtn.innerHTML = '<span class="btn-icon">⏳</span><span class="btn-text">Deleting...</span>';
-        }
-
         try {
             console.log('🔥 Attempting to delete employee via DirectFlow...');
-            
-            // Check authentication before attempting delete
-            const currentUser = window.directFlowAuth?.getCurrentUser();
-            console.log('🔥 Current user before delete:', currentUser);
-            
-            if (!currentUser) {
-                throw new Error('Authentication required. Please log in again.');
-            }
-            
-            if (currentUser.role !== 'admin') {
-                throw new Error('Admin access required to delete employees.');
-            }
             
             // Delete employee using DirectFlow
             const deletedEmployee = await this.directFlow.deleteEmployee(employeeId);
@@ -1016,29 +1022,7 @@ class EmployeesPageManager {
             
         } catch (error) {
             console.error('❌ Failed to delete employee:', error);
-            
-            // Show specific error messages
-            let errorMessage = 'Failed to delete employee: ' + error.message;
-            
-            if (error.message.includes('Authentication required')) {
-                errorMessage = 'Your session has expired. Please log in again.';
-                // Optionally redirect to login
-                setTimeout(() => {
-                    window.location.href = '/login.html';
-                }, 3000);
-            } else if (error.message.includes('Admin access required')) {
-                errorMessage = 'Admin privileges are required to delete employees.';
-            } else if (error.message.includes('not found')) {
-                errorMessage = 'Employee not found in the system.';
-            }
-            
-            this.showError(errorMessage);
-        } finally {
-            // Reset button state
-            if (confirmBtn) {
-                confirmBtn.disabled = false;
-                confirmBtn.innerHTML = originalBtnText;
-            }
+            this.showError('Failed to delete employee: ' + error.message);
         }
     }
 
