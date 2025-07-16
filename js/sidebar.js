@@ -108,15 +108,15 @@ class SidebarManager {
      */
     getUserRole() {
         try {
-            if (typeof authService !== 'undefined' && authService) {
-                const user = authService.getCurrentUser();
+            if (typeof window !== 'undefined' && window.directFlowAuth && window.directFlowAuth.isAuthenticated()) {
+                const user = window.directFlowAuth.getCurrentUser();
                 this.userRole = user ? user.role : 'admin';
             } else {
                 // Fallback role detection
                 this.userRole = this.currentPage === 'employee' ? 'employee' : 'admin';
             }
         } catch (error) {
-            console.warn('Error getting user role from authService:', error);
+            console.warn('Error getting user role from DirectFlowAuth:', error);
             // Fallback role detection
             this.userRole = this.currentPage === 'employee' ? 'employee' : 'admin';
         }
@@ -152,7 +152,7 @@ class SidebarManager {
      * Generate the complete sidebar HTML
      */
     generateSidebarHTML() {
-        const user = typeof authService !== 'undefined' ? authService.getCurrentUser() : null;
+        const user = (typeof window !== 'undefined' && window.directFlowAuth && window.directFlowAuth.isAuthenticated()) ? window.directFlowAuth.getCurrentUser() : null;
         const userName = user ? `${user.firstName || user.username || user.name || 'User'}` : 'User';
         const userRole = this.userRole.charAt(0).toUpperCase() + this.userRole.slice(1);
 
@@ -310,7 +310,7 @@ class SidebarManager {
             statusRefreshBtn.addEventListener('click', () => this.updateSystemStatus(true));
         }
 
-        // Listen for auth events - defer to ensure authService is available
+        // Listen for auth events - defer to ensure DirectFlowAuth is available
         this.setupAuthEventListeners();
 
         // Listen for theme changes
@@ -329,16 +329,16 @@ class SidebarManager {
         // Use a small delay to ensure all scripts are loaded
         setTimeout(() => {
             try {
-                if (typeof authService !== 'undefined' && authService) {
-                    authService.onAuthEvent('login', (user) => this.handleUserChange(user));
-                    authService.onAuthEvent('logout', () => this.handleUserLogout());
-                    authService.onAuthEvent('user_updated', (user) => this.handleUserChange(user));
-                    console.log('Sidebar: Auth event listeners set up successfully');
+                if (typeof window !== 'undefined' && window.directFlowAuth) {
+                    window.directFlowAuth.addEventListener('login', (user) => this.handleUserChange(user));
+                    window.directFlowAuth.addEventListener('logout', () => this.handleUserLogout());
+                    window.directFlowAuth.addEventListener('user_updated', (user) => this.handleUserChange(user));
+                    console.log('Sidebar: DirectFlowAuth event listeners set up successfully');
                 } else {
-                    console.warn('Sidebar: authService not available for event listeners');
+                    console.warn('Sidebar: DirectFlowAuth not available for event listeners');
                 }
             } catch (error) {
-                console.warn('Sidebar: Error setting up auth event listeners:', error);
+                console.warn('Sidebar: Error setting up DirectFlowAuth event listeners:', error);
             }
         }, 100);
     }
@@ -675,8 +675,8 @@ class SidebarManager {
         if (typeof confirmLogout !== 'undefined') {
             confirmLogout({
                 onConfirm: () => {
-                    if (typeof authService !== 'undefined') {
-                        authService.logout('user_logout');
+                    if (typeof window !== 'undefined' && window.directFlowAuth) {
+                        window.directFlowAuth.logout();
                     } else {
                         // Fallback logout
                         window.location.href = '/login.html';
@@ -686,8 +686,8 @@ class SidebarManager {
         } else {
             // Fallback to browser confirm if modal system not available
             if (confirm('Are you sure you want to logout?')) {
-                if (typeof authService !== 'undefined') {
-                    authService.logout('user_logout');
+                if (typeof window !== 'undefined' && window.directFlowAuth) {
+                    window.directFlowAuth.logout();
                 } else {
                     window.location.href = '/login.html';
                 }

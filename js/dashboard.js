@@ -291,7 +291,7 @@ class DashboardController {
             if (window.directFlow && window.directFlow.initialized) {
                 console.log('Loading attendance stats from DirectFlow');
                 
-                // Get attendance stats
+                // Get attendance stats directly from backend
                 this.currentStats = await window.directFlow.getAttendanceStats();
                 console.log('Received stats from DirectFlow:', this.currentStats);
                 
@@ -299,37 +299,22 @@ class DashboardController {
                 const todayRecords = await window.directFlow.getAttendanceRecords({ date: today });
                 console.log('Today\'s attendance records:', todayRecords);
                 
-                // Process today's data
-                this.currentStats.today = await this.processTodayAttendance(todayRecords);
+                // Get employee count for calculations
+                const employees = await window.directFlow.getEmployees();
+                const activeEmployees = employees.filter(emp => emp.status === 'active').length;
+                
+                // Enhance stats with additional data
+                this.currentStats.totalEmployees = activeEmployees;
+                this.currentStats.todayRecords = todayRecords;
                 
                 console.log('Dashboard loaded stats from DirectFlow:', this.currentStats);
             } else {
                 console.error('DirectFlow not available for loading attendance stats');
-                console.log('Available globals:', {
-                    'window.directFlow': typeof window.directFlow,
-                    'DirectFlow.initialized': window.directFlow?.initialized
-                });
-                
-                // Create fallback stats
                 this.currentStats = this.getDefaultStats();
-                console.log('Using default stats:', this.currentStats);
-            }
-            
-            // Ensure currentStats has the properties the dashboard expects
-            if (this.currentStats) {
-                // Add any missing properties with defaults
-                this.currentStats.present = this.currentStats.present || this.currentStats.presentToday || 0;
-                this.currentStats.absent = this.currentStats.absent || this.currentStats.absentToday || 0;
-                this.currentStats.late = this.currentStats.late || this.currentStats.tardyToday || 0;
-                this.currentStats.overtime = this.currentStats.overtime || 0;
-                this.currentStats.presentPercentage = this.currentStats.presentPercentage || this.currentStats.attendanceRate || 0;
-                
-                console.log('Final stats after processing:', this.currentStats);
             }
             
         } catch (error) {
             console.error('Error loading attendance stats:', error);
-            console.error('Error stack:', error.stack);
             this.currentStats = this.getDefaultStats();
         }
     }

@@ -233,6 +233,141 @@ class DirectFlow {
     }
 
     /**
+     * Dashboard-specific data methods
+     */
+    async getAttendanceStats() {
+        try {
+            const response = await this.makeRequest('/attendance/stats');
+            const data = await response.json();
+            return data.success ? data.data : {
+                present: 0,
+                absent: 0,
+                late: 0,
+                onLeave: 0,
+                total: 0,
+                attendanceRate: 0
+            };
+        } catch (error) {
+            console.error('Error getting attendance stats:', error);
+            return {
+                present: 0,
+                absent: 0,
+                late: 0,
+                onLeave: 0,
+                total: 0,
+                attendanceRate: 0
+            };
+        }
+    }
+
+    async getAttendanceRecords(options = {}) {
+        try {
+            let endpoint = '/attendance';
+            const params = new URLSearchParams();
+            
+            if (options.date) params.append('date', options.date);
+            if (options.employeeId) params.append('employeeId', options.employeeId);
+            if (options.startDate) params.append('startDate', options.startDate);
+            if (options.endDate) params.append('endDate', options.endDate);
+            
+            if (params.toString()) {
+                endpoint += '?' + params.toString();
+            }
+            
+            const response = await this.makeRequest(endpoint);
+            const data = await response.json();
+            return data.success ? data.data : [];
+        } catch (error) {
+            console.error('Error getting attendance records:', error);
+            return [];
+        }
+    }
+
+    async getNextPayday() {
+        try {
+            const response = await this.makeRequest('/payroll/next-payday');
+            const data = await response.json();
+            return data.success ? data.data : {
+                date: null,
+                daysUntil: null,
+                period: null
+            };
+        } catch (error) {
+            console.error('Error getting next payday:', error);
+            return {
+                date: null,
+                daysUntil: null,
+                period: null
+            };
+        }
+    }
+
+    async getDashboardData() {
+        try {
+            const response = await this.makeRequest('/dashboard/data');
+            const data = await response.json();
+            return data.success ? data.data : {
+                stats: {},
+                todayAttendance: [],
+                employees: [],
+                payday: {},
+                charts: {}
+            };
+        } catch (error) {
+            console.error('Error getting dashboard data:', error);
+            return {
+                stats: {},
+                todayAttendance: [],
+                employees: [],
+                payday: {},
+                charts: {}
+            };
+        }
+    }
+
+    async getQuickStats() {
+        try {
+            const response = await this.makeRequest('/dashboard/quick-stats');
+            const data = await response.json();
+            return data.success ? data.data : {
+                totalEmployees: 0,
+                presentToday: 0,
+                totalHoursToday: 0,
+                avgHoursPerEmployee: 0,
+                pendingApprovals: 0,
+                lateArrivals: 0
+            };
+        } catch (error) {
+            console.error('Error getting quick stats:', error);
+            return {
+                totalEmployees: 0,
+                presentToday: 0,
+                totalHoursToday: 0,
+                avgHoursPerEmployee: 0,
+                pendingApprovals: 0,
+                lateArrivals: 0
+            };
+        }
+    }
+
+    async getChartData(chartType, period = 'week') {
+        try {
+            const response = await this.makeRequest(`/dashboard/charts/${chartType}?period=${period}`);
+            const data = await response.json();
+            return data.success ? data.data : {
+                labels: [],
+                datasets: []
+            };
+        } catch (error) {
+            console.error('Error getting chart data:', error);
+            return {
+                labels: [],
+                datasets: []
+            };
+        }
+    }
+
+    /**
      * Event System
      */
     on(event, callback) {
