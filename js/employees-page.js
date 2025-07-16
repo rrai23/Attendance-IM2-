@@ -386,14 +386,17 @@ class EmployeesPageManager {
         document.querySelectorAll('.action-delete').forEach(button => {
             button.addEventListener('click', (e) => {
                 e.preventDefault();
+                console.log('🔥 DELETE BUTTON CLICKED!');
                 const rawId = e.currentTarget.dataset.employeeId;
+                console.log('🔥 Raw ID from button:', rawId);
                 const employee = this.findEmployeeById(rawId);
                 
                 if (employee) {
-                    console.log('Opening delete modal for employee:', employee.name || employee.fullName);
+                    console.log('🔥 Found employee for delete:', employee.name || employee.fullName);
+                    console.log('🔥 Opening delete modal...');
                     this.openDeleteModal(employee);
                 } else {
-                    console.error('Employee not found for delete action. ID:', rawId, 'Available employees:', this.employees.map(emp => ({id: emp.id, name: emp.name || emp.fullName})));
+                    console.error('❌ Employee not found for delete action. ID:', rawId, 'Available employees:', this.employees.map(emp => ({id: emp.id, name: emp.name || emp.fullName})));
                     this.showError(`Employee not found (ID: ${rawId})`);
                 }
             });
@@ -411,30 +414,35 @@ class EmployeesPageManager {
             return null;
         }
 
-        // Try multiple lookup strategies to handle type mismatches
+        // Try multiple lookup strategies to handle both id and employee_id
         const strategies = [
-            // Strategy 1: Direct comparison (handles both string and number)
+            // Strategy 1: Look for employee_id first (business ID like "admin_001")
+            (id) => this.employees.find(emp => emp.employee_id === id),
+            // Strategy 2: Look for employee_id with string conversion
+            (id) => this.employees.find(emp => String(emp.employee_id) === String(id)),
+            // Strategy 3: Look for numeric id (fallback)
             (id) => this.employees.find(emp => emp.id == id),
-            // Strategy 2: Parse as number and compare
+            // Strategy 4: Parse as number and compare numeric id
             (id) => {
                 const numId = parseInt(id);
                 return !isNaN(numId) ? this.employees.find(emp => emp.id === numId) : null;
             },
-            // Strategy 3: Convert both to strings and compare
+            // Strategy 5: Convert both to strings and compare numeric id
             (id) => this.employees.find(emp => String(emp.id) === String(id)),
-            // Strategy 4: Strict equality with original type
+            // Strategy 6: Strict equality with original type for numeric id
             (id) => this.employees.find(emp => emp.id === id)
         ];
 
         for (let i = 0; i < strategies.length; i++) {
             const result = strategies[i](rawId);
             if (result) {
-                console.log(`Employee found using strategy ${i + 1}:`, result.name || result.fullName);
+                console.log(`Employee found using strategy ${i + 1}:`, result.full_name || result.name || result.fullName);
                 return result;
             }
         }
 
         console.warn('Employee not found with any strategy. ID:', rawId, 'Type:', typeof rawId);
+        console.warn('Available employees:', this.employees.map(emp => ({ id: emp.id, employee_id: emp.employee_id, name: emp.full_name })));
         return null;
     }
 
@@ -523,7 +531,7 @@ class EmployeesPageManager {
                     </div>
                 </td>
                 <td>
-                    <span class="employee-code">${employee.employeeCode || employee.id || 'N/A'}</span>
+                    <span class="employee-code">${employee.employee_id || employee.id || 'N/A'}</span>
                 </td>
                 <td>${employee.department || 'No department'}</td>
                 <td>${employee.position || employee.role || 'No position'}</td>
@@ -535,13 +543,13 @@ class EmployeesPageManager {
                 </td>
                 <td>
                     <div class="action-buttons">
-                        <button class="btn btn-sm btn-outline action-edit" data-employee-id="${employee.id}" title="Edit Employee">
+                        <button class="btn btn-sm btn-outline action-edit" data-employee-id="${employee.employee_id || employee.id}" title="Edit Employee">
                             <span class="btn-icon">✏️</span>
                         </button>
-                        <button class="btn btn-sm btn-outline action-view" data-employee-id="${employee.id}" title="View Details">
+                        <button class="btn btn-sm btn-outline action-view" data-employee-id="${employee.employee_id || employee.id}" title="View Details">
                             <span class="btn-icon">👁️</span>
                         </button>
-                        <button class="btn btn-sm btn-danger action-delete" data-employee-id="${employee.id}" title="Delete Employee">
+                        <button class="btn btn-sm btn-danger action-delete" data-employee-id="${employee.employee_id || employee.id}" title="Delete Employee">
                             <span class="btn-icon">🗑️</span>
                         </button>
                     </div>
@@ -928,35 +936,57 @@ class EmployeesPageManager {
     }
 
     openDeleteModal(employee) {
+        console.log('🔥 OpenDeleteModal called with employee:', employee);
         const modal = document.getElementById('deleteEmployeeModal');
-        if (!modal) return;
+        if (!modal) {
+            console.error('❌ Delete modal not found in DOM!');
+            return;
+        }
 
         this.currentDeleteEmployee = employee;
-        this.setElementText('deleteEmployeeName', this.getEmployeeName(employee));
+        console.log('🔥 Set currentDeleteEmployee:', this.currentDeleteEmployee);
+        
+        const employeeName = this.getEmployeeName(employee);
+        console.log('🔥 Employee name:', employeeName);
+        
+        this.setElementText('deleteEmployeeName', employeeName);
         // Use employee_id for backend API compatibility
-        this.setElementValue('deleteEmployeeId', employee.employee_id || employee.id);
+        const employeeId = employee.employee_id || employee.id;
+        console.log('🔥 Employee ID to delete:', employeeId);
+        
+        this.setElementValue('deleteEmployeeId', employeeId);
         
         modal.classList.remove('hidden');
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
+        
+        console.log('🔥 Delete modal opened successfully');
     }
 
     async confirmDelete() {
+        console.log('🔥 ConfirmDelete called');
         const employeeId = document.getElementById('deleteEmployeeId')?.value;
+        console.log('🔥 Employee ID from form:', employeeId);
+        
         if (!employeeId) {
+            console.error('❌ Employee ID not found');
             this.showError('Employee ID not found');
             return;
         }
 
         try {
+            console.log('🔥 Attempting to delete employee via DirectFlow...');
+            
             // Delete employee using DirectFlow
             const deletedEmployee = await this.directFlow.deleteEmployee(employeeId);
+            console.log('🔥 DirectFlow delete response:', deletedEmployee);
             
             if (deletedEmployee.success) {
                 const employeeName = this.currentDeleteEmployee?.fullName || this.currentDeleteEmployee?.name || 'Employee';
                 console.log('[DATA INTEGRITY] Employee deleted via DirectFlow:', employeeName);
                 
                 // Reload data from DirectFlow
+                console.log('🔥 Reloading employees data...');
                 await this.loadEmployees();
                 this.applyFilters();
                 this.updateStats();
@@ -971,7 +1001,7 @@ class EmployeesPageManager {
             }
             
         } catch (error) {
-            console.error('Failed to delete employee:', error);
+            console.error('❌ Failed to delete employee:', error);
             this.showError('Failed to delete employee: ' + error.message);
         }
     }
