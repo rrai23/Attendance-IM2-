@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DirectFlow Initialization Test</title>
+</head>
+<body>
+    <h1>DirectFlow Initialization Test</h1>
+    <div id="output"></div>
+    
+    <script src="js/directflow-auth.js"></script>
+    <script src="js/directflow.js"></script>
+    <script src="js/global-system-sync.js"></script>
+    
+    <script>
+        function log(message) {
+            const output = document.getElementById('output');
+            output.innerHTML += `<p>${message}</p>`;
+            console.log(message);
+        }
+        
+        async function testDirectFlowInit() {
+            log('🧪 Testing DirectFlow initialization...');
+            
+            // Wait for page to load
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            log('🔍 Checking DirectFlow availability...');
+            log('window.directFlow: ' + typeof window.directFlow);
+            log('window.DirectFlow: ' + typeof window.DirectFlow);
+            log('window.directFlowAuth: ' + typeof window.directFlowAuth);
+            
+            if (window.directFlow) {
+                log('DirectFlow initialized: ' + window.directFlow.initialized);
+                log('DirectFlow isAuthenticated: ' + window.directFlow.isAuthenticated());
+                
+                const user = window.directFlow.getCurrentUser();
+                log('DirectFlow current user: ' + (user ? user.username : 'null'));
+                
+                // Try to test connection
+                try {
+                    await window.directFlow.testConnection();
+                    log('✅ DirectFlow connection test passed');
+                } catch (error) {
+                    log('❌ DirectFlow connection test failed: ' + error.message);
+                }
+            } else {
+                log('❌ DirectFlow not found');
+            }
+            
+            // Check Global System Sync
+            if (window.GlobalSystemSync) {
+                log('✅ Global System Sync found');
+            } else {
+                log('❌ Global System Sync not found');
+            }
+        }
+        
+        // Run test when page loads
+        document.addEventListener('DOMContentLoaded', testDirectFlowInit);
+    </script>
+</body>
+</html>

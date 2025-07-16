@@ -45,30 +45,56 @@ class GlobalSystemSync {
     }
 
     async waitForDirectFlow() {
-        const maxWait = 10000; // 10 seconds
-        const interval = 100; // Check every 100ms
+        console.log('🔄 Waiting for DirectFlow to initialize...');
+        
+        const maxWait = 30000; // 30 seconds
+        const interval = 1000; // Check every 1 second
         let waited = 0;
         
-        while (!window.DirectFlow?.initialized && waited < maxWait) {
+        while (waited < maxWait) {
+            try {
+                // Check if DirectFlow exists (try both window.DirectFlow and window.directFlow)
+                const directFlow = window.DirectFlow || window.directFlow;
+                
+                if (directFlow && directFlow.initialized) {
+                    console.log('✅ DirectFlow is initialized');
+                    this.directFlow = directFlow;
+                    return;
+                }
+                
+                // If DirectFlow exists but not initialized, try to reinitialize
+                if (directFlow && typeof directFlow.reinitialize === 'function') {
+                    console.log('🔄 DirectFlow found but not initialized, attempting reinitialize...');
+                    const success = await directFlow.reinitialize();
+                    if (success) {
+                        console.log('✅ DirectFlow reinitialize successful');
+                        this.directFlow = directFlow;
+                        return;
+                    }
+                }
+                
+                console.log(`⏳ DirectFlow not ready, waited ${waited/1000}s/${maxWait/1000}s`);
+                
+            } catch (error) {
+                console.error(`❌ Error checking DirectFlow (${waited/1000}s):`, error);
+            }
+            
             await new Promise(resolve => setTimeout(resolve, interval));
             waited += interval;
         }
         
-        if (!window.DirectFlow?.initialized) {
-            // Check if we're on a public page where DirectFlow might not be initialized
-            const currentPage = window.location.pathname;
-            const publicPages = ['/login.html', '/index.html', '/'];
-            const isPublicPage = publicPages.some(page => currentPage.endsWith(page)) || currentPage === '/';
-            
-            if (isPublicPage) {
-                console.log('Global System Sync: DirectFlow not initialized on public page - continuing with limited functionality');
-                return;
-            }
-            
-            throw new Error('DirectFlow not available after waiting');
+        // Check if we're on a public page where DirectFlow might not be initialized
+        const currentPage = window.location.pathname;
+        const publicPages = ['/login.html', '/index.html', '/'];
+        const isPublicPage = publicPages.some(page => currentPage.endsWith(page)) || currentPage === '/';
+        
+        if (isPublicPage) {
+            console.log('Global System Sync: DirectFlow not initialized on public page - continuing with limited functionality');
+            return;
         }
         
-        this.directFlow = window.DirectFlow;
+        console.error('❌ DirectFlow initialization timeout after 30 seconds');
+        throw new Error('DirectFlow initialization timeout - max attempts reached, services not available');
     }
 
     /**

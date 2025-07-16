@@ -20,32 +20,59 @@ class DirectFlow {
      */
     async init() {
         try {
-            // Wait for DirectFlowAuth to be available
+            console.log('🔄 DirectFlow init starting...');
+            
+            // Wait for DirectFlowAuth to be available with retry limit
+            let retryCount = 0;
+            const maxRetries = 50; // 5 seconds max wait
+            
+            while (typeof window.directFlowAuth === 'undefined' && retryCount < maxRetries) {
+                console.log(`⏳ Waiting for DirectFlowAuth... (${retryCount + 1}/${maxRetries})`);
+                await new Promise(resolve => setTimeout(resolve, 100));
+                retryCount++;
+            }
+            
             if (typeof window.directFlowAuth === 'undefined') {
-                console.log('⏳ Waiting for DirectFlowAuth...');
-                setTimeout(() => this.init(), 100);
+                console.error('❌ DirectFlowAuth not available after 5 seconds');
+                this.initialized = false;
+                this.emit('error', { message: 'DirectFlowAuth not available' });
                 return;
             }
+
+            console.log('✅ DirectFlowAuth found, checking authentication...');
 
             // Check if user is authenticated
             if (!window.directFlowAuth.isAuthenticated()) {
-                console.log('🔄 DirectFlow: User not authenticated');
-                this.initialized = false;
-                return;
+                console.log('🔄 DirectFlow: User not authenticated, trying to authenticate...');
+                
+                // Try to authenticate first
+                const authResult = await window.directFlowAuth.checkAuthStatus();
+                if (!authResult.isAuthenticated) {
+                    console.log('❌ DirectFlow: Authentication failed');
+                    this.initialized = false;
+                    this.emit('error', { message: 'Authentication required' });
+                    return;
+                }
             }
 
-            console.log('✅ DirectFlow initialized with authentication');
+            console.log('✅ DirectFlow initializing with authentication');
             this.initialized = true;
             
             // Test connection
-            await this.testConnection();
+            try {
+                await this.testConnection();
+            } catch (connectionError) {
+                console.warn('⚠️ DirectFlow: Connection test failed, but continuing:', connectionError);
+            }
             
             // Emit initialized event
             this.emit('initialized', { timestamp: new Date().toISOString() });
+            console.log('🎉 DirectFlow initialization complete');
             
         } catch (error) {
             console.error('❌ DirectFlow initialization error:', error);
             this.initialized = false;
+            this.emit('error', { message: error.message });
         }
     }
 
@@ -133,14 +160,48 @@ class DirectFlow {
 
     async deleteEmployee(id) {
         try {
+            console.log('🔥 DirectFlow deleteEmployee called with ID:', id);
+            
+            // Check if user is authenticated and has admin privileges
+            const currentUser = window.directFlowAuth?.getCurrentUser();
+            console.log('🔥 Current user:', currentUser);
+            
+            if (!currentUser) {
+                throw new Error('Authentication required. Please log in again.');
+            }
+            
+            if (currentUser.role !== 'admin') {
+                throw new Error('Admin access required to delete employees.');
+            }
+            
+            console.log('🔥 Making DELETE request to /api/employees/' + id);
+            
             const response = await this.makeRequest(`/employees/${id}`, {
                 method: 'DELETE'
             });
+            
+            console.log('🔥 Delete response status:', response.status);
+            console.log('🔥 Delete response headers:', response.headers);
+            
+            if (!response.ok) {
+                // Try to get error details
+                let errorMessage = 'Failed to delete employee';
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.message || errorMessage;
+                    console.error('🔥 Delete error response:', errorData);
+                } catch (parseError) {
+                    console.error('🔥 Could not parse error response:', parseError);
+                }
+                throw new Error(errorMessage);
+            }
+            
             const data = await response.json();
+            console.log('🔥 Delete success response:', data);
             return data;
         } catch (error) {
-            console.error('Error deleting employee:', error);
-            return { success: false, message: 'Failed to delete employee' };
+            console.error('❌ Error deleting employee:', error);
+            return { success: false, message: error.message || 'Failed to delete employee' };
         }
     }
 
@@ -639,6 +700,16 @@ class DirectFlow {
 
     isAuthenticated() {
         return window.directFlowAuth ? window.directFlowAuth.isAuthenticated() : false;
+    }
+
+    /**
+     * Reinitialize DirectFlow (for manual retry)
+     */
+    async reinitialize() {
+        console.log('🔄 DirectFlow reinitialize called');
+        this.initialized = false;
+        await this.init();
+        return this.initialized;
     }
 }
 

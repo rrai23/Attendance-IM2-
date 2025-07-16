@@ -968,8 +968,28 @@ class EmployeesPageManager {
             return;
         }
 
+        // Show loading state
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        const originalBtnText = confirmBtn?.innerHTML;
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<span class="btn-icon">⏳</span><span class="btn-text">Deleting...</span>';
+        }
+
         try {
             console.log('🔥 Attempting to delete employee via DirectFlow...');
+            
+            // Check authentication before attempting delete
+            const currentUser = window.directFlowAuth?.getCurrentUser();
+            console.log('🔥 Current user before delete:', currentUser);
+            
+            if (!currentUser) {
+                throw new Error('Authentication required. Please log in again.');
+            }
+            
+            if (currentUser.role !== 'admin') {
+                throw new Error('Admin access required to delete employees.');
+            }
             
             // Delete employee using DirectFlow
             const deletedEmployee = await this.directFlow.deleteEmployee(employeeId);
@@ -996,7 +1016,29 @@ class EmployeesPageManager {
             
         } catch (error) {
             console.error('❌ Failed to delete employee:', error);
-            this.showError('Failed to delete employee: ' + error.message);
+            
+            // Show specific error messages
+            let errorMessage = 'Failed to delete employee: ' + error.message;
+            
+            if (error.message.includes('Authentication required')) {
+                errorMessage = 'Your session has expired. Please log in again.';
+                // Optionally redirect to login
+                setTimeout(() => {
+                    window.location.href = '/login.html';
+                }, 3000);
+            } else if (error.message.includes('Admin access required')) {
+                errorMessage = 'Admin privileges are required to delete employees.';
+            } else if (error.message.includes('not found')) {
+                errorMessage = 'Employee not found in the system.';
+            }
+            
+            this.showError(errorMessage);
+        } finally {
+            // Reset button state
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = originalBtnText;
+            }
         }
     }
 

@@ -286,6 +286,49 @@ class DirectFlowAuth {
         return user && (user.role === 'admin' || user.role === 'manager');
     }
 
+    // Check authentication status and try to restore session
+    async checkAuthStatus() {
+        try {
+            // First check if we have a valid token
+            if (this.isAuthenticated()) {
+                return { isAuthenticated: true, user: this.getCurrentUser() };
+            }
+
+            // If no valid token, try to restore session from backend
+            const response = await fetch(`${this.baseURL}/session`, {
+                method: 'GET',
+                credentials: 'include'
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.user) {
+                    // Session restored, save auth data
+                    this.saveAuthData(data.token, data.user);
+                    return { isAuthenticated: true, user: data.user };
+                }
+            }
+
+            return { isAuthenticated: false, user: null };
+        } catch (error) {
+            console.error('Error checking auth status:', error);
+            return { isAuthenticated: false, user: null };
+        }
+    }
+
+    // Save authentication data to localStorage
+    saveAuthData(token, user) {
+        try {
+            const expiry = Date.now() + (30 * 24 * 60 * 60 * 1000); // 30 days
+            localStorage.setItem(this.tokenKey, token);
+            localStorage.setItem(this.userKey, JSON.stringify(user));
+            localStorage.setItem(this.expiryKey, expiry.toString());
+            console.log('✅ Auth data saved successfully');
+        } catch (error) {
+            console.error('❌ Error saving auth data:', error);
+        }
+    }
+
     // Make authenticated API request
     async apiRequest(url, options = {}) {
         const token = this.getToken();

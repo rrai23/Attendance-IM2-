@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Delete Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 25px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        .result {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #b8daff;
+        }
+        .btn {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .btn.danger {
+            background-color: #dc3545;
+        }
+        .btn.danger:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 Employee Delete Test</h1>
+        
+        <div class="test-section">
+            <h2>1. Authentication Check</h2>
+            <button class="btn" onclick="checkAuth()">Check Authentication</button>
+            <div id="authResult" class="result info">Click button to check authentication...</div>
+        </div>
+
+        <div class="test-section">
+            <h2>2. Admin Permission Check</h2>
+            <button class="btn" onclick="checkAdminPermission()">Check Admin Permission</button>
+            <div id="adminResult" class="result info">Click button to check admin permission...</div>
+        </div>
+
+        <div class="test-section">
+            <h2>3. Employee List</h2>
+            <button class="btn" onclick="loadEmployees()">Load Employees</button>
+            <div id="employeeResult" class="result info">Click button to load employees...</div>
+        </div>
+
+        <div class="test-section">
+            <h2>4. Delete Test (Safe - Non-Critical Employee)</h2>
+            <p>This will attempt to delete a test employee (not admin)</p>
+            <input type="text" id="deleteEmployeeId" placeholder="Enter employee ID to delete" value="">
+            <button class="btn danger" onclick="testDelete()">Test Delete</button>
+            <div id="deleteResult" class="result info">Enter employee ID and click to test delete...</div>
+        </div>
+
+        <div class="test-section">
+            <h2>5. API Endpoint Test</h2>
+            <button class="btn" onclick="testAPIEndpoint()">Test API Endpoint</button>
+            <div id="apiResult" class="result info">Click button to test API endpoint...</div>
+        </div>
+    </div>
+
+    <script src="js/directflow-auth.js"></script>
+    <script src="js/directflow.js"></script>
+    <script>
+        let directFlow;
+
+        // Wait for DirectFlow to initialize
+        async function initDirectFlow() {
+            try {
+                let waitCount = 0;
+                while ((!window.directFlow || !window.directFlow.initialized) && waitCount < 100) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    waitCount++;
+                }
+
+                if (window.directFlow && window.directFlow.initialized) {
+                    directFlow = window.directFlow;
+                    console.log('✅ DirectFlow initialized');
+                    return true;
+                } else {
+                    console.log('❌ DirectFlow not available');
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ Error initializing DirectFlow:', error);
+                return false;
+            }
+        }
+
+        async function checkAuth() {
+            const resultDiv = document.getElementById('authResult');
+            
+            try {
+                const isAuth = window.directFlowAuth?.isAuthenticated();
+                const currentUser = window.directFlowAuth?.getCurrentUser();
+                const token = window.directFlowAuth?.getToken();
+                
+                resultDiv.className = 'result ' + (isAuth ? 'success' : 'error');
+                resultDiv.innerHTML = `
+<strong>🔒 AUTHENTICATION STATUS</strong>
+
+Authenticated: ${isAuth ? '✅ YES' : '❌ NO'}
+Current User: ${currentUser ? JSON.stringify(currentUser, null, 2) : 'None'}
+Token: ${token ? token.substring(0, 30) + '...' : 'None'}
+Token Length: ${token ? token.length : 0}
+
+Status: ${isAuth ? '✅ READY' : '❌ NOT AUTHENTICATED'}
+                `;
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ ERROR: ${error.message}`;
+            }
+        }
+
+        async function checkAdminPermission() {
+            const resultDiv = document.getElementById('adminResult');
+            
+            try {
+                const currentUser = window.directFlowAuth?.getCurrentUser();
+                const isAdmin = currentUser?.role === 'admin';
+                
+                resultDiv.className = 'result ' + (isAdmin ? 'success' : 'error');
+                resultDiv.innerHTML = `
+<strong>👑 ADMIN PERMISSION CHECK</strong>
+
+User Role: ${currentUser?.role || 'None'}
+Is Admin: ${isAdmin ? '✅ YES' : '❌ NO'}
+Can Delete: ${isAdmin ? '✅ YES' : '❌ NO'}
+
+${isAdmin ? '✅ User has admin permissions' : '❌ User does not have admin permissions'}
+                `;
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ ERROR: ${error.message}`;
+            }
+        }
+
+        async function loadEmployees() {
+            const resultDiv = document.getElementById('employeeResult');
+            
+            try {
+                if (!directFlow) {
+                    await initDirectFlow();
+                }
+                
+                resultDiv.className = 'result info';
+                resultDiv.textContent = 'Loading employees...';
+                
+                const employees = await directFlow.getEmployees();
+                console.log('Loaded employees:', employees);
+                
+                if (employees && employees.length > 0) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+<strong>👥 EMPLOYEES LOADED</strong>
+
+Total Employees: ${employees.length}
+
+Employee List:
+${employees.map(emp => `• ${emp.full_name || emp.name} (${emp.employee_id || emp.id}) - ${emp.role}`).join('\n')}
+
+Safe Delete Options (non-admin):
+${employees.filter(emp => emp.role !== 'admin').map(emp => `• ${emp.employee_id || emp.id} - ${emp.full_name || emp.name}`).join('\n')}
+                    `;
+                    
+                    // Auto-fill a safe employee ID
+                    const safeEmployee = employees.find(emp => emp.role !== 'admin');
+                    if (safeEmployee) {
+                        document.getElementById('deleteEmployeeId').value = safeEmployee.employee_id || safeEmployee.id;
+                    }
+                } else {
+                    resultDiv.className = 'result warning';
+                    resultDiv.textContent = '⚠️ No employees found';
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ ERROR: ${error.message}`;
+            }
+        }
+
+        async function testDelete() {
+            const resultDiv = document.getElementById('deleteResult');
+            const employeeId = document.getElementById('deleteEmployeeId').value;
+            
+            if (!employeeId) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '❌ Please enter an employee ID';
+                return;
+            }
+            
+            try {
+                if (!directFlow) {
+                    await initDirectFlow();
+                }
+                
+                resultDiv.className = 'result info';
+                resultDiv.textContent = 'Testing delete operation...';
+                
+                console.log('🔥 Testing delete for employee:', employeeId);
+                
+                const result = await directFlow.deleteEmployee(employeeId);
+                console.log('🔥 Delete result:', result);
+                
+                if (result.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+<strong>✅ DELETE SUCCESSFUL</strong>
+
+Employee ID: ${employeeId}
+Result: ${JSON.stringify(result, null, 2)}
+
+✅ Employee deleted successfully!
+                    `;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `
+<strong>❌ DELETE FAILED</strong>
+
+Employee ID: ${employeeId}
+Error: ${result.message}
+Full Response: ${JSON.stringify(result, null, 2)}
+                    `;
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+<strong>❌ DELETE ERROR</strong>
+
+Employee ID: ${employeeId}
+Error: ${error.message}
+Stack: ${error.stack}
+                `;
+            }
+        }
+
+        async function testAPIEndpoint() {
+            const resultDiv = document.getElementById('apiResult');
+            
+            try {
+                const token = window.directFlowAuth?.getToken();
+                if (!token) {
+                    throw new Error('No authentication token');
+                }
+                
+                resultDiv.className = 'result info';
+                resultDiv.textContent = 'Testing API endpoint...';
+                
+                // Test with a simple GET request first
+                const response = await fetch('/api/employees', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('API Test Response:', response.status, response.statusText);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+<strong>✅ API ENDPOINT WORKING</strong>
+
+Status: ${response.status} ${response.statusText}
+Response: ${JSON.stringify(data, null, 2)}
+
+✅ API endpoint is accessible with current token
+                    `;
+                } else {
+                    const errorText = await response.text();
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `
+<strong>❌ API ENDPOINT ERROR</strong>
+
+Status: ${response.status} ${response.statusText}
+Error: ${errorText}
+
+❌ API endpoint is not accessible
+                    `;
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+<strong>❌ API TEST ERROR</strong>
+
+Error: ${error.message}
+Stack: ${error.stack}
+                `;
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', async () => {
+            console.log('🚀 Employee delete test page loaded');
+            await checkAuth();
+            await checkAdminPermission();
+        });
+    </script>
+</body>
+</html>

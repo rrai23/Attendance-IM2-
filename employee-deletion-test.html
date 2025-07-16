@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Employee Deletion Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .log { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+    </style>
+</head>
+<body>
+    <h1>Employee Deletion Test</h1>
+    <div id="output"></div>
+    
+    <div>
+        <h3>Test Employee Deletion</h3>
+        <label>Employee ID: <input type="text" id="employeeId" value="1" /></label>
+        <button onclick="testDeleteEmployee()">Test Delete Employee</button>
+    </div>
+    
+    <script src="js/directflow-auth.js"></script>
+    <script src="js/directflow.js"></script>
+    <script src="js/global-system-sync.js"></script>
+    
+    <script>
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.textContent = new Date().toLocaleTimeString() + ': ' + message;
+            output.appendChild(div);
+            console.log(message);
+        }
+        
+        async function testDeleteEmployee() {
+            const employeeId = document.getElementById('employeeId').value;
+            
+            log('🧪 Testing Employee Deletion for ID: ' + employeeId, 'info');
+            
+            try {
+                // Check DirectFlow initialization
+                if (!window.directFlow) {
+                    log('❌ DirectFlow not available', 'error');
+                    return;
+                }
+                
+                if (!window.directFlow.initialized) {
+                    log('❌ DirectFlow not initialized', 'error');
+                    return;
+                }
+                
+                // Check authentication
+                if (!window.directFlow.isAuthenticated()) {
+                    log('❌ User not authenticated', 'error');
+                    return;
+                }
+                
+                const user = window.directFlow.getCurrentUser();
+                log('✅ User authenticated: ' + (user ? user.username : 'unknown'), 'success');
+                
+                // Test delete employee
+                log('🔄 Calling deleteEmployee...', 'info');
+                const result = await window.directFlow.deleteEmployee(employeeId);
+                
+                if (result.success) {
+                    log('✅ Employee deletion successful: ' + result.message, 'success');
+                } else {
+                    log('❌ Employee deletion failed: ' + result.message, 'error');
+                }
+                
+            } catch (error) {
+                log('❌ Error during employee deletion test: ' + error.message, 'error');
+            }
+        }
+        
+        // Initialize test when page loads
+        document.addEventListener('DOMContentLoaded', async function() {
+            log('🧪 Employee Deletion Test Page Loaded', 'info');
+            
+            // Wait for initialization
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Check system status
+            log('DirectFlow available: ' + (window.directFlow ? 'Yes' : 'No'), 'info');
+            log('DirectFlow initialized: ' + (window.directFlow?.initialized ? 'Yes' : 'No'), 'info');
+            log('User authenticated: ' + (window.directFlow?.isAuthenticated() ? 'Yes' : 'No'), 'info');
+            
+            const user = window.directFlow?.getCurrentUser();
+            if (user) {
+                log('Current user: ' + user.username + ' (' + user.role + ')', 'info');
+            }
+        });
+    </script>
+</body>
+</html>

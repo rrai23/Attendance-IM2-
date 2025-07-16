@@ -5,35 +5,34 @@ console.log('🔧 DirectFlow Authentication Fix initializing...');
 
 // Function to sync DirectFlow with auth service
 function syncDirectFlowAuth() {
-    if (typeof window.DirectFlow === 'undefined') {
+    if (typeof window.directFlow === 'undefined') {
         console.warn('DirectFlow not available');
         return;
     }
     
-    if (typeof window.authService === 'undefined') {
-        console.warn('Auth service not available');
+    if (typeof window.directFlowAuth === 'undefined') {
+        console.warn('DirectFlow Auth service not available');
         return;
     }
     
     // Check if user is authenticated
-    const isAuthenticated = window.authService.isAuthenticated();
+    const isAuthenticated = window.directFlowAuth.isAuthenticated();
     console.log('User authenticated:', isAuthenticated);
     
     if (isAuthenticated) {
-        // Get the auth token from the session
-        const token = localStorage.getItem('bricks_auth_session');
-        console.log('Auth token from localStorage:', token ? 'Present' : 'Missing');
+        // Get the auth token from DirectFlow Auth
+        const token = window.directFlowAuth.getToken();
+        console.log('Auth token from DirectFlow Auth:', token ? 'Present' : 'Missing');
         
-        if (token && window.DirectFlow.authToken !== token) {
-            console.log('✅ Syncing DirectFlow with auth token');
-            window.DirectFlow.authToken = token;
+        if (token && !window.directFlow.initialized) {
+            console.log('✅ DirectFlow Auth has token, trying to initialize DirectFlow');
             
             // Retry initialization if DirectFlow wasn't initialized
-            if (!window.DirectFlow.initialized && typeof window.DirectFlow.retryInitialization === 'function') {
-                window.DirectFlow.retryInitialization();
+            if (typeof window.directFlow.reinitialize === 'function') {
+                window.directFlow.reinitialize();
             }
         } else if (!token) {
-            console.log('⚠️ Auth service says authenticated but no token found');
+            console.log('⚠️ DirectFlow Auth says authenticated but no token found');
             attemptAutoLogin();
         }
     } else {
@@ -51,39 +50,36 @@ async function attemptAutoLogin() {
     }
     
     try {
-        console.log('🔄 Attempting auto-login with default credentials...');
+        console.log('🔄 Attempting auto-login with DirectFlow Auth...');
         
-        if (typeof window.authService === 'undefined') {
-            console.warn('Auth service not available for auto-login');
+        if (typeof window.directFlowAuth === 'undefined') {
+            console.warn('DirectFlow Auth not available for auto-login');
             return;
         }
         
-        // Try to login with default admin credentials
-        const loginResult = await window.authService.login('admin', 'admin');
-        
-        if (loginResult.success) {
-            console.log('✅ Auto-login successful');
-            
-            // Re-sync DirectFlow after successful login
-            setTimeout(() => {
-                syncDirectFlowAuth();
-                
-                // Also retry DirectFlow initialization
-                if (window.directFlow && typeof window.directFlow.retryInitialization === 'function') {
-                    window.directFlow.retryInitialization();
+        // Check if DirectFlow Auth has a session restoration method
+        if (typeof window.directFlowAuth.checkAuthStatus === 'function') {
+            const result = await window.directFlowAuth.checkAuthStatus();
+            if (result.isAuthenticated) {
+                console.log('✅ Auto-login successful via session restoration');
+                // Trigger DirectFlow initialization
+                if (typeof window.directFlow.reinitialize === 'function') {
+                    window.directFlow.reinitialize();
                 }
-            }, 500);
-        } else {
-            console.log('❌ Auto-login failed:', loginResult.message);
-            
-            // If auto-login fails and we're not on login page, redirect
-            if (!window.location.pathname.includes('login.html')) {
-                console.log('🔄 Redirecting to login page...');
-                window.location.href = '/login.html';
+                return;
             }
         }
+        
+        console.log('⚠️ Auto-login failed - user needs to log in manually');
+        
+        // If auto-login fails and we're not on login page, redirect
+        if (!window.location.pathname.includes('login.html')) {
+            console.log('🔄 Redirecting to login page...');
+            window.location.href = '/login.html';
+        }
+        
     } catch (error) {
-        console.error('Auto-login error:', error);
+        console.error('❌ Auto-login error:', error);
         
         // If auto-login fails and we're not on login page, redirect
         if (!window.location.pathname.includes('login.html')) {
@@ -110,7 +106,7 @@ function setupAuthSync() {
     
     // Sync on storage change
     window.addEventListener('storage', (e) => {
-        if (e.key === 'bricks_auth_session' || e.key === 'bricks_auth_user') {
+        if (e.key === 'directflow_token' || e.key === 'directflow_user') {
             syncDirectFlowAuth();
         }
     });
@@ -124,14 +120,15 @@ function initializeAuthSync() {
     function checkAndInit() {
         attempts++;
         
-        if (typeof window.directFlow !== 'undefined' && typeof window.authService !== 'undefined') {
-            console.log('✅ Both services available - setting up auth sync');
+        if (typeof window.directFlow !== 'undefined' && typeof window.directFlowAuth !== 'undefined') {
+            console.log('✅ Both DirectFlow services available - setting up auth sync');
             setupAuthSync();
             return;
         }
         
         if (attempts >= maxAttempts) {
-            console.warn('❌ Max attempts reached - services not available');
+            console.warn('❌ Max attempts reached - DirectFlow services not available');
+            // Don't block the page, just log the warning
             return;
         }
         
