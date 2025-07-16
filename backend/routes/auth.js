@@ -13,6 +13,8 @@ router.post('/login', async (req, res) => {
     try {
         const { username, password, rememberMe = false } = req.body;
 
+        console.log('🔐 Login attempt - Username:', username, 'Password length:', password ? password.length : 'undefined');
+
         if (!username || !password) {
             return res.status(400).json({
                 success: false,
@@ -37,14 +39,13 @@ router.post('/login', async (req, res) => {
             WHERE ua.username = ? AND ua.is_active = TRUE AND e.status = 'active'
         `, [username]);
 
-        const users = Array.isArray(result[0]) ? result[0] : result;
+        // The database returns data directly as an array
+        const users = result;
 
         console.log('🔍 Debug info:');
         console.log('Result type:', typeof result);
         console.log('Result is array:', Array.isArray(result));
         console.log('Result length:', result.length);
-        console.log('Result[0] type:', typeof result[0]);
-        console.log('Result[0] is array:', Array.isArray(result[0]));
         console.log('Users type:', typeof users);
         console.log('Users is array:', Array.isArray(users));
         console.log('Users length:', users.length);
@@ -61,8 +62,12 @@ router.post('/login', async (req, res) => {
 
         const user = users[0];
 
+        console.log('🔑 Password comparison - Username:', user.username, 'Password received:', password);
+
         // Verify password
         const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+        console.log('🔑 Password validation result:', isPasswordValid);
+        
         if (!isPasswordValid) {
             return res.status(401).json({
                 success: false,
@@ -321,6 +326,85 @@ router.post('/logout-all', auth, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Server error during logout all'
+        });
+    }
+});
+
+// JWT Refresh endpoint
+router.post('/refresh', auth, async (req, res) => {
+    try {
+        const { rememberMe = false } = req.body;
+        
+        // Check if current token is close to expiry (refresh within 2 hours of expiry)
+        const currentTime = Math.floor(Date.now() / 1000);
+        const tokenExpiry = req.decodedToken.exp;
+        const timeUntilExpiry = tokenExpiry - currentTime;
+        const twoHoursInSeconds = 2 * 60 * 60;
+        
+        // Only refresh if token expires within 2 hours
+        if (timeUntilExpiry > twoHoursInSeconds) {
+            return res.json({
+                success: true,
+                message: 'Token still valid, no refresh needed',
+                data: {
+                    needsRefresh: false,
+                    timeUntilExpiry: timeUntilExpiry
+                }
+            });
+        }
+        
+        // Generate new token
+        const tokenPayload = {
+            employee_id: req.user.employee_id,
+            username: req.user.username,
+            role: req.user.role
+        };
+        
+        const expiresIn = rememberMe ? '30d' : JWT_EXPIRES_IN;
+        const newToken = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn });
+        
+        // Calculate new expiry date
+        const expiryDate = new Date();
+        if (rememberMe) {
+            expiryDate.setDate(expiryDate.getDate() + 30);
+        } else {
+            expiryDate.setHours(expiryDate.getHours() + 24);
+        }
+        
+        // Update session in database
+        try {
+            await db.execute(`
+                UPDATE user_sessions 
+                SET token_hash = ?, expires_at = ?, updated_at = NOW()
+                WHERE employee_id = ? AND token_hash = ?
+            `, [newToken, expiryDate, req.user.employee_id, req.token]);
+        } catch (sessionError) {
+            console.warn('Could not update session:', sessionError.message);
+        }
+        
+        // Update last login
+        await db.execute(
+            'UPDATE user_accounts SET last_login = NOW(), updated_at = NOW() WHERE id = ?',
+            [req.user.id]
+        );
+        
+        console.log('🔄 Token refreshed for user:', req.user.username);
+        
+        res.json({
+            success: true,
+            message: 'Token refreshed successfully',
+            data: {
+                token: newToken,
+                expiresIn: rememberMe ? '30d' : '24h',
+                needsRefresh: true
+            }
+        });
+        
+    } catch (error) {
+        console.error('Token refresh error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error during token refresh'
         });
     }
 });

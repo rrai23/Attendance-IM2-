@@ -45,7 +45,7 @@ async function testAuth() {
         // First try to login if not authenticated
         if (typeof window !== 'undefined' && window.authService && !window.authService.isAuthenticated()) {
             console.log('Attempting login with default credentials...');
-            const loginResult = await window.authService.login('admin', 'admin');
+            const loginResult = await window.authService.login('admin', 'admin123');
             console.log('Login result:', loginResult);
         }
         

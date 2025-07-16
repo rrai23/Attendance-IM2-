@@ -199,7 +199,7 @@ Get-Service MySQL*
 
 #### Authentication
 - Username: `admin`
-- Password: `admin`
+- Password: `admin123`
 - Role: `admin`
 - JWT tokens required for all API calls
 

@@ -10,7 +10,7 @@ class AuthService {
         
         // Default credentials for development
         this.defaultCredentials = {
-            admin: { username: 'admin', password: 'admin', role: 'admin' }
+            admin: { username: 'admin', password: 'admin123', role: 'admin' }
         };
         
         // Initialize authentication state
@@ -23,6 +23,7 @@ class AuthService {
         this.validateAndCleanSession();
         this.checkSessionValidity();
         this.setupAutoLogout();
+        this.startTokenRefreshInterval(); // Start the token refresh interval
     }
 
     // Validate and clean corrupted session data
@@ -119,8 +120,10 @@ class AuthService {
 
                 const data = await response.json();
                 console.log('Backend auth response:', data);
+                console.log('Backend auth token:', data.data ? data.data.token : 'No data object');
 
                 if (data.success && data.data) {
+                    console.log('Backend auth successful, token length:', data.data.token ? data.data.token.length : 'No token');
                     return {
                         success: true,
                         user: data.data.user,
@@ -201,6 +204,7 @@ class AuthService {
             
             // Prioritize backend JWT token over generated mock token
             const token = validation.token;
+            console.log('AuthService: Token from validation:', token ? token.substring(0, 50) + '...' : 'No token');
             if (!token) {
                 console.error('AuthService: No token received from backend - this should not happen');
                 return {
@@ -213,7 +217,12 @@ class AuthService {
             const expiryTime = Date.now() + (rememberMe ? this.sessionDuration * 7 : this.sessionDuration);
             console.log('AuthService: Setting expiry time:', new Date(expiryTime));
 
-            // Store authentication data
+            // Store authentication data using backend authentication keys (preferred by isAuthenticated)
+            localStorage.setItem('auth_token', token);
+            localStorage.setItem('auth_user', JSON.stringify(user));
+            localStorage.setItem('auth_expires', expiryTime.toString());
+            
+            // Also store using the old system keys for backward compatibility
             localStorage.setItem(this.storageKey, token);
             localStorage.setItem(this.tokenExpiryKey, expiryTime.toString());
             localStorage.setItem(this.userKey, JSON.stringify(user));
@@ -306,25 +315,54 @@ class AuthService {
 
     // Check if user is authenticated (check both old and new auth systems)
     isAuthenticated() {
+        console.log('🔍 isAuthenticated: Checking authentication status...');
+        
         // First, check for backend authentication tokens (preferred)
         const backendToken = localStorage.getItem('auth_token');
         const backendUser = localStorage.getItem('auth_user');
+        const backendExpires = localStorage.getItem('auth_expires');
+        
+        console.log('🔍 Backend auth check:', { 
+            hasToken: !!backendToken, 
+            hasUser: !!backendUser, 
+            hasExpires: !!backendExpires 
+        });
         
         if (backendToken && backendUser) {
-            console.log('✅ Backend authentication found');
+            // Check if backend token is expired
+            if (backendExpires) {
+                const expiryTime = parseInt(backendExpires);
+                if (Date.now() > expiryTime) {
+                    console.log('🔍 Backend token expired, clearing...');
+                    localStorage.removeItem('auth_token');
+                    localStorage.removeItem('auth_user');
+                    localStorage.removeItem('auth_expires');
+                    return false;
+                }
+            }
+            console.log('✅ Backend authentication found and valid');
             return true;
         }
+        
+        console.log('🔍 Backend auth not found, checking fallback system...');
         
         // Fallback: Check old authentication system
         const token = localStorage.getItem(this.storageKey);
         const expiry = localStorage.getItem(this.tokenExpiryKey);
         
+        console.log('🔍 Fallback auth check:', { 
+            hasToken: !!token, 
+            hasExpiry: !!expiry 
+        });
+        
         if (!token || !expiry) {
+            console.log('🔍 No fallback tokens found');
             return false;
         }
 
         // Check if token is expired
         if (Date.now() > parseInt(expiry)) {
+            console.log('🔍 Fallback token expired, clearing...');
             // Don't call logout here to avoid circular dependency
             // Just clear the data silently
             localStorage.removeItem(this.storageKey);
@@ -334,6 +372,7 @@ class AuthService {
             return false;
         }
 
+        console.log('✅ Fallback authentication found and valid');
         return true;
     }
 
@@ -480,6 +519,91 @@ class AuthService {
                 }, timeUntilExpiry);
             }
         }
+    }
+
+    // Automatic token refresh
+    async refreshToken() {
+        try {
+            console.log('🔄 Attempting to refresh token...');
+            
+            const token = localStorage.getItem('auth_token') || localStorage.getItem(this.storageKey);
+            if (!token) {
+                console.log('❌ No token found for refresh');
+                return { success: false, message: 'No token available' };
+            }
+            
+            const response = await fetch('/api/auth/refresh', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    rememberMe: false // You can make this configurable
+                })
+            });
+            
+            const data = await response.json();
+            console.log('🔄 Token refresh response:', data);
+            
+            if (data.success && data.data.needsRefresh) {
+                // Update stored token
+                const newToken = data.data.token;
+                const expiryTime = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
+                
+                localStorage.setItem('auth_token', newToken);
+                localStorage.setItem('auth_expires', expiryTime.toString());
+                localStorage.setItem(this.storageKey, newToken);
+                localStorage.setItem(this.tokenExpiryKey, expiryTime.toString());
+                
+                console.log('✅ Token refreshed successfully');
+                return { success: true, token: newToken };
+            } else if (data.success && !data.data.needsRefresh) {
+                console.log('✅ Token still valid, no refresh needed');
+                return { success: true, message: 'Token still valid' };
+            } else {
+                console.log('❌ Token refresh failed:', data.message);
+                return { success: false, message: data.message };
+            }
+            
+        } catch (error) {
+            console.error('Token refresh error:', error);
+            return { success: false, message: 'Network error during refresh' };
+        }
+    }
+
+    // Check if token needs refresh (within 2 hours of expiry)
+    needsTokenRefresh() {
+        const backendExpires = localStorage.getItem('auth_expires');
+        const fallbackExpires = localStorage.getItem(this.tokenExpiryKey);
+        
+        const expiryTime = backendExpires || fallbackExpires;
+        if (!expiryTime) return false;
+        
+        const currentTime = Date.now();
+        const expiry = parseInt(expiryTime);
+        const timeUntilExpiry = expiry - currentTime;
+        const twoHoursInMs = 2 * 60 * 60 * 1000;
+        
+        return timeUntilExpiry <= twoHoursInMs && timeUntilExpiry > 0;
+    }
+
+    // Start automatic token refresh interval
+    startTokenRefreshInterval() {
+        // Check every 30 minutes
+        const checkInterval = 30 * 60 * 1000; // 30 minutes
+        
+        setInterval(async () => {
+            if (this.isAuthenticated() && this.needsTokenRefresh()) {
+                console.log('🔄 Token needs refresh, attempting automatic refresh...');
+                const result = await this.refreshToken();
+                
+                if (!result.success) {
+                    console.log('❌ Automatic token refresh failed, logging out user');
+                    this.logout('token_expired');
+                }
+            }
+        }, checkInterval);
     }
 
     // Refresh session (extend expiry time)

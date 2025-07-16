@@ -182,7 +182,7 @@
                 
                 if (!isAuth) {
                     log('Attempting login with default credentials...');
-                    const loginResult = await window.authService.login('admin', 'admin');
+                    const loginResult = await window.authService.login('admin', 'admin123');
                     log(`Login result: ${JSON.stringify(loginResult)}`);
                     
                     // Check if DirectFlow picks up the new token

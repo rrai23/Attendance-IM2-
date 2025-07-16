@@ -39,6 +39,10 @@ const auth = async (req, res, next) => {
             });
         }
 
+        // Store decoded token for refresh endpoint
+        req.decodedToken = decoded;
+        req.token = token;
+
         // Check if session exists and is active (optional - sessions table may not exist)
         let sessionValid = true;
         try {

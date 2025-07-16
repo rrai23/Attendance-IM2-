@@ -28,19 +28,9 @@ const PORT = process.env.PORT || 3000;
 // Trust proxy - no longer needed for rate limiting but kept for other middleware
 app.set('trust proxy', 1);
 
-// Security middleware
+// Security middleware - CSP DISABLED
 app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net"],
-            scriptSrcAttr: ["'self'", "'unsafe-inline'", "'unsafe-hashes'"],
-            fontSrc: ["'self'", "https://fonts.gstatic.com", "https://applesocial.s3.amazonaws.com"],
-            imgSrc: ["'self'", "data:", "https:", "blob:"],
-            connectSrc: ["'self'"],
-        },
-    },
+    contentSecurityPolicy: false, // CSP completely disabled
     crossOriginEmbedderPolicy: false
 }));
 
