@@ -244,7 +244,7 @@ class SidebarManager {
             </div>
 
             <div class="sidebar-footer compact">
-                <button class="logout-btn compact" title="Logout">
+                <button class="logout-btn compact" title="Logout" id="sidebar-logout-btn">
                     <span class="logout-icon">🚪</span>
                     <span class="logout-text">Logout</span>
                 </button>
@@ -284,42 +284,58 @@ class SidebarManager {
      * Setup event listeners for sidebar interactions
      */
     setupEventListeners() {
-        // Sidebar toggle
-        const toggleBtn = document.querySelector('.sidebar-toggle');
-        if (toggleBtn) {
-            toggleBtn.addEventListener('click', () => this.toggleSidebar());
-        }
+        // Use requestAnimationFrame to ensure DOM is ready
+        requestAnimationFrame(() => {
+            // Sidebar toggle
+            const toggleBtn = document.querySelector('.sidebar-toggle');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', () => this.toggleSidebar());
+            }
 
-        // Navigation links
-        const navLinks = document.querySelectorAll('.nav-link');
-        navLinks.forEach(link => {
-            link.addEventListener('click', (e) => this.handleNavigation(e));
-            link.addEventListener('mouseenter', (e) => this.handleHover(e, true));
-            link.addEventListener('mouseleave', (e) => this.handleHover(e, false));
+            // Navigation links
+            const navLinks = document.querySelectorAll('.nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => this.handleNavigation(e));
+                link.addEventListener('mouseenter', (e) => this.handleHover(e, true));
+                link.addEventListener('mouseleave', (e) => this.handleHover(e, false));
+            });
+
+            // Logout button - with additional debugging
+            const logoutBtn = document.querySelector('.logout-btn, #sidebar-logout-btn');
+            if (logoutBtn) {
+                console.log('Sidebar: Logout button found, attaching event listener');
+                logoutBtn.addEventListener('click', (e) => {
+                    console.log('Sidebar: Logout button clicked!');
+                    e.preventDefault(); // Prevent any default behavior
+                    e.stopPropagation(); // Stop event bubbling
+                    this.handleLogout();
+                });
+                
+                // Add a backup event listener for debugging
+                logoutBtn.addEventListener('mousedown', (e) => {
+                    console.log('Sidebar: Logout button mousedown detected');
+                });
+            } else {
+                console.warn('Sidebar: Logout button not found in DOM');
+            }
+
+            // Status refresh button
+            const statusRefreshBtn = document.querySelector('.status-refresh-btn');
+            if (statusRefreshBtn) {
+                statusRefreshBtn.addEventListener('click', () => this.updateSystemStatus(true));
+            }
+
+            // Listen for auth events - defer to ensure DirectFlowAuth is available
+            this.setupAuthEventListeners();
+
+            // Listen for theme changes
+            document.addEventListener('themechange', (e) => {
+                this.updateAccentColors(e.detail);
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
         });
-
-        // Logout button
-        const logoutBtn = document.querySelector('.logout-btn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => this.handleLogout());
-        }
-
-        // Status refresh button
-        const statusRefreshBtn = document.querySelector('.status-refresh-btn');
-        if (statusRefreshBtn) {
-            statusRefreshBtn.addEventListener('click', () => this.updateSystemStatus(true));
-        }
-
-        // Listen for auth events - defer to ensure DirectFlowAuth is available
-        this.setupAuthEventListeners();
-
-        // Listen for theme changes
-        document.addEventListener('themechange', (e) => {
-            this.updateAccentColors(e.detail);
-        });
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
     }
 
     /**
@@ -671,26 +687,36 @@ class SidebarManager {
      * Handle logout button click
      */
     handleLogout() {
+        console.log('Sidebar: handleLogout() called');
+        
         // Use specialized logout modal
         if (typeof confirmLogout !== 'undefined') {
+            console.log('Sidebar: Using confirmLogout modal');
             confirmLogout({
                 onConfirm: () => {
+                    console.log('Sidebar: Logout confirmed, calling DirectFlowAuth.logout()');
                     if (typeof window !== 'undefined' && window.directFlowAuth) {
                         window.directFlowAuth.logout();
                     } else {
+                        console.warn('Sidebar: DirectFlowAuth not available, using fallback');
                         // Fallback logout
                         window.location.href = '/login.html';
                     }
                 }
             });
         } else {
+            console.log('Sidebar: Using browser confirm dialog');
             // Fallback to browser confirm if modal system not available
             if (confirm('Are you sure you want to logout?')) {
+                console.log('Sidebar: Browser confirm accepted, calling DirectFlowAuth.logout()');
                 if (typeof window !== 'undefined' && window.directFlowAuth) {
                     window.directFlowAuth.logout();
                 } else {
+                    console.warn('Sidebar: DirectFlowAuth not available, using fallback');
                     window.location.href = '/login.html';
                 }
+            } else {
+                console.log('Sidebar: Logout cancelled by user');
             }
         }
     }

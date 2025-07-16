@@ -157,7 +157,7 @@
     </script>
     
     <!-- Preload critical resources -->
-    <link rel="preload" href="/js/auth.js" as="script">
+    <link rel="preload" href="/js/directflow-auth.js" as="script">
     <link rel="preload" href="/js/theme.js" as="script">
 </head>
 <body class="loading">
@@ -843,37 +843,45 @@
     <script src="js/core/api-service.js"></script>
     <script src="js/core/data-service-factory.js"></script>
     
-    
+    <!-- DirectFlow Authentication System -->
+    <script src="js/directflow-auth.js"></script>
+    <script src="js/auth-check.js"></script>
     
     <script src="js/global-system-sync.js"></script>
     <script src="js/theme.js"></script>
-    <script src="js/auth.js"></script>
     <script src="js/sidebar.js"></script>
     <script src="js/employees-page.js"></script>
     <script>
         // Initialize the employees page manager when DOM is loaded
         document.addEventListener('DOMContentLoaded', async function() {
             try {
-                // Wait for DirectFlow to be fully initialized
-                console.log('Waiting for DirectFlow to initialize...');
+                // Wait for DirectFlowAuth to be fully initialized
+                console.log('Waiting for DirectFlowAuth to initialize...');
                 let waitCount = 0;
                 const maxWait = 100; // 10 seconds total (100 * 100ms)
                 
-                while ((!window.DirectFlow || !window.DirectFlow.initialized) && waitCount < maxWait) {
+                while ((!window.directFlowAuth || !window.directFlowAuth.initialized) && waitCount < maxWait) {
                     await new Promise(resolve => setTimeout(resolve, 100));
                     waitCount++;
                     if (waitCount % 10 === 0) {
-                        console.log(`Still waiting for DirectFlow... (${waitCount/10}s)`);
+                        console.log(`Still waiting for DirectFlowAuth... (${waitCount/10}s)`);
                     }
                 }
                 
-                if (!window.DirectFlow || !window.DirectFlow.initialized) {
-                    throw new Error('DirectFlow failed to initialize within timeout');
+                if (!window.directFlowAuth || !window.directFlowAuth.initialized) {
+                    throw new Error('DirectFlowAuth failed to initialize within timeout');
                 }
                 
-                console.log('DirectFlow is ready!');
+                console.log('DirectFlowAuth is ready!');
                 
-                console.log('Initializing EmployeesPageManager...');
+                // Check if user is authenticated
+                if (!window.directFlowAuth.isAuthenticated()) {
+                    console.log('User not authenticated, redirecting to login...');
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
+                console.log('User is authenticated, initializing EmployeesPageManager...');
                 window.employeesManager = new EmployeesPageManager();
                 await window.employeesManager.init();
                 console.log('EmployeesPageManager initialized successfully');
