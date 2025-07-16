@@ -674,7 +674,7 @@ router.get('/stats', auth, async (req, res) => {
         const [totalEmployees] = await db.execute(`
             SELECT COUNT(*) as count
             FROM employees e
-            JOIN user_accounts ua ON e.id = ua.id
+            JOIN user_accounts ua ON e.employee_id = ua.employee_id
             WHERE ua.is_active = 1 AND e.status = 'active'
         `);
 

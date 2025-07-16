@@ -26,8 +26,8 @@ router.post('/sync', auth, async (req, res) => {
             try {
                 // Check if employee exists in employees table
                 const existing = await db.execute(
-                    'SELECT id FROM employees WHERE id = ?',
-                    [emp.id]
+                    'SELECT employee_id FROM employees WHERE employee_id = ?',
+                    [emp.employeeId || emp.employeeCode || emp.id]
                 );
 
                 if (existing.length > 0) {
@@ -43,7 +43,7 @@ router.post('/sync', auth, async (req, res) => {
                             hire_date = ?,
                             status = ?,
                             updated_at = CURRENT_TIMESTAMP
-                        WHERE id = ?
+                        WHERE employee_id = ?
                     `, [
                         emp.name || emp.fullName,
                         emp.firstName || emp.name?.split(' ')[0] || '',
@@ -53,7 +53,7 @@ router.post('/sync', auth, async (req, res) => {
                         emp.position,
                         emp.dateHired || emp.hireDate,
                         emp.status || 'active',
-                        emp.id
+                        emp.employeeId || emp.employeeCode || emp.id
                     ]);
                     
                     // Also update user_accounts if needed
@@ -62,23 +62,22 @@ router.post('/sync', auth, async (req, res) => {
                             username = ?,
                             role = ?,
                             updated_at = CURRENT_TIMESTAMP
-                        WHERE id = ?
+                        WHERE employee_id = ?
                     `, [
                         emp.username || emp.email || emp.name,
                         emp.role || 'employee',
-                        emp.id
+                        emp.employeeId || emp.employeeCode || emp.id
                     ]);
                     
                 } else {
                     // Insert new employee in employees table
                     await db.execute(`
                         INSERT INTO employees (
-                            id, employee_id, full_name, first_name, last_name, 
+                            employee_id, full_name, first_name, last_name, 
                             email, department, position, hire_date, status, 
                             created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     `, [
-                        emp.id,
                         emp.employeeId || emp.employeeCode || emp.id,
                         emp.name || emp.fullName,
                         emp.firstName || emp.name?.split(' ')[0] || '',
@@ -93,11 +92,11 @@ router.post('/sync', auth, async (req, res) => {
                     // Also insert into user_accounts
                     await db.execute(`
                         INSERT INTO user_accounts (
-                            id, employee_id, username, password_hash, role, 
+                            employee_id, username, password_hash, role, 
                             is_active, created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     `, [
-                        emp.id,
+                        emp.employeeId || emp.employeeCode || emp.id,
                         emp.employeeId || emp.employeeCode || emp.id,
                         emp.username || emp.email || emp.name,
                         emp.password ? await bcrypt.hash(emp.password, 12) : null,
@@ -216,7 +215,7 @@ router.get('/data', auth, async (req, res) => {
                 ua.username,
                 ua.role
             FROM employees e
-            JOIN user_accounts ua ON e.id = ua.id
+            JOIN user_accounts ua ON e.employee_id = ua.employee_id
             WHERE ua.is_active = 1 AND e.status = 'active'
             ORDER BY e.full_name
         `);
