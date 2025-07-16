@@ -1,4 +1,4 @@
-    <script src="js/directflow.js"></script>\n    \n<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -123,110 +123,14 @@
     </div>
 
     <!-- Scripts for Login Page -->
+    <script src="js/directflow-auth.js"></script>
     <script src="js/theme.js"></script>
-    <!-- Minimal backend authentication service for login -->
+    <!-- Authentication integration -->
     <script>
-        // Simple backend authentication service for login page
-        class BackendAuthService {
-            constructor() {
-                this.baseUrl = 'http://localhost:3000/api';
-                this.token = null;
-                this.user = null;
-            }
-
-            async login(username, password, rememberMe = false) {
-                try {
-                    console.log('🔐 Backend login attempt:', { username, rememberMe });
-                    
-                    const response = await fetch(`${this.baseUrl}/auth/login`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            username: username,
-                            password: password,
-                            rememberMe: rememberMe
-                        })
-                    });
-
-                    const data = await response.json();
-                    console.log('🔐 Backend login response:', { success: data.success, status: response.status });
-
-                    if (data.success && data.data) {
-                        // Store authentication data
-                        this.token = data.data.token;
-                        this.user = data.data.user;
-                        
-                        // Store in localStorage for session persistence
-                        localStorage.setItem('auth_token', this.token);
-                        localStorage.setItem('auth_user', JSON.stringify(this.user));
-                        localStorage.setItem('auth_expires', data.data.expiresIn);
-                        
-                        console.log('✅ Login successful, user:', this.user);
-                        return {
-                            success: true,
-                            user: this.user,
-                            token: this.token,
-                            redirectUrl: this.getRedirectUrl(this.user.role)
-                        };
-                    } else {
-                        console.log('❌ Login failed:', data.message);
-                        return {
-                            success: false,
-                            message: data.message || 'Login failed'
-                        };
-                    }
-                } catch (error) {
-                    console.error('🔐 Login error:', error);
-                    return {
-                        success: false,
-                        message: 'Network error. Please check your connection and try again.'
-                    };
-                }
-            }
-
-            getRedirectUrl(role) {
-                switch (role) {
-                    case 'admin':
-                        return '/dashboard.html';
-                    case 'manager':
-                        return '/dashboard.html';
-                    case 'hr':
-                        return '/employees.html';
-                    default:
-                        return '/employee.html';
-                }
-            }
-
-            isAuthenticated() {
-                const token = localStorage.getItem('auth_token');
-                const user = localStorage.getItem('auth_user');
-                return !!(token && user);
-            }
-
-            getCurrentUser() {
-                try {
-                    const userStr = localStorage.getItem('auth_user');
-                    return userStr ? JSON.parse(userStr) : null;
-                } catch (error) {
-                    console.error('Error parsing user data:', error);
-                    return null;
-                }
-            }
-
-            logout() {
-                this.token = null;
-                this.user = null;
-                localStorage.removeItem('auth_token');
-                localStorage.removeItem('auth_user');
-                localStorage.removeItem('auth_expires');
-            }
-        }
-
-        // Create global instance for login page
-        window.authService = new BackendAuthService();
-        console.log('🔐 Backend auth service initialized for login page');
+        // Use DirectFlowAuth for login page
+        window.authService = window.directFlowAuth;
+        console.log('🔐 DirectFlowAuth integrated for login page');
+    </script>
     </script>
     <script>
         // Login page specific functionality

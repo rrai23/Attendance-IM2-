@@ -228,17 +228,19 @@ class DirectFlowAuth {
         }, 30 * 60 * 1000); // Check every 30 minutes
     }
 
-    // Get redirect URL based on role
+    /**
+     * Get redirect URL based on user role
+     */
     getRedirectUrl(role) {
         switch (role) {
             case 'admin':
                 return '/dashboard.html';
             case 'manager':
                 return '/dashboard.html';
-            case 'employee':
-                return '/dashboard.html';
+            case 'hr':
+                return '/employees.html';
             default:
-                return '/dashboard.html';
+                return '/employee.html';
         }
     }
 
