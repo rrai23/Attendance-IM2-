@@ -40,6 +40,16 @@ class DashboardController {
                 title: 'Attendance Statistics',
                 refreshable: true
             },
+            departmentStatus: {
+                id: 'department-status-tile',
+                title: 'Department Status',
+                refreshable: true
+            },
+            recentActivity: {
+                id: 'recent-activity-tile',
+                title: 'Recent Activity',
+                refreshable: true
+            },
             calendar: {
                 id: 'calendar-tile',
                 title: 'Calendar & Notes',
@@ -487,6 +497,8 @@ class DashboardController {
     renderTiles() {
         this.renderAttendanceCountTile();
         this.renderAttendanceChartTile();
+        this.renderDepartmentStatusTile();
+        this.renderRecentActivityTile();
         this.renderCalendarTile();
         this.renderPaydayCountdownTile();
     }
@@ -603,10 +615,10 @@ class DashboardController {
                 Math.round((stats.presentToday / stats.totalEmployees) * 100) : 0;
             this.updateMetric('attendance-rate', `${attendanceRate}%`);
             
-            // Update department breakdown
+            // Update department breakdown in both overview and separate tile
             this.updateDepartmentBreakdown(stats);
             
-            // Update recent activity
+            // Update recent activity in both overview and separate tile
             this.updateRecentActivity(stats);
             
         } catch (error) {
@@ -706,6 +718,28 @@ class DashboardController {
                 </div>
             `;
         }
+    }
+
+    /**
+     * Render department status tile
+     */
+    renderDepartmentStatusTile() {
+        const tile = document.getElementById(this.tiles.departmentStatus.id);
+        if (!tile) return;
+
+        // The HTML structure is already in place, just populate with data
+        this.updateDepartmentBreakdown(this.data?.attendanceStats || {});
+    }
+
+    /**
+     * Render recent activity tile
+     */
+    renderRecentActivityTile() {
+        const tile = document.getElementById(this.tiles.recentActivity.id);
+        if (!tile) return;
+
+        // The HTML structure is already in place, just populate with data
+        this.updateRecentActivity(this.data?.attendanceStats || {});
     }
 
     /**

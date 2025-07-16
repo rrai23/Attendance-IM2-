@@ -407,65 +407,113 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
 
-                            <!-- Department Breakdown -->
+                    <!-- Department Status Card -->
+                    <div class="tile dashboard-tile" id="department-status-tile">
+                        <div class="tile-header">
+                            <div class="tile-title-group">
+                                <h3 class="tile-title">Department Status</h3>
+                                <p class="tile-subtitle">Attendance by department</p>
+                            </div>
+                            <div class="tile-actions">
+                                <button class="tile-refresh-btn" title="Refresh department data" aria-label="Refresh department data">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="23,4 23,10 17,10"></polyline>
+                                        <polyline points="1,20 1,14 7,14"></polyline>
+                                        <path d="M20.49,9A9,9,0,0,0,5.64,5.64L1,10m22,4L18.36,18.36A9,9,0,0,1,3.51,15"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="tile-content">
                             <div class="department-breakdown">
-                                <h4 class="section-title">Department Status</h4>
-                                <div class="department-list">
+                                <div class="department-list" id="department-breakdown">
                                     <div class="department-item">
                                         <div class="department-info">
                                             <span class="department-name">Engineering</span>
-                                            <span class="department-count">4/5 Present</span>
+                                            <span class="department-stats">4/5</span>
                                         </div>
-                                        <div class="department-bar">
-                                            <div class="bar-fill" style="width: 80%"></div>
+                                        <div class="department-progress">
+                                            <div class="progress-bar" style="width: 80%"></div>
                                         </div>
+                                        <span class="department-percentage">80%</span>
                                     </div>
                                     <div class="department-item">
                                         <div class="department-info">
                                             <span class="department-name">Marketing</span>
-                                            <span class="department-count">2/2 Present</span>
+                                            <span class="department-stats">2/2</span>
                                         </div>
-                                        <div class="department-bar">
-                                            <div class="bar-fill" style="width: 100%"></div>
+                                        <div class="department-progress">
+                                            <div class="progress-bar" style="width: 100%"></div>
                                         </div>
+                                        <span class="department-percentage">100%</span>
                                     </div>
                                     <div class="department-item">
                                         <div class="department-info">
                                             <span class="department-name">Admin</span>
-                                            <span class="department-count">1/1 Present</span>
+                                            <span class="department-stats">1/1</span>
                                         </div>
-                                        <div class="department-bar">
-                                            <div class="bar-fill" style="width: 100%"></div>
+                                        <div class="department-progress">
+                                            <div class="progress-bar" style="width: 100%"></div>
                                         </div>
+                                        <span class="department-percentage">100%</span>
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
 
-                            <!-- Recent Activity -->
+                    <!-- Recent Activity Card -->
+                    <div class="tile dashboard-tile" id="recent-activity-tile">
+                        <div class="tile-header">
+                            <div class="tile-title-group">
+                                <h3 class="tile-title">Recent Activity</h3>
+                                <p class="tile-subtitle">Latest attendance updates</p>
+                            </div>
+                            <div class="tile-actions">
+                                <button class="tile-refresh-btn" title="Refresh activity data" aria-label="Refresh activity data">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="23,4 23,10 17,10"></polyline>
+                                        <polyline points="1,20 1,14 7,14"></polyline>
+                                        <path d="M20.49,9A9,9,0,0,0,5.64,5.64L1,10m22,4L18.36,18.36A9,9,0,0,1,3.51,15"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="tile-content">
                             <div class="recent-activity">
-                                <h4 class="section-title">Recent Activity</h4>
-                                <div class="activity-list">
+                                <div class="activity-list" id="recent-activity">
                                     <div class="activity-item">
-                                        <div class="activity-time">8:45 AM</div>
-                                        <div class="activity-description">
-                                            <strong>John Smith</strong> checked in
+                                        <div class="activity-info">
+                                            <span class="activity-name">John Smith</span>
+                                            <span class="activity-action">Checked in</span>
                                         </div>
-                                        <div class="activity-status on-time">On Time</div>
+                                        <div class="activity-meta">
+                                            <span class="activity-time">8:45 AM</span>
+                                            <span class="activity-status present"></span>
+                                        </div>
                                     </div>
                                     <div class="activity-item">
-                                        <div class="activity-time">9:15 AM</div>
-                                        <div class="activity-description">
-                                            <strong>Jane Doe</strong> checked in
+                                        <div class="activity-info">
+                                            <span class="activity-name">Jane Doe</span>
+                                            <span class="activity-action">Checked in</span>
                                         </div>
-                                        <div class="activity-status late">Late</div>
+                                        <div class="activity-meta">
+                                            <span class="activity-time">9:15 AM</span>
+                                            <span class="activity-status late"></span>
+                                        </div>
                                     </div>
                                     <div class="activity-item">
-                                        <div class="activity-time">10:30 AM</div>
-                                        <div class="activity-description">
-                                            <strong>System</strong> generated attendance report
+                                        <div class="activity-info">
+                                            <span class="activity-name">System</span>
+                                            <span class="activity-action">Generated report</span>
                                         </div>
-                                        <div class="activity-status system">System</div>
+                                        <div class="activity-meta">
+                                            <span class="activity-time">10:30 AM</span>
+                                            <span class="activity-status system"></span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
