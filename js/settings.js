@@ -5,20 +5,20 @@
 
 class SettingsController {
     constructor() {
-        // Initialize unified employee manager if not available (EXCLUSIVE MODE)
-        if (!window.unifiedEmployeeManager) {
-            console.error('UnifiedEmployeeManager not available - settings page requires unified data system');
-            throw new Error('UnifiedEmployeeManager not available');
+        // Initialize DirectFlow if not available (EXCLUSIVE MODE)
+        if (!window.directFlow) {
+            console.error('DirectFlow not available - settings page requires DirectFlow data system');
+            throw new Error('DirectFlow not available');
         }
         
-        // Wait for unified employee manager initialization
-        if (!window.unifiedEmployeeManager.initialized) {
-            console.log('Waiting for UnifiedEmployeeManager initialization...');
+        // Wait for DirectFlow initialization
+        if (!window.directFlow.initialized) {
+            console.log('Waiting for DirectFlow initialization...');
             this.initializeWhenReady();
             return;
         }
         
-        this.unifiedEmployeeManager = window.unifiedEmployeeManager;
+        this.directFlow = window.directFlow;
         
         // Initialize other managers with fallbacks
         this.userManager = window.userManager || null;
@@ -35,7 +35,7 @@ class SettingsController {
     }
 
     /**
-     * Wait for UnifiedEmployeeManager to be ready
+     * Wait for DirectFlow to be ready
      */
     async initializeWhenReady() {
         const maxWaitTime = 10000; // 10 seconds
@@ -43,9 +43,9 @@ class SettingsController {
         let waitTime = 0;
         
         while (waitTime < maxWaitTime) {
-            if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
-                console.log('UnifiedEmployeeManager is now ready');
-                this.unifiedEmployeeManager = window.unifiedEmployeeManager;
+            if (window.directFlow && window.directFlow.initialized) {
+                console.log('DirectFlow is now ready');
+                this.directFlow = window.directFlow;
                 this.init();
                 return;
             }
@@ -54,8 +54,8 @@ class SettingsController {
             waitTime += checkInterval;
         }
         
-        console.error('Timeout waiting for UnifiedEmployeeManager initialization');
-        throw new Error('UnifiedEmployeeManager initialization timeout');
+        console.error('Timeout waiting for DirectFlow initialization');
+        throw new Error('DirectFlow initialization timeout');
     }
 
     /**
@@ -119,15 +119,15 @@ class SettingsController {
      */
     async loadSettings() {
         try {
-            // Get settings from unified employee manager first
+            // Get settings from DirectFlow first
             let savedSettings = {};
             
             try {
-                if (this.unifiedEmployeeManager && this.unifiedEmployeeManager.getSettings) {
-                    const result = await this.unifiedEmployeeManager.getSettings();
+                if (this.directFlow && this.directFlow.getSettings) {
+                    const result = await this.directFlow.getSettings();
                     if (result.success && result.data) {
                         savedSettings = result.data;
-                        console.log('Settings loaded from unified manager:', savedSettings);
+                        console.log('Settings loaded from DirectFlow:', savedSettings);
                     }
                 } else {
                     // Fallback to direct localStorage access with consistent key
@@ -340,24 +340,24 @@ class SettingsController {
      */
     setupUnifiedDataListeners() {
         try {
-            if (!this.unifiedEmployeeManager) {
-                console.warn('UnifiedEmployeeManager not available for data listeners');
+            if (!this.directFlow) {
+                console.warn('DirectFlow not available for data listeners');
                 return;
             }
 
             // Listen for employee data changes
-            this.unifiedEmployeeManager.addEventListener('employeeUpdate', (data) => {
+            this.directFlow.addEventListener('employeeUpdate', (data) => {
                 console.log('Employee data updated, refreshing user stats');
                 this.loadUserStats();
             });
 
             // Listen for attendance data changes
-            this.unifiedEmployeeManager.addEventListener('attendanceUpdate', (data) => {
+            this.directFlow.addEventListener('attendanceUpdate', (data) => {
                 console.log('Attendance data updated, refreshing stats');
                 this.loadUserStats();
             });
 
-            console.log('Unified data listeners setup successfully');
+            console.log('DirectFlow data listeners setup successfully');
         } catch (error) {
             console.error('Error setting up unified data listeners:', error);
         }
@@ -694,13 +694,13 @@ class SettingsController {
      */
     addUser(userData) {
         try {
-            if (!this.unifiedEmployeeManager) {
-                this.showErrorMessage('Employee manager not available');
+            if (!this.directFlow) {
+                this.showErrorMessage('DirectFlow not available');
                 return;
             }
 
-            // Use unified employee manager to add user
-            const result = this.unifiedEmployeeManager.addEmployee(userData);
+            // Use DirectFlow to add user
+            const result = this.directFlow.createEmployee(userData);
             if (result.success) {
                 console.log('User added successfully:', userData);
                 this.loadUserStats(); // Refresh stats
@@ -748,12 +748,12 @@ class SettingsController {
      */
     exportUsers() {
         try {
-            if (!this.unifiedEmployeeManager) {
-                this.showErrorMessage('Employee manager not available');
+            if (!this.directFlow) {
+                this.showErrorMessage('DirectFlow not available');
                 return;
             }
 
-            const employees = this.unifiedEmployeeManager.getEmployees();
+            const employees = this.directFlow.getEmployees();
             const csvContent = this.convertToCSV(employees);
             this.downloadCSV(csvContent, 'users-export.csv');
         } catch (error) {
@@ -907,9 +907,9 @@ class SettingsController {
                 return false;
             }
 
-            // Save to unified data service
-            if (this.unifiedEmployeeManager && this.unifiedEmployeeManager.saveSettings) {
-                const result = await this.unifiedEmployeeManager.saveSettings(formData);
+            // Save to DirectFlow data service
+            if (this.directFlow && this.directFlow.saveSettings) {
+                const result = await this.directFlow.saveSettings(formData);
                 if (!result.success) {
                     throw new Error(result.message || 'Failed to save settings');
                 }
@@ -2244,16 +2244,16 @@ class SettingsController {
     }
 
     /**
-     * Load and display user statistics from unified employee manager
+     * Load and display user statistics from DirectFlow
      */
     async loadUserStats() {
         try {
-            // Get employees from unified employee manager (EXCLUSIVE MODE)
-            if (!this.unifiedEmployeeManager || !this.unifiedEmployeeManager.initialized) {
-                throw new Error('UnifiedEmployeeManager not available for user stats');
+            // Get employees from DirectFlow (EXCLUSIVE MODE)
+            if (!this.directFlow || !this.directFlow.initialized) {
+                throw new Error('DirectFlow not available for user stats');
             }
             
-            const employees = this.unifiedEmployeeManager.getEmployees();
+            const employees = this.directFlow.getEmployees();
             const stats = {
                 total: employees.length,
                 active: employees.filter(emp => emp.status === 'active').length,
@@ -2267,7 +2267,7 @@ class SettingsController {
                 accountStats = window.unifiedAccountManager.getAccountStats();
             }
 
-            console.log('User stats loaded from unified employee manager:', stats);
+            console.log('User stats loaded from DirectFlow:', stats);
             console.log('Account stats loaded from unified account manager:', accountStats);
 
             const container = document.getElementById('user-stats');
@@ -2388,22 +2388,22 @@ class SettingsController {
 
 // Initialize settings controller when DOM is loaded
 document.addEventListener('DOMContentLoaded', async () => {
-    // Wait for unified employee manager to be ready
+    // Wait for DirectFlow to be ready
     let waitCount = 0;
     const maxWait = 100; // 10 seconds max wait
     
-    while ((!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) && waitCount < maxWait) {
+    while ((!window.directFlow || !window.directFlow.initialized) && waitCount < maxWait) {
         await new Promise(resolve => setTimeout(resolve, 100));
         waitCount++;
         if (waitCount % 10 === 0) {
-            console.log(`Settings waiting for unified manager... (${waitCount/10}s)`);
+            console.log(`Settings waiting for DirectFlow... (${waitCount/10}s)`);
         }
     }
     
-    if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
+    if (window.directFlow && window.directFlow.initialized) {
         window.settingsController = new SettingsController();
     } else {
-        console.error('UnifiedEmployeeManager not found or not initialized after timeout.');
+        console.error('DirectFlow not found or not initialized after timeout.');
     }
 });
 

@@ -31,7 +31,7 @@ router.get('/', auth, async (req, res) => {
                 e.last_name,
                 e.department,
                 e.position,
-                e.employment_type
+                e.salary
             FROM payroll_records pr
             JOIN employees e ON pr.employee_id = e.employee_id
             WHERE 1=1
@@ -158,7 +158,6 @@ router.get('/:payrollId', auth, async (req, res) => {
                 e.last_name,
                 e.department,
                 e.position,
-                e.employment_type,
                 e.salary
             FROM payroll_records pr
             JOIN employees e ON pr.employee_id = e.employee_id

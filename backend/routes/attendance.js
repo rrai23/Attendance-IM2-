@@ -679,13 +679,13 @@ router.get('/stats', auth, async (req, res) => {
         `);
 
         const stats = {
-            present: parseInt(todayStats[0].present || 0),
-            absent: parseInt(todayStats[0].absent || 0),
-            late: parseInt(todayStats[0].late || 0),
-            onLeave: parseInt(todayStats[0].onLeave || 0),
-            total: parseInt(totalEmployees[0].count || 0),
-            attendanceRate: totalEmployees[0].count > 0 
-                ? ((todayStats[0].present || 0) / totalEmployees[0].count * 100).toFixed(1)
+            present: parseInt((todayStats[0] && todayStats[0].present) || 0),
+            absent: parseInt((todayStats[0] && todayStats[0].absent) || 0),
+            late: parseInt((todayStats[0] && todayStats[0].late) || 0),
+            onLeave: parseInt((todayStats[0] && todayStats[0].onLeave) || 0),
+            total: parseInt((totalEmployees[0] && totalEmployees[0].count) || 0),
+            attendanceRate: (totalEmployees[0] && totalEmployees[0].count > 0) 
+                ? (((todayStats[0] && todayStats[0].present) || 0) / totalEmployees[0].count * 100).toFixed(1)
                 : 0
         };
 

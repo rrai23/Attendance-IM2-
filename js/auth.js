@@ -199,8 +199,16 @@ class AuthService {
             const user = validation.user;
             console.log('AuthService: User validated:', user);
             
-            const token = validation.token || this.generateToken(user);
-            console.log('AuthService: Token generated');
+            // Prioritize backend JWT token over generated mock token
+            const token = validation.token;
+            if (!token) {
+                console.error('AuthService: No token received from backend - this should not happen');
+                return {
+                    success: false,
+                    message: 'Authentication failed - no token received'
+                };
+            }
+            console.log('AuthService: Using backend JWT token');
             
             const expiryTime = Date.now() + (rememberMe ? this.sessionDuration * 7 : this.sessionDuration);
             console.log('AuthService: Setting expiry time:', new Date(expiryTime));

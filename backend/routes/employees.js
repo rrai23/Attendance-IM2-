@@ -233,67 +233,75 @@ router.post('/', auth, requireManagerOrAdmin, async (req, res) => {
             });
         }
 
-        await db.beginTransaction();
-
-        try {
-            // Insert employee record first
-            await db.execute(`
+        // Prepare transaction queries
+        const queries = [];
+        
+        // Insert employee record first
+        queries.push({
+            query: `
                 INSERT INTO employees (
                     employee_code, first_name, last_name, full_name, email, phone, 
                     department, position, date_hired, hourly_rate, overtime_rate, status, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW(), NOW())
-            `, [
+            `,
+            params: [
                 employee_code, first_name, last_name, `${first_name} ${last_name}`, email, phone,
                 department, position, date_hired, salary ? (salary / 2080) : 15.00, 1.50
-            ]);
+            ]
+        });
 
-            // Create user account if username and password provided
-            if (username && password) {
-                // Check if username already exists
-                const existingUsername = await db.execute('SELECT username FROM user_accounts WHERE username = ?', [username]);
-                if (existingUsername.length > 0) {
-                    throw new Error('Username already exists');
-                }
+        // Create user account if username and password provided
+        if (username && password) {
+            // Check if username already exists
+            const existingUsername = await db.execute('SELECT username FROM user_accounts WHERE username = ?', [username]);
+            if (existingUsername.length > 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Username already exists'
+                });
+            }
 
-                if (password.length < 6) {
-                    throw new Error('Password must be at least 6 characters long');
-                }
+            if (password.length < 6) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Password must be at least 6 characters long'
+                });
+            }
 
-                const saltRounds = 12;
-                const password_hash = await bcrypt.hash(password, saltRounds);
+            const saltRounds = 12;
+            const password_hash = await bcrypt.hash(password, saltRounds);
 
-                await db.execute(`
+            queries.push({
+                query: `
                     INSERT INTO user_accounts (
                         employee_id, username, password_hash, role, 
                         is_active, created_at, updated_at
                     ) VALUES (?, ?, ?, ?, TRUE, NOW(), NOW())
-                `, [employee_code, username, password_hash, role]);
-            }
-
-            await db.commit();
-
-            // Get the created employee data
-            const newEmployee = await db.execute(`
-                SELECT 
-                    e.*,
-                    ua.username,
-                    ua.role,
-                    ua.is_active as account_active
-                FROM employees e
-                LEFT JOIN user_accounts ua ON e.employee_code = ua.employee_id
-                WHERE e.employee_code = ?
-            `, [employee_code]);
-
-            res.status(201).json({
-                success: true,
-                message: 'Employee created successfully',
-                data: { employee: newEmployee[0] }
+                `,
+                params: [employee_code, username, password_hash, role]
             });
-
-        } catch (error) {
-            await db.rollback();
-            throw error;
         }
+
+        // Execute transaction
+        await db.transaction(queries);
+
+        // Get the created employee data
+        const newEmployee = await db.execute(`
+            SELECT 
+                e.*,
+                ua.username,
+                ua.role,
+                ua.is_active as account_active
+            FROM employees e
+            LEFT JOIN user_accounts ua ON e.employee_code = ua.employee_id
+            WHERE e.employee_code = ?
+        `, [employee_code]);
+
+        res.status(201).json({
+            success: true,
+            message: 'Employee created successfully',
+            data: { employee: newEmployee[0] }
+        });
 
     } catch (error) {
         console.error('Create employee error:', error);

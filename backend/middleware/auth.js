@@ -27,8 +27,17 @@ const auth = async (req, res, next) => {
         console.log('🎫 Token extracted:', token ? token.substring(0, 20) + '...' : 'undefined/empty');
 
         // Verify JWT token
-        const decoded = jwt.verify(token, JWT_SECRET);
-        console.log('✅ JWT verified, decoded:', { employee_id: decoded.employee_id, username: decoded.username });
+        let decoded;
+        try {
+            decoded = jwt.verify(token, JWT_SECRET);
+            console.log('✅ JWT verified, decoded:', { employee_id: decoded.employee_id, username: decoded.username });
+        } catch (jwtError) {
+            console.log('❌ JWT verification failed:', jwtError.message);
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid token'
+            });
+        }
 
         // Check if session exists and is active (optional - sessions table may not exist)
         let sessionValid = true;

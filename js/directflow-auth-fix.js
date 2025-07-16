@@ -5,7 +5,7 @@ console.log('🔧 DirectFlow Authentication Fix initializing...');
 
 // Function to sync DirectFlow with auth service
 function syncDirectFlowAuth() {
-    if (typeof window.directFlow === 'undefined') {
+    if (typeof window.DirectFlow === 'undefined') {
         console.warn('DirectFlow not available');
         return;
     }
@@ -24,17 +24,13 @@ function syncDirectFlowAuth() {
         const token = localStorage.getItem('bricks_auth_session');
         console.log('Auth token from localStorage:', token ? 'Present' : 'Missing');
         
-        if (token && token !== window.directFlow.authToken) {
+        if (token && window.DirectFlow.authToken !== token) {
             console.log('✅ Syncing DirectFlow with auth token');
-            window.directFlow.authToken = token;
-            window.directFlow.initialized = true;
-            
-            // Emit auth update event
-            window.directFlow.emit('auth-updated', { token });
+            window.DirectFlow.authToken = token;
             
             // Retry initialization if DirectFlow wasn't initialized
-            if (!window.directFlow.initialized && typeof window.directFlow.retryInitialization === 'function') {
-                window.directFlow.retryInitialization();
+            if (!window.DirectFlow.initialized && typeof window.DirectFlow.retryInitialization === 'function') {
+                window.DirectFlow.retryInitialization();
             }
         } else if (!token) {
             console.log('⚠️ Auth service says authenticated but no token found');

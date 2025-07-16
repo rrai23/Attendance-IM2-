@@ -220,6 +220,58 @@ router.put('/:key', auth, requireAdmin, async (req, res) => {
     }
 });
 
+// Save multiple settings (admin only)
+router.post('/', auth, requireAdmin, async (req, res) => {
+    try {
+        const settings = req.body;
+
+        if (!settings || typeof settings !== 'object') {
+            return res.status(400).json({
+                success: false,
+                message: 'Settings object is required'
+            });
+        }
+
+        const results = [];
+        const errors = [];
+
+        // Process each setting individually
+        for (const [key, value] of Object.entries(settings)) {
+            try {
+                // Convert value to JSON string
+                const jsonValue = typeof value === 'string' ? value : JSON.stringify(value);
+
+                // Use INSERT ... ON DUPLICATE KEY UPDATE
+                await db.execute(`
+                    INSERT INTO system_settings (setting_key, setting_value, created_at, updated_at)
+                    VALUES (?, ?, NOW(), NOW())
+                    ON DUPLICATE KEY UPDATE 
+                    setting_value = VALUES(setting_value), 
+                    updated_at = NOW()
+                `, [key, jsonValue]);
+
+                results.push({ key, success: true });
+            } catch (error) {
+                console.error(`Error saving setting ${key}:`, error);
+                errors.push({ key, error: error.message });
+            }
+        }
+
+        res.json({
+            success: errors.length === 0,
+            message: errors.length === 0 ? 'Settings saved successfully' : 'Some settings failed to save',
+            data: { results, errors }
+        });
+
+    } catch (error) {
+        console.error('Save settings error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error saving settings'
+        });
+    }
+});
+
 // Reset settings to defaults (admin only)
 router.post('/reset', requireAdmin, async (req, res) => {
     try {

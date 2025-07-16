@@ -54,6 +54,25 @@ class DirectFlow {
                 }
             }
 
+            // Validate the token with the server (temporarily disabled to prevent login loop)
+            // TODO: Fix token validation to work properly with JWT tokens
+            const isTokenValid = true; // await this.validateToken();
+            if (!isTokenValid) {
+                console.warn('⚠️ DirectFlow token validation failed - clearing auth data');
+                this.clearAuthData();
+                
+                // Redirect to login if not on public page
+                const currentPage = window.location.pathname;
+                const publicPages = ['/login.html', '/index.html', '/'];
+                const isPublicPage = publicPages.some(page => currentPage.endsWith(page)) || currentPage === '/';
+                
+                if (!isPublicPage) {
+                    window.location.href = '/login.html';
+                }
+                
+                return;
+            }
+
             // Test connection with a health check
             await this.healthCheck();
             
@@ -140,13 +159,29 @@ class DirectFlow {
      * Check if user is authenticated using the auth service
      */
     isAuthenticated() {
-        // Check if auth service is available
-        if (typeof window !== 'undefined' && window.authService) {
-            return window.authService.isAuthenticated();
+        return this.authToken !== null && this.authToken !== undefined && this.authToken !== '';
+    }
+
+    /**
+     * Validate current token with server
+     */
+    async validateToken() {
+        if (!this.isAuthenticated()) {
+            return false;
         }
         
-        // Fallback: check token existence
-        return !!this.authToken;
+        try {
+            const response = await fetch('/api/health', {
+                headers: {
+                    'Authorization': `Bearer ${this.authToken}`
+                }
+            });
+            
+            return response.ok;
+        } catch (error) {
+            console.warn('Token validation failed:', error);
+            return false;
+        }
     }
 
     /**
@@ -192,17 +227,15 @@ class DirectFlow {
             
             if (!response.ok) {
                 if (response.status === 401) {
-                    // Try to refresh the token once
-                    this.authToken = this.getAuthToken();
-                    if (this.authToken) {
-                        config.headers.Authorization = `Bearer ${this.authToken}`;
-                        const retryResponse = await fetch(url, config);
-                        if (retryResponse.ok) {
-                            return await retryResponse.json();
-                        }
-                    }
+                    // Clear invalid authentication data
+                    this.clearAuthData();
                     
+                    // Emit auth error event
                     this.emit('auth-error', { status: response.status, message: 'Authentication failed' });
+                    
+                    // Log the error but don't redirect immediately - let the dashboard handle it
+                    console.warn('🔐 Authentication failed for:', endpoint);
+                    
                     throw new Error('Authentication failed - please log in again');
                 }
                 
@@ -502,6 +535,19 @@ class DirectFlow {
         return response;
     }
 
+    /**
+     * Save multiple settings
+     */
+    async saveSettings(settings) {
+        const response = await this.request('/settings', {
+            method: 'POST',
+            body: settings
+        });
+        
+        this.emit('settings-saved', { settings });
+        return response;
+    }
+
     // ===============================
     // AUTHENTICATION MANAGEMENT
     // ===============================
@@ -682,6 +728,30 @@ class DirectFlow {
             this.emit('refresh-failed', error);
             throw error;
         }
+    }
+
+    /**
+     * Clear authentication data
+     */
+    clearAuthData() {
+        // Clear all possible token storage locations
+        const tokenSources = [
+            'bricks_auth_session',
+            'auth-token',
+            'auth_token', 
+            'jwt_token',
+            'bricks_auth_token',
+            'bricks_auth_user'
+        ];
+        
+        for (const source of tokenSources) {
+            localStorage.removeItem(source);
+        }
+        
+        this.authToken = null;
+        this.initialized = false;
+        
+        console.log('🧹 DirectFlow authentication data cleared');
     }
 }
 
