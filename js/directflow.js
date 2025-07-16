@@ -211,7 +211,7 @@ class DirectFlow {
         try {
             const response = await this.makeRequest('/settings');
             const data = await response.json();
-            return data.success ? data.data : {};
+            return data.success ? data.data.settings : {};
         } catch (error) {
             console.error('Error getting settings:', error);
             return {};
@@ -220,15 +220,131 @@ class DirectFlow {
 
     async updateSettings(settings) {
         try {
+            console.log('DirectFlow updateSettings called with:', settings);
             const response = await this.makeRequest('/settings', {
                 method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify(settings)
             });
+            
+            console.log('Update settings response status:', response.status);
+            
+            if (!response.ok) {
+                let errorMessage = 'Server error updating settings';
+                try {
+                    const errorData = await response.json();
+                    console.error('Update settings error response:', errorData);
+                    errorMessage = errorData.message || errorMessage;
+                } catch (e) {
+                    // If response is not JSON, try to get text
+                    try {
+                        const errorText = await response.text();
+                        console.error('Update settings error text:', errorText);
+                        errorMessage = errorText || errorMessage;
+                    } catch (textError) {
+                        console.error('Could not parse error response:', textError);
+                    }
+                }
+                
+                if (response.status === 403) {
+                    errorMessage = 'Admin privileges required to update settings';
+                } else if (response.status === 401) {
+                    errorMessage = 'Authentication required to update settings';
+                }
+                
+                return { success: false, message: errorMessage };
+            }
+            
             const data = await response.json();
+            console.log('Update settings success response:', data);
             return data;
         } catch (error) {
             console.error('Error updating settings:', error);
-            return { success: false, message: 'Failed to update settings' };
+            return { success: false, message: 'Failed to update settings: ' + error.message };
+        }
+    }
+
+    async saveSettings(categorizedSettings) {
+        try {
+            console.log('DirectFlow saveSettings called with:', categorizedSettings);
+            
+            // Convert categorized settings to flat key-value pairs for database
+            const flatSettings = {};
+            
+            if (categorizedSettings.general) {
+                flatSettings.companyName = categorizedSettings.general.companyName;
+                flatSettings.company_name = categorizedSettings.general.companyName; // Also save with database key
+                flatSettings.timezone = categorizedSettings.general.timezone;
+                flatSettings.company_timezone = categorizedSettings.general.timezone;
+                flatSettings.dateFormat = categorizedSettings.general.dateFormat;
+                flatSettings.timeFormat = categorizedSettings.general.timeFormat;
+                flatSettings.currency = categorizedSettings.general.currency;
+                flatSettings.language = categorizedSettings.general.language;
+            }
+            
+            if (categorizedSettings.payroll) {
+                flatSettings.payPeriod = categorizedSettings.payroll.payPeriod;
+                flatSettings.payroll_frequency = categorizedSettings.payroll.payPeriod;
+                flatSettings.payday = categorizedSettings.payroll.payday;
+                flatSettings.overtimeRate = categorizedSettings.payroll.overtimeRate;
+                flatSettings.overtime_rate_multiplier = categorizedSettings.payroll.overtimeRate;
+                flatSettings.overtimeThreshold = categorizedSettings.payroll.overtimeThreshold;
+                flatSettings.overtime_threshold_hours = categorizedSettings.payroll.overtimeThreshold;
+                flatSettings.roundingRules = categorizedSettings.payroll.roundingRules;
+                flatSettings.autoCalculate = categorizedSettings.payroll.autoCalculate;
+            }
+            
+            if (categorizedSettings.attendance) {
+                flatSettings.clockInGrace = categorizedSettings.attendance.clockInGrace;
+                flatSettings.late_grace_period = categorizedSettings.attendance.clockInGrace;
+                flatSettings.clockOutGrace = categorizedSettings.attendance.clockOutGrace;
+                flatSettings.lunchBreakDuration = categorizedSettings.attendance.lunchBreakDuration;
+                flatSettings.autoClockOut = categorizedSettings.attendance.autoClockOut;
+                flatSettings.autoClockOutTime = categorizedSettings.attendance.autoClockOutTime;
+                flatSettings.work_end_time = categorizedSettings.attendance.autoClockOutTime;
+                flatSettings.requireNotes = categorizedSettings.attendance.requireNotes;
+            }
+            
+            if (categorizedSettings.notifications) {
+                flatSettings.emailNotifications = categorizedSettings.notifications.emailNotifications;
+                flatSettings.tardyAlerts = categorizedSettings.notifications.tardyAlerts;
+                flatSettings.overtimeAlerts = categorizedSettings.notifications.overtimeAlerts;
+                flatSettings.payrollReminders = categorizedSettings.notifications.payrollReminders;
+                flatSettings.systemUpdates = categorizedSettings.notifications.systemUpdates;
+            }
+            
+            if (categorizedSettings.security) {
+                flatSettings.sessionTimeout = categorizedSettings.security.sessionTimeout;
+                flatSettings.auto_logout_minutes = categorizedSettings.security.sessionTimeout;
+                flatSettings.passwordMinLength = categorizedSettings.security.passwordMinLength;
+                flatSettings.requirePasswordChange = categorizedSettings.security.requirePasswordChange;
+                flatSettings.passwordChangeInterval = categorizedSettings.security.passwordChangeInterval;
+                flatSettings.twoFactorAuth = categorizedSettings.security.twoFactorAuth;
+            }
+            
+            if (categorizedSettings.users) {
+                flatSettings.defaultRole = categorizedSettings.users.defaultRole;
+                flatSettings.defaultHourlyRate = categorizedSettings.users.defaultHourlyRate;
+                flatSettings.autoEnableAccounts = categorizedSettings.users.autoEnableAccounts;
+                flatSettings.requireEmailVerification = categorizedSettings.users.requireEmailVerification;
+                flatSettings.lockoutAttempts = categorizedSettings.users.lockoutAttempts;
+                flatSettings.lockoutDuration = categorizedSettings.users.lockoutDuration;
+                flatSettings.autoInactivate = categorizedSettings.users.autoInactivate;
+                flatSettings.inactiveThreshold = categorizedSettings.users.inactiveThreshold;
+            }
+            
+            console.log('Converted to flat settings:', flatSettings);
+            
+            // Call updateSettings with the flat settings structure
+            const result = await this.updateSettings({ settings: flatSettings });
+            console.log('Update settings result:', result);
+            
+            return result;
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            return { success: false, message: 'Failed to save settings' };
         }
     }
 

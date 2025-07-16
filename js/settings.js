@@ -125,8 +125,8 @@ class SettingsController {
             try {
                 if (this.directFlow && this.directFlow.getSettings) {
                     const result = await this.directFlow.getSettings();
-                    if (result.success && result.data) {
-                        savedSettings = result.data;
+                    if (result && Object.keys(result).length > 0) {
+                        savedSettings = result;
                         console.log('Settings loaded from DirectFlow:', savedSettings);
                     }
                 } else {
@@ -142,61 +142,57 @@ class SettingsController {
                 savedSettings = {};
             }
             
+            // Map database settings to organized categories
             this.currentSettings = {
                 general: {
-                    companyName: 'Bricks Company',
-                    timezone: 'Asia/Manila',
-                    dateFormat: 'MM/DD/YYYY',
-                    timeFormat: '12',
-                    currency: 'PHP',
-                    language: 'en',
-                    ...savedSettings.general
+                    companyName: savedSettings.companyName || savedSettings.company_name || 'Bricks Company',
+                    timezone: savedSettings.timezone || savedSettings.company_timezone || 'Asia/Manila',
+                    dateFormat: savedSettings.dateFormat || 'MM/DD/YYYY',
+                    timeFormat: savedSettings.timeFormat || '12',
+                    currency: savedSettings.currency || 'PHP',
+                    language: savedSettings.language || 'en'
                 },
                 payroll: {
-                    payPeriod: 'weekly',
-                    payday: 'friday',
-                    overtimeRate: 1.5,
-                    overtimeThreshold: 40,
-                    roundingRules: 'nearest_quarter',
-                    autoCalculate: true,
-                    ...savedSettings.payroll
+                    payPeriod: savedSettings.payPeriod || savedSettings.payroll_frequency || 'weekly',
+                    payday: savedSettings.payday || 'friday',
+                    overtimeRate: savedSettings.overtimeRate || savedSettings.overtime_rate_multiplier || 1.5,
+                    overtimeThreshold: savedSettings.overtimeThreshold || savedSettings.overtime_threshold_hours || 40,
+                    roundingRules: savedSettings.roundingRules || 'nearest_quarter',
+                    autoCalculate: savedSettings.autoCalculate !== undefined ? savedSettings.autoCalculate : true
                 },
                 attendance: {
-                    clockInGrace: 5,
-                    clockOutGrace: 5,
-                    lunchBreakDuration: 30,
-                    autoClockOut: false,
-                    autoClockOutTime: '18:00',
-                    requireNotes: false,
-                    ...savedSettings.attendance
+                    clockInGrace: savedSettings.clockInGrace || savedSettings.late_grace_period || 5,
+                    clockOutGrace: savedSettings.clockOutGrace || 5,
+                    lunchBreakDuration: savedSettings.lunchBreakDuration || 30,
+                    autoClockOut: savedSettings.autoClockOut !== undefined ? savedSettings.autoClockOut : false,
+                    autoClockOutTime: savedSettings.autoClockOutTime || savedSettings.work_end_time || '18:00',
+                    requireNotes: savedSettings.requireNotes !== undefined ? savedSettings.requireNotes : false
                 },
                 notifications: {
-                    emailNotifications: true,
-                    tardyAlerts: true,
-                    overtimeAlerts: true,
-                    payrollReminders: true,
-                    systemUpdates: true,
-                    ...savedSettings.notifications
+                    emailNotifications: savedSettings.emailNotifications !== undefined ? savedSettings.emailNotifications : true,
+                    tardyAlerts: savedSettings.tardyAlerts !== undefined ? savedSettings.tardyAlerts : true,
+                    overtimeAlerts: savedSettings.overtimeAlerts !== undefined ? savedSettings.overtimeAlerts : true,
+                    payrollReminders: savedSettings.payrollReminders !== undefined ? savedSettings.payrollReminders : true,
+                    systemUpdates: savedSettings.systemUpdates !== undefined ? savedSettings.systemUpdates : true
                 },
                 security: {
-                    sessionTimeout: 480,
-                    passwordMinLength: 6,
-                    requirePasswordChange: false,
-                    passwordChangeInterval: 90,
-                    twoFactorAuth: false,
-                    ...savedSettings.security
+                    sessionTimeout: savedSettings.sessionTimeout || savedSettings.auto_logout_minutes || 480,
+                    passwordMinLength: savedSettings.passwordMinLength || 6,
+                    requirePasswordChange: savedSettings.requirePasswordChange !== undefined ? savedSettings.requirePasswordChange : false,
+                    passwordChangeInterval: savedSettings.passwordChangeInterval || 90,
+                    twoFactorAuth: savedSettings.twoFactorAuth !== undefined ? savedSettings.twoFactorAuth : false
                 },
                 users: {
-                    defaultRole: 'employee',
-                    defaultHourlyRate: 15.00,
-                    autoEnableAccounts: true,
-                    requireEmailVerification: false,
-                    lockoutAttempts: 5,
-                    lockoutDuration: 30,
-                    autoInactivate: false,
-                    inactiveThreshold: 90,
-                    ...savedSettings.users
+                    defaultRole: savedSettings.defaultRole || 'employee',
+                    defaultHourlyRate: savedSettings.defaultHourlyRate || 15.00,
+                    autoEnableAccounts: savedSettings.autoEnableAccounts !== undefined ? savedSettings.autoEnableAccounts : true,
+                    requireEmailVerification: savedSettings.requireEmailVerification !== undefined ? savedSettings.requireEmailVerification : false,
+                    lockoutAttempts: savedSettings.lockoutAttempts || 5,
+                    lockoutDuration: savedSettings.lockoutDuration || 30,
+                    autoInactivate: savedSettings.autoInactivate !== undefined ? savedSettings.autoInactivate : false,
+                    inactiveThreshold: savedSettings.inactiveThreshold || 90
                 },
+                // Keep all original settings for completeness
                 ...savedSettings
             };
         } catch (error) {
@@ -899,21 +895,26 @@ class SettingsController {
 
             // Collect form data
             const formData = this.collectFormData();
+            console.log('Collected form data:', formData);
             
             // Validate form data
             const validationResult = this.validateFormData(formData);
             if (!validationResult.isValid) {
+                console.error('Validation failed:', validationResult.errors);
                 this.showErrorMessage('Please fix validation errors before saving');
                 return false;
             }
 
             // Save to DirectFlow data service
             if (this.directFlow && this.directFlow.saveSettings) {
+                console.log('Saving to DirectFlow...');
                 const result = await this.directFlow.saveSettings(formData);
+                console.log('DirectFlow save result:', result);
                 if (!result.success) {
                     throw new Error(result.message || 'Failed to save settings');
                 }
             } else {
+                console.log('DirectFlow not available, falling back to localStorage');
                 // Fallback to localStorage
                 localStorage.setItem('attendance-settings', JSON.stringify(formData));
             }
@@ -2253,7 +2254,14 @@ class SettingsController {
                 throw new Error('DirectFlow not available for user stats');
             }
             
-            const employees = this.directFlow.getEmployees();
+            const employees = await this.directFlow.getEmployees();
+            
+            // Ensure employees is an array
+            if (!Array.isArray(employees)) {
+                console.warn('Employees data is not an array:', employees);
+                throw new Error('Invalid employees data format');
+            }
+            
             const stats = {
                 total: employees.length,
                 active: employees.filter(emp => emp.status === 'active').length,

@@ -342,14 +342,13 @@ class SidebarManager {
      * Setup authentication event listeners with proper error handling
      */
     setupAuthEventListeners() {
-        // Use a small delay to ensure all scripts are loaded
+        // DirectFlowAuth doesn't support addEventListener, so we'll use periodic checks instead
         setTimeout(() => {
             try {
                 if (typeof window !== 'undefined' && window.directFlowAuth) {
-                    window.directFlowAuth.addEventListener('login', (user) => this.handleUserChange(user));
-                    window.directFlowAuth.addEventListener('logout', () => this.handleUserLogout());
-                    window.directFlowAuth.addEventListener('user_updated', (user) => this.handleUserChange(user));
-                    console.log('Sidebar: DirectFlowAuth event listeners set up successfully');
+                    // Check authentication status periodically
+                    this.setupAuthStatusCheck();
+                    console.log('Sidebar: DirectFlowAuth status checking set up successfully');
                 } else {
                     console.warn('Sidebar: DirectFlowAuth not available for event listeners');
                 }
@@ -357,6 +356,21 @@ class SidebarManager {
                 console.warn('Sidebar: Error setting up DirectFlowAuth event listeners:', error);
             }
         }, 100);
+    }
+
+    /**
+     * Setup periodic authentication status checking
+     */
+    setupAuthStatusCheck() {
+        // Check auth status every 5 seconds
+        setInterval(() => {
+            if (window.directFlowAuth && window.directFlowAuth.isAuthenticated()) {
+                const currentUser = window.directFlowAuth.getCurrentUser();
+                if (currentUser && JSON.stringify(currentUser) !== JSON.stringify(this.currentUser)) {
+                    this.handleUserChange(currentUser);
+                }
+            }
+        }, 5000);
     }
 
     /**
