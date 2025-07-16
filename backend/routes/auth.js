@@ -6,7 +6,7 @@ const db = require('../database/connection');
 const { auth, optionalAuth } = require('../middleware/auth');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '365d'; // 1 year expiration
 
 // Login endpoint
 router.post('/login', async (req, res) => {
@@ -82,15 +82,15 @@ router.post('/login', async (req, res) => {
             role: user.role
         };
 
-        const expiresIn = rememberMe ? '30d' : JWT_EXPIRES_IN;
+        const expiresIn = rememberMe ? '365d' : JWT_EXPIRES_IN; // 1 year for both
         const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn });
 
         // Calculate expiry date
         const expiryDate = new Date();
         if (rememberMe) {
-            expiryDate.setDate(expiryDate.getDate() + 30);
+            expiryDate.setDate(expiryDate.getDate() + 365); // 1 year
         } else {
-            expiryDate.setHours(expiryDate.getHours() + 24);
+            expiryDate.setDate(expiryDate.getDate() + 365); // 1 year
         }
 
         // Store session in database
@@ -130,7 +130,7 @@ router.post('/login', async (req, res) => {
             data: {
                 user: userData,
                 token,
-                expiresIn: rememberMe ? '30d' : '24h'
+                expiresIn: rememberMe ? '365d' : '365d' // 1 year for both
             }
         });
 
@@ -360,15 +360,15 @@ router.post('/refresh', auth, async (req, res) => {
             role: req.user.role
         };
         
-        const expiresIn = rememberMe ? '30d' : JWT_EXPIRES_IN;
+        const expiresIn = rememberMe ? '365d' : JWT_EXPIRES_IN; // 1 year for both
         const newToken = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn });
         
         // Calculate new expiry date
         const expiryDate = new Date();
         if (rememberMe) {
-            expiryDate.setDate(expiryDate.getDate() + 30);
+            expiryDate.setDate(expiryDate.getDate() + 365); // 1 year
         } else {
-            expiryDate.setHours(expiryDate.getHours() + 24);
+            expiryDate.setDate(expiryDate.getDate() + 365); // 1 year
         }
         
         // Update session in database
@@ -395,7 +395,7 @@ router.post('/refresh', auth, async (req, res) => {
             message: 'Token refreshed successfully',
             data: {
                 token: newToken,
-                expiresIn: rememberMe ? '30d' : '24h',
+                expiresIn: rememberMe ? '365d' : '365d', // 1 year for both
                 needsRefresh: true
             }
         });
