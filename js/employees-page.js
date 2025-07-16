@@ -59,34 +59,28 @@ class EmployeesPageManager {
             // Use DirectFlow for all data operations
             const employeesData = await this.directFlow.getEmployees();
             
-            // Ensure we have an array
+            // DirectFlow now returns the employees array directly
             if (Array.isArray(employeesData)) {
                 this.employees = employeesData;
-            } else if (employeesData && typeof employeesData === 'object' && Array.isArray(employeesData.employees)) {
-                // Handle case where data is wrapped in an object
-                this.employees = employeesData.employees;
             } else {
-                console.warn('Unexpected employees data format:', employeesData);
+                console.warn('Expected array from DirectFlow.getEmployees(), got:', employeesData);
                 this.employees = [];
             }
             
             // Ensure filteredEmployees is also an array
-            this.filteredEmployees = Array.isArray(this.employees) ? [...this.employees] : [];
+            this.filteredEmployees = [...this.employees];
             
             // Get departments from employee data
-            if (Array.isArray(this.employees)) {
-                const departmentSet = new Set(this.employees.map(emp => emp.department).filter(Boolean));
-                this.departments = Array.from(departmentSet);
-            } else {
-                this.departments = [];
-            }
+            const departmentSet = new Set(this.employees.map(emp => emp.department).filter(Boolean));
+            this.departments = Array.from(departmentSet);
             
             console.log('[DATA INTEGRITY] Employees page using DirectFlow data:', {
                 count: this.employees.length,
                 source: 'DirectFlow',
                 employees: this.employees.map(emp => ({ 
                     id: emp.id, 
-                    name: emp.fullName || emp.name,
+                    employee_id: emp.employee_id,
+                    name: emp.full_name || emp.first_name + ' ' + emp.last_name,
                     department: emp.department 
                 }))
             });

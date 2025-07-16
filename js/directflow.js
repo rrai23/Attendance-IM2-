@@ -79,10 +79,16 @@ class DirectFlow {
         try {
             const response = await this.makeRequest('/employees');
             const data = await response.json();
-            return data; // Return the full response object instead of just data
+            
+            // Return the employees array directly if successful
+            if (data.success && data.data && data.data.employees) {
+                return data.data.employees;
+            }
+            
+            return []; // Return empty array if no employees found
         } catch (error) {
             console.error('Error getting employees:', error);
-            return { success: false, message: error.message, data: [] };
+            return []; // Return empty array on error
         }
     }
 
