@@ -944,9 +944,9 @@ class EmployeesPageManager {
         console.log('🔥 Employee name:', employeeName);
         
         this.setElementText('deleteEmployeeName', employeeName);
-        // Use employee_id for backend API compatibility
-        const employeeId = employee.employee_id || employee.id;
-        console.log('🔥 Employee ID to delete:', employeeId);
+        // Use primary key id for backend API compatibility
+        const employeeId = employee.id; // Use the primary key, not employee_id
+        console.log('🔥 Employee ID to delete (primary key):', employeeId);
         
         this.setElementValue('deleteEmployeeId', employeeId);
         

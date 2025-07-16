@@ -454,41 +454,77 @@ router.post('/attendance', auth, async (req, res) => {
 router.delete('/employees/:id', auth, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
+        console.log('🔥 DELETE /employees/:id called with ID:', id);
 
-        // Get employee info before deletion
-        const [employee] = await db.execute(
-            'SELECT employee_id, full_name FROM employees WHERE id = ?',
-            [id]
-        );
+        // Get employee info before deletion - handle both primary key and employee_id
+        let employee;
+        let query;
+        
+        // Check if the ID is numeric (primary key) or string (employee_id)
+        if (/^\d+$/.test(id)) {
+            // It's a numeric ID, use primary key
+            query = 'SELECT id, employee_id, full_name FROM employees WHERE id = ?';
+        } else {
+            // It's a string ID, use employee_id
+            query = 'SELECT id, employee_id, full_name FROM employees WHERE employee_id = ?';
+        }
+        
+        const [employeeResult] = await db.execute(query, [id]);
+        console.log('🔥 Employee lookup result:', employeeResult);
 
-        if (employee.length === 0) {
+        if (employeeResult.length === 0) {
+            console.log('❌ Employee not found for ID:', id);
             return res.status(404).json({
                 success: false,
                 message: 'Employee not found'
             });
         }
 
+        employee = employeeResult[0];
+        console.log('🔥 Found employee to delete:', employee);
+
         // Count attendance records that will be deleted
         const [attendanceCount] = await db.execute(
             'SELECT COUNT(*) as count FROM attendance_records WHERE employee_id = ?',
-            [employee[0].employee_id]
+            [employee.employee_id]
         );
 
-        // Delete employee (cascades to attendance records)
-        await db.execute('DELETE FROM employees WHERE id = ?', [id]);
+        console.log('🔥 Attendance records to be deleted:', attendanceCount[0].count);
+
+        // Delete employee using primary key (cascades to attendance records)
+        await db.execute('DELETE FROM employees WHERE id = ?', [employee.id]);
+
+        console.log('✅ Employee deleted successfully');
 
         res.json({
             success: true,
             message: 'Employee deleted successfully',
-            deletedEmployee: employee[0],
+            deletedEmployee: employee,
             removedAttendanceRecords: attendanceCount[0].count
         });
 
     } catch (error) {
-        console.error('Error deleting employee:', error);
+        console.error('❌ Error deleting employee:', error);
+        console.error('Error details:', {
+            message: error.message,
+            code: error.code,
+            sqlState: error.sqlState
+        });
+        
+        // Provide specific error messages
+        let errorMessage = 'Failed to delete employee';
+        
+        if (error.code === 'ER_ROW_IS_REFERENCED_2') {
+            errorMessage = 'Cannot delete employee: Employee has related records that must be removed first';
+        } else if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+            errorMessage = 'Cannot delete employee: Referenced employee not found';
+        } else if (error.message) {
+            errorMessage = 'Failed to delete employee: ' + error.message;
+        }
+        
         res.status(500).json({
             success: false,
-            message: 'Failed to delete employee: ' + error.message
+            message: errorMessage
         });
     }
 });

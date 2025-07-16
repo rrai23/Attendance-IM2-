@@ -227,12 +227,23 @@ const auth = async (req, res, next) => {
 
 // Admin role check middleware
 const requireAdmin = (req, res, next) => {
+    if (!req.user) {
+        console.error('❌ requireAdmin: req.user is undefined');
+        return res.status(401).json({
+            success: false,
+            message: 'Authentication required'
+        });
+    }
+    
     if (req.user.role !== 'admin') {
+        console.log('❌ requireAdmin: Access denied for role:', req.user.role);
         return res.status(403).json({
             success: false,
             message: 'Admin access required'
         });
     }
+    
+    console.log('✅ requireAdmin: Admin access granted for user:', req.user.username);
     next();
 };
 

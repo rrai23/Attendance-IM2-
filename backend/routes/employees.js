@@ -157,7 +157,7 @@ router.get('/:employeeId', auth, async (req, res) => {
                 ua.created_at as account_created
             FROM employees e
             LEFT JOIN user_accounts ua ON e.employee_id = ua.employee_id
-            WHERE e.employee_id = ?
+            WHERE e.id = ?
         `, [employeeId]);
 
         if (employees.length === 0) {
@@ -449,50 +449,62 @@ router.put('/:employeeId', requireManagerOrAdmin, async (req, res) => {
 });
 
 // Delete employee (soft delete)
-router.delete('/:employeeId', requireAdmin, async (req, res) => {
+router.delete('/:employeeId', auth, requireAdmin, async (req, res) => {
     try {
         const { employeeId } = req.params;
+        console.log('🔥 DELETE /api/employees/:employeeId called with ID:', employeeId);
 
         // Check if employee exists
-        const existing = await db.execute('SELECT employee_id FROM employees WHERE employee_id = ?', [employeeId]);
+        const existing = await db.execute('SELECT id, employee_id FROM employees WHERE id = ?', [employeeId]);
         if (existing.length === 0) {
+            console.log('❌ Employee not found for ID:', employeeId);
             return res.status(404).json({
                 success: false,
                 message: 'Employee not found'
             });
         }
 
-        await db.beginTransaction();
+        console.log('🔥 Found employee to delete:', existing[0]);
+        const actualEmployeeId = existing[0].employee_id; // Get the employee_id for related tables
 
+        // Get a connection from the pool for transaction
+        const connection = await db.pool.getConnection();
+        
         try {
-            // Soft delete employee
-            await db.execute(
-                'UPDATE employees SET status = ?, updated_at = NOW() WHERE employee_id = ?',
+            await connection.beginTransaction();
+            
+            // Soft delete employee using primary key
+            await connection.execute(
+                'UPDATE employees SET status = ?, updated_at = NOW() WHERE id = ?',
                 ['inactive', employeeId]
             );
 
-            // Deactivate user account
-            await db.execute(
+            // Deactivate user account using employee_id
+            await connection.execute(
                 'UPDATE user_accounts SET is_active = FALSE, updated_at = NOW() WHERE employee_id = ?',
-                [employeeId]
+                [actualEmployeeId]
             );
 
-            // Deactivate all sessions
-            await db.execute(
+            // Deactivate all sessions using employee_id
+            await connection.execute(
                 'UPDATE user_sessions SET is_active = FALSE WHERE employee_id = ?',
-                [employeeId]
+                [actualEmployeeId]
             );
 
-            await db.commit();
+            await connection.commit();
+            
+            console.log('✅ Employee soft deleted successfully');
 
             res.json({
                 success: true,
                 message: 'Employee deleted successfully'
             });
-
+            
         } catch (error) {
-            await db.rollback();
+            await connection.rollback();
             throw error;
+        } finally {
+            connection.release();
         }
 
     } catch (error) {
