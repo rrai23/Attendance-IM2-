@@ -19,8 +19,9 @@ class DirectFlowAuth {
     init() {
         this.checkTokenValidity();
         this.startTokenRefreshInterval();
+        this.startSessionMaintenance();
         this.initialized = true;
-        console.log('✅ DirectFlowAuth initialized');
+        console.log('✅ DirectFlowAuth initialized with session maintenance');
     }
 
     // Check if current token is valid
@@ -232,11 +233,30 @@ class DirectFlowAuth {
             if (this.isAuthenticated() && this.needsTokenRefresh()) {
                 const result = await this.refreshToken();
                 if (!result.success) {
-                    console.log('❌ Token refresh failed, logging out');
-                    this.logout();
+                    console.log('❌ Token refresh failed, but keeping user logged in');
+                    // Don't logout automatically - let user continue with current session
+                    // Only logout if they explicitly encounter auth errors
                 }
             }
         }, 30 * 60 * 1000); // Check every 30 minutes
+    }
+
+    // Session maintenance - keep session active
+    startSessionMaintenance() {
+        setInterval(async () => {
+            if (this.isAuthenticated()) {
+                try {
+                    // Make a lightweight API call to maintain session
+                    await this.apiRequest('/api/auth/heartbeat', {
+                        method: 'GET'
+                    });
+                    console.log('💓 Session heartbeat successful');
+                } catch (error) {
+                    console.log('💓 Session heartbeat failed:', error.message);
+                    // Don't logout on heartbeat failure - just log it
+                }
+            }
+        }, 15 * 60 * 1000); // Every 15 minutes
     }
 
     /**
