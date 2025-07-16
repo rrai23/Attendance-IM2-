@@ -475,6 +475,63 @@ router.post('/:employeeId/reset-password', requireAdmin, async (req, res) => {
     }
 });
 
+// Reset password by username (admin only)
+router.post('/reset-password', requireAdmin, async (req, res) => {
+    try {
+        const { username, newPassword, forceChange = false } = req.body;
+
+        if (!username || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: 'username and newPassword are required'
+            });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: 'Password must be at least 6 characters long'
+            });
+        }
+
+        // Find user by username
+        const userResult = await db.execute(
+            'SELECT employee_id FROM user_accounts WHERE username = ?',
+            [username]
+        );
+
+        if (userResult.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        const employeeId = userResult[0].employee_id;
+
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // Update password
+        await db.execute(
+            'UPDATE user_accounts SET password_hash = ?, must_change_password = ?, updated_at = CURRENT_TIMESTAMP WHERE employee_id = ?',
+            [hashedPassword, forceChange, employeeId]
+        );
+
+        res.json({
+            success: true,
+            message: 'Password reset successfully'
+        });
+
+    } catch (error) {
+        console.error('Reset password by username error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error resetting password'
+        });
+    }
+});
+
 // Delete user account (admin only)
 router.delete('/:employeeId', requireAdmin, async (req, res) => {
     try {

@@ -15,12 +15,12 @@ async function checkUsers() {
         
         // Check employees table
         const [employees] = await connection.execute(
-            'SELECT employee_code, first_name, last_name, email, department, position, status FROM employees'
+            'SELECT employee_id, first_name, last_name, email, department, position, status FROM employees'
         );
         
         console.log('Employees:', employees.length);
         employees.forEach(emp => {
-            console.log(`${emp.employee_code}: ${emp.first_name} ${emp.last_name} (${emp.email}) - ${emp.status}`);
+            console.log(`${emp.employee_id}: ${emp.first_name} ${emp.last_name} (${emp.email}) - ${emp.status}`);
         });
         
         // Check user_accounts table  

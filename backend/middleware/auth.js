@@ -100,10 +100,10 @@ const auth = async (req, res, next) => {
                 COALESCE(e.email, ua.email) as email,
                 COALESCE(e.department, ua.department) as department,
                 COALESCE(e.position, ua.position) as position,
-                COALESCE(e.date_hired, ua.hire_date) as hire_date,
+                COALESCE(e.hire_date, ua.hire_date) as hire_date,
                 COALESCE(e.status, ua.employee_status) as employee_status
             FROM user_accounts ua
-            LEFT JOIN employees e ON ua.employee_id = e.employee_code
+            LEFT JOIN employees e ON ua.employee_id = e.employee_id
             WHERE ua.employee_id = ? AND ua.is_active = TRUE
         `, [decoded.employee_id]);
 
@@ -221,10 +221,10 @@ const optionalAuth = async (req, res, next) => {
                 e.email,
                 e.department,
                 e.position,
-                e.date_hired as hire_date,
+                e.hire_date as hire_date,
                 e.status as employee_status
             FROM user_accounts ua
-            JOIN employees e ON ua.employee_id = e.employee_code
+            JOIN employees e ON ua.employee_id = e.employee_id
             WHERE ua.employee_id = ? AND ua.is_active = TRUE AND e.status = 'active'
         `, [decoded.employee_id]);
 

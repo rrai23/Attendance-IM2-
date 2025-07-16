@@ -30,11 +30,11 @@ router.get('/', auth, async (req, res) => {
                 e.department,
                 e.position,
                 null as manager_id,
-                e.date_hired,
+                e.hire_date,
                 e.status,
                 null as hourly_rate,
                 null as overtime_rate,
-                e.salary,
+                e.wage,
                 null as avatar,
                 null as address,
                 null as emergency_contact,
@@ -69,13 +69,13 @@ router.get('/', auth, async (req, res) => {
         }
 
         if (search) {
-            query += ' AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.email LIKE ? OR e.employee_code LIKE ?)';
+            query += ' AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.email LIKE ? OR e.employee_id LIKE ?)';
             const searchTerm = `%${search}%`;
             params.push(searchTerm, searchTerm, searchTerm, searchTerm);
         }
 
         // Add sorting
-        const validSortFields = ['employee_id', 'first_name', 'last_name', 'department', 'position', 'date_hired', 'created_at'];
+        const validSortFields = ['employee_id', 'first_name', 'last_name', 'department', 'position', 'hire_date', 'created_at'];
         const sortField = validSortFields.includes(sort) ? sort : 'last_name';
         const sortOrder = order.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
         query += ` ORDER BY e.${sortField} ${sortOrder}`;
@@ -111,7 +111,7 @@ router.get('/', auth, async (req, res) => {
         }
 
         if (search) {
-            countQuery += ' AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.email LIKE ? OR e.employee_code LIKE ?)';
+            countQuery += ' AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.email LIKE ? OR e.employee_id LIKE ?)';
             const searchTerm = `%${search}%`;
             countParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
         }
@@ -155,8 +155,8 @@ router.get('/:employeeId', auth, async (req, res) => {
                 ua.last_login,
                 ua.created_at as account_created
             FROM employees e
-            LEFT JOIN user_accounts ua ON e.employee_code = ua.employee_id
-            WHERE e.employee_code = ?
+            LEFT JOIN user_accounts ua ON e.employee_id = ua.employee_id
+            WHERE e.employee_id = ?
         `, [employeeId]);
 
         if (employees.length === 0) {
@@ -190,8 +190,8 @@ router.post('/', auth, requireManagerOrAdmin, async (req, res) => {
             phone,
             department,
             position,
-            date_hired,
-            salary,
+            hire_date,
+            wage,
             employment_type = 'full-time',
             shift_schedule = 'day',
             username,
@@ -200,10 +200,10 @@ router.post('/', auth, requireManagerOrAdmin, async (req, res) => {
         } = req.body;
 
         // Validate required fields
-        if (!first_name || !last_name || !email || !department || !position || !date_hired) {
+        if (!first_name || !last_name || !email || !department || !position || !hire_date) {
             return res.status(400).json({
                 success: false,
-                message: 'Required fields: first_name, last_name, email, department, position, date_hired'
+                message: 'Required fields: first_name, last_name, email, department, position, hire_date'
             });
         }
 
@@ -214,7 +214,7 @@ router.post('/', auth, requireManagerOrAdmin, async (req, res) => {
             
             while (true) {
                 const empCode = `EMP${year}${counter.toString().padStart(4, '0')}`;
-                const existing = await db.execute('SELECT employee_code FROM employees WHERE employee_code = ?', [empCode]);
+                const existing = await db.execute('SELECT employee_id FROM employees WHERE employee_id = ?', [empCode]);
                 if (existing.length === 0) {
                     return empCode;
                 }
@@ -240,13 +240,13 @@ router.post('/', auth, requireManagerOrAdmin, async (req, res) => {
         queries.push({
             query: `
                 INSERT INTO employees (
-                    employee_code, first_name, last_name, full_name, email, phone, 
-                    department, position, date_hired, hourly_rate, overtime_rate, status, created_at, updated_at
+                    employee_id, first_name, last_name, full_name, email, phone, 
+                    department, position, hire_date, hourly_rate, overtime_rate, status, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW(), NOW())
             `,
             params: [
                 employee_code, first_name, last_name, `${first_name} ${last_name}`, email, phone,
-                department, position, date_hired, salary ? (salary / 2080) : 15.00, 1.50
+                department, position, hire_date, wage ? (wage / 2080) : 15.00, 1.50
             ]
         });
 
@@ -293,8 +293,8 @@ router.post('/', auth, requireManagerOrAdmin, async (req, res) => {
                 ua.role,
                 ua.is_active as account_active
             FROM employees e
-            LEFT JOIN user_accounts ua ON e.employee_code = ua.employee_id
-            WHERE e.employee_code = ?
+            LEFT JOIN user_accounts ua ON e.employee_id = ua.employee_id
+            WHERE e.employee_id = ?
         `, [employee_code]);
 
         res.status(201).json({
@@ -331,7 +331,7 @@ router.put('/:employeeId', requireManagerOrAdmin, async (req, res) => {
             phone,
             department,
             position,
-            salary,
+            wage,
             employment_type,
             shift_schedule,
             status
@@ -388,9 +388,9 @@ router.put('/:employeeId', requireManagerOrAdmin, async (req, res) => {
             updateFields.push('position = ?');
             updateParams.push(position);
         }
-        if (salary !== undefined) {
-            updateFields.push('salary = ?');
-            updateParams.push(salary);
+        if (wage !== undefined) {
+            updateFields.push('wage = ?');
+            updateParams.push(wage);
         }
         if (employment_type !== undefined) {
             updateFields.push('employment_type = ?');
@@ -530,7 +530,7 @@ router.get('/stats/overview', requireManagerOrAdmin, async (req, res) => {
             db.execute(`
                 SELECT COUNT(*) as recent_hires 
                 FROM employees 
-                WHERE status = ? AND date_hired >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                WHERE status = ? AND hire_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
             `, ['active'])
         ]);
 

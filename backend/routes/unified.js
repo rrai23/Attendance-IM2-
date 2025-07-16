@@ -40,7 +40,7 @@ router.post('/sync', auth, async (req, res) => {
                             email = ?,
                             department = ?,
                             position = ?,
-                            date_hired = ?,
+                            hire_date = ?,
                             status = ?,
                             updated_at = CURRENT_TIMESTAMP
                         WHERE id = ?
@@ -73,8 +73,8 @@ router.post('/sync', auth, async (req, res) => {
                     // Insert new employee in employees table
                     await db.execute(`
                         INSERT INTO employees (
-                            id, employee_code, full_name, first_name, last_name, 
-                            email, department, position, date_hired, status, 
+                            id, employee_id, full_name, first_name, last_name, 
+                            email, department, position, hire_date, status, 
                             created_at, updated_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     `, [
@@ -208,8 +208,8 @@ router.get('/data', auth, async (req, res) => {
                 e.email,
                 e.department,
                 e.position,
-                e.date_hired as dateHired,
-                e.date_hired as hireDate,
+                e.hire_date as dateHired,
+                e.hire_date as hireDate,
                 e.status,
                 e.created_at as createdAt,
                 e.updated_at as updatedAt,
@@ -314,7 +314,7 @@ router.post('/employees', auth, requireManagerOrAdmin, async (req, res) => {
                     phone = ?,
                     department = ?,
                     position = ?,
-                    date_hired = ?,
+                    hire_date = ?,
                     status = ?,
                     wage = ?,
                     overtime_rate = ?,
@@ -346,7 +346,7 @@ router.post('/employees', auth, requireManagerOrAdmin, async (req, res) => {
                 INSERT INTO employees (
                     employee_id, username, password, role, full_name,
                     first_name, last_name, email, phone, department, position,
-                    date_hired, status, wage, overtime_rate, avatar
+                    hire_date, status, wage, overtime_rate, avatar
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
                 employeeData.employeeId || employeeData.employeeCode,
@@ -490,6 +490,152 @@ router.delete('/employees/:id', auth, requireAdmin, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to delete employee: ' + error.message
+        });
+    }
+});
+
+// Settings management endpoints
+router.get('/settings', auth, async (req, res) => {
+    try {
+        console.log('📋 Loading settings for user:', req.user.username);
+        
+        // In a real implementation, you would load settings from a dedicated settings table
+        // For now, we'll use a simple default settings structure
+        const defaultSettings = {
+            companyName: 'Bricks Company',
+            timezone: 'Asia/Manila',
+            dateFormat: 'MM/DD/YYYY',
+            timeFormat: '12',
+            workingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+            workingHours: {
+                start: '08:00',
+                end: '17:00'
+            },
+            lunchBreak: {
+                enabled: true,
+                duration: 60
+            },
+            notifications: {
+                email: true,
+                sms: false,
+                push: true
+            },
+            security: {
+                passwordMinLength: 8,
+                passwordRequireSymbols: true,
+                sessionTimeout: 1440
+            }
+        };
+        
+        // Try to load actual settings from database (if settings table exists)
+        try {
+            const settingsResult = await db.execute(
+                'SELECT * FROM system_settings WHERE id = 1'
+            );
+            
+            if (settingsResult.length > 0) {
+                const dbSettings = settingsResult[0];
+                // Merge database settings with defaults
+                const mergedSettings = {
+                    ...defaultSettings,
+                    companyName: dbSettings.company_name || defaultSettings.companyName,
+                    timezone: dbSettings.timezone || defaultSettings.timezone,
+                    dateFormat: dbSettings.date_format || defaultSettings.dateFormat,
+                    timeFormat: dbSettings.time_format || defaultSettings.timeFormat
+                };
+                
+                res.json({
+                    success: true,
+                    data: mergedSettings,
+                    message: 'Settings loaded successfully'
+                });
+            } else {
+                res.json({
+                    success: true,
+                    data: defaultSettings,
+                    message: 'Default settings loaded'
+                });
+            }
+        } catch (dbError) {
+            console.log('Settings table not found, using defaults:', dbError.message);
+            res.json({
+                success: true,
+                data: defaultSettings,
+                message: 'Default settings loaded'
+            });
+        }
+    } catch (error) {
+        console.error('Get settings error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to load settings: ' + error.message
+        });
+    }
+});
+
+router.post('/settings', auth, async (req, res) => {
+    try {
+        console.log('💾 Saving settings for user:', req.user.username);
+        console.log('Settings data:', req.body);
+        
+        const settings = req.body;
+        
+        // Try to save to database (if settings table exists)
+        try {
+            // First check if settings record exists
+            const existingSettings = await db.execute(
+                'SELECT id FROM system_settings WHERE id = 1'
+            );
+            
+            if (existingSettings.length > 0) {
+                // Update existing settings
+                await db.execute(`
+                    UPDATE system_settings SET
+                        company_name = ?,
+                        timezone = ?,
+                        date_format = ?,
+                        time_format = ?,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = 1
+                `, [
+                    settings.companyName || 'Bricks Company',
+                    settings.timezone || 'Asia/Manila',
+                    settings.dateFormat || 'MM/DD/YYYY',
+                    settings.timeFormat || '12'
+                ]);
+            } else {
+                // Insert new settings
+                await db.execute(`
+                    INSERT INTO system_settings (
+                        id, company_name, timezone, date_format, time_format,
+                        created_at, updated_at
+                    ) VALUES (1, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                `, [
+                    settings.companyName || 'Bricks Company',
+                    settings.timezone || 'Asia/Manila',
+                    settings.dateFormat || 'MM/DD/YYYY',
+                    settings.timeFormat || '12'
+                ]);
+            }
+            
+            res.json({
+                success: true,
+                message: 'Settings saved successfully'
+            });
+        } catch (dbError) {
+            console.log('Settings table not found, cannot save to database:', dbError.message);
+            // Even if we can't save to database, return success
+            // The frontend will handle localStorage fallback
+            res.json({
+                success: true,
+                message: 'Settings processed (localStorage fallback)'
+            });
+        }
+    } catch (error) {
+        console.error('Save settings error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to save settings: ' + error.message
         });
     }
 });

@@ -28,7 +28,7 @@ const seedDatabase = async () => {
         const employeeInsertQuery = `
             INSERT INTO employees (
                 id, employee_id, username, password, role, full_name, 
-                email, department, position, date_hired, status, 
+                email, department, position, hire_date, status, 
                 wage, overtime_rate, avatar
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;

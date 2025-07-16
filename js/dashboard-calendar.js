@@ -151,37 +151,26 @@ class DashboardCalendar {
                 this.holidays.set(dateKey, holiday);
             });
 
-            // Also check if dataService is available for additional holidays
-            if (typeof dataService !== 'undefined' && dataService) {
-                try {
-                    console.log('Loading additional holidays from data service...');
-                    const additionalHolidays = await dataService.getPhilippineHolidays(currentYear);
-                    console.log(`Loaded ${additionalHolidays.length} additional holidays from data service`);
-                    additionalHolidays.forEach(holiday => {
-                        const dateKey = this.formatDateKey(new Date(holiday.date));
-                        this.holidays.set(dateKey, holiday);
-                    });
-                } catch (serviceError) {
-                    console.warn('Data service holidays not available:', serviceError);
-                }
-            } else {
-                console.warn('Data service not available for loading additional holidays');
-            }
+            // Note: Holiday loading removed as it was using deprecated data service
+            // Default holidays are loaded from the static array above
         } catch (error) {
             console.error('Error loading holidays:', error);
         }
     }
 
     /**
-     * Load attendance data
+     * Load attendance data using DirectFlow
      */
     async loadAttendanceData() {
         try {
-            // Load attendance patterns for the calendar
-            if (typeof dataService !== 'undefined') {
-                const attendanceData = await dataService.getAttendanceOverview();
+            // Load attendance patterns for the calendar using DirectFlow
+            if (typeof window.directFlow !== 'undefined' && window.directFlow && window.directFlow.initialized) {
+                const attendanceStats = await window.directFlow.getStats();
                 // Process attendance data for calendar display
-                // This would mark days with high/low attendance, etc.
+                // This could mark days with high/low attendance, etc.
+                console.log('Loaded attendance stats from DirectFlow:', attendanceStats);
+            } else {
+                console.log('DirectFlow not available for attendance data');
             }
         } catch (error) {
             console.error('Error loading attendance data:', error);

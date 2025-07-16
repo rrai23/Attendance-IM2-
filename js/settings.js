@@ -62,11 +62,11 @@ class SettingsController {
      */
     async init() {
         try {
-            console.log('Initializing Settings Controller with unified data integration...');
+            console.log('Initializing Settings Controller with DirectFlow integration...');
             await this.loadSettings();
             this.setupTabs();
             this.setupEventListeners();
-            this.setupUnifiedDataListeners(); // Add unified data listeners
+            this.setupDirectFlowListeners(); // Add DirectFlow listeners
             this.handleUserManagementActions(); // Setup user management actions
             
             // Use hybrid approach: populate existing static fields and enhance where needed
@@ -79,18 +79,18 @@ class SettingsController {
             this.setupFormValidation();
             this.setupAutoSave();
             
-            // Load user stats from unified data
+            // Load user stats from DirectFlow
             await this.loadUserStats();
             
-            console.log('Settings Controller initialized successfully with unified data integration');
+            console.log('Settings Controller initialized successfully with DirectFlow integration');
         } catch (error) {
             console.error('Failed to initialize settings controller:', error);
             this.showErrorMessage('Failed to load settings. Please refresh the page.');
             // Try to render at least a basic interface
             try {
                 this.renderBasicInterface();
-            } catch (fallbackError) {
-                console.error('Failed to render basic interface:', fallbackError);
+            } catch (renderError) {
+                console.error('Failed to render basic interface:', renderError);
             }
         }
     }
@@ -114,7 +114,7 @@ class SettingsController {
     }
 
     /**
-     * Load all settings from unified data system
+     * Load all settings from DirectFlow
      */
     async loadSettings() {
         try {
@@ -122,18 +122,19 @@ class SettingsController {
             let savedSettings = {};
             
             try {
-                if (this.directFlow && this.directFlow.getSettings) {
-                    const result = await this.directFlow.getSettings();
+                if (this.directFlow && this.directFlow.initialized) {
+                    // Try to load settings from backend via DirectFlow
+                    const result = await this.loadSettingsFromBackend();
                     if (result && Object.keys(result).length > 0) {
                         savedSettings = result;
-                        console.log('Settings loaded from DirectFlow:', savedSettings);
+                        console.log('Settings loaded from DirectFlow backend:', savedSettings);
                     }
                 } else {
-                    // Fallback to direct localStorage access with consistent key
+                    // Direct localStorage access as fallback
                     const settingsData = localStorage.getItem('attendance-settings');
                     if (settingsData) {
                         savedSettings = JSON.parse(settingsData);
-                        console.log('Settings loaded from localStorage fallback:', savedSettings);
+                        console.log('Settings loaded from localStorage:', savedSettings);
                     }
                 }
             } catch (error) {
@@ -904,17 +905,17 @@ class SettingsController {
                 return false;
             }
 
-            // Save to DirectFlow data service
-            if (this.directFlow && this.directFlow.saveSettings) {
-                console.log('Saving to DirectFlow...');
-                const result = await this.directFlow.saveSettings(formData);
-                console.log('DirectFlow save result:', result);
+            // Save to DirectFlow backend
+            if (this.directFlow && this.directFlow.initialized) {
+                console.log('Saving to DirectFlow backend...');
+                const result = await this.saveSettingsToBackend(formData);
+                console.log('DirectFlow backend save result:', result);
                 if (!result.success) {
                     throw new Error(result.message || 'Failed to save settings');
                 }
             } else {
-                console.log('DirectFlow not available, falling back to localStorage');
-                // Fallback to localStorage
+                console.log('DirectFlow not available, saving to localStorage');
+                // Direct localStorage save
                 localStorage.setItem('attendance-settings', JSON.stringify(formData));
             }
 
@@ -2019,8 +2020,8 @@ class SettingsController {
                 return;
             }
 
-            // Get user accounts from DirectFlow
-            const employees = await this.directFlow.getEmployees();
+            // Get user accounts from DirectFlow API
+            const employees = await this.getAllEmployees();
             const stats = {
                 total: employees.length,
                 active: employees.filter(emp => emp.status === 'active').length,
@@ -2042,7 +2043,7 @@ class SettingsController {
                             <span class="stat-label">Active Accounts</span>
                         </div>
                         <div class="stat-item">
-                            <span class="stat-number">${stats.employees}</span>
+                            <span class="stat-number">${stats.active}</span>
                             <span class="stat-label">Employee Accounts</span>
                         </div>
                         <div class="stat-item">
@@ -2052,10 +2053,6 @@ class SettingsController {
                         <div class="stat-item">
                             <span class="stat-number">${stats.inactive}</span>
                             <span class="stat-label">Inactive</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-number">${stats.admins}</span>
-                            <span class="stat-label">Administrators</span>
                         </div>
                     </div>
                 `;
@@ -2075,7 +2072,7 @@ class SettingsController {
         }
 
         try {
-            const employees = await this.directFlow.getEmployees();
+            const employees = await this.getAllEmployees();
             
             const modalContent = `
                 <div class="accounts-table-container">
@@ -2093,7 +2090,7 @@ class SettingsController {
                         <tbody>
                             ${employees.map(employee => `
                                 <tr>
-                                    <td>${employee.employee_code || 'N/A'}</td>
+                                    <td>${employee.employee_id || 'N/A'}</td>
                                     <td>${employee.full_name || employee.first_name + ' ' + employee.last_name || 'N/A'}</td>
                                     <td>${employee.email || 'N/A'}</td>
                                     <td>${employee.department || 'N/A'}</td>
@@ -2175,22 +2172,18 @@ class SettingsController {
                 return;
             }
 
-            if (!window.unifiedAccountManager || !window.unifiedAccountManager.initialized) {
-                this.showErrorMessage('Account manager not available');
-                return;
-            }
-
-            const accounts = window.unifiedAccountManager.getAllAccounts();
+            // Get all accounts using DirectFlow
+            const accounts = await this.getAllUserAccounts();
             let resetCount = 0;
 
             for (const account of accounts) {
-                if (account.isSystemAccount) continue; // Skip system accounts
+                if (account.role === 'system') continue; // Skip system accounts
                 
                 const shouldReset = resetType === 'all' || 
-                                  (resetType === 'expired' && account.mustChangePassword);
+                                  (resetType === 'expired' && account.must_change_password);
                 
                 if (shouldReset) {
-                    await window.unifiedAccountManager.resetPassword(account.username, newPassword, forceChange);
+                    await this.resetPassword(account.username, newPassword, forceChange);
                     resetCount++;
                 }
             }
@@ -2215,18 +2208,13 @@ class SettingsController {
 
             const forceChange = confirm('Force password change on next login?');
 
-            if (!window.unifiedAccountManager || !window.unifiedAccountManager.initialized) {
-                this.showErrorMessage('Account manager not available');
-                return;
-            }
-
-            const result = await window.unifiedAccountManager.resetPassword(username, newPassword, forceChange);
+            const result = await this.resetPassword(username, newPassword, forceChange);
             
             if (result.success) {
                 this.showSuccessMessage(`Password reset for ${username}`);
                 await this.loadAccountSummary();
             } else {
-                this.showErrorMessage('Failed to reset password: ' + result.message);
+                this.showErrorMessage('Failed to reset password: ' + (result.message || 'Unknown error'));
             }
 
         } catch (error) {
@@ -2245,7 +2233,7 @@ class SettingsController {
                 throw new Error('DirectFlow not available for user stats');
             }
             
-            const employees = await this.directFlow.getEmployees();
+            const employees = await this.getAllEmployees();
             
             // Ensure employees is an array
             if (!Array.isArray(employees)) {
@@ -2299,10 +2287,10 @@ class SettingsController {
             this.updateAdditionalStats(stats);
 
         } catch (error) {
-            console.error('Failed to load user stats from unified employee manager:', error);
+            console.error('Failed to load user stats from DirectFlow:', error);
             this.showErrorMessage('Failed to load user statistics: ' + error.message);
             
-            // Show fallback stats
+            // Show error stats
             const container = document.getElementById('user-stats');
             if (container) {
                 container.innerHTML = `
@@ -2375,6 +2363,143 @@ class SettingsController {
         } catch (error) {
             console.error('Error resetting localStorage:', error);
             this.showErrorMessage('Failed to reset local storage: ' + error.message);
+        }
+    }
+
+    /**
+     * DirectFlow API Methods - Direct backend communication
+     */
+    
+    // Make authenticated API calls through DirectFlow
+    async makeDirectFlowAPICall(endpoint, method = 'GET', data = null) {
+        try {
+            const token = this.directFlow.getToken();
+            if (!token) {
+                throw new Error('No authentication token available');
+            }
+
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            };
+
+            const options = {
+                method,
+                headers,
+                credentials: 'include'
+            };
+
+            if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+                options.body = JSON.stringify(data);
+            }
+
+            const response = await fetch(`/api${endpoint}`, options);
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || `API Error: ${response.status}`);
+            }
+
+            return result;
+        } catch (error) {
+            console.error(`DirectFlow API call failed (${endpoint}):`, error);
+            throw error;
+        }
+    }
+
+    // Get all user accounts
+    async getAllUserAccounts() {
+        try {
+            const result = await this.makeDirectFlowAPICall('/accounts');
+            return result.data || [];
+        } catch (error) {
+            console.error('Failed to get user accounts:', error);
+            throw error;
+        }
+    }
+
+    // Get all employees
+    async getAllEmployees() {
+        try {
+            const result = await this.makeDirectFlowAPICall('/unified/employees');
+            return result.data || [];
+        } catch (error) {
+            console.error('Failed to get employees:', error);
+            throw error;
+        }
+    }
+
+    // Reset password for user
+    async resetPassword(username, newPassword, forceChange = false) {
+        try {
+            const result = await this.makeDirectFlowAPICall('/accounts/reset-password', 'POST', {
+                username,
+                newPassword,
+                forceChange
+            });
+            return result;
+        } catch (error) {
+            console.error('Failed to reset password:', error);
+            throw error;
+        }
+    }
+
+    // Get user statistics
+    async getUserStatistics() {
+        try {
+            const result = await this.makeDirectFlowAPICall('/accounts/stats/overview');
+            return result.data || {};
+        } catch (error) {
+            console.error('Failed to get user statistics:', error);
+            throw error;
+        }
+    }
+
+    // Save settings to backend
+    async saveSettingsToBackend(settings) {
+        try {
+            const result = await this.makeDirectFlowAPICall('/unified/settings', 'POST', settings);
+            return result;
+        } catch (error) {
+            console.error('Failed to save settings to backend:', error);
+            throw error;
+        }
+    }
+
+    // Load settings from backend
+    async loadSettingsFromBackend() {
+        try {
+            const result = await this.makeDirectFlowAPICall('/unified/settings');
+            return result.data || {};
+        } catch (error) {
+            console.error('Failed to load settings from backend:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Setup DirectFlow event listeners
+     */
+    setupDirectFlowListeners() {
+        // Listen for DirectFlow events
+        if (this.directFlow) {
+            console.log('Setting up DirectFlow event listeners...');
+            
+            // Listen for authentication changes
+            window.addEventListener('authenticationComplete', () => {
+                console.log('Authentication completed, refreshing settings...');
+                this.loadSettings();
+            });
+
+            // Listen for authentication errors
+            window.addEventListener('authenticationError', (event) => {
+                console.error('Authentication error:', event.detail);
+                this.showErrorMessage('Authentication error. Please log in again.');
+                // Redirect to login if needed
+                setTimeout(() => {
+                    window.location.href = '/login.html';
+                }, 2000);
+            });
         }
     }
 }
