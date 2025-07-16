@@ -40,6 +40,9 @@ class DirectFlow {
             // Test connection
             await this.testConnection();
             
+            // Emit initialized event
+            this.emit('initialized', { timestamp: new Date().toISOString() });
+            
         } catch (error) {
             console.error('❌ DirectFlow initialization error:', error);
             this.initialized = false;
@@ -253,6 +256,17 @@ class DirectFlow {
         if (this.eventListeners.has(event)) {
             this.eventListeners.get(event).forEach(callback => callback(data));
         }
+    }
+
+    /**
+     * Event System (DOM-style compatibility)
+     */
+    addEventListener(event, callback) {
+        this.on(event, callback);
+    }
+
+    removeEventListener(event, callback) {
+        this.off(event, callback);
     }
 
     /**

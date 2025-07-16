@@ -2077,13 +2077,13 @@
         async function waitForDirectFlow() {
             return new Promise((resolve) => {
                 const checkDirectFlow = () => {
-                    if (window.DirectFlow && window.DirectFlow.initialized) {
+                    if (window.directFlow && window.directFlow.initialized) {
                         console.log('✅ DirectFlow is ready');
                         resolve();
-                    } else if (window.DirectFlow) {
+                    } else if (window.directFlow) {
                         console.log('⏳ DirectFlow exists but not initialized, waiting...');
                         // Listen for initialization event
-                        window.DirectFlow.addEventListener('initialized', () => {
+                        window.directFlow.addEventListener('initialized', () => {
                             console.log('✅ DirectFlow initialized via event');
                             resolve();
                         });

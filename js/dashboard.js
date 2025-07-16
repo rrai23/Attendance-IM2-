@@ -84,20 +84,20 @@ class DashboardController {
             };
             
             // Add event listener for DirectFlow initialization
-            if (window.DirectFlow) {
-                window.DirectFlow.addEventListener('initialized', directFlowInitListener);
+            if (window.directFlow) {
+                window.directFlow.addEventListener('initialized', directFlowInitListener);
             } else {
                 // Listen for DirectFlow to be created
                 const directFlowCreatedListener = () => {
                     console.log('📡 DirectFlow object created');
-                    window.DirectFlow.addEventListener('initialized', directFlowInitListener);
+                    window.directFlow.addEventListener('initialized', directFlowInitListener);
                 };
                 
                 // Check periodically for DirectFlow creation
                 const checkForDirectFlow = setInterval(() => {
-                    if (window.DirectFlow) {
+                    if (window.directFlow) {
                         clearInterval(checkForDirectFlow);
-                        window.DirectFlow.addEventListener('initialized', directFlowInitListener);
+                        window.directFlow.addEventListener('initialized', directFlowInitListener);
                         checkDependencies();
                     }
                 }, 100);
@@ -106,7 +106,7 @@ class DashboardController {
             const checkDependencies = () => {
                 const dependencies = {
                     // Check for DirectFlow (primary data manager)
-                    directFlow: typeof window.DirectFlow !== 'undefined' && window.DirectFlow.initialized,
+                    directFlow: typeof window.directFlow !== 'undefined' && window.directFlow.initialized,
                     // Other dependencies
                     chartsManager: typeof chartsManager !== 'undefined' || typeof window.chartsManager !== 'undefined',
                     DashboardCalendar: typeof DashboardCalendar !== 'undefined',
@@ -114,15 +114,15 @@ class DashboardController {
                 };
                 
                 console.log('DashboardController checking dependencies...', dependencies);
-                console.log('window.DirectFlow:', window.DirectFlow ? 'exists' : 'undefined');
-                console.log('DirectFlow.initialized:', window.DirectFlow?.initialized);
+                console.log('window.directFlow:', window.directFlow ? 'exists' : 'undefined');
+                console.log('DirectFlow.initialized:', window.directFlow?.initialized);
                 console.log(`Waited: ${waited}ms / ${maxWait}ms`);
                 
                 if (dependencies.directFlow && dependencies.DashboardCalendar && dependencies.ApexCharts) {
                     console.log('✅ Core dependencies available - proceeding with dashboard initialization');
                     // Remove event listener
-                    if (window.DirectFlow) {
-                        window.DirectFlow.removeEventListener('initialized', directFlowInitListener);
+                    if (window.directFlow) {
+                        window.directFlow.removeEventListener('initialized', directFlowInitListener);
                     }
                     resolve();
                     return true;
@@ -130,12 +130,12 @@ class DashboardController {
                     console.warn('⚠️ Dependencies not available after timeout:', dependencies);
                     
                     // Remove event listener
-                    if (window.DirectFlow) {
-                        window.DirectFlow.removeEventListener('initialized', directFlowInitListener);
+                    if (window.directFlow) {
+                        window.directFlow.removeEventListener('initialized', directFlowInitListener);
                     }
                     
                     // Check if DirectFlow exists but isn't initialized (likely authentication issue)
-                    if (window.DirectFlow && !window.DirectFlow.initialized) {
+                    if (window.directFlow && !window.directFlow.initialized) {
                         console.error('❌ DirectFlow exists but not initialized - authentication required');
                         window.location.href = '/login.html';
                         return true;
@@ -170,30 +170,30 @@ class DashboardController {
      */
     setupEventListeners() {
         // Listen for DirectFlow updates
-        if (window.DirectFlow) {
+        if (window.directFlow) {
             console.log('[DATA SYNC] Dashboard setting up DirectFlow event listeners');
             
-            window.DirectFlow.addEventListener('attendanceUpdate', (data) => {
+            window.directFlow.addEventListener('attendanceUpdate', (data) => {
                 console.log('[DATA SYNC] Dashboard received attendance update from DirectFlow:', data);
                 this.handleDataUpdate();
             });
             
-            window.DirectFlow.addEventListener('employeeUpdate', (data) => {
+            window.directFlow.addEventListener('employeeUpdate', (data) => {
                 console.log('[DATA SYNC] Dashboard received employee update from DirectFlow:', data);
                 this.handleDataUpdate();
             });
             
-            window.DirectFlow.addEventListener('employeeDeleted', (data) => {
+            window.directFlow.addEventListener('employeeDeleted', (data) => {
                 console.log('[DATA SYNC] Dashboard received employee deletion from DirectFlow:', data);
                 this.handleDataUpdate();
             });
             
-            window.DirectFlow.addEventListener('employeeAdded', (data) => {
+            window.directFlow.addEventListener('employeeAdded', (data) => {
                 console.log('[DATA SYNC] Dashboard received employee addition from DirectFlow:', data);
                 this.handleDataUpdate();
             });
             
-            window.DirectFlow.addEventListener('dataSync', (data) => {
+            window.directFlow.addEventListener('dataSync', (data) => {
                 console.log('[DATA SYNC] Dashboard received data sync from DirectFlow:', data);
                 if (data && (data.action === 'delete' || data.action === 'add' || data.action === 'update' || data.action === 'forceCleanup')) {
                     this.handleDataUpdate();
@@ -288,15 +288,15 @@ class DashboardController {
             console.log('Loading attendance stats for date:', today);
             
             // Use DirectFlow for all data operations
-            if (window.DirectFlow && window.DirectFlow.initialized) {
+            if (window.directFlow && window.directFlow.initialized) {
                 console.log('Loading attendance stats from DirectFlow');
                 
                 // Get attendance stats
-                this.currentStats = await window.DirectFlow.getAttendanceStats();
+                this.currentStats = await window.directFlow.getAttendanceStats();
                 console.log('Received stats from DirectFlow:', this.currentStats);
                 
                 // Get today's attendance records
-                const todayRecords = await window.DirectFlow.getAttendanceRecords({ date: today });
+                const todayRecords = await window.directFlow.getAttendanceRecords({ date: today });
                 console.log('Today\'s attendance records:', todayRecords);
                 
                 // Process today's data
@@ -306,8 +306,8 @@ class DashboardController {
             } else {
                 console.error('DirectFlow not available for loading attendance stats');
                 console.log('Available globals:', {
-                    'window.DirectFlow': typeof window.DirectFlow,
-                    'DirectFlow.initialized': window.DirectFlow?.initialized
+                    'window.directFlow': typeof window.directFlow,
+                    'DirectFlow.initialized': window.directFlow?.initialized
                 });
                 
                 // Create fallback stats
@@ -342,9 +342,9 @@ class DashboardController {
             // Get total number of active employees using DirectFlow
             let totalEmployees = 0;
             
-            if (window.DirectFlow && window.DirectFlow.initialized) {
+            if (window.directFlow && window.directFlow.initialized) {
                 // Use DirectFlow for consistent data access
-                const employees = await window.DirectFlow.getEmployees();
+                const employees = await window.directFlow.getEmployees();
                 totalEmployees = employees.filter(emp => emp.status === 'active').length;
                 console.log('[DATA INTEGRITY] Dashboard using DirectFlow for employee count:', totalEmployees);
             } else {
@@ -424,9 +424,9 @@ class DashboardController {
     async loadPaydayData() {
         try {
             // Use DirectFlow for payday data
-            if (window.DirectFlow && window.DirectFlow.initialized) {
+            if (window.directFlow && window.directFlow.initialized) {
                 console.log('Loading payday data from DirectFlow');
-                this.paydayData = await window.DirectFlow.getNextPayday();
+                this.paydayData = await window.directFlow.getNextPayday();
             } else {
                 console.error('DirectFlow not available for loading payday data');
                 this.paydayData = this.getDefaultPaydayData();
