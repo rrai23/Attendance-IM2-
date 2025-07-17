@@ -677,42 +677,44 @@
 
     <!-- Unified Data Integration Script -->
     <script>
-        // Initialize unified employee manager before payroll controller
+        // Initialize DirectFlow system for payroll (backend-only)
         document.addEventListener('DOMContentLoaded', async function() {
             try {
-                console.log('Initializing unified data integration for payroll...');
+                console.log('[PAYROLL] Initializing DirectFlow system for payroll...');
                 
-                // ONLY use existing global unified employee manager - wait for it to be ready
-                console.log('Waiting for global UnifiedEmployeeManager to be ready...');
-                let waitCount = 0;
-                const maxWait = 100; // 10 seconds total (100 * 100ms)
-                
-                while ((!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) && waitCount < maxWait) {
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    waitCount++;
-                    if (waitCount % 10 === 0) {
-                        console.log(`Still waiting for global UnifiedEmployeeManager... (${waitCount/10}s)`);
+                // Wait for DirectFlow to be ready using simple polling
+                const waitForDirectFlow = async () => {
+                    const maxWait = 10000; // 10 seconds
+                    const interval = 100; // Check every 100ms
+                    let waited = 0;
+                    
+                    while ((!window.directFlow || !window.directFlow.initialized) && waited < maxWait) {
+                        await new Promise(resolve => setTimeout(resolve, interval));
+                        waited += interval;
+                        if (waited % 1000 === 0) {
+                            console.log(`[PAYROLL] Waiting for DirectFlow... ${waited/1000}s`);
+                        }
                     }
-                }
+                    
+                    if (!window.directFlow || !window.directFlow.initialized) {
+                        throw new Error('DirectFlow not available after waiting');
+                    }
+                };
                 
-                if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
-                    throw new Error('Global UnifiedEmployeeManager failed to initialize within timeout');
-                }
+                await waitForDirectFlow();
+                console.log('[PAYROLL] DirectFlow ready for payroll operations');
                 
-                console.log('Global Unified Employee Manager ready for payroll (EXCLUSIVE MODE)');
-                console.log('Employee count from global manager:', window.unifiedEmployeeManager.getEmployees().length);
-                
-                // Initialize payroll controller with unified employee manager ONLY
+                // Initialize payroll controller with DirectFlow
                 if (typeof PayrollController !== 'undefined') {
                     window.payrollController = new PayrollController();
                     await window.payrollController.init();
-                    console.log('Payroll controller initialized with unified data (EXCLUSIVE MODE)');
+                    console.log('[PAYROLL] Payroll controller initialized with DirectFlow');
                 } else {
-                    console.error('PayrollController not found');
+                    console.error('[PAYROLL] PayrollController not found');
                 }
                 
             } catch (error) {
-                console.error('Error initializing unified payroll integration:', error);
+                console.error('[PAYROLL] Error initializing DirectFlow payroll system:', error);
                 
                 // Show user-friendly error message
                 if (document.querySelector('.main-content')) {
@@ -733,21 +735,24 @@
             }
         });
 
-        // Debug function for manual overtime request reset (using unified employee manager)
+        // DirectFlow payroll helper functions
         if (typeof window !== 'undefined') {
+            // Simple overtime request reset for testing (DirectFlow-compatible)
             window.resetOvertimeRequestsForTesting = function() {
-                if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.resetOvertimeRequestsForTesting) {
-                    const requests = window.unifiedEmployeeManager.resetOvertimeRequestsForTesting();
-                    console.log('Manually reset overtime requests:', requests);
+                console.log('[PAYROLL] Resetting overtime requests (DirectFlow mode)');
+                
+                if (window.payrollController && window.payrollController.overtimeRequests) {
+                    window.payrollController.overtimeRequests = [];
                     
                     // Refresh payroll display if controller is available
-                    if (window.payrollController && window.payrollController.renderOvertimeRequests) {
+                    if (window.payrollController.renderOvertimeRequests) {
                         window.payrollController.renderOvertimeRequests();
                     }
                     
-                    return requests;
+                    console.log('[PAYROLL] Overtime requests reset successfully');
+                    return [];
                 } else {
-                    console.error('UnifiedEmployeeManager not available for overtime reset');
+                    console.warn('[PAYROLL] Payroll controller not available for overtime reset');
                     return [];
                 }
             };

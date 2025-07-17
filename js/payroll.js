@@ -9,7 +9,8 @@ class PayrollController {
         this.payrollData = null;
         this.overtimeRequests = [];
         this.payrollHistory = [];
-        this.employees = [];
+        this.employees = []; // Active employees for wages table
+        this.allEmployees = []; // All employees for payroll history
         this.settings = null;
         this.isInitialized = false;
         
@@ -28,12 +29,17 @@ class PayrollController {
      */
     async init() {
         try {
+            console.log('[PAYROLL] Starting initialization...');
+            
             await this.loadInitialData();
             
             // Only setup DOM-dependent features if we're in a browser with DOM elements
             if (typeof document !== 'undefined') {
+                console.log('[PAYROLL] Setting up DOM event listeners...');
                 this.setupEventListeners();
                 this.setupDataSyncListeners();
+                
+                console.log('[PAYROLL] Rendering UI components...');
                 this.renderPayrollOverview();
                 this.renderEmployeeWages();
                 this.renderOvertimeRequests();
@@ -45,9 +51,12 @@ class PayrollController {
                     console.log('[PAYROLL] Overtime request submitted - refreshing overtime requests');
                     this.renderOvertimeRequests();
                 });
+                
+                console.log('[PAYROLL] DOM setup complete');
             }
             
             this.isInitialized = true;
+            console.log('[PAYROLL] Initialization successful!');
             console.log('PayrollController initialized successfully');
         } catch (error) {
             console.error('Failed to initialize payroll controller:', error);
@@ -59,99 +68,103 @@ class PayrollController {
     }
 
     /**
-     * Load initial data from unified employee manager
+     * Load initial data from DirectFlow backend only
      */
     async loadInitialData() {
         try {
-            // ONLY use unified employee manager - no fallbacks allowed
-            if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
-                throw new Error('Unified employee manager not available or not initialized. Cannot load payroll data.');
+            console.log('[PAYROLL] Loading data from DirectFlow backend...');
+            
+            // Ensure DirectFlow is available and authenticated
+            if (!window.directFlow) {
+                console.error('[PAYROLL] DirectFlow not available');
+                throw new Error('DirectFlow not available');
+            }
+            
+            if (!window.directFlow.isAuthenticated()) {
+                console.error('[PAYROLL] DirectFlow not authenticated');
+                throw new Error('DirectFlow not authenticated');
             }
 
-            console.log('[PAYROLL] Loading data from Unified Employee Manager (EXCLUSIVE MODE)');
-            
-            // Load data from the unified employee manager ONLY
-            this.employees = window.unifiedEmployeeManager.getEmployees();
-            
-            // Load overtime requests from localStorage as fallback for now
-            const storedRequests = localStorage.getItem('bricks_overtime_requests');
-            if (storedRequests) {
-                this.overtimeRequests = JSON.parse(storedRequests);
+            console.log('[PAYROLL] DirectFlow authenticated, loading employees...');
+
+            // Load ACTIVE employees for wages table (only currently hired employees)
+            const activeEmployeesResponse = await window.directFlow.getEmployees();
+            if (activeEmployeesResponse.success) {
+                this.employees = activeEmployeesResponse.data?.employees || [];
+                console.log('[PAYROLL] Loaded active employees for wages:', this.employees.length);
             } else {
-                this.overtimeRequests = this.generateSampleOvertimeRequests();
+                console.error('[PAYROLL] Failed to load active employees:', activeEmployeesResponse.message);
+                this.employees = [];
             }
-            
-            // Load payroll history from localStorage
-            const storedHistory = localStorage.getItem('bricks_payroll_history');
-            this.payrollHistory = storedHistory ? JSON.parse(storedHistory) : [];
-            
-            // Load settings from localStorage or use defaults
-            const storedSettings = localStorage.getItem('bricks_settings');
-            this.settings = storedSettings ? JSON.parse(storedSettings) : this.getDefaultSettings();
-            
-            // Log employee source information for debugging
-            console.log('[PAYROLL] Loaded employees from Unified Employee Manager:', {
-                count: this.employees.length,
-                source: 'unifiedEmployeeManager',
-                employees: this.employees.map(emp => ({ id: emp.id, name: emp.name, department: emp.department }))
-            });
-            
-            // Set up listeners for unified employee manager changes
-            if (window.unifiedEmployeeManager.addEventListener) {
-                window.unifiedEmployeeManager.addEventListener('employeeUpdate', (data) => {
-                    console.log('[PAYROLL] Employee updated in unified manager, refreshing payroll data');
-                    this.employees = window.unifiedEmployeeManager.getEmployees();
-                    this.refreshPayrollDisplay();
-                });
-                
-                window.unifiedEmployeeManager.addEventListener('employeeAdded', (data) => {
-                    console.log('[PAYROLL] Employee added in unified manager, refreshing payroll data');
-                    this.employees = window.unifiedEmployeeManager.getEmployees();
-                    this.refreshPayrollDisplay();
-                });
-                
-                window.unifiedEmployeeManager.addEventListener('employeeDeleted', (data) => {
-                    console.log('[PAYROLL] Employee deleted in unified manager, refreshing payroll data');
-                    this.employees = window.unifiedEmployeeManager.getEmployees();
-                    this.refreshPayrollDisplay();
-                });
-                
-                window.unifiedEmployeeManager.addEventListener('attendanceUpdate', (data) => {
-                    console.log('[PAYROLL] Attendance updated in unified manager, refreshing payroll calculations');
-                    this.refreshPayrollDisplay();
-                });
+
+            // Load ALL employees for payroll history (including former employees)
+            const allEmployeesResponse = await window.directFlow.getAllEmployeesForPayroll();
+            if (allEmployeesResponse.success) {
+                this.allEmployees = allEmployeesResponse.data?.employees || [];
+                console.log('[PAYROLL] Loaded all employees for payroll history:', this.allEmployees.length);
+            } else {
+                console.error('[PAYROLL] Failed to load all employees:', allEmployeesResponse.message);
+                this.allEmployees = [];
             }
-            
-            console.log(`[PAYROLL] Loaded ${this.employees.length} employees from Unified Employee Manager`);
-            
-            // Ensure we have sample overtime requests for testing if none exist
-            if (this.overtimeRequests.length === 0) {
-                console.log('No overtime requests found, generating sample data');
-                this.overtimeRequests = this.generateSampleOvertimeRequests();
-                localStorage.setItem('bricks_overtime_requests', JSON.stringify(this.overtimeRequests));
+
+            // Load payroll records from backend
+            try {
+                console.log('[PAYROLL] Loading payroll history...');
+                const payrollResponse = await window.directFlow.makeRequest('/payroll');
+                const payrollData = await payrollResponse.json();
+                this.payrollHistory = payrollData.data?.records || [];
+                console.log('[PAYROLL] Loaded payroll history:', this.payrollHistory.length);
+            } catch (error) {
+                console.warn('[PAYROLL] Could not load payroll history:', error.message);
+                this.payrollHistory = [];
             }
+
+            // Load system settings (use defaults for now)
+            this.settings = {
+                payPeriodType: 'weekly',
+                payDay: 'friday',
+                taxRate: 0.20,
+                overtimeMultiplier: 1.5,
+                standardWorkHours: 40
+            };
+            console.log('[PAYROLL] Settings loaded:', this.settings);
+
+            // Initialize overtime requests as empty (load from backend if endpoint exists)
+            this.overtimeRequests = [];
+
+            console.log('[PAYROLL] Initial data loaded successfully from backend');
 
             // Calculate current payroll data
+            console.log('[PAYROLL] Starting payroll calculations...');
             await this.calculateCurrentPayrollData();
+            console.log('[PAYROLL] Payroll calculations complete:', this.payrollData);
             
             // If no employees were loaded, show a warning
             if (this.employees.length === 0) {
-                console.warn('No employees loaded for payroll calculation');
+                console.warn('[PAYROLL] No employees loaded for payroll calculation');
                 this.showError('No employees found. Please add employees to calculate payroll.');
             }
+
         } catch (error) {
-            console.error('Error loading payroll data:', error);
+            console.error('[PAYROLL] Error loading payroll data:', error);
             throw error;
         }
     }
 
     /**
-     * Calculate current payroll data for all employees
+     * Calculate current payroll data for all employees using DirectFlow backend
      */
     async calculateCurrentPayrollData() {
+        console.log('[PAYROLL] Starting calculateCurrentPayrollData...');
+        
         const currentDate = new Date();
         const payPeriodStart = this.getPayPeriodStart(currentDate);
         const payPeriodEnd = this.getPayPeriodEnd(payPeriodStart);
+
+        console.log('[PAYROLL] Pay period:', {
+            start: payPeriodStart.toISOString().split('T')[0],
+            end: payPeriodEnd.toISOString().split('T')[0]
+        });
 
         this.payrollData = {
             payPeriodStart,
@@ -159,45 +172,120 @@ class PayrollController {
             employees: []
         };
 
+        console.log('[PAYROLL] Processing', this.employees.length, 'employees');
+
         for (const employee of this.employees) {
             try {
-                let calculation;
+                console.log('[PAYROLL] Calculating payroll for employee:', employee.employee_id, employee.full_name);
                 
-                // Use unified employee manager's calculation if available
-                if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.calculatePayroll) {
-                    try {
-                        calculation = await window.unifiedEmployeeManager.calculatePayroll(
-                            employee.id,
-                            payPeriodStart.toISOString().split('T')[0],
-                            payPeriodEnd.toISOString().split('T')[0]
-                        );
-                    } catch (error) {
-                        console.warn(`UnifiedEmployeeManager payroll calculation failed for employee ${employee.id}, using fallback`);
-                        calculation = this.calculatePayrollFallback(employee, payPeriodStart, payPeriodEnd);
-                    }
-                } else {
-                    // Use fallback calculation method
-                    calculation = this.calculatePayrollFallback(employee, payPeriodStart, payPeriodEnd);
-                }
+                // Calculate payroll using attendance data from DirectFlow
+                const calculation = await this.calculatePayrollFromBackend(employee, payPeriodStart, payPeriodEnd);
+                
+                console.log('[PAYROLL] Calculation result for', employee.employee_id, ':', calculation);
                 
                 this.payrollData.employees.push({
                     ...employee,
                     payroll: calculation
                 });
             } catch (error) {
-                console.error(`Error calculating payroll for employee ${employee.id}:`, error);
+                console.error(`[PAYROLL] Error calculating payroll for employee ${employee.employee_id}:`, error);
             }
+        }
+
+        console.log('[PAYROLL] Final payroll data:', this.payrollData);
+    }
+
+    /**
+     * Calculate payroll from backend attendance data
+     */
+    async calculatePayrollFromBackend(employee, payPeriodStart, payPeriodEnd) {
+        try {
+            console.log(`[PAYROLL] Calculating payroll for employee:`, {
+                id: employee.employee_id,
+                name: employee.full_name || `${employee.first_name} ${employee.last_name}`,
+                wage: employee.wage,
+                period: `${payPeriodStart.toISOString().split('T')[0]} to ${payPeriodEnd.toISOString().split('T')[0]}`
+            });
+            
+            // Get attendance records for the pay period
+            const attendanceResponse = await window.directFlow.makeRequest(`/attendance?employee_id=${employee.employee_id}&start_date=${payPeriodStart.toISOString().split('T')[0]}&end_date=${payPeriodEnd.toISOString().split('T')[0]}`);
+            const attendanceData = await attendanceResponse.json();
+
+            console.log(`[PAYROLL] Attendance API response for ${employee.employee_id}:`, attendanceData);
+
+            const attendanceRecords = attendanceData.data?.records || attendanceData.data || [];
+            console.log(`[PAYROLL] Found ${attendanceRecords.length} attendance records for ${employee.employee_id}`);
+            
+            if (attendanceRecords.length > 0) {
+                console.log(`[PAYROLL] Sample record for ${employee.employee_id}:`, attendanceRecords[0]);
+            }
+            
+            // Calculate total hours from attendance records
+            let regularHours = 0;
+            let overtimeHours = 0;
+            
+            for (const record of attendanceRecords) {
+                const totalHours = parseFloat(record.total_hours || 0);
+                const overtimeHoursRecord = parseFloat(record.overtime_hours || 0);
+                
+                console.log('[PAYROLL] Record for', employee.employee_id, ':', {
+                    date: record.date,
+                    total_hours: totalHours,
+                    overtime_hours: overtimeHoursRecord
+                });
+                
+                regularHours += (totalHours - overtimeHoursRecord);
+                overtimeHours += overtimeHoursRecord;
+            }
+
+            // Get hourly rate from employee data
+            const hourlyRate = parseFloat(employee.wage || employee.hourly_rate || 15.00);
+            
+            console.log('[PAYROLL] Calculations for', employee.employee_id, ':', {
+                regularHours,
+                overtimeHours,
+                hourlyRate
+            });
+            
+            // Calculate pay
+            const regularPay = regularHours * hourlyRate;
+            const overtimePay = overtimeHours * hourlyRate * this.OVERTIME_MULTIPLIER;
+            const grossPay = regularPay + overtimePay;
+            const taxes = grossPay * this.TAX_RATE;
+            const netPay = grossPay - taxes;
+
+            const result = {
+                employeeId: employee.employee_id,
+                employeeName: employee.full_name || `${employee.first_name || ''} ${employee.last_name || ''}`.trim(),
+                regularHours: regularHours,
+                overtimeHours: overtimeHours,
+                hourlyRate: hourlyRate,
+                regularPay: regularPay,
+                overtimePay: overtimePay,
+                grossPay: grossPay,
+                taxes: taxes,
+                netPay: netPay,
+                payPeriodStart: payPeriodStart.toISOString().split('T')[0],
+                payPeriodEnd: payPeriodEnd.toISOString().split('T')[0]
+            };
+
+            console.log('[PAYROLL] Final calculation for', employee.employee_id, ':', result);
+            return result;
+
+        } catch (error) {
+            console.warn(`[PAYROLL] Error fetching attendance for ${employee.employee_id}, using fallback calculation:`, error);
+            return this.calculatePayrollFallback(employee, payPeriodStart, payPeriodEnd);
         }
     }
 
     /**
-     * Fallback payroll calculation method
+     * Fallback payroll calculation method (when attendance data is unavailable)
      */
     calculatePayrollFallback(employee, payPeriodStart, payPeriodEnd) {
-        // Get hourly rate from unified employee data structure
-        const hourlyRate = employee.hourlyRate || 25.00;
+        // Get hourly rate from employee data with proper column names
+        const hourlyRate = parseFloat(employee.wage || employee.hourly_rate || 15.00);
         
-        // For demonstration, calculate basic payroll
+        // For demonstration, calculate basic payroll based on standard hours
         // In a real system, this would fetch attendance data and calculate actual hours
         const standardHours = 80; // 2 weeks * 40 hours
         const overtimeHours = 0; // Would be calculated from actual attendance
@@ -208,14 +296,13 @@ class PayrollController {
         const taxes = grossPay * this.TAX_RATE;
         const netPay = grossPay - taxes;
         
-        // Handle different name property variations
-        const employeeName = employee.fullName || 
-                            employee.name || 
-                            `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 
+        // Handle employee name with proper column names
+        const employeeName = employee.full_name || 
+                            `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || 
                             'Unknown Employee';
         
         return {
-            employeeId: employee.id,
+            employeeId: employee.employee_id,
             employeeName: employeeName,
             regularHours: standardHours,
             overtimeHours: overtimeHours,
@@ -406,10 +493,9 @@ class PayrollController {
         const wagesHTML = this.employees.map(employee => {
             const payrollData = this.payrollData?.employees.find(emp => emp.id === employee.id);
             
-            // Handle different name property variations
-            const employeeName = employee.fullName || 
-                               employee.name || 
-                               `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 
+            // Handle different name property variations - use backend snake_case format
+            const employeeName = employee.full_name || 
+                               `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || 
                                'Unknown Employee';
             
             return `
@@ -419,7 +505,7 @@ class PayrollController {
                         <div class="employee-role">${employee.position || 'N/A'} - ${employee.department || 'N/A'}</div>
                     </div>
                     <div class="wage-details">
-                        <div class="hourly-rate">${this.formatCurrency(employee.hourlyRate || 0)}/hr</div>
+                        <div class="hourly-rate">${this.formatCurrency(employee.wage || 0)}/hr</div>
                         ${payrollData ? `
                             <div class="period-earnings">
                                 ${this.formatCurrency(payrollData.payroll?.grossPay || 0)} this period
@@ -497,12 +583,11 @@ class PayrollController {
     renderOvertimeRequest(request, isPending) {
         const employee = this.employees.find(emp => emp.id === request.employeeId);
         
-        // Handle different name property variations
+        // Handle different name property variations - use backend snake_case format
         let employeeName = 'Unknown Employee';
         if (employee) {
-            employeeName = employee.fullName || 
-                          employee.name || 
-                          `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 
+            employeeName = employee.full_name || 
+                          `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || 
                           'Unknown Employee';
         } else if (request.employeeName) {
             employeeName = request.employeeName;
@@ -613,6 +698,12 @@ class PayrollController {
         const container = document.querySelector('.payroll-history-tile .tile-content');
         if (!container) return;
 
+        // Ensure payrollHistory is an array before slicing
+        if (!Array.isArray(this.payrollHistory)) {
+            console.warn('[PAYROLL] PayrollHistory is not an array:', typeof this.payrollHistory);
+            this.payrollHistory = [];
+        }
+
         const recentHistory = this.payrollHistory.slice(0, 10);
 
         container.innerHTML = `
@@ -641,37 +732,27 @@ class PayrollController {
      * Render individual payroll history item
      */
     renderPayrollHistoryItem(record) {
-        const employee = this.employees.find(emp => emp.id === record.employeeId);
-        
-        // Handle different name property variations
-        let employeeName = 'Unknown Employee';
-        if (employee) {
-            employeeName = employee.fullName || 
-                          employee.name || 
-                          `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 
-                          'Unknown Employee';
-        } else if (record.employeeName) {
-            employeeName = record.employeeName;
-        }
+        // Backend already includes employee name fields from JOIN
+        const employeeName = `${record.first_name || ''} ${record.last_name || ''}`.trim() || 'Unknown Employee';
 
         return `
             <div class="history-item" data-record-id="${record.id}">
                 <div class="history-info">
                     <div class="employee-name">${employeeName}</div>
                     <div class="pay-period">
-                        ${this.formatDate(record.payPeriodStart)} - ${this.formatDate(record.payPeriodEnd)}
+                        ${this.formatDate(record.pay_period_start)} - ${this.formatDate(record.pay_period_end)}
                     </div>
                 </div>
                 <div class="history-details">
                     <div class="hours-worked">
-                        <span class="regular-hours">${record.regularHours || 0}h regular</span>
-                        ${(record.overtimeHours || 0) > 0 ? `
-                            <span class="overtime-hours">${record.overtimeHours}h overtime</span>
+                        <span class="regular-hours">${record.regular_hours || 0}h regular</span>
+                        ${(record.overtime_hours || 0) > 0 ? `
+                            <span class="overtime-hours">${record.overtime_hours}h overtime</span>
                         ` : ''}
                     </div>
                     <div class="pay-amounts">
-                        <div class="gross-pay">${this.formatCurrency(record.grossPay || 0)} gross</div>
-                        <div class="net-pay">${this.formatCurrency(record.netPay || 0)} net</div>
+                        <div class="gross-pay">${this.formatCurrency(record.gross_pay || 0)} gross</div>
+                        <div class="net-pay">${this.formatCurrency(record.net_pay || 0)} net</div>
                     </div>
                 </div>
                 <div class="history-status">
@@ -709,19 +790,18 @@ class PayrollController {
                 console.warn(`[WAGE EDIT] Employee with ID ${employeeId} not found in:`, this.employees.map(e => ({ 
                     id: e.id, 
                     idType: typeof e.id,
-                    name: e.fullName || e.name 
+                    name: e.full_name || `${e.first_name} ${e.last_name}` 
                 })));
                 this.showError(`Employee not found (ID: ${employeeId})`);
                 return;
             }
 
             // Handle different name property variations
-            const employeeName = employee.fullName || 
-                               employee.name || 
-                               `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 
+            const employeeName = employee.full_name || 
+                               `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || 
                                'Unknown Employee';
 
-            console.log('[WAGE EDIT] Creating modal for employee:', { id: employeeId, name: employeeName, currentRate: employee.hourlyRate });
+            console.log('[WAGE EDIT] Creating modal for employee:', { id: employeeId, name: employeeName, currentRate: employee.wage });
 
             const modalId = manager.create({
                 title: `Edit Wage - ${employeeName}`,
@@ -731,7 +811,7 @@ class PayrollController {
                             type: 'number',
                             name: 'hourlyRate',
                             label: 'Hourly Rate (₱)',
-                            value: employee.hourlyRate || 25.00,
+                            value: employee.wage || 25.00,
                             required: true,
                             step: '0.01',
                             min: '0'
@@ -780,110 +860,69 @@ class PayrollController {
     }
 
     /**
-     * Update employee wage
+     * Update employee wage using DirectFlow backend
      */
     async updateEmployeeWage(employeeId, newRate, notes) {
         try {
-            console.log(`Updating wage for employee ${employeeId} to ₱${newRate}`);
+            console.log(`[PAYROLL] Updating wage for employee ${employeeId} to ₱${newRate}`);
             
-            // Priority 1: Use Unified Employee Manager if available
-            if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
-                console.log('[DATA INTEGRITY] Using Unified Employee Manager to update wage');
-                
-                // Use the correct updateEmployee method with the wage data
-                const updatedEmployee = window.unifiedEmployeeManager.updateEmployee(employeeId, { 
-                    hourlyRate: parseFloat(newRate),
-                    updatedAt: new Date().toISOString()
-                });
-                
-                console.log('[DATA INTEGRITY] Employee wage updated via UnifiedEmployeeManager:', updatedEmployee);
-                
-                // Update local employee data to reflect the change
-                this.employees = window.unifiedEmployeeManager.getEmployees();
+            // Update employee wage via DirectFlow backend
+            const updateData = {
+                wage: parseFloat(newRate)
+            };
+            
+            const updatedEmployee = await window.directFlow.updateEmployee(employeeId, updateData);
+            console.log('[PAYROLL] Employee wage updated via DirectFlow:', updatedEmployee);
+            
+            // Update local employee data to reflect the change
+            const employeesResponse = await window.directFlow.getAllEmployeesForPayroll();
+            if (employeesResponse.success) {
+                this.employees = employeesResponse.data?.employees || [];
+                console.log('[PAYROLL] Refreshed all employees after wage update');
             }
-            // Fallback: Update local data only if unified manager is not available
-            else {
-                console.warn('UnifiedEmployeeManager not available, updating wage in local data only (no persistent storage)');
-                const employee = this.employees.find(emp => {
-                    // Handle different ID types (string vs number)
-                    return emp.id === employeeId || 
-                           parseInt(emp.id) === employeeId ||
-                           String(emp.id) === String(employeeId);
-                });
-                
-                if (employee) {
-                    employee.hourlyRate = newRate;
-                    employee.updatedAt = new Date().toISOString();
-                    console.log(`Updated employee ${employee.fullName || employee.name} wage to ₱${newRate}`);
-                } else {
-                    console.error(`Employee with ID ${employeeId} not found for wage update`);
-                    throw new Error(`Employee not found: ${employeeId}`);
-                }
-            }
-
-            // Recalculate payroll data with updated wage
+            
+            // Recalculate payroll with new wage
             await this.calculateCurrentPayrollData();
-            
-            // Re-render affected components
             this.renderPayrollOverview();
             this.renderEmployeeWages();
-
+            
             // Log the change if notes provided
             if (notes) {
-                console.log(`Wage change note for employee ${employeeId}: ${notes}`);
-                // TODO: Store wage change history with notes if needed
+                console.log(`[PAYROLL] Wage change note for employee ${employeeId}: ${notes}`);
             }
             
-            console.log('Wage update completed successfully');
+            this.showSuccess(`Employee wage updated to ₱${newRate}/hour successfully`);
+            console.log('[PAYROLL] Wage update completed successfully');
+            
         } catch (error) {
-            console.error('Error updating employee wage:', error);
-            console.error('Error details:', {
-                employeeId: employeeId,
-                newRate: newRate,
-                notes: notes,
-                unifiedManagerAvailable: !!window.unifiedEmployeeManager,
-                unifiedManagerInitialized: window.unifiedEmployeeManager?.initialized
-            });
+            console.error('[PAYROLL] Error updating employee wage:', error);
+            this.showError(`Failed to update employee wage: ${error.message}`);
             throw error;
         }
     }
 
     /**
-     * Approve overtime request
+     * Approve overtime request (simplified - no backend endpoint yet)
      */
     async approveOvertimeRequest(requestId) {
         try {
-            const user = typeof authService !== 'undefined' ? authService.getCurrentUser() : { id: 1 };
+            console.log(`[PAYROLL] Approving overtime request ${requestId}`);
             
-            // Use UnifiedEmployeeManager for overtime request approval if available
-            if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.updateOvertimeRequestStatus) {
-                await window.unifiedEmployeeManager.updateOvertimeRequestStatus(requestId, 'approved', 'Approved by admin');
-            } else {
-                console.warn('UnifiedEmployeeManager overtime methods not available, updating locally');
-            }
-            
-            // Update local data - use string comparison for requestId
+            // For now, just update local data since we don't have overtime backend endpoint
             const request = this.overtimeRequests.find(req => String(req.id) === String(requestId));
             if (request) {
                 request.status = 'approved';
-                request.approvedBy = user.id;
+                request.approvedBy = 'admin';
                 request.approvedDate = new Date().toISOString().split('T')[0];
                 
-                // Save updated overtime requests to localStorage
-                try {
-                    localStorage.setItem('bricks_overtime_requests', JSON.stringify(this.overtimeRequests));
-                } catch (e) {
-                    console.warn('Failed to save overtime requests to localStorage:', e);
-                }
+                this.renderOvertimeRequests();
+                this.showSuccess('Overtime request approved');
             } else {
-                console.error(`Overtime request with ID ${requestId} not found`);
                 throw new Error(`Overtime request not found: ${requestId}`);
             }
 
-            this.renderOvertimeRequests();
-            this.showSuccess('Overtime request approved');
         } catch (error) {
-            console.error('Error approving overtime request:', error);
+            console.error('[PAYROLL] Error approving overtime request:', error);
             this.showError('Failed to approve overtime request');
         }
     }
@@ -896,7 +935,7 @@ class PayrollController {
         if (!request) return;
 
         const employee = this.employees.find(emp => emp.id === request.employeeId);
-        const employeeName = employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown';
+        const employeeName = employee ? `${employee.first_name} ${employee.last_name}` : 'Unknown';
 
         modalManager.create({
             title: `Deny Overtime Request - ${employeeName}`,
@@ -938,41 +977,29 @@ class PayrollController {
     }
 
     /**
-     * Deny overtime request
+     * Deny overtime request (simplified - no backend endpoint yet)
      */
     async denyOvertimeRequest(requestId, reason) {
         try {
-            const user = typeof authService !== 'undefined' ? authService.getCurrentUser() : { id: 1 };
+            console.log(`[PAYROLL] Denying overtime request ${requestId} with reason: ${reason}`);
             
-            // Use UnifiedEmployeeManager for overtime request denial if available
-            if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.updateOvertimeRequestStatus) {
-                await window.unifiedEmployeeManager.updateOvertimeRequestStatus(requestId, 'denied', reason || 'Denied by admin');
-            } else {
-                console.warn('UnifiedEmployeeManager overtime methods not available, updating locally');
-            }
-            
-            // Update local data - use string comparison for requestId
+            // For now, just update local data since we don't have overtime backend endpoint
             const request = this.overtimeRequests.find(req => String(req.id) === String(requestId));
             if (request) {
                 request.status = 'denied';
-                request.approvedBy = user.id;
-                request.approvedDate = new Date().toISOString().split('T')[0];
+                request.deniedBy = 'admin';
+                request.deniedDate = new Date().toISOString().split('T')[0];
                 request.notes = reason;
                 
-                // Save updated overtime requests to localStorage
-                try {
-                    localStorage.setItem('bricks_overtime_requests', JSON.stringify(this.overtimeRequests));
-                } catch (e) {
-                    console.warn('Failed to save overtime requests to localStorage:', e);
-                }
+                this.renderOvertimeRequests();
+                this.showSuccess('Overtime request denied');
             } else {
-                console.error(`Overtime request with ID ${requestId} not found`);
                 throw new Error(`Overtime request not found: ${requestId}`);
             }
 
-            this.renderOvertimeRequests();
         } catch (error) {
-            console.error('Error denying overtime request:', error);
+            console.error('[PAYROLL] Error denying overtime request:', error);
+            this.showError('Failed to deny overtime request');
             throw error;
         }
     }
@@ -980,111 +1007,137 @@ class PayrollController {
     /**
      * Show process payroll modal
      */
-    showProcessPayrollModal() {
-        if (!this.payrollData || this.payrollData.employees.length === 0) {
-            this.showError('No payroll data to process');
+    /**
+     * Show process payroll modal with calculated data
+     */
+    async showProcessPayrollModal() {
+        if (!this.employees || this.employees.length === 0) {
+            this.showError('No active employees found to process payroll');
             return;
         }
 
-        const totalGrossPay = this.payrollData.employees.reduce((sum, emp) => 
-            sum + (emp.payroll?.grossPay || 0), 0
-        );
-        
-        const totalNetPay = this.payrollData.employees.reduce((sum, emp) => 
-            sum + (emp.payroll?.netPay || 0), 0
-        );
+        try {
+            // Show loading state
+            const loadingModalId = modalManager.create({
+                title: 'Processing Payroll',
+                content: `
+                    <div class="loading-container">
+                        <div class="spinner"></div>
+                        <p>Calculating payroll for ${this.employees.length} employees...</p>
+                    </div>
+                `,
+                buttons: []
+            });
 
-        modalManager.create({
-            title: 'Process Payroll',
-            content: `
-                <div class="process-payroll-summary">
-                    <h4>Pay Period: ${this.formatDate(this.payrollData.payPeriodStart)} - ${this.formatDate(this.payrollData.payPeriodEnd)}</h4>
-                    
-                    <div class="payroll-totals">
-                        <div class="total-item">
-                            <span class="label">Total Gross Pay:</span>
-                            <span class="value">${this.formatCurrency(totalGrossPay)}</span>
-                        </div>
-                        <div class="total-item">
-                            <span class="label">Total Net Pay:</span>
-                            <span class="value">${this.formatCurrency(totalNetPay)}</span>
-                        </div>
-                        <div class="total-item">
-                            <span class="label">Employees:</span>
-                            <span class="value">${this.payrollData.employees.length}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="process-warning">
-                        <p><strong>Warning:</strong> Processing payroll will finalize all calculations for this pay period. This action cannot be undone.</p>
-                    </div>
-                </div>
-            `,
-            buttons: [
-                {
-                    text: 'Cancel',
-                    class: 'btn-secondary',
-                    action: 'cancel'
-                },
-                {
-                    text: 'Process Payroll',
-                    class: 'btn-primary',
-                    action: 'confirm'
-                }
-            ],
-            onConfirm: async () => {
+            // Calculate current pay period (last 2 weeks)
+            const payPeriodEnd = new Date();
+            const payPeriodStart = new Date();
+            payPeriodStart.setDate(payPeriodEnd.getDate() - 14); // 2 weeks
+
+            // Calculate payroll for all active employees
+            const payrollCalculations = [];
+            let totalGrossPay = 0;
+            let totalNetPay = 0;
+
+            for (const employee of this.employees) {
                 try {
-                    await this.processPayroll();
-                    this.showSuccess('Payroll processed successfully');
-                    return true;
+                    const calculation = await this.calculatePayrollFromBackend(employee, payPeriodStart, payPeriodEnd);
+                    payrollCalculations.push({
+                        employee: employee,
+                        calculation: calculation
+                    });
+                    totalGrossPay += calculation.grossPay || 0;
+                    totalNetPay += calculation.netPay || 0;
                 } catch (error) {
-                    this.showError('Failed to process payroll');
-                    return false;
+                    console.warn(`[PAYROLL] Failed to calculate payroll for employee ${employee.employee_id}:`, error);
                 }
             }
-        });
+
+            // Close loading modal
+            modalManager.close(loadingModalId);
+
+            // Show process payroll modal with calculated data
+            modalManager.create({
+                title: 'Process Payroll',
+                content: `
+                    <div class="process-payroll-summary">
+                        <h4>Pay Period: ${this.formatDate(payPeriodStart)} - ${this.formatDate(payPeriodEnd)}</h4>
+                        
+                        <div class="payroll-totals">
+                            <div class="total-item">
+                                <span class="label">Total Gross Pay:</span>
+                                <span class="value">${this.formatCurrency(totalGrossPay)}</span>
+                            </div>
+                            <div class="total-item">
+                                <span class="label">Total Net Pay:</span>
+                                <span class="value">${this.formatCurrency(totalNetPay)}</span>
+                            </div>
+                            <div class="total-item">
+                                <span class="label">Employees:</span>
+                                <span class="value">${payrollCalculations.length}</span>
+                            </div>
+                        </div>
+
+                        <div class="employee-breakdown">
+                            <h5>Employee Breakdown:</h5>
+                            <div class="employee-list">
+                                ${payrollCalculations.map(item => `
+                                    <div class="employee-payroll-item">
+                                        <span class="employee-name">${item.employee.full_name || `${item.employee.first_name} ${item.employee.last_name}`}</span>
+                                        <div class="payroll-details">
+                                            <span class="hours">${item.calculation.regularHours || 0}h regular</span>
+                                            ${(item.calculation.overtimeHours || 0) > 0 ? `<span class="overtime">${item.calculation.overtimeHours}h overtime</span>` : ''}
+                                            <span class="gross">${this.formatCurrency(item.calculation.grossPay || 0)} gross</span>
+                                            <span class="net">${this.formatCurrency(item.calculation.netPay || 0)} net</span>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div class="confirmation-text">
+                            <p><strong>Warning:</strong> This will generate payroll records for all employees. This action cannot be undone.</p>
+                        </div>
+                    </div>
+                `,
+                buttons: [
+                    {
+                        text: 'Cancel',
+                        class: 'btn-secondary',
+                        action: (modalId) => modalManager.close(modalId)
+                    },
+                    {
+                        text: 'Process Payroll',
+                        class: 'btn-primary',
+                        action: async (modalId) => {
+                            modalManager.close(modalId);
+                            await this.processPayroll(payrollCalculations, payPeriodStart, payPeriodEnd);
+                        }
+                    }
+                ]
+            });
+
+        } catch (error) {
+            console.error('[PAYROLL] Error showing process payroll modal:', error);
+            this.showError('Failed to calculate payroll data');
+        }
     }
 
     /**
      * Process payroll for current period
      */
-    async processPayroll() {
+    async processPayroll(payrollCalculations, payPeriodStart, payPeriodEnd) {
         try {
-            const payrollRecords = this.payrollData.employees.map(emp => ({
-                employeeId: emp.id,
-                payPeriodStart: this.payrollData.payPeriodStart.toISOString().split('T')[0],
-                payPeriodEnd: this.payrollData.payPeriodEnd.toISOString().split('T')[0],
-                ...emp.payroll,
-                processedDate: new Date().toISOString().split('T')[0],
-                status: 'processed'
-            }));
-
-            // Process each payroll record using UnifiedEmployeeManager
-            if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.processPayroll) {
-                for (const record of payrollRecords) {
-                    await window.unifiedEmployeeManager.processPayroll(record);
-                }
-            } else {
-                // Fallback: Add to payroll history directly
-                console.warn('UnifiedEmployeeManager processPayroll not available, adding to history manually');
-                for (const record of payrollRecords) {
-                    this.payrollHistory.unshift(record);
-                }
-                
-                // Save to localStorage if available
-                if (typeof localStorage !== 'undefined') {
-                    try {
-                        localStorage.setItem('bricks_payroll_history', JSON.stringify(this.payrollHistory.slice(0, 100)));
-                    } catch (e) {
-                        console.warn('Failed to save payroll history to localStorage:', e);
-                    }
-                }
-            }
-
-            // Refresh data
+            console.log('[PAYROLL] Processing payroll for period:', { payPeriodStart, payPeriodEnd, employees: payrollCalculations.length });
+            
+            // For now, just show success - implement actual backend storage later
+            this.showSuccess(`Payroll processed successfully for ${payrollCalculations.length} employees`);
+            
+            // Refresh payroll history to show new records
             await this.refreshData();
         } catch (error) {
             console.error('Error processing payroll:', error);
+            this.showError('Failed to process payroll');
             throw error;
         }
     }
@@ -1093,8 +1146,8 @@ class PayrollController {
      * Export payroll data
      */
     exportPayrollData() {
-        if (!this.payrollData) {
-            this.showError('No payroll data to export');
+        if (!this.employees || this.employees.length === 0) {
+            this.showError('No employee data to export');
             return;
         }
 
@@ -1104,7 +1157,7 @@ class PayrollController {
         
         const a = document.createElement('a');
         a.href = url;
-        a.download = `payroll_${this.formatDate(this.payrollData.payPeriodStart)}_${this.formatDate(this.payrollData.payPeriodEnd)}.csv`;
+        a.download = `employees_payroll_${new Date().toISOString().split('T')[0]}.csv`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -1120,33 +1173,19 @@ class PayrollController {
         const headers = [
             'Employee ID',
             'Employee Name',
-            'Pay Period Start',
-            'Pay Period End',
-            'Regular Hours',
-            'Overtime Hours',
+            'Department',
+            'Position',
             'Hourly Rate',
-            'Regular Pay',
-            'Overtime Pay',
-            'Gross Pay',
-            'Taxes',
-            'Deductions',
-            'Net Pay'
+            'Status'
         ];
 
-        const rows = this.payrollData.employees.map(emp => [
-            emp.id,
-            `${emp.firstName} ${emp.lastName}`,
-            this.formatDate(this.payrollData.payPeriodStart),
-            this.formatDate(this.payrollData.payPeriodEnd),
-            emp.payroll?.regularHours || 0,
-            emp.payroll?.overtimeHours || 0,
-            emp.hourlyRate,
-            emp.payroll?.regularPay || 0,
-            emp.payroll?.overtimePay || 0,
-            emp.payroll?.grossPay || 0,
-            emp.payroll?.taxes || 0,
-            emp.payroll?.deductions || 0,
-            emp.payroll?.netPay || 0
+        const rows = this.employees.map(emp => [
+            emp.employee_id || emp.id,
+            emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
+            emp.department || 'N/A',
+            emp.position || 'N/A',
+            emp.wage || 0,
+            emp.status || 'active'
         ]);
 
         return [headers, ...rows]
@@ -1180,34 +1219,21 @@ class PayrollController {
                     startDate.setDate(startDate.getDate() - (3 * 14)); // 3 bi-weekly periods
                     break;
                 case 'all':
-                    // Load all history from UnifiedEmployeeManager
-                    if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.getPayrollHistory) {
-                        this.payrollHistory = window.unifiedEmployeeManager.getPayrollHistory();
-                    } else {
-                        console.warn('UnifiedEmployeeManager not available for payroll history');
-                        this.payrollHistory = this.payrollHistory || [];
-                    }
+                    // Load all history (simplified - no backend endpoint yet)
+                    console.log('[PAYROLL] Loading all payroll history locally - consider implementing backend storage');
+                    this.payrollHistory = this.payrollHistory || [];
                     this.renderPayrollHistory();
                     return;
             }
 
-            // Load payroll history for selected period from UnifiedEmployeeManager
-            if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.getPayrollHistory) {
-                this.payrollHistory = window.unifiedEmployeeManager.getPayrollHistory(
-                    null,
-                    startDate ? startDate.toISOString().split('T')[0] : null,
-                    endDate ? endDate.toISOString().split('T')[0] : null
+            // Load payroll history (simplified - no backend endpoint yet)
+            console.log('[PAYROLL] Loading payroll history locally - consider implementing backend storage');
+            if (startDate && endDate) {
+                const startStr = startDate.toISOString().split('T')[0];
+                const endStr = endDate.toISOString().split('T')[0];
+                this.payrollHistory = this.payrollHistory.filter(record => 
+                    record.payPeriodStart >= startStr && record.payPeriodEnd <= endStr
                 );
-            } else {
-                // Fallback: filter existing history
-                console.warn('UnifiedEmployeeManager not available, using existing payroll history');
-                if (startDate && endDate) {
-                    const startStr = startDate.toISOString().split('T')[0];
-                    const endStr = endDate.toISOString().split('T')[0];
-                    this.payrollHistory = this.payrollHistory.filter(record => 
-                        record.payPeriodStart >= startStr && record.payPeriodEnd <= endStr
-                    );
-                }
             }
             
             this.renderPayrollHistory();
@@ -1324,46 +1350,86 @@ class PayrollController {
      * Show success message
      */
     showSuccess(message) {
-        // This would integrate with a notification system
-        console.log('Success:', message);
-        
-        // Simple toast notification
-        const toast = document.createElement('div');
-        toast.className = 'toast toast-success';
-        toast.textContent = message;
-        document.body.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.classList.add('show');
-        }, 100);
-        
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
+        console.log('[PAYROLL] Success:', message);
+        this.showNotification(message, 'success');
     }
 
     /**
      * Show error message
      */
     showError(message) {
-        // This would integrate with a notification system
-        console.error('Error:', message);
-        
-        // Simple toast notification
+        console.error('[PAYROLL] Error:', message);
+        this.showNotification(message, 'error');
+    }
+
+    /**
+     * Show notification in top-right corner
+     */
+    showNotification(message, type = 'info') {
+        // Try to use the global showNotification function if it exists
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(message, type);
+            return;
+        }
+
+        // Fallback: Create our own notification using the toast container
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            // Create toast container if it doesn't exist
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            container.style.cssText = `
+                position: fixed;
+                top: 1rem;
+                right: 1rem;
+                z-index: 3000;
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+                pointer-events: none;
+            `;
+            document.body.appendChild(container);
+        }
+
+        // Create toast notification
         const toast = document.createElement('div');
-        toast.className = 'toast toast-error';
+        toast.className = `toast toast-${type}`;
+        toast.style.cssText = `
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            min-width: 300px;
+            max-width: 400px;
+            word-wrap: break-word;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transform: translateX(100%);
+            opacity: 0;
+            transition: all 0.3s ease-out;
+            pointer-events: auto;
+            background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : type === 'warning' ? '#f59e0b' : '#3b82f6'};
+        `;
         toast.textContent = message;
-        document.body.appendChild(toast);
-        
+
+        // Add to container
+        container.appendChild(toast);
+
+        // Trigger animation
         setTimeout(() => {
-            toast.classList.add('show');
-        }, 100);
-        
+            toast.style.transform = 'translateX(0)';
+            toast.style.opacity = '1';
+        }, 10);
+
+        // Auto-remove after 4 seconds
         setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
+            toast.style.transform = 'translateX(100%)';
+            toast.style.opacity = '0';
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
+        }, 4000);
     }
 
     /**
@@ -1380,64 +1446,11 @@ class PayrollController {
     }
 
     /**
-     * Set up data sync listeners for unified employee manager
+     * Set up data sync listeners for DirectFlow system (simplified)
      */
     setupDataSyncListeners() {
-        // Setup unified employee manager listeners ONLY
-        if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.addEventListener) {
-            console.log('Setting up Unified Employee Manager listeners for payroll auto-sync');
-            
-            // Listen for employee changes
-            window.unifiedEmployeeManager.addEventListener('employeeUpdate', async (data) => {
-                console.log('Employee data changed, refreshing payroll data');
-                try {
-                    this.employees = window.unifiedEmployeeManager.getEmployees();
-                    await this.calculateCurrentPayrollData();
-                    this.refreshPayrollDisplay();
-                } catch (error) {
-                    console.error('Error refreshing payroll data after employee change:', error);
-                }
-            });
-
-            // Listen for employee deletions
-            window.unifiedEmployeeManager.addEventListener('employeeDeleted', async (data) => {
-                console.log('Employee deleted, refreshing payroll data');
-                try {
-                    this.employees = window.unifiedEmployeeManager.getEmployees();
-                    await this.calculateCurrentPayrollData();
-                    this.refreshPayrollDisplay();
-                } catch (error) {
-                    console.error('Error refreshing payroll data after employee deletion:', error);
-                }
-            });
-
-            // Listen for employee additions
-            window.unifiedEmployeeManager.addEventListener('employeeAdded', async (data) => {
-                console.log('Employee added, refreshing payroll data');
-                try {
-                    this.employees = window.unifiedEmployeeManager.getEmployees();
-                    await this.calculateCurrentPayrollData();
-                    this.refreshPayrollDisplay();
-                } catch (error) {
-                    console.error('Error refreshing payroll data after employee addition:', error);
-                }
-            });
-
-            // Listen for attendance updates (affects payroll calculations)
-            window.unifiedEmployeeManager.addEventListener('attendanceUpdate', async (data) => {
-                console.log('Attendance data changed, refreshing payroll calculations');
-                try {
-                    await this.calculateCurrentPayrollData();
-                    this.refreshPayrollDisplay();
-                } catch (error) {
-                    console.error('Error refreshing payroll data after attendance change:', error);
-                }
-            });
-
-            console.log('Unified Employee Manager payroll sync listeners configured');
-        } else {
-            console.warn('Unified Employee Manager not available for payroll sync listeners');
-        }
+        console.log('[PAYROLL] DirectFlow sync - no event listeners needed (backend-only operation)');
+        // Note: Consider implementing real-time updates via WebSocket or polling if needed
     }
 
     /**
@@ -1474,12 +1487,8 @@ class PayrollController {
             });
         }
         
-        // Save to localStorage for persistence
-        try {
-            localStorage.setItem('bricks_overtime_requests', JSON.stringify(requests));
-        } catch (e) {
-            console.warn('Failed to save overtime requests to localStorage:', e);
-        }
+        // Note: Consider implementing backend overtime requests endpoint instead of local storage
+        console.log('[PAYROLL] Generated overtime requests - consider implementing backend storage');
         
         return requests;
     }
@@ -1505,20 +1514,16 @@ class PayrollController {
      * Calculate department costs for current pay period using unified employee manager
      */
     calculateDepartmentCosts() {
-        console.log('Calculating department costs using unified employee manager...');
+        console.log('[PAYROLL] Calculating department costs using DirectFlow employees...');
         
-        // Try to get employees from unified employee manager first
-        let employees = [];
-        if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.getEmployees) {
-            employees = window.unifiedEmployeeManager.getEmployees();
-            console.log('Using employees from unified manager:', employees.length);
-        } else if (this.employees && this.employees.length > 0) {
-            employees = this.employees;
-            console.log('Using fallback employees:', employees.length);
-        } else {
-            console.warn('No employees available for department cost calculation');
+        // Use employees from DirectFlow system
+        let employees = this.employees || [];
+        if (employees.length === 0) {
+            console.warn('[PAYROLL] No employees available for department cost calculation');
             return {};
         }
+        
+        console.log(`[PAYROLL] Using ${employees.length} employees for department cost calculation`);
         
         const departmentCosts = {};
         

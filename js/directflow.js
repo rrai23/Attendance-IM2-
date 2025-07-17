@@ -110,6 +110,23 @@ class DirectFlow {
         }
     }
 
+    /**
+     * Get all employees for payroll (including inactive employees who may have worked)
+     */
+    async getAllEmployeesForPayroll() {
+        try {
+            console.log('[DIRECTFLOW] Fetching all employees for payroll (no status filter)');
+            // Get ALL employees regardless of status for payroll purposes
+            const response = await this.makeRequest('/employees?limit=1000&status=all');
+            const data = await response.json();
+            console.log('[DIRECTFLOW] Payroll employees fetched:', data.data?.employees?.length || 0);
+            return data; // Return the full response object
+        } catch (error) {
+            console.error('Error getting all employees for payroll:', error);
+            return { success: false, message: error.message, data: [] };
+        }
+    }
+
     async getEmployee(id) {
         try {
             const response = await this.makeRequest(`/employees/${id}`);
