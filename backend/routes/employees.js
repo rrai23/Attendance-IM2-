@@ -372,7 +372,7 @@ router.post('/', auth, requireManagerOrAdmin, async (req, res) => {
 });
 
 // Update employee
-router.put('/:employeeId', requireManagerOrAdmin, async (req, res) => {
+router.put('/:employeeId', auth, requireManagerOrAdmin, async (req, res) => {
     try {
         const { employeeId } = req.params;
         const {
@@ -385,8 +385,14 @@ router.put('/:employeeId', requireManagerOrAdmin, async (req, res) => {
             wage,
             employment_type,
             shift_schedule,
+            salary_type,
+            work_schedule,
             status
         } = req.body;
+
+        // Map old field names to new ones for backward compatibility
+        const actualSalaryType = salary_type || employment_type;
+        const actualWorkSchedule = work_schedule || shift_schedule;
 
         // Check if employee exists - use database id (primary key)
         const existing = await db.execute('SELECT id, employee_id FROM employees WHERE id = ?', [employeeId]);
@@ -445,13 +451,13 @@ router.put('/:employeeId', requireManagerOrAdmin, async (req, res) => {
             updateFields.push('wage = ?');
             updateParams.push(wage);
         }
-        if (employment_type !== undefined) {
-            updateFields.push('employment_type = ?');
-            updateParams.push(employment_type);
+        if (actualSalaryType !== undefined) {
+            updateFields.push('salary_type = ?');
+            updateParams.push(actualSalaryType);
         }
-        if (shift_schedule !== undefined) {
-            updateFields.push('shift_schedule = ?');
-            updateParams.push(shift_schedule);
+        if (actualWorkSchedule !== undefined) {
+            updateFields.push('work_schedule = ?');
+            updateParams.push(actualWorkSchedule);
         }
         if (status !== undefined) {
             updateFields.push('status = ?');

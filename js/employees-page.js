@@ -710,8 +710,8 @@ class EmployeesPageManager {
                     position: employeeData.position,
                     hire_date: employeeData.hireDate,
                     wage: employeeData.salary || employeeData.hourlyRate,
-                    employment_type: 'full-time',
-                    shift_schedule: 'day',
+                    salary_type: 'hourly',
+                    work_schedule: JSON.stringify({type: 'standard', schedule: 'day'}),
                     status: employeeData.status || 'active'
                 };
                 
@@ -737,8 +737,8 @@ class EmployeesPageManager {
                     position: employeeData.position,
                     hire_date: employeeData.hireDate,
                     wage: employeeData.salary || employeeData.hourlyRate,
-                    employment_type: 'full-time',
-                    shift_schedule: 'day',
+                    salary_type: 'hourly',
+                    work_schedule: JSON.stringify({type: 'standard', schedule: 'day'}),
                     username: employeeData.employeeCode || employeeData.firstName.toLowerCase() + employeeData.lastName.toLowerCase(),
                     password: 'password123', // Default password
                     role: employeeData.role || 'employee'
