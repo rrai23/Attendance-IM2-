@@ -1443,12 +1443,29 @@
                     if (Array.isArray(response)) {
                         // Direct array response
                         this.attendanceData = response;
-                    } else if (response && response.success) {
-                        // Standard response object format
-                        this.attendanceData = response.data || [];
+                    } else if (response && response.success && response.data) {
+                        // Standard response object format with nested data
+                        if (response.data.records) {
+                            // Backend returns { success: true, data: { records: [...], pagination: {...} } }
+                            this.attendanceData = response.data.records;
+                        } else if (Array.isArray(response.data)) {
+                            // Backend returns { success: true, data: [...] }
+                            this.attendanceData = response.data;
+                        } else {
+                            this.attendanceData = [];
+                        }
                     } else if (response && response.data) {
                         // Response object without success flag
-                        this.attendanceData = response.data || [];
+                        if (response.data.records) {
+                            this.attendanceData = response.data.records;
+                        } else if (Array.isArray(response.data)) {
+                            this.attendanceData = response.data;
+                        } else {
+                            this.attendanceData = [];
+                        }
+                    } else if (response && response.records) {
+                        // Direct records property
+                        this.attendanceData = response.records;
                     } else {
                         throw new Error(response?.message || 'Failed to load attendance data');
                     }
@@ -1459,8 +1476,13 @@
                     this.dataCache.attendance = this.attendanceData;
                     this.dataCache.lastFetch = Date.now();
                     
-                    console.log(`Loaded ${this.attendanceData.length} attendance records`);
-                    console.log('Attendance data:', this.attendanceData);
+                    console.log(`✅ Loaded ${this.attendanceData.length} attendance records`);
+                    console.log('📋 First few attendance records:', this.attendanceData.slice(0, 3));
+                    
+                    // Debug the data structure
+                    if (this.attendanceData.length > 0) {
+                        console.log('📊 Attendance record structure:', Object.keys(this.attendanceData[0]));
+                    }
                 } catch (error) {
                     console.error('Failed to load attendance data:', error);
                     this.showError('Failed to load attendance data: ' + error.message);
@@ -1573,7 +1595,7 @@
                     this.employees.forEach(employee => {
                         const option = document.createElement('option');
                         option.value = employee.id || employee.employee_id;
-                        option.textContent = employee.full_name || employee.name || `Employee ${employee.id}`;
+                        option.textContent = this.getEmployeeName(employee);
                         employeeFilter.appendChild(option);
                     });
                 }
@@ -1583,7 +1605,7 @@
                     this.employees.forEach(employee => {
                         const option = document.createElement('option');
                         option.value = employee.id || employee.employee_id;
-                        option.textContent = employee.full_name || employee.name || `Employee ${employee.id}`;
+                        option.textContent = this.getEmployeeName(employee);
                         employeeSelect.appendChild(option);
                     });
                 }
@@ -1616,7 +1638,7 @@
 
                     if (search) {
                         const employee = this.employees.find(emp => (emp.id || emp.employee_id) == employeeIdValue);
-                        const employeeName = employeeNameValue || (employee ? (employee.full_name || employee.name) : `Employee ${employeeIdValue}`);
+                        const employeeName = employeeNameValue || (employee ? this.getEmployeeName(employee) : `Employee ${employeeIdValue}`);
                         
                         if (!employeeName.toLowerCase().includes(search)) {
                             matches = false;
@@ -1697,7 +1719,7 @@
                     // Handle both camelCase and snake_case field names
                     const employeeId = record.employee_id || record.employeeId;
                     const employee = this.employees.find(emp => (emp.id || emp.employee_id) == employeeId);
-                    const employeeName = record.employee_name || record.employeeName || (employee ? (employee.full_name || employee.name) : `Employee ${employeeId}`);
+                    const employeeName = record.employee_name || record.employeeName || (employee ? this.getEmployeeName(employee) : `Employee ${employeeId}`);
                     const employeeCode = record.employee_code || record.employeeCode || (employee ? (employee.employee_id || employee.code) : `emp_${String(employeeId).padStart(3, '0')}`);
                     const department = record.department || (employee ? employee.department : '');
                     const timeIn = record.time_in || record.timeIn || record.clockIn;
@@ -1789,6 +1811,31 @@
                 return `${diffHours.toFixed(1)}h`;
             }
 
+            // Helper method to get employee name with proper field mapping
+            getEmployeeName(employee) {
+                if (!employee) return 'Unknown Employee';
+                
+                // Handle different field name variations
+                const firstName = employee.first_name || employee.firstName || '';
+                const lastName = employee.last_name || employee.lastName || '';
+                
+                // Try full_name first, then constructed name, then fallbacks
+                if (employee.full_name) {
+                    return employee.full_name;
+                } else if (firstName && lastName) {
+                    return `${firstName} ${lastName}`;
+                } else if (firstName) {
+                    return firstName;
+                } else if (lastName) {
+                    return lastName;
+                } else if (employee.name) {
+                    return employee.name;
+                } else {
+                    const empId = employee.id || employee.employee_id || 'Unknown';
+                    return `Employee ${empId}`;
+                }
+            }
+
             openModal(record = null) {
                 console.log('Opening modal for:', record ? 'edit' : 'add new record');
                 
@@ -1826,7 +1873,7 @@
                     if (employeeDisplay) {
                         employeeDisplay.classList.remove('hidden');
                         const employee = this.employees.find(emp => (emp.id || emp.employee_id) == record.employee_id);
-                        const employeeName = employee ? (employee.full_name || employee.name) : `Employee ${record.employee_id}`;
+                        const employeeName = employee ? this.getEmployeeName(employee) : `Employee ${record.employee_id}`;
                         employeeDisplayText.textContent = employeeName;
                     }
                     
@@ -1884,12 +1931,23 @@
             async saveAttendance() {
                 const form = document.getElementById('attendanceForm');
                 const saveBtn = document.getElementById('saveBtn');
+                
+                if (!form) {
+                    this.showError('Form not found');
+                    return;
+                }
+                
+                if (!saveBtn) {
+                    this.showError('Save button not found');
+                    return;
+                }
+                
                 const btnText = saveBtn.querySelector('.btn-text');
                 const btnLoading = saveBtn.querySelector('.btn-loading');
 
                 // Show loading state
-                btnText.classList.add('hidden');
-                btnLoading.classList.remove('hidden');
+                if (btnText) btnText.classList.add('hidden');
+                if (btnLoading) btnLoading.classList.remove('hidden');
                 saveBtn.disabled = true;
 
                 try {
@@ -2024,9 +2082,15 @@
                     this.showError('Failed to save attendance record: ' + error.message);
                 } finally {
                     // Hide loading state
-                    btnText.classList.remove('hidden');
-                    btnLoading.classList.add('hidden');
-                    saveBtn.disabled = false;
+                    const saveBtn = document.getElementById('saveBtn');
+                    if (saveBtn) {
+                        const btnText = saveBtn.querySelector('.btn-text');
+                        const btnLoading = saveBtn.querySelector('.btn-loading');
+                        
+                        if (btnText) btnText.classList.remove('hidden');
+                        if (btnLoading) btnLoading.classList.add('hidden');
+                        saveBtn.disabled = false;
+                    }
                 }
             }
 
@@ -2119,13 +2183,17 @@
             async refreshData() {
                 try {
                     const refreshBtn = document.getElementById('refreshBtn');
-                    const btnText = refreshBtn.querySelector('.btn-text');
-                    const btnLoading = refreshBtn.querySelector('.btn-loading');
+                    let btnText, btnLoading;
                     
-                    // Show loading state
-                    btnText.classList.add('hidden');
-                    btnLoading.classList.remove('hidden');
-                    refreshBtn.disabled = true;
+                    // Show loading state only if button exists
+                    if (refreshBtn) {
+                        btnText = refreshBtn.querySelector('.btn-text');
+                        btnLoading = refreshBtn.querySelector('.btn-loading');
+                        
+                        if (btnText) btnText.classList.add('hidden');
+                        if (btnLoading) btnLoading.classList.remove('hidden');
+                        refreshBtn.disabled = true;
+                    }
 
                     await this.loadEmployees();
                     await this.loadAttendanceData();
@@ -2141,13 +2209,16 @@
                     this.showError('Failed to refresh data: ' + error.message);
                 } finally {
                     const refreshBtn = document.getElementById('refreshBtn');
-                    const btnText = refreshBtn.querySelector('.btn-text');
-                    const btnLoading = refreshBtn.querySelector('.btn-loading');
                     
-                    // Hide loading state
-                    btnText.classList.remove('hidden');
-                    btnLoading.classList.add('hidden');
-                    refreshBtn.disabled = false;
+                    // Hide loading state only if button exists
+                    if (refreshBtn) {
+                        const btnText = refreshBtn.querySelector('.btn-text');
+                        const btnLoading = refreshBtn.querySelector('.btn-loading');
+                        
+                        if (btnText) btnText.classList.remove('hidden');
+                        if (btnLoading) btnLoading.classList.add('hidden');
+                        refreshBtn.disabled = false;
+                    }
                 }
             }
 
@@ -2178,7 +2249,7 @@
                 const headers = ['Employee Name', 'Employee Code', 'Date', 'Time In', 'Time Out', 'Hours', 'Status', 'Department', 'Notes'];
                 const rows = this.filteredData.map(record => {
                     const employee = this.employees.find(emp => (emp.id || emp.employee_id) == record.employee_id);
-                    const employeeName = record.employee_name || (employee ? (employee.full_name || employee.name) : `Employee ${record.employee_id}`);
+                    const employeeName = record.employee_name || (employee ? this.getEmployeeName(employee) : `Employee ${record.employee_id}`);
                     const employeeCode = record.employee_code || (employee ? (employee.employee_id || employee.code) : `emp_${String(record.employee_id).padStart(3, '0')}`);
                     const department = record.department || (employee ? employee.department : '');
                     const hours = this.calculateHours(record.time_in, record.time_out);

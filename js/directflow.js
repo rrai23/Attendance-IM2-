@@ -20,8 +20,6 @@ class DirectFlow {
      */
     async init() {
         try {
-            console.log('🔄 DirectFlow init starting...');
-            
             // Wait for DirectFlowAuth to be available
             if (typeof window.directFlowAuth === 'undefined') {
                 console.log('⏳ Waiting for DirectFlowAuth...');
@@ -29,24 +27,18 @@ class DirectFlow {
                 return;
             }
 
-            console.log('✅ DirectFlowAuth found, checking authentication...');
-            
             // Check if user is authenticated
             if (!window.directFlowAuth.isAuthenticated()) {
-                console.log('🔄 DirectFlow: User not authenticated, will retry...');
+                console.log('🔄 DirectFlow: User not authenticated');
                 this.initialized = false;
-                // Retry after a short delay
-                setTimeout(() => this.init(), 1000);
                 return;
             }
 
-            console.log('✅ DirectFlow initializing with authentication');
+            console.log('✅ DirectFlow initialized with authentication');
             this.initialized = true;
             
             // Test connection
             await this.testConnection();
-            
-            console.log('🎉 DirectFlow initialization complete');
             
             // Emit initialized event
             this.emit('initialized', { timestamp: new Date().toISOString() });
@@ -73,22 +65,32 @@ class DirectFlow {
      * Make authenticated API request
      */
     async makeRequest(endpoint, options = {}) {
-        // Check if DirectFlowAuth is available
-        if (!window.directFlowAuth) {
-            console.error('DirectFlowAuth not available for API request');
-            throw new Error('DirectFlowAuth not available');
-        }
-        
-        // Check if user is authenticated
-        if (!window.directFlowAuth.isAuthenticated()) {
-            console.error('User not authenticated for API request');
-            throw new Error('Not authenticated');
-        }
-
         try {
-            return await window.directFlowAuth.apiRequest(this.baseUrl + endpoint, options);
+            if (!window.directFlowAuth) {
+                throw new Error('DirectFlow authentication not available');
+            }
+            
+            if (!window.directFlowAuth.isAuthenticated()) {
+                throw new Error('Not authenticated');
+            }
+
+            const response = await window.directFlowAuth.apiRequest(this.baseUrl + endpoint, options);
+            
+            // Add response status checking
+            if (!response.ok) {
+                let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.message || errorMessage;
+                } catch (e) {
+                    // If we can't parse the error as JSON, use the status text
+                }
+                throw new Error(errorMessage);
+            }
+            
+            return response;
         } catch (error) {
-            console.error('API request failed:', error);
+            console.error('DirectFlow API request failed:', error);
             throw error;
         }
     }
@@ -246,14 +248,22 @@ class DirectFlow {
 
     async deleteAttendanceRecord(id) {
         try {
+            console.log(`DirectFlow: Deleting attendance record ${id}`);
+            
             const response = await this.makeRequest(`/attendance/${id}`, {
                 method: 'DELETE'
             });
+            
             const data = await response.json();
+            console.log('DirectFlow: Delete response:', data);
+            
             return data;
         } catch (error) {
             console.error('Error deleting attendance record:', error);
-            return { success: false, message: 'Failed to delete attendance record' };
+            return { 
+                success: false, 
+                message: error.message || 'Failed to delete attendance record' 
+            };
         }
     }
 

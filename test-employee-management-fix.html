@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Management Fix Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+        button { padding: 8px 16px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Employee Management Fixes Test</h1>
+    
+    <div class="debug-section">
+        <h2>1. Authentication Check</h2>
+        <div id="authResult"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>2. Employee Data & Name Resolution Test</h2>
+        <button onclick="testEmployees()">Test Employee Loading</button>
+        <div id="employeeResult"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>3. Attendance Data Test</h2>
+        <button onclick="testAttendance()">Test Attendance Loading</button>
+        <div id="attendanceResult"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>4. CRUD Operations Test</h2>
+        <button onclick="testCRUD()">Test Create/Update/Delete</button>
+        <div id="crudResult"></div>
+    </div>
+
+    <script>
+        let directFlow = null;
+        let employees = [];
+        
+        // Helper method to get employee name with proper field mapping
+        function getEmployeeName(employee) {
+            if (!employee) return 'Unknown Employee';
+            
+            // Handle different field name variations
+            const firstName = employee.first_name || employee.firstName || '';
+            const lastName = employee.last_name || employee.lastName || '';
+            
+            // Try full_name first, then constructed name, then fallbacks
+            if (employee.full_name) {
+                return employee.full_name;
+            } else if (firstName && lastName) {
+                return `${firstName} ${lastName}`;
+            } else if (firstName) {
+                return firstName;
+            } else if (lastName) {
+                return lastName;
+            } else if (employee.name) {
+                return employee.name;
+            } else {
+                const empId = employee.id || employee.employee_id || 'Unknown';
+                return `Employee ${empId}`;
+            }
+        }
+
+        function log(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = type;
+            if (typeof message === 'object') {
+                div.innerHTML = `<pre>${JSON.stringify(message, null, 2)}</pre>`;
+            } else {
+                div.textContent = message;
+            }
+            container.appendChild(div);
+            console.log(message);
+        }
+
+        async function checkAuth() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                log('authResult', '❌ No authentication token found', 'error');
+                return false;
+            }
+            
+            log('authResult', '✅ Token found', 'success');
+            
+            try {
+                const response = await fetch('/api/users/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    const user = await response.json();
+                    log('authResult', `✅ Authenticated as: ${user.username}`, 'success');
+                    return true;
+                } else {
+                    log('authResult', `❌ Authentication failed: ${response.status}`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                log('authResult', `❌ Auth error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function testEmployees() {
+            const resultDiv = document.getElementById('employeeResult');
+            resultDiv.innerHTML = '';
+            
+            if (!directFlow) {
+                log('employeeResult', '❌ DirectFlow not available', 'error');
+                return;
+            }
+            
+            try {
+                log('employeeResult', '🔄 Loading employees...', 'info');
+                
+                const response = await directFlow.getEmployees();
+                log('employeeResult', 'DirectFlow response:', 'info');
+                log('employeeResult', response, 'info');
+                
+                if (response.success) {
+                    employees = response.data.employees || response.data || [];
+                    log('employeeResult', `✅ Loaded ${employees.length} employees`, 'success');
+                    
+                    if (employees.length > 0) {
+                        log('employeeResult', 'Employee data structure check:', 'info');
+                        log('employeeResult', employees[0], 'info');
+                        
+                        log('employeeResult', 'Name resolution test:', 'info');
+                        employees.slice(0, 5).forEach((emp, index) => {
+                            const resolvedName = getEmployeeName(emp);
+                            log('employeeResult', `Employee ${index + 1}: "${resolvedName}"`, 'success');
+                            
+                            // Show available fields
+                            const fields = {
+                                id: emp.id,
+                                employee_id: emp.employee_id,
+                                first_name: emp.first_name,
+                                last_name: emp.last_name,
+                                full_name: emp.full_name,
+                                name: emp.name
+                            };
+                            log('employeeResult', `  Fields: ${JSON.stringify(fields)}`, 'info');
+                        });
+                    }
+                } else {
+                    log('employeeResult', `❌ Failed: ${response.message}`, 'error');
+                }
+            } catch (error) {
+                log('employeeResult', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAttendance() {
+            const resultDiv = document.getElementById('attendanceResult');
+            resultDiv.innerHTML = '';
+            
+            if (!directFlow) {
+                log('attendanceResult', '❌ DirectFlow not available', 'error');
+                return;
+            }
+            
+            try {
+                log('attendanceResult', '🔄 Loading attendance records...', 'info');
+                
+                const response = await directFlow.getAttendanceRecords();
+                log('attendanceResult', 'DirectFlow response:', 'info');
+                log('attendanceResult', response, 'info');
+                
+                if (response.success) {
+                    const records = response.data.records || response.data || [];
+                    log('attendanceResult', `✅ Loaded ${records.length} records`, 'success');
+                    
+                    if (records.length > 0) {
+                        log('attendanceResult', 'Record structure:', 'info');
+                        log('attendanceResult', records[0], 'info');
+                        
+                        // Test name resolution for attendance records
+                        log('attendanceResult', 'Testing employee name resolution in attendance:', 'info');
+                        records.slice(0, 3).forEach((record, index) => {
+                            const employeeId = record.employee_id || record.employeeId;
+                            const employee = employees.find(emp => (emp.id || emp.employee_id) == employeeId);
+                            const employeeName = record.employee_name || record.employeeName || (employee ? getEmployeeName(employee) : `Employee ${employeeId}`);
+                            
+                            log('attendanceResult', `Record ${index + 1}: Employee ID ${employeeId} -> "${employeeName}"`, 'success');
+                        });
+                    }
+                } else {
+                    log('attendanceResult', `❌ Failed: ${response.message}`, 'error');
+                }
+            } catch (error) {
+                log('attendanceResult', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCRUD() {
+            const resultDiv = document.getElementById('crudResult');
+            resultDiv.innerHTML = '';
+            
+            if (!directFlow) {
+                log('crudResult', '❌ DirectFlow not available', 'error');
+                return;
+            }
+            
+            if (employees.length === 0) {
+                log('crudResult', '❌ No employees loaded. Run employee test first.', 'error');
+                return;
+            }
+            
+            try {
+                // Test CREATE
+                log('crudResult', '🔄 Testing CREATE...', 'info');
+                
+                const testRecord = {
+                    employee_id: employees[0].id || employees[0].employee_id,
+                    date: new Date().toISOString().split('T')[0],
+                    time_in: '09:00',
+                    time_out: '17:00',
+                    status: 'present',
+                    notes: 'Test record for CRUD validation'
+                };
+                
+                log('crudResult', 'Creating record:', 'info');
+                log('crudResult', testRecord, 'info');
+                
+                const createResponse = await directFlow.createAttendanceRecord(testRecord);
+                log('crudResult', 'Create response:', 'info');
+                log('crudResult', createResponse, 'info');
+                
+                if (createResponse.success) {
+                    log('crudResult', '✅ CREATE successful', 'success');
+                    
+                    const recordId = createResponse.data?.id || createResponse.data?.record?.id;
+                    if (recordId) {
+                        // Test UPDATE
+                        log('crudResult', '🔄 Testing UPDATE...', 'info');
+                        
+                        const updateData = {
+                            ...testRecord,
+                            notes: 'Updated test record',
+                            time_out: '18:00'
+                        };
+                        
+                        const updateResponse = await directFlow.updateAttendanceRecord(recordId, updateData);
+                        log('crudResult', 'Update response:', 'info');
+                        log('crudResult', updateResponse, 'info');
+                        
+                        if (updateResponse.success) {
+                            log('crudResult', '✅ UPDATE successful', 'success');
+                        } else {
+                            log('crudResult', `❌ UPDATE failed: ${updateResponse.message}`, 'error');
+                        }
+                        
+                        // Test DELETE
+                        log('crudResult', '🔄 Testing DELETE...', 'info');
+                        
+                        const deleteResponse = await directFlow.deleteAttendanceRecord(recordId);
+                        log('crudResult', 'Delete response:', 'info');
+                        log('crudResult', deleteResponse, 'info');
+                        
+                        if (deleteResponse.success) {
+                            log('crudResult', '✅ DELETE successful', 'success');
+                            log('crudResult', '🎉 All CRUD operations working!', 'success');
+                        } else {
+                            log('crudResult', `❌ DELETE failed: ${deleteResponse.message}`, 'error');
+                        }
+                    } else {
+                        log('crudResult', '❌ No record ID returned', 'error');
+                    }
+                } else {
+                    log('crudResult', `❌ CREATE failed: ${createResponse.message}`, 'error');
+                }
+            } catch (error) {
+                log('crudResult', `❌ CRUD test error: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize
+        window.onload = async () => {
+            // Initialize DirectFlow
+            if (window.DirectFlow) {
+                directFlow = new window.DirectFlow();
+                console.log('DirectFlow initialized');
+            } else {
+                log('authResult', '❌ DirectFlow not available', 'error');
+            }
+            
+            // Check authentication
+            await checkAuth();
+        };
+    </script>
+    
+    <!-- Load DirectFlow -->
+    <script src="/static/js/directflow.js"></script>
+</body>
+</html>

@@ -19,34 +19,31 @@ class DirectFlowAuth {
     init() {
         this.checkTokenValidity();
         this.startTokenRefreshInterval();
-        this.startSessionMaintenance();
         this.initialized = true;
-        console.log('✅ DirectFlowAuth initialized with session maintenance');
+        console.log('✅ DirectFlowAuth initialized');
     }
 
     // Check if current token is valid
     checkTokenValidity() {
-        const token = localStorage.getItem(this.tokenKey);
-        const expires = localStorage.getItem(this.expiryKey);
+        const token = this.getToken(); // Use the improved getToken method
         
-        if (!token || !expires) {
+        if (!token) {
             return false;
         }
-
-        if (Date.now() > parseInt(expires)) {
+        
+        // For development tokens, always consider them valid
+        if (token.startsWith('dev_token_')) {
+            return true;
+        }
+        
+        // For regular tokens, check expiry
+        const expires = localStorage.getItem(this.expiryKey);
+        if (expires && Date.now() > parseInt(expires)) {
             this.clearAuth();
             return false;
         }
 
         return true;
-    }
-
-    // Check if token is expired without clearing it
-    isTokenExpired() {
-        const expires = localStorage.getItem(this.expiryKey);
-        if (!expires) return true;
-        
-        return Date.now() > parseInt(expires);
     }
 
     // Clear all authentication data
@@ -174,7 +171,42 @@ class DirectFlowAuth {
 
     // Get current token
     getToken() {
-        return this.isAuthenticated() ? localStorage.getItem(this.tokenKey) : null;
+        // Try multiple token storage keys for backward compatibility
+        const directFlowToken = localStorage.getItem(this.tokenKey);
+        if (directFlowToken && this.isValidToken(directFlowToken)) {
+            return directFlowToken;
+        }
+        
+        // Fallback to other token keys
+        const fallbackTokens = ['token', 'auth_token', 'directflow_token'];
+        for (const key of fallbackTokens) {
+            const token = localStorage.getItem(key);
+            if (token && this.isValidToken(token)) {
+                // Store it in the main DirectFlow token key for consistency
+                localStorage.setItem(this.tokenKey, token);
+                return token;
+            }
+        }
+        
+        return null;
+    }
+    
+    // Validate token format
+    isValidToken(token) {
+        if (!token) return false;
+        
+        // Allow development tokens
+        if (token.startsWith('dev_token_')) {
+            return true;
+        }
+        
+        // Allow JWT tokens (basic format check)
+        if (token.includes('.') && token.split('.').length === 3) {
+            return true;
+        }
+        
+        // Allow other bearer tokens
+        return token.length > 10;
     }
 
     // Refresh token
@@ -233,30 +265,11 @@ class DirectFlowAuth {
             if (this.isAuthenticated() && this.needsTokenRefresh()) {
                 const result = await this.refreshToken();
                 if (!result.success) {
-                    console.log('❌ Token refresh failed, but keeping user logged in');
-                    // Don't logout automatically - let user continue with current session
-                    // Only logout if they explicitly encounter auth errors
+                    console.log('❌ Token refresh failed, logging out');
+                    this.logout();
                 }
             }
         }, 30 * 60 * 1000); // Check every 30 minutes
-    }
-
-    // Session maintenance - keep session active
-    startSessionMaintenance() {
-        setInterval(async () => {
-            if (this.isAuthenticated()) {
-                try {
-                    // Make a lightweight API call to maintain session
-                    await this.apiRequest('/api/auth/heartbeat', {
-                        method: 'GET'
-                    });
-                    console.log('💓 Session heartbeat successful');
-                } catch (error) {
-                    console.log('💓 Session heartbeat failed:', error.message);
-                    // Don't logout on heartbeat failure - just log it
-                }
-            }
-        }, 15 * 60 * 1000); // Every 15 minutes
     }
 
     /**
@@ -286,49 +299,6 @@ class DirectFlowAuth {
         return user && (user.role === 'admin' || user.role === 'manager');
     }
 
-    // Check authentication status and try to restore session
-    async checkAuthStatus() {
-        try {
-            // First check if we have a valid token
-            if (this.isAuthenticated()) {
-                return { isAuthenticated: true, user: this.getCurrentUser() };
-            }
-
-            // If no valid token, try to restore session from backend
-            const response = await fetch(`${this.baseURL}/session`, {
-                method: 'GET',
-                credentials: 'include'
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success && data.user) {
-                    // Session restored, save auth data
-                    this.saveAuthData(data.token, data.user);
-                    return { isAuthenticated: true, user: data.user };
-                }
-            }
-
-            return { isAuthenticated: false, user: null };
-        } catch (error) {
-            console.error('Error checking auth status:', error);
-            return { isAuthenticated: false, user: null };
-        }
-    }
-
-    // Save authentication data to localStorage
-    saveAuthData(token, user) {
-        try {
-            const expiry = Date.now() + (30 * 24 * 60 * 60 * 1000); // 30 days
-            localStorage.setItem(this.tokenKey, token);
-            localStorage.setItem(this.userKey, JSON.stringify(user));
-            localStorage.setItem(this.expiryKey, expiry.toString());
-            console.log('✅ Auth data saved successfully');
-        } catch (error) {
-            console.error('❌ Error saving auth data:', error);
-        }
-    }
-
     // Make authenticated API request
     async apiRequest(url, options = {}) {
         const token = this.getToken();
@@ -348,42 +318,7 @@ class DirectFlowAuth {
         });
 
         if (response.status === 401) {
-            console.log('❌ API request unauthorized');
-            
-            // Check if this is a permission error vs authentication error
-            try {
-                const errorData = await response.clone().json();
-                console.log('🔍 Error response data:', errorData);
-                
-                // If the error message indicates insufficient permissions, don't logout
-                if (errorData.message && 
-                    (errorData.message.includes('permission') || 
-                     errorData.message.includes('not authorized') ||
-                     errorData.message.includes('Access denied') ||
-                     errorData.message.includes('Manager or admin'))) {
-                    console.log('⚠️ Permission denied, not logging out');
-                    throw new Error(errorData.message || 'Access denied');
-                }
-                
-                // If the error is about authentication being required, also don't logout immediately
-                if (errorData.message && errorData.message.includes('Authentication required')) {
-                    console.log('⚠️ Authentication required, checking token validity...');
-                    
-                    // Check if we have a valid token
-                    const token = this.getToken();
-                    if (token && !this.isTokenExpired()) {
-                        console.log('⚠️ Token appears valid, not logging out');
-                        throw new Error('Authentication issue: ' + errorData.message);
-                    }
-                }
-                
-            } catch (parseError) {
-                console.log('Could not parse error response:', parseError.message);
-                // If we can't parse the error, treat it as a general auth error
-            }
-            
-            // This is likely a token expiration or invalid token
-            console.log('❌ Authentication expired, logging out');
+            console.log('❌ API request unauthorized, logging out');
             this.logout();
             throw new Error('Authentication expired');
         }

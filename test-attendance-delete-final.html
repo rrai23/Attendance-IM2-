@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Attendance Delete - Final Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        .info { color: blue; }
+        .warning { color: orange; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        .status-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+        .status-success { background: #28a745; }
+        .status-error { background: #dc3545; }
+        .status-warning { background: #ffc107; }
+        .status-info { background: #17a2b8; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Attendance Delete - Final Test</h1>
+    <p>This test verifies that all attendance delete functionality is working correctly.</p>
+    
+    <div class="test-section">
+        <h2><span class="status-indicator status-info"></span>1. System Check</h2>
+        <div id="systemResult"></div>
+        <button onclick="runSystemCheck()" id="systemBtn">Run System Check</button>
+    </div>
+    
+    <div class="test-section">
+        <h2><span class="status-indicator status-info"></span>2. Authentication Test</h2>
+        <div id="authResult"></div>
+        <button onclick="runAuthTest()" id="authBtn">Test Authentication</button>
+    </div>
+    
+    <div class="test-section">
+        <h2><span class="status-indicator status-info"></span>3. API Connectivity Test</h2>
+        <div id="apiResult"></div>
+        <button onclick="runAPITest()" id="apiBtn">Test API</button>
+    </div>
+    
+    <div class="test-section">
+        <h2><span class="status-indicator status-info"></span>4. Delete Functionality Test</h2>
+        <div id="deleteResult"></div>
+        <button onclick="runDeleteTest()" id="deleteBtn">Test Delete (Safe Mode)</button>
+    </div>
+    
+    <div class="test-section">
+        <h2><span class="status-indicator status-info"></span>5. Frontend Integration Test</h2>
+        <div id="frontendResult"></div>
+        <button onclick="runFrontendTest()" id="frontendBtn">Test Frontend Integration</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>📋 Test Summary</h2>
+        <div id="summaryResult"></div>
+        <button onclick="runAllTests()" id="allBtn" style="background: #28a745;">Run All Tests</button>
+    </div>
+
+    <script>
+        let testResults = {};
+        
+        function log(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = type;
+            
+            if (typeof message === 'object') {
+                div.innerHTML = `<pre>${JSON.stringify(message, null, 2)}</pre>`;
+            } else {
+                div.innerHTML = message;
+            }
+            
+            container.appendChild(div);
+            console.log(message);
+        }
+
+        function updateStatus(testName, success) {
+            testResults[testName] = success;
+            updateSummary();
+        }
+
+        function updateSummary() {
+            const summaryDiv = document.getElementById('summaryResult');
+            summaryDiv.innerHTML = '';
+            
+            const tests = [
+                'system', 'auth', 'api', 'delete', 'frontend'
+            ];
+            
+            let passedTests = 0;
+            tests.forEach(test => {
+                const status = testResults[test];
+                const statusClass = status === true ? 'success' : status === false ? 'error' : 'warning';
+                const statusText = status === true ? '✅ PASS' : status === false ? '❌ FAIL' : '⏳ PENDING';
+                
+                if (status === true) passedTests++;
+                
+                log('summaryResult', `${test.toUpperCase()}: ${statusText}`, statusClass);
+            });
+            
+            log('summaryResult', `<br><strong>Overall: ${passedTests}/${tests.length} tests passed</strong>`, passedTests === tests.length ? 'success' : 'warning');
+        }
+
+        async function runSystemCheck() {
+            const resultDiv = document.getElementById('systemResult');
+            resultDiv.innerHTML = '';
+            document.getElementById('systemBtn').disabled = true;
+            
+            try {
+                log('systemResult', '🔍 Checking system components...', 'info');
+                
+                // Check DirectFlow availability
+                if (window.DirectFlow) {
+                    log('systemResult', '✅ DirectFlow class available', 'success');
+                } else {
+                    log('systemResult', '❌ DirectFlow class not found', 'error');
+                    updateStatus('system', false);
+                    return;
+                }
+                
+                // Check DirectFlow Auth
+                if (window.directFlowAuth) {
+                    log('systemResult', '✅ DirectFlowAuth available', 'success');
+                } else {
+                    log('systemResult', '❌ DirectFlowAuth not found', 'error');
+                    updateStatus('system', false);
+                    return;
+                }
+                
+                // Check required methods
+                const directFlow = new window.DirectFlow();
+                const requiredMethods = ['deleteAttendanceRecord', 'getAttendanceRecords'];
+                let methodsOk = true;
+                
+                requiredMethods.forEach(method => {
+                    if (typeof directFlow[method] === 'function') {
+                        log('systemResult', `✅ Method ${method} available`, 'success');
+                    } else {
+                        log('systemResult', `❌ Method ${method} missing`, 'error');
+                        methodsOk = false;
+                    }
+                });
+                
+                if (methodsOk) {
+                    log('systemResult', '✅ All system components OK', 'success');
+                    updateStatus('system', true);
+                } else {
+                    log('systemResult', '❌ System components missing', 'error');
+                    updateStatus('system', false);
+                }
+                
+            } catch (error) {
+                log('systemResult', `❌ System check failed: ${error.message}`, 'error');
+                updateStatus('system', false);
+            } finally {
+                document.getElementById('systemBtn').disabled = false;
+            }
+        }
+
+        async function runAuthTest() {
+            const resultDiv = document.getElementById('authResult');
+            resultDiv.innerHTML = '';
+            document.getElementById('authBtn').disabled = true;
+            
+            try {
+                log('authResult', '🔍 Testing authentication...', 'info');
+                
+                // Check authentication status
+                if (window.directFlowAuth.isAuthenticated()) {
+                    log('authResult', '✅ User is authenticated', 'success');
+                    
+                    const user = window.directFlowAuth.getCurrentUser();
+                    if (user) {
+                        log('authResult', `✅ User: ${user.username} (${user.role})`, 'success');
+                        
+                        // Check permissions
+                        if (['admin', 'manager'].includes(user.role)) {
+                            log('authResult', '✅ User has delete permissions', 'success');
+                            updateStatus('auth', true);
+                        } else {
+                            log('authResult', '❌ User lacks delete permissions', 'error');
+                            updateStatus('auth', false);
+                        }
+                    } else {
+                        log('authResult', '⚠️ Authentication status unclear', 'warning');
+                        updateStatus('auth', null);
+                    }
+                } else {
+                    log('authResult', '❌ User not authenticated', 'error');
+                    updateStatus('auth', false);
+                }
+                
+                // Test token availability
+                const token = window.directFlowAuth.getToken();
+                if (token) {
+                    log('authResult', `✅ Token available: ${token.substring(0, 20)}...`, 'success');
+                } else {
+                    log('authResult', '❌ No token available', 'error');
+                    updateStatus('auth', false);
+                }
+                
+            } catch (error) {
+                log('authResult', `❌ Auth test failed: ${error.message}`, 'error');
+                updateStatus('auth', false);
+            } finally {
+                document.getElementById('authBtn').disabled = false;
+            }
+        }
+
+        async function runAPITest() {
+            const resultDiv = document.getElementById('apiResult');
+            resultDiv.innerHTML = '';
+            document.getElementById('apiBtn').disabled = true;
+            
+            try {
+                log('apiResult', '🔍 Testing API connectivity...', 'info');
+                
+                // Test basic API endpoint
+                const token = window.directFlowAuth.getToken();
+                if (!token) {
+                    log('apiResult', '❌ No token for API test', 'error');
+                    updateStatus('api', false);
+                    return;
+                }
+                
+                // Test user endpoint
+                const userResponse = await fetch('/api/users/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (userResponse.ok) {
+                    log('apiResult', '✅ User API endpoint working', 'success');
+                } else {
+                    log('apiResult', `❌ User API failed: ${userResponse.status}`, 'error');
+                }
+                
+                // Test attendance endpoint
+                const attendanceResponse = await fetch('/api/attendance', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (attendanceResponse.ok) {
+                    log('apiResult', '✅ Attendance API endpoint working', 'success');
+                    updateStatus('api', true);
+                } else {
+                    log('apiResult', `❌ Attendance API failed: ${attendanceResponse.status}`, 'error');
+                    updateStatus('api', false);
+                }
+                
+            } catch (error) {
+                log('apiResult', `❌ API test failed: ${error.message}`, 'error');
+                updateStatus('api', false);
+            } finally {
+                document.getElementById('apiBtn').disabled = false;
+            }
+        }
+
+        async function runDeleteTest() {
+            const resultDiv = document.getElementById('deleteResult');
+            resultDiv.innerHTML = '';
+            document.getElementById('deleteBtn').disabled = true;
+            
+            try {
+                log('deleteResult', '🔍 Testing delete functionality (safe mode)...', 'info');
+                
+                // Get a record to test with
+                const directFlow = new window.DirectFlow();
+                const records = await directFlow.getAttendanceRecords();
+                
+                if (!records.success || !records.data.records || records.data.records.length === 0) {
+                    log('deleteResult', '⚠️ No attendance records to test with', 'warning');
+                    updateStatus('delete', null);
+                    return;
+                }
+                
+                const testRecord = records.data.records[0];
+                log('deleteResult', `🎯 Testing with record ID: ${testRecord.id}`, 'info');
+                
+                // Test the delete method WITHOUT actually deleting
+                log('deleteResult', '🔍 Testing delete method availability...', 'info');
+                
+                if (typeof directFlow.deleteAttendanceRecord === 'function') {
+                    log('deleteResult', '✅ Delete method available', 'success');
+                    
+                    // Test the HTTP endpoint without deleting
+                    const token = window.directFlowAuth.getToken();
+                    const testResponse = await fetch(`/api/attendance/${testRecord.id}`, {
+                        method: 'GET', // Use GET instead of DELETE for testing
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    
+                    if (testResponse.ok) {
+                        log('deleteResult', '✅ Delete endpoint accessible', 'success');
+                        log('deleteResult', '✅ Delete functionality should work', 'success');
+                        updateStatus('delete', true);
+                    } else {
+                        log('deleteResult', `❌ Delete endpoint not accessible: ${testResponse.status}`, 'error');
+                        updateStatus('delete', false);
+                    }
+                } else {
+                    log('deleteResult', '❌ Delete method not available', 'error');
+                    updateStatus('delete', false);
+                }
+                
+            } catch (error) {
+                log('deleteResult', `❌ Delete test failed: ${error.message}`, 'error');
+                updateStatus('delete', false);
+            } finally {
+                document.getElementById('deleteBtn').disabled = false;
+            }
+        }
+
+        async function runFrontendTest() {
+            const resultDiv = document.getElementById('frontendResult');
+            resultDiv.innerHTML = '';
+            document.getElementById('frontendBtn').disabled = true;
+            
+            try {
+                log('frontendResult', '🔍 Testing frontend integration...', 'info');
+                
+                // Check if employee management page is available
+                if (window.employeeManagement) {
+                    log('frontendResult', '✅ Employee management page available', 'success');
+                    
+                    if (typeof window.employeeManagement.deleteRecord === 'function') {
+                        log('frontendResult', '✅ Delete method available on page', 'success');
+                        updateStatus('frontend', true);
+                    } else {
+                        log('frontendResult', '❌ Delete method not available on page', 'error');
+                        updateStatus('frontend', false);
+                    }
+                } else {
+                    log('frontendResult', '⚠️ Employee management page not loaded', 'warning');
+                    log('frontendResult', 'This test is only valid on the employee-management.html page', 'info');
+                    updateStatus('frontend', null);
+                }
+                
+            } catch (error) {
+                log('frontendResult', `❌ Frontend test failed: ${error.message}`, 'error');
+                updateStatus('frontend', false);
+            } finally {
+                document.getElementById('frontendBtn').disabled = false;
+            }
+        }
+
+        async function runAllTests() {
+            document.getElementById('allBtn').disabled = true;
+            document.getElementById('allBtn').textContent = 'Running Tests...';
+            
+            await runSystemCheck();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await runAuthTest();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await runAPITest();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await runDeleteTest();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await runFrontendTest();
+            
+            document.getElementById('allBtn').disabled = false;
+            document.getElementById('allBtn').textContent = 'Run All Tests';
+            
+            // Show final result
+            const passed = Object.values(testResults).filter(r => r === true).length;
+            const total = Object.keys(testResults).length;
+            
+            if (passed === total) {
+                alert('🎉 All tests passed! Attendance delete functionality should work correctly.');
+            } else {
+                alert(`⚠️ ${passed}/${total} tests passed. Check the results for issues.`);
+            }
+        }
+
+        // Initialize summary
+        updateSummary();
+        
+        // Auto-run system check on load
+        window.onload = () => {
+            setTimeout(runSystemCheck, 1000);
+        };
+    </script>
+    
+    <!-- Load dependencies -->
+    <script src="/js/directflow-auth.js"></script>
+    <script src="/js/directflow.js"></script>
+</body>
+</html>

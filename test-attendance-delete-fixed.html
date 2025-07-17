@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Attendance Delete - Fixed</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 20px auto; 
+            padding: 20px; 
+            background: #f5f5f5; 
+        }
+        .container { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        .test-section { 
+            margin: 20px 0; 
+            padding: 15px; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 8px 16px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            margin: 5px; 
+        }
+        button:hover { background: #0056b3; }
+        .log { 
+            background: #f8f9fa; 
+            border: 1px solid #dee2e6; 
+            padding: 10px; 
+            border-radius: 4px; 
+            white-space: pre-wrap; 
+            font-family: monospace; 
+            max-height: 200px; 
+            overflow-y: auto; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Attendance Delete Test - Auth Fix</h1>
+        <p>Testing the authentication fix for attendance delete operations.</p>
+
+        <div class="test-section info">
+            <h3>🔍 Test Status</h3>
+            <div id="authStatus">Not authenticated</div>
+            <div id="testStatus">Ready to test</div>
+        </div>
+
+        <div class="test-section">
+            <h3>🚀 Test Controls</h3>
+            <button onclick="login()">1. Login as Admin</button>
+            <button onclick="loadAttendanceData()">2. Load Attendance Data</button>
+            <button onclick="testDeleteAttendance()">3. Test Delete Attendance</button>
+            <button onclick="clearLogs()">Clear Logs</button>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 Test Results</h3>
+            <div id="testLogs" class="log">Ready to start testing...\n</div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = null;
+        let attendanceRecords = [];
+
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            document.getElementById('testLogs').textContent += `[${timestamp}] ${message}\n`;
+            document.getElementById('testLogs').scrollTop = document.getElementById('testLogs').scrollHeight;
+        }
+
+        function updateAuthStatus(status) {
+            document.getElementById('authStatus').textContent = status;
+        }
+
+        function updateTestStatus(status) {
+            document.getElementById('testStatus').textContent = status;
+        }
+
+        function clearLogs() {
+            document.getElementById('testLogs').textContent = 'Logs cleared.\n';
+        }
+
+        async function login() {
+            try {
+                log('🔐 Attempting admin login...');
+                
+                const response = await fetch('http://localhost:3000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'admin123'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success && data.token) {
+                    authToken = data.token;
+                    localStorage.setItem('directflow_auth_token', authToken);
+                    updateAuthStatus(`✅ Authenticated as: ${data.user.username} (${data.user.role})`);
+                    log(`✅ Login successful! Token: ${authToken.substring(0, 20)}...`);
+                    log(`👤 User: ${data.user.username}, Role: ${data.user.role}, Employee ID: ${data.user.employee_id}`);
+                } else {
+                    log(`❌ Login failed: ${data.message}`);
+                    updateAuthStatus('❌ Authentication failed');
+                }
+            } catch (error) {
+                log(`❌ Login error: ${error.message}`);
+                updateAuthStatus('❌ Authentication error');
+            }
+        }
+
+        async function loadAttendanceData() {
+            if (!authToken) {
+                log('❌ Not authenticated. Please login first.');
+                return;
+            }
+
+            try {
+                log('📊 Loading attendance data...');
+                
+                const response = await fetch('http://localhost:3000/api/attendance/records', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    attendanceRecords = data.data;
+                    log(`✅ Loaded ${attendanceRecords.length} attendance records`);
+                    
+                    if (attendanceRecords.length > 0) {
+                        const firstRecord = attendanceRecords[0];
+                        log(`📋 First record: ID=${firstRecord.id}, Employee=${firstRecord.employee_name || firstRecord.employee_id}, Date=${firstRecord.date}`);
+                        updateTestStatus(`Ready to test delete with record ID: ${firstRecord.id}`);
+                    } else {
+                        log('⚠️ No attendance records found to test delete');
+                        updateTestStatus('No records available for delete test');
+                    }
+                } else {
+                    log(`❌ Failed to load attendance data: ${data.message}`);
+                    updateTestStatus('Failed to load test data');
+                }
+            } catch (error) {
+                log(`❌ Error loading attendance data: ${error.message}`);
+                updateTestStatus('Error loading test data');
+            }
+        }
+
+        async function testDeleteAttendance() {
+            if (!authToken) {
+                log('❌ Not authenticated. Please login first.');
+                return;
+            }
+
+            if (attendanceRecords.length === 0) {
+                log('❌ No attendance records loaded. Please load data first.');
+                return;
+            }
+
+            try {
+                const recordToTest = attendanceRecords[0];
+                log(`🗑️ Testing delete for attendance record ID: ${recordToTest.id}`);
+                log(`📋 Record details: Employee=${recordToTest.employee_name || recordToTest.employee_id}, Date=${recordToTest.date}`);
+                
+                const response = await fetch(`http://localhost:3000/api/attendance/${recordToTest.id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                log(`📡 DELETE Response Status: ${response.status} ${response.statusText}`);
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    log(`✅ DELETE SUCCESS! Record ${recordToTest.id} deleted successfully`);
+                    log(`✅ Response: ${data.message}`);
+                    updateTestStatus('✅ Delete test PASSED - Authentication working!');
+                    
+                    // Reload data to confirm deletion
+                    setTimeout(() => {
+                        log('🔄 Reloading data to confirm deletion...');
+                        loadAttendanceData();
+                    }, 1000);
+                } else {
+                    log(`❌ DELETE FAILED! Status: ${response.status}`);
+                    log(`❌ Error: ${data.message || 'Unknown error'}`);
+                    updateTestStatus('❌ Delete test FAILED');
+                    
+                    if (response.status === 401) {
+                        log('🔍 401 Unauthorized - Authentication issue detected');
+                        updateAuthStatus('❌ Authentication expired or invalid');
+                    } else if (response.status === 403) {
+                        log('🔍 403 Forbidden - Permission issue detected');
+                    }
+                }
+            } catch (error) {
+                log(`❌ Delete test error: ${error.message}`);
+                updateTestStatus('❌ Delete test ERROR');
+            }
+        }
+
+        // Auto-restore token if available
+        window.onload = function() {
+            const savedToken = localStorage.getItem('directflow_auth_token');
+            if (savedToken) {
+                authToken = savedToken;
+                updateAuthStatus('🔄 Token restored from storage');
+                log('🔄 Auth token restored from localStorage');
+            }
+        };
+    </script>
+</body>
+</html>
