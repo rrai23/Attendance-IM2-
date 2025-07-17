@@ -156,7 +156,7 @@ router.get('/:employeeId', auth, async (req, res) => {
                 ua.created_at as account_created
             FROM employees e
             LEFT JOIN user_accounts ua ON e.employee_id = ua.employee_id
-            WHERE e.employee_id = ?
+            WHERE e.id = ?
         `, [employeeId]);
 
         if (employees.length === 0) {
@@ -337,8 +337,8 @@ router.put('/:employeeId', requireManagerOrAdmin, async (req, res) => {
             status
         } = req.body;
 
-        // Check if employee exists
-        const existing = await db.execute('SELECT employee_id FROM employees WHERE employee_id = ?', [employeeId]);
+        // Check if employee exists - use database id (primary key)
+        const existing = await db.execute('SELECT id, employee_id FROM employees WHERE id = ?', [employeeId]);
         if (existing.length === 0) {
             return res.status(404).json({
                 success: false,
@@ -346,10 +346,12 @@ router.put('/:employeeId', requireManagerOrAdmin, async (req, res) => {
             });
         }
 
+        const employeeCode = existing[0].employee_id;
+
         // Check if email belongs to another employee
         if (email) {
             const emailCheck = await db.execute(
-                'SELECT employee_id FROM employees WHERE email = ? AND employee_id != ?',
+                'SELECT employee_id FROM employees WHERE email = ? AND id != ?',
                 [email, employeeId]
             );
             if (emailCheck.length > 0) {
@@ -416,7 +418,7 @@ router.put('/:employeeId', requireManagerOrAdmin, async (req, res) => {
         updateParams.push(employeeId);
 
         await db.execute(
-            `UPDATE employees SET ${updateFields.join(', ')} WHERE employee_id = ?`,
+            `UPDATE employees SET ${updateFields.join(', ')} WHERE id = ?`,
             updateParams
         );
 
@@ -429,7 +431,7 @@ router.put('/:employeeId', requireManagerOrAdmin, async (req, res) => {
                 ua.is_active as account_active
             FROM employees e
             LEFT JOIN user_accounts ua ON e.employee_id = ua.employee_id
-            WHERE e.employee_id = ?
+            WHERE e.id = ?
         `, [employeeId]);
 
         res.json({

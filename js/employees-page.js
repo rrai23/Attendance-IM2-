@@ -715,7 +715,7 @@ class EmployeesPageManager {
                     status: employeeData.status || 'active'
                 };
                 
-                const updatedEmployee = await this.directFlow.updateEmployee(this.currentEmployee.employeeId || this.currentEmployee.employee_id || this.currentEmployee.id, backendEmployeeData);
+                const updatedEmployee = await this.directFlow.updateEmployee(this.currentEmployee.id, backendEmployeeData);
                 console.log('[DATA INTEGRITY] Employee updated via DirectFlow:', updatedEmployee);
             } else {
                 // For new employees, don't require employee code - it will be auto-generated
@@ -1440,12 +1440,18 @@ class EmployeesPageManager {
     }
 
     getEmployeeName(employee) {
+        // Check for full_name first (from backend)
+        if (employee.full_name) {
+            return employee.full_name;
+        }
+        
         if (employee.fullName) {
             return employee.fullName;
         }
         
-        const firstName = employee.firstName || '';
-        const lastName = employee.lastName || '';
+        // Check for snake_case fields (from backend)
+        const firstName = employee.first_name || employee.firstName || '';
+        const lastName = employee.last_name || employee.lastName || '';
         
         if (firstName && lastName) {
             return `${firstName} ${lastName}`;
