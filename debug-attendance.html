@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Attendance Loading</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .debug-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            background: #fff;
+            border-left: 4px solid #ccc;
+        }
+        
+        .success { border-left-color: #28a745; background: #d4edda; }
+        .error { border-left-color: #dc3545; background: #f8d7da; }
+        .info { border-left-color: #17a2b8; background: #d1ecf1; }
+        .warning { border-left-color: #ffc107; background: #fff3cd; }
+        
+        button {
+            margin: 5px;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        
+        button:hover { background: #0056b3; }
+        
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        
+        .step {
+            margin: 5px 0;
+            padding: 8px 12px;
+            background: white;
+            border-radius: 4px;
+            border-left: 3px solid #007bff;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug: Attendance Data Loading</h1>
+    
+    <div class="debug-section">
+        <h2>Step 1: Authentication Check</h2>
+        <div id="authResult" class="result">Checking authentication...</div>
+        <button onclick="checkAuth()">Test Authentication</button>
+    </div>
+    
+    <div class="debug-section">
+        <h2>Step 2: DirectFlow API Test</h2>
+        <div id="directFlowResult" class="result">Ready to test DirectFlow...</div>
+        <button onclick="testDirectFlow()">Test DirectFlow API</button>
+    </div>
+    
+    <div class="debug-section">
+        <h2>Step 3: Raw API Test</h2>
+        <div id="rawApiResult" class="result">Ready to test raw API...</div>
+        <button onclick="testRawAPI()">Test Raw API</button>
+    </div>
+    
+    <div class="debug-section">
+        <h2>Step 4: Employee Management Simulation</h2>
+        <div id="simulationResult" class="result">Ready to simulate...</div>
+        <button onclick="simulateEmployeeManagement()">Simulate Load Process</button>
+    </div>
+    
+    <div class="debug-section">
+        <h2>Debug Logs</h2>
+        <div id="debugLogs" class="result info">
+            <pre id="logOutput">Logs will appear here...</pre>
+        </div>
+        <button onclick="clearLogs()">Clear Logs</button>
+    </div>
+
+    <script src="/js/directflow.js"></script>
+    <script>
+        let logs = [];
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            logs.push(`[${timestamp}] ${type.toUpperCase()}: ${message}`);
+            updateLogDisplay();
+        }
+        
+        function updateLogDisplay() {
+            document.getElementById('logOutput').textContent = logs.join('\n');
+        }
+        
+        function clearLogs() {
+            logs = [];
+            updateLogDisplay();
+        }
+        
+        async function checkAuth() {
+            const result = document.getElementById('authResult');
+            log('Starting authentication check...');
+            
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    result.className = 'result error';
+                    result.textContent = '❌ No authentication token found';
+                    log('No token found in localStorage', 'error');
+                    return false;
+                }
+                
+                log(`Token found: ${token.substring(0, 20)}...`, 'info');
+                
+                const response = await fetch('/api/auth/verify', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    const userData = await response.json();
+                    result.className = 'result success';
+                    result.textContent = `✅ Authentication valid for: ${userData.username || 'Unknown'} (${userData.role || 'No role'})`;
+                    log(`Auth successful: ${JSON.stringify(userData)}`, 'success');
+                    return true;
+                } else {
+                    result.className = 'result error';
+                    result.textContent = `❌ Authentication failed: ${response.status}`;
+                    log(`Auth failed: ${response.status} ${response.statusText}`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                result.className = 'result error';
+                result.textContent = `❌ Auth error: ${error.message}`;
+                log(`Auth error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        async function testDirectFlow() {
+            const result = document.getElementById('directFlowResult');
+            log('Starting DirectFlow API test...');
+            
+            try {
+                if (typeof DirectFlow === 'undefined') {
+                    result.className = 'result error';
+                    result.textContent = '❌ DirectFlow class not found';
+                    log('DirectFlow class not found', 'error');
+                    return;
+                }
+                
+                const directFlow = new DirectFlow();
+                log('DirectFlow instance created', 'info');
+                
+                if (typeof directFlow.getAttendanceRecords !== 'function') {
+                    result.className = 'result error';
+                    result.textContent = '❌ getAttendanceRecords method not found';
+                    log('getAttendanceRecords method not found', 'error');
+                    return;
+                }
+                
+                log('Calling getAttendanceRecords()...', 'info');
+                const response = await directFlow.getAttendanceRecords();
+                
+                log(`DirectFlow response type: ${typeof response}`, 'info');
+                log(`DirectFlow response: ${JSON.stringify(response, null, 2)}`, 'info');
+                
+                let records = [];
+                if (Array.isArray(response)) {
+                    records = response;
+                } else if (response && response.success && response.data) {
+                    records = response.data.records || response.data;
+                } else if (response && response.data) {
+                    records = response.data.records || response.data;
+                } else if (response && response.records) {
+                    records = response.records;
+                }
+                
+                result.className = 'result success';
+                result.innerHTML = `✅ DirectFlow Success: ${records.length} records<br>
+                    <small>Response type: ${typeof response}<br>
+                    First record: ${records[0] ? JSON.stringify(records[0], null, 2) : 'None'}</small>`;
+                    
+                log(`DirectFlow successful: ${records.length} records`, 'success');
+                
+            } catch (error) {
+                result.className = 'result error';
+                result.textContent = `❌ DirectFlow error: ${error.message}`;
+                log(`DirectFlow error: ${error.message}`, 'error');
+                log(`DirectFlow error stack: ${error.stack}`, 'error');
+            }
+        }
+        
+        async function testRawAPI() {
+            const result = document.getElementById('rawApiResult');
+            log('Starting raw API test...');
+            
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/attendance', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                log(`Raw API response status: ${response.status}`, 'info');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`Raw API response: ${JSON.stringify(data, null, 2)}`, 'info');
+                    
+                    let records = [];
+                    if (Array.isArray(data)) {
+                        records = data;
+                    } else if (data.success && data.data) {
+                        records = data.data.records || data.data;
+                    } else if (data.data) {
+                        records = data.data.records || data.data;
+                    }
+                    
+                    result.className = 'result success';
+                    result.innerHTML = `✅ Raw API Success: ${records.length} records<br>
+                        <small>Response structure: ${Object.keys(data).join(', ')}</small>`;
+                    log(`Raw API successful: ${records.length} records`, 'success');
+                } else {
+                    const errorText = await response.text();
+                    result.className = 'result error';
+                    result.textContent = `❌ Raw API failed: ${response.status} - ${errorText}`;
+                    log(`Raw API failed: ${response.status} - ${errorText}`, 'error');
+                }
+            } catch (error) {
+                result.className = 'result error';
+                result.textContent = `❌ Raw API error: ${error.message}`;
+                log(`Raw API error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function simulateEmployeeManagement() {
+            const result = document.getElementById('simulationResult');
+            log('Starting employee management simulation...');
+            
+            try {
+                // Simulate the exact process from employee-management.html
+                log('Step 1: Creating DirectFlow instance...', 'info');
+                
+                if (typeof DirectFlow === 'undefined') {
+                    throw new Error('DirectFlow class not available');
+                }
+                
+                const directFlow = new DirectFlow();
+                
+                log('Step 2: Calling getAttendanceRecords()...', 'info');
+                const response = await directFlow.getAttendanceRecords();
+                
+                log('Step 3: Processing response...', 'info');
+                let allAttendanceData = [];
+                
+                if (Array.isArray(response)) {
+                    allAttendanceData = response;
+                } else if (response && response.success && response.data) {
+                    if (response.data.records) {
+                        allAttendanceData = response.data.records;
+                    } else if (Array.isArray(response.data)) {
+                        allAttendanceData = response.data;
+                    }
+                } else if (response && response.data) {
+                    if (response.data.records) {
+                        allAttendanceData = response.data.records;
+                    } else if (Array.isArray(response.data)) {
+                        allAttendanceData = response.data;
+                    }
+                } else if (response && response.records) {
+                    allAttendanceData = response.records;
+                }
+                
+                log(`Step 4: Setting up pagination (${allAttendanceData.length} records)...`, 'info');
+                
+                const itemsPerPage = 25;
+                const totalRecords = allAttendanceData.length;
+                const totalPages = Math.ceil(totalRecords / itemsPerPage);
+                const currentPage = 1;
+                
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const endIndex = startIndex + itemsPerPage;
+                const attendanceData = allAttendanceData.slice(startIndex, endIndex);
+                
+                log(`Step 5: Pagination complete - Page ${currentPage}/${totalPages}, showing ${attendanceData.length}/${totalRecords}`, 'info');
+                
+                result.className = 'result success';
+                result.innerHTML = `✅ Simulation Complete!<br>
+                    <div class="step">Total Records: ${totalRecords}</div>
+                    <div class="step">Total Pages: ${totalPages}</div>
+                    <div class="step">Current Page: ${currentPage}</div>
+                    <div class="step">Page Records: ${attendanceData.length}</div>
+                    <div class="step">First Record: ${attendanceData[0] ? JSON.stringify(attendanceData[0], null, 2) : 'None'}</div>`;
+                    
+                log('Simulation completed successfully', 'success');
+                
+            } catch (error) {
+                result.className = 'result error';
+                result.textContent = `❌ Simulation failed: ${error.message}`;
+                log(`Simulation error: ${error.message}`, 'error');
+                log(`Simulation error stack: ${error.stack}`, 'error');
+            }
+        }
+        
+        // Auto-run authentication check
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(checkAuth, 1000);
+        });
+    </script>
+</body>
+</html>

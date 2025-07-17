@@ -622,6 +622,88 @@
             border-bottom-color: #718096;
         }
         
+        .table-header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .table-header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .pagination-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .pagination-info {
+            font-size: 0.875rem;
+            color: #718096;
+            white-space: nowrap;
+        }
+        
+        body.dark-mode .pagination-info {
+            color: #cbd5e0;
+        }
+        
+        .pagination-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            min-width: 80px;
+            justify-content: center;
+        }
+        
+        .pagination-btn:hover:not(:disabled) {
+            background: #5a67d8;
+            transform: translateY(-1px);
+        }
+        
+        .pagination-btn:disabled {
+            background: #e2e8f0;
+            color: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        body.dark-mode .pagination-btn:disabled {
+            background: #4a5568;
+            color: #718096;
+        }
+        
+        .page-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .page-input {
+            width: 60px;
+            padding: 4px 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.875rem;
+        }
+        
+        body.dark-mode .page-input {
+            background: #2d3748;
+            border-color: #718096;
+            color: #e2e8f0;
+        }
+        
         .table-title {
             font-size: 1.125rem;
             font-weight: 600;
@@ -1249,11 +1331,30 @@
             <!-- Table -->
             <div class="table-container">
                 <div class="table-header">
-                    <h2 class="table-title">
-                        <i class="fas fa-table"></i>
-                        Attendance Records
-                    </h2>
-                    <span class="badge" id="recordCount">0 records</span>
+                    <div class="table-header-left">
+                        <h2 class="table-title">
+                            <i class="fas fa-table"></i>
+                            Attendance Records
+                        </h2>
+                        <span class="badge" id="recordCount">0 records</span>
+                    </div>
+                    <div class="table-header-right">
+                        <div class="pagination-controls">
+                            <span class="pagination-info" id="paginationInfo">Page 1 of 1</span>
+                            <button class="pagination-btn" id="prevPageBtn" onclick="employeeManagement.previousPage()">
+                                <i class="fas fa-chevron-left"></i>
+                                Previous
+                            </button>
+                            <div class="page-selector">
+                                <span style="font-size: 0.875rem; color: #718096;">Go to:</span>
+                                <input type="number" class="page-input" id="pageInput" min="1" onchange="employeeManagement.goToPage(this.value)">
+                            </div>
+                            <button class="pagination-btn" id="nextPageBtn" onclick="employeeManagement.nextPage()">
+                                Next
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 <table class="table">
                     <thead>
@@ -1386,11 +1487,19 @@
         class EmployeeManagementPage {
             constructor() {
                 this.directFlow = null;
-                this.attendanceData = [];
+                this.attendanceData = [];  // Current page data
+                this.allAttendanceData = []; // All data for frontend pagination
+                this.currentFilteredData = []; // Currently filtered data (before pagination)
                 this.employees = [];
                 this.filteredData = [];
                 this.currentEditingId = null;
                 this.initialized = false;
+                
+                // Pagination properties
+                this.currentPage = 1;
+                this.itemsPerPage = 25; // Set to 25 records per page
+                this.totalPages = 1;
+                this.totalRecords = 0;
                 
                 // Cache for performance
                 this.dataCache = {
@@ -1461,7 +1570,7 @@
                     // Load data from backend in parallel for better performance
                     await Promise.all([
                         this.loadEmployees(),
-                        this.loadAttendanceData()
+                        this.loadAttendanceData(1) // Start with page 1
                     ]);
                     
                     // Show main content immediately after data loads
@@ -1621,14 +1730,18 @@
                 }
             }
 
-            async loadAttendanceData() {
+            async loadAttendanceData(page = 1, useCache = true) {
                 try {
-                    // Check cache first (valid for 2 minutes for attendance data)
-                    if (this.dataCache.attendance && this.dataCache.lastFetch && 
+                    // Check cache first (valid for 2 minutes for attendance data) - only if using cache and page 1
+                    if (useCache && page === 1 && this.dataCache.attendance && this.dataCache.lastFetch && 
                         (Date.now() - this.dataCache.lastFetch) < 120000) {
                         console.log('Using cached attendance data');
-                        this.attendanceData = this.dataCache.attendance;
-                        this.filteredData = [...this.attendanceData];
+                        const cachedData = this.dataCache.attendance;
+                        this.allAttendanceData = cachedData.records || cachedData;
+                        this.currentFilteredData = [...this.allAttendanceData]; // Initialize filtered data
+                        this.setupPagination();
+                        this.updatePaginationControls();
+                        this.renderTable(); // This was missing!
                         return;
                     }
                     
@@ -1637,44 +1750,53 @@
                     
                     console.log('DirectFlow attendance response:', response);
                     
-                    // Handle different response formats
+                    // Handle different response formats and store all data
                     if (Array.isArray(response)) {
                         // Direct array response
-                        this.attendanceData = response;
+                        this.allAttendanceData = response;
                     } else if (response && response.success && response.data) {
                         // Standard response object format with nested data
                         if (response.data.records) {
                             // Backend returns { success: true, data: { records: [...], pagination: {...} } }
-                            this.attendanceData = response.data.records;
+                            this.allAttendanceData = response.data.records;
                         } else if (Array.isArray(response.data)) {
                             // Backend returns { success: true, data: [...] }
-                            this.attendanceData = response.data;
+                            this.allAttendanceData = response.data;
                         } else {
-                            this.attendanceData = [];
+                            this.allAttendanceData = [];
                         }
                     } else if (response && response.data) {
                         // Response object without success flag
                         if (response.data.records) {
-                            this.attendanceData = response.data.records;
+                            this.allAttendanceData = response.data.records;
                         } else if (Array.isArray(response.data)) {
-                            this.attendanceData = response.data;
+                            this.allAttendanceData = response.data;
                         } else {
-                            this.attendanceData = [];
+                            this.allAttendanceData = [];
                         }
                     } else if (response && response.records) {
                         // Direct records property
-                        this.attendanceData = response.records;
+                        this.allAttendanceData = response.records;
                     } else {
                         throw new Error(response?.message || 'Failed to load attendance data');
                     }
                     
-                    this.filteredData = [...this.attendanceData];
+                    // Setup frontend pagination with all the data
+                    this.currentFilteredData = [...this.allAttendanceData]; // Initialize filtered data
+                    this.setupPagination();
                     
-                    // Cache the data
-                    this.dataCache.attendance = this.attendanceData;
+                    // Cache the data (all data)
+                    this.dataCache.attendance = {
+                        records: this.allAttendanceData
+                    };
                     this.dataCache.lastFetch = Date.now();
                     
-                    console.log(`✅ Loaded ${this.attendanceData.length} attendance records`);
+                    // Update pagination controls and render the table
+                    this.updatePaginationControls();
+                    this.renderTable(); // This was missing!
+                    
+                    console.log(`✅ Loaded ${this.allAttendanceData.length} attendance records total`);
+                    console.log(`📋 Showing page ${this.currentPage} with ${this.attendanceData.length} records`);
                     console.log('📋 First few attendance records:', this.attendanceData.slice(0, 3));
                     
                     // Debug the data structure
@@ -1687,6 +1809,28 @@
                     this.attendanceData = [];
                     this.filteredData = [];
                 }
+            }
+            
+            setupPagination(sourceData = null) {
+                // Use provided data or default to all attendance data
+                const dataToUse = sourceData || this.allAttendanceData;
+                
+                // Set up frontend pagination with the provided data
+                this.totalRecords = dataToUse.length;
+                this.totalPages = Math.ceil(this.totalRecords / this.itemsPerPage);
+                
+                // Ensure current page is valid
+                if (this.currentPage > this.totalPages) {
+                    this.currentPage = Math.max(1, this.totalPages);
+                }
+                
+                // Get data for current page
+                const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+                const endIndex = startIndex + this.itemsPerPage;
+                this.attendanceData = dataToUse.slice(startIndex, endIndex);
+                this.filteredData = [...this.attendanceData];
+                
+                console.log(`📄 Frontend pagination: Page ${this.currentPage}/${this.totalPages}, Showing ${this.attendanceData.length}/${this.totalRecords} records`);
             }
 
             setupEventListeners() {
@@ -1778,10 +1922,9 @@
             }
 
             setupFilters() {
-                // Set default date filter to today
-                const today = new Date().toISOString().split('T')[0];
-                document.getElementById('dateFilter').value = today;
-                this.applyFilters();
+                // Don't set default date filter - let users choose
+                // Just ensure filters are initialized properly without applying them
+                console.log('Filters setup completed without applying default filters');
             }
 
             updateEmployeeDropdowns() {
@@ -1815,7 +1958,8 @@
                 const status = document.getElementById('statusFilter').value;
                 const search = document.getElementById('searchInput').value.toLowerCase();
 
-                this.filteredData = this.attendanceData.filter(record => {
+                // Filter from all data first
+                this.currentFilteredData = this.allAttendanceData.filter(record => {
                     let matches = true;
 
                     // Handle both camelCase and snake_case field names
@@ -1846,28 +1990,40 @@
                     return matches;
                 });
 
+                // Reset to page 1 when filters change
+                this.currentPage = 1;
+                
+                // Setup pagination with filtered data
+                this.setupPagination(this.currentFilteredData);
+
                 this.updateStats();
+                this.updatePaginationControls();
                 this.renderTable();
                 
                 // Debug initial state
                 console.log('applyFilters completed - filteredData length:', this.filteredData.length);
+                console.log(`📄 Filters applied: Showing page ${this.currentPage}/${this.totalPages}, ${this.attendanceData.length}/${this.totalRecords} records`);
             }
 
             updateStats() {
-                const filteredRecords = this.filteredData;
+                // Use the appropriate data source for stats:
+                // - If filters are active, use currentFilteredData for total counts
+                // - If no filters, use allAttendanceData for total counts
+                const dataForStats = this.hasActiveFilters() ? this.currentFilteredData : this.allAttendanceData;
 
-                const totalCount = filteredRecords.length;
-                const presentCount = filteredRecords.filter(r => r.status === 'present').length;
-                const lateCount = filteredRecords.filter(r => r.status === 'late').length;
-                const absentCount = filteredRecords.filter(r => r.status === 'absent').length;
+                const totalCount = dataForStats.length;
+                const presentCount = dataForStats.filter(r => r.status === 'present').length;
+                const lateCount = dataForStats.filter(r => r.status === 'late').length;
+                const absentCount = dataForStats.filter(r => r.status === 'absent').length;
 
                 console.log('Updating stats:', {
                     totalAttendanceRecords: this.attendanceData.length,
-                    filteredRecords: totalCount,
+                    totalFilteredRecords: totalCount,
                     present: presentCount,
                     late: lateCount,
                     absent: absentCount,
-                    employees: this.employees.length
+                    employees: this.employees.length,
+                    hasFilters: this.hasActiveFilters()
                 });
 
                 // Update all stat elements
@@ -1885,11 +2041,8 @@
                     }
                 });
                 
-                // Update record count badge
-                const recordCount = document.getElementById('recordCount');
-                if (recordCount) {
-                    recordCount.textContent = `${totalCount} record${totalCount !== 1 ? 's' : ''}`;
-                }
+                // Don't update record count here - let pagination controls handle it
+                // to show proper "Showing X of Y records" information
             }
 
             renderTable() {
@@ -2424,7 +2577,7 @@
                     }
 
                     await this.loadEmployees();
-                    await this.loadAttendanceData();
+                    await this.loadAttendanceData(this.currentPage, false); // Refresh current page without cache
                     
                     this.updateEmployeeDropdowns();
                     this.updateStats();
@@ -2613,6 +2766,97 @@
             
             showInfo(message, title = null, duration = 5000) {
                 return this.showAlert(message, 'info', title, duration);
+            }
+            
+            // Pagination Methods
+            updatePaginationControls() {
+                // Update pagination info
+                const paginationInfo = document.getElementById('paginationInfo');
+                if (paginationInfo) {
+                    paginationInfo.textContent = `Page ${this.currentPage} of ${this.totalPages}`;
+                }
+                
+                // Update page input
+                const pageInput = document.getElementById('pageInput');
+                if (pageInput) {
+                    pageInput.value = this.currentPage;
+                    pageInput.max = this.totalPages;
+                }
+                
+                // Update button states
+                const prevBtn = document.getElementById('prevPageBtn');
+                const nextBtn = document.getElementById('nextPageBtn');
+                
+                if (prevBtn) {
+                    prevBtn.disabled = this.currentPage <= 1;
+                }
+                
+                if (nextBtn) {
+                    nextBtn.disabled = this.currentPage >= this.totalPages;
+                }
+                
+                // Update record count to show total across all pages
+                const recordCount = document.getElementById('recordCount');
+                if (recordCount) {
+                    const filtered = this.filteredData.length;
+                    const showing = `Showing ${this.attendanceData.length} of ${this.totalRecords}`;
+                    recordCount.textContent = `${showing} record${this.totalRecords !== 1 ? 's' : ''}`;
+                }
+            }
+            
+            async nextPage() {
+                if (this.currentPage < this.totalPages) {
+                    this.currentPage++;
+                    // Use current filtered data if filters are applied, otherwise use all data
+                    const dataToUse = this.hasActiveFilters() ? this.currentFilteredData : this.allAttendanceData;
+                    this.setupPagination(dataToUse);
+                    this.updatePaginationControls();
+                    this.renderTable();
+                }
+            }
+            
+            async previousPage() {
+                if (this.currentPage > 1) {
+                    this.currentPage--;
+                    // Use current filtered data if filters are applied, otherwise use all data
+                    const dataToUse = this.hasActiveFilters() ? this.currentFilteredData : this.allAttendanceData;
+                    this.setupPagination(dataToUse);
+                    this.updatePaginationControls();
+                    this.renderTable();
+                }
+            }
+            
+            async goToPage(pageNumber) {
+                const page = parseInt(pageNumber);
+                if (page && page >= 1 && page <= this.totalPages && page !== this.currentPage) {
+                    this.currentPage = page;
+                    // Use current filtered data if filters are applied, otherwise use all data
+                    const dataToUse = this.hasActiveFilters() ? this.currentFilteredData : this.allAttendanceData;
+                    this.setupPagination(dataToUse);
+                    this.updatePaginationControls();
+                    this.renderTable();
+                }
+            }
+            
+            hasActiveFilters() {
+                const employeeId = document.getElementById('employeeFilter')?.value?.trim();
+                const date = document.getElementById('dateFilter')?.value?.trim();
+                const status = document.getElementById('statusFilter')?.value?.trim();
+                const search = document.getElementById('searchInput')?.value?.trim();
+                
+                const hasFilters = !!(employeeId || date || status || search);
+                
+                // Debug logging
+                if (hasFilters) {
+                    console.log('Active filters detected:', {
+                        employeeId: employeeId || 'empty',
+                        date: date || 'empty',
+                        status: status || 'empty',
+                        search: search || 'empty'
+                    });
+                }
+                
+                return hasFilters;
             }
         }
 

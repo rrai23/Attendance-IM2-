@@ -126,10 +126,25 @@ router.get('/', auth, async (req, res) => {
             order = 'DESC'
         } = req.query;
 
+        // Admin/Manager users can see all records when no employee_id is specified
         // Non-admin users can only see their own records
-        const targetEmployeeId = req.user.role === 'admin' || req.user.role === 'manager' 
-            ? (employee_id || req.user.employee_id) 
-            : req.user.employee_id;
+        let targetEmployeeId = null;
+        let whereClause = '';
+        
+        if (req.user.role === 'admin' || req.user.role === 'manager') {
+            if (employee_id) {
+                // Specific employee requested
+                targetEmployeeId = employee_id;
+                whereClause = 'WHERE ar.employee_id = ?';
+            } else {
+                // No specific employee - show all records for admin/manager
+                whereClause = 'WHERE 1=1'; // Show all records
+            }
+        } else {
+            // Regular users can only see their own records
+            targetEmployeeId = req.user.employee_id;
+            whereClause = 'WHERE ar.employee_id = ?';
+        }
 
         let query = `
             SELECT 
@@ -140,9 +155,13 @@ router.get('/', auth, async (req, res) => {
                 e.position
             FROM attendance_records ar
             JOIN employees e ON ar.employee_id = e.employee_id
-            WHERE ar.employee_id = ?
+            ${whereClause}
         `;
-        const params = [targetEmployeeId];
+        
+        const params = [];
+        if (targetEmployeeId) {
+            params.push(targetEmployeeId);
+        }
 
         // Add date filters
         if (start_date) {
@@ -173,13 +192,16 @@ router.get('/', auth, async (req, res) => {
 
         const records = await db.execute(query, params);
 
-        // Get total count
+        // Get total count with same filtering logic
         let countQuery = `
             SELECT COUNT(*) as total
             FROM attendance_records ar
-            WHERE ar.employee_id = ?
+            ${whereClause}
         `;
-        const countParams = [targetEmployeeId];
+        const countParams = [];
+        if (targetEmployeeId) {
+            countParams.push(targetEmployeeId);
+        }
 
         if (start_date) {
             countQuery += ' AND ar.date >= ?';
