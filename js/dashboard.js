@@ -296,12 +296,53 @@ class DashboardController {
                 console.log('Received stats from DirectFlow:', this.currentStats);
                 
                 // Get today's attendance records
-                const todayRecords = await window.directFlow.getAttendanceRecords({ date: today });
-                console.log('Today\'s attendance records:', todayRecords);
+                const todayRecordsResponse = await window.directFlow.getAttendanceRecords({ date: today });
+                console.log('Today\'s attendance records response:', todayRecordsResponse);
+                
+                // Extract the actual records from the response
+                let todayRecords;
+                if (Array.isArray(todayRecordsResponse)) {
+                    // New method returns array directly
+                    todayRecords = todayRecordsResponse;
+                } else if (todayRecordsResponse?.success && todayRecordsResponse?.data) {
+                    // Old method returns response object
+                    todayRecords = todayRecordsResponse.data.records || todayRecordsResponse.data || [];
+                } else {
+                    todayRecords = [];
+                }
+                console.log('Processed today\'s attendance records:', todayRecords);
                 
                 // Get employee count for calculations
-                const employees = await window.directFlow.getEmployees();
-                const activeEmployees = employees.filter(emp => emp.status === 'active').length;
+                // Force refresh by adding timestamp to avoid caching issues
+                const employeesResponse = await window.directFlow.getEmployees();
+                console.log('Raw employees response from DirectFlow:', employeesResponse);
+                const employees = employeesResponse?.success ? employeesResponse.data.employees : [];
+                console.log('Extracted employees array:', employees);
+                console.log('Total employees in array:', employees.length);
+                
+                // Let's also check what employee IDs we have
+                if (Array.isArray(employees)) {
+                    console.log('Employee IDs found:', employees.map(emp => `${emp.employee_id} (status: ${emp.status})`));
+                }
+                
+                const activeEmployees = Array.isArray(employees) ? employees.filter(emp => emp.status === 'active').length : 0;
+                console.log('Active employees count:', activeEmployees);
+                
+                // Override the total count from stats with the actual employee count
+                // The stats endpoint only counts employees with user accounts, but we want ALL employees
+                if (this.currentStats && activeEmployees > 0) {
+                    console.log('📊 Original stats total:', this.currentStats.total);
+                    this.currentStats.total = activeEmployees;
+                    console.log('📊 Corrected total employee count to:', activeEmployees);
+                    
+                    // Recalculate attendance rate with correct total
+                    const presentCount = parseInt(this.currentStats.present || 0);
+                    const lateCount = parseInt(this.currentStats.late || 0);
+                    this.currentStats.attendanceRate = activeEmployees > 0 
+                        ? ((presentCount + lateCount) / activeEmployees * 100).toFixed(1)
+                        : '0.0';
+                    console.log('📊 Recalculated attendance rate:', this.currentStats.attendanceRate + '%');
+                }
                 
                 // Enhance stats with additional data
                 this.currentStats.totalEmployees = activeEmployees;
@@ -357,7 +398,7 @@ class DashboardController {
                         break;
                     default:
                         // If status is unclear, assume present if they have a timeIn
-                        if (record.time_in || record.timeIn) {
+                        if (record.timeIn) {
                             present++;
                         } else {
                             absent++;

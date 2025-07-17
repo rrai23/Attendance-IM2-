@@ -100,7 +100,8 @@ class DirectFlow {
      */
     async getEmployees() {
         try {
-            const response = await this.makeRequest('/employees');
+            // Ensure we get all employees by setting a high limit
+            const response = await this.makeRequest('/employees?limit=1000&status=active');
             const data = await response.json();
             return data; // Return the full response object instead of just data
         } catch (error) {
