@@ -1,41 +1,57 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-// Database connection configuration
-const dbConfig = {
+// Database connection configuration (for individual connections)
+const connectionConfig = {
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 3306,
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'bricks_attendance',
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    acquireTimeout: 60000,
-    timeout: 60000,
     multipleStatements: true,
     timezone: '+00:00', // Store everything in UTC
     charset: 'utf8mb4'
 };
 
+// Pool-specific configuration (includes connection config + pool options)
+const poolConfig = {
+    ...connectionConfig,
+    // Pool-only options
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
+    // Note: acquireTimeout and timeout are not valid in MySQL2
+    // Use alternative timeout handling if needed
+    // MySQL2 connection enhancement options
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 0
+};
+
 // Create connection pool
-const pool = mysql.createPool(dbConfig);
+const pool = mysql.createPool(poolConfig);
 
 // Test connection and create database if it doesn't exist
 const initializeDatabase = async () => {
     try {
         // First connect without specifying database to create it if needed
-        const tempConfig = { ...dbConfig };
-        delete tempConfig.database;
+        const tempConfig = {
+            host: connectionConfig.host,
+            port: connectionConfig.port,
+            user: connectionConfig.user,
+            password: connectionConfig.password,
+            multipleStatements: connectionConfig.multipleStatements,
+            timezone: connectionConfig.timezone,
+            charset: connectionConfig.charset
+        };
         const tempConnection = await mysql.createConnection(tempConfig);
         
         // Create database if it doesn't exist
-        await tempConnection.execute(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+        await tempConnection.execute(`CREATE DATABASE IF NOT EXISTS \`${connectionConfig.database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
         await tempConnection.end();
         
         // Test main connection
         const connection = await pool.getConnection();
-        console.log(`✅ Connected to MySQL database: ${dbConfig.database}`);
+        console.log(`✅ Connected to MySQL database: ${connectionConfig.database}`);
         connection.release();
         
         return true;

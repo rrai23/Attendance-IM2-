@@ -503,10 +503,13 @@ class DashboardController {
         nextPayday.setDate(today.getDate() + 15);
         
         return {
-            nextPayday: nextPayday.toISOString().split('T')[0],
+            date: nextPayday.toISOString().split('T')[0], // Fixed: use 'date' instead of 'nextPayday'
+            nextPayday: nextPayday.toISOString().split('T')[0], // Keep for backward compatibility
             frequency: 'biweekly',
+            period: 'July 17 - July 31', // Added period
             daysRemaining: 15,
             hoursRemaining: 15 * 24,
+            amount: 0, // Added amount to prevent template errors
             lastPayday: new Date(today.setDate(today.getDate() - 15)).toISOString().split('T')[0]
         };
     }
@@ -515,10 +518,12 @@ class DashboardController {
      * Render all dashboard tiles
      */
     renderTiles() {
+        console.log('📱 Rendering all dashboard tiles...');
         this.renderAttendanceCountTile();
         this.renderAttendanceChartTile();
         this.renderCalendarTile();
         this.renderPaydayCountdownTile();
+        console.log('📱 All dashboard tiles rendered');
     }
 
     /**
@@ -528,13 +533,14 @@ class DashboardController {
         const tile = document.getElementById(this.tiles.attendanceCount.id);
         if (!tile) return;
 
-        const stats = this.currentStats?.today || this.getDefaultStats().today;
+        // Use currentStats directly since it contains the corrected data
+        const stats = this.currentStats || this.getDefaultStats();
         
         // Ensure all values are numbers, not objects
         const present = Number(stats.present) || 0;
         const late = Number(stats.late) || 0;
         const absent = Number(stats.absent) || 0;
-        const total = Number(stats.total) || 0;
+        const total = Number(stats.total) || Number(stats.totalEmployees) || 0;
         const attendanceRate = Number(stats.attendanceRate) || 0;
         
         console.log('Rendering attendance count tile with values:', { present, late, absent, total, attendanceRate });
@@ -601,8 +607,12 @@ class DashboardController {
      * Render attendance chart tile
      */
     renderAttendanceChartTile() {
+        console.log('📊 Rendering attendance chart tile...');
         const tile = document.getElementById(this.tiles.attendanceChart.id);
-        if (!tile) return;
+        if (!tile) {
+            console.warn('📊 Attendance chart tile element not found');
+            return;
+        }
 
         tile.innerHTML = `
             <div class="tile-header">
@@ -649,10 +659,14 @@ class DashboardController {
      * Render calendar tile
      */
     renderCalendarTile() {
+        console.log('📅 Rendering calendar tile...');
         // Calendar HTML is already in place in dashboard.html
         // Just setup the expand button and initialize calendar
         const tile = document.getElementById(this.tiles.calendar.id);
-        if (!tile) return;
+        if (!tile) {
+            console.warn('📅 Calendar tile element not found');
+            return;
+        }
 
         // Setup expand button if it exists
         const expandBtn = tile.querySelector('.tile-expand-btn');
@@ -666,16 +680,22 @@ class DashboardController {
         setTimeout(() => {
             this.initializeCalendar();
         }, 100);
+        console.log('📅 Calendar tile setup complete');
     }
 
     /**
      * Render payday countdown tile
      */
     renderPaydayCountdownTile() {
+        console.log('📅 Rendering payday countdown tile...');
         const tile = document.getElementById(this.tiles.paydayCountdown.id);
-        if (!tile) return;
+        if (!tile) {
+            console.warn('📅 Payday countdown tile element not found');
+            return;
+        }
 
         const payday = this.paydayData || this.getDefaultPaydayData();
+        console.log('📅 Payday data for rendering:', payday);
         
         tile.innerHTML = `
             <div class="tile-header">
@@ -966,13 +986,14 @@ class DashboardController {
      * Prepare attendance chart data for doughnut chart
      */
     prepareAttendanceChartData() {
-        const stats = this.currentStats?.today || this.getDefaultStats().today;
+        // Use currentStats directly since it contains the corrected data
+        const stats = this.currentStats || this.getDefaultStats();
         
         return {
-            present: stats.present || 0,
-            late: stats.late || 0,
-            absent: stats.absent || 0,
-            onLeave: 0 // Add if you have leave data
+            present: Number(stats.present) || 0,
+            late: Number(stats.late) || 0,
+            absent: Number(stats.absent) || 0,
+            onLeave: Number(stats.onLeave) || 0
         };
     }
 
@@ -1350,13 +1371,14 @@ class DashboardController {
      * Prepare attendance chart data for doughnut chart
      */
     prepareAttendanceChartData() {
-        const stats = this.currentStats?.today || this.getDefaultStats().today;
+        // Use currentStats directly since it contains the corrected data
+        const stats = this.currentStats || this.getDefaultStats();
         
         return {
-            present: stats.present || 0,
-            late: stats.late || 0,
-            absent: stats.absent || 0,
-            onLeave: 0 // Add if you have leave data
+            present: Number(stats.present) || 0,
+            late: Number(stats.late) || 0,
+            absent: Number(stats.absent) || 0,
+            onLeave: Number(stats.onLeave) || 0
         };
     }
 
