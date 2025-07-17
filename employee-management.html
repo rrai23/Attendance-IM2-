@@ -957,11 +957,11 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(255, 0, 255, 0.8) !important;
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
+            z-index: 10000;
             transition: background-color 0.3s ease;
         }
 
@@ -970,7 +970,7 @@
         }
         
         .modal {
-            background: white;
+            background: red !important;
             padding: 20px;
             border-radius: 8px;
             width: 90%;
@@ -978,6 +978,8 @@
             max-height: 80vh;
             overflow-y: auto;
             transition: background-color 0.3s ease;
+            border: 10px solid yellow !important;
+            box-shadow: 0 0 50px 10px cyan !important;
         }
 
         body.dark-mode .modal {
@@ -1225,7 +1227,7 @@
                     <p class="page-subtitle">Track attendance, manage records, and monitor employee performance</p>
                 </div>
                 <div class="header-actions">
-                    <button class="btn btn-primary" id="addAttendanceBtn">
+                    <button class="btn btn-primary" id="addAttendanceBtn" onclick="employeeManagement.openModal()">
                         <i class="fas fa-plus"></i>
                         Add Entry
                     </button>
@@ -1466,7 +1468,7 @@
     <script src="js/directflow.js"></script>
     <script src="js/directflow-auth-fix.js"></script>
     <script src="js/sidebar.js"></script>
-    <script src="js/employee-attendance.js"></script>
+    <!-- Removed employee-attendance.js to prevent conflicts with EmployeeManagementPage class -->
     <script>
         // Initialize theme on page load using theme manager
         (function() {
@@ -1834,13 +1836,7 @@
             }
 
             setupEventListeners() {
-                // Modal controls
-                const addAttendanceBtn = document.getElementById('addAttendanceBtn');
-                if (addAttendanceBtn) {
-                    addAttendanceBtn.addEventListener('click', () => {
-                        this.openModal();
-                    });
-                }
+                // Modal controls are handled via onclick attributes in HTML
 
                 const closeModal = document.getElementById('closeModal');
                 if (closeModal) {
@@ -1935,7 +1931,8 @@
                     employeeFilter.innerHTML = '<option value="">All Employees</option>';
                     this.employees.forEach(employee => {
                         const option = document.createElement('option');
-                        option.value = employee.id || employee.employee_id;
+                        // Use employee_id (the actual employee ID) instead of id (database primary key)
+                        option.value = employee.employee_id || employee.id;
                         option.textContent = this.getEmployeeName(employee);
                         employeeFilter.appendChild(option);
                     });
@@ -1945,9 +1942,18 @@
                     employeeSelect.innerHTML = '<option value="">Select Employee</option>';
                     this.employees.forEach(employee => {
                         const option = document.createElement('option');
-                        option.value = employee.id || employee.employee_id;
+                        // Use employee_id (the actual employee ID) instead of id (database primary key)
+                        option.value = employee.employee_id || employee.id;
                         option.textContent = this.getEmployeeName(employee);
                         employeeSelect.appendChild(option);
+                        
+                        // Debug logging
+                        console.log('Employee option added:', {
+                            value: option.value,
+                            text: option.textContent,
+                            employee_id: employee.employee_id,
+                            id: employee.id
+                        });
                     });
                 }
             }
@@ -2010,15 +2016,36 @@
                 // - If filters are active, use currentFilteredData for total counts
                 // - If no filters, use allAttendanceData for total counts
                 const dataForStats = this.hasActiveFilters() ? this.currentFilteredData : this.allAttendanceData;
+                
+                // Get today's date in YYYY-MM-DD format
+                const today = new Date().toISOString().split('T')[0];
+                
+                // Filter data for today only for status counts
+                const todayData = this.allAttendanceData.filter(record => {
+                    // Handle both date formats that might exist in the data
+                    const recordDate = record.date;
+                    if (recordDate) {
+                        // If it's already in YYYY-MM-DD format
+                        if (typeof recordDate === 'string' && recordDate.includes('-')) {
+                            return recordDate.startsWith(today);
+                        }
+                        // If it's a Date object or different format
+                        const normalizedDate = new Date(recordDate).toISOString().split('T')[0];
+                        return normalizedDate === today;
+                    }
+                    return false;
+                });
 
-                const totalCount = dataForStats.length;
-                const presentCount = dataForStats.filter(r => r.status === 'present').length;
-                const lateCount = dataForStats.filter(r => r.status === 'late').length;
-                const absentCount = dataForStats.filter(r => r.status === 'absent').length;
+                const totalCount = dataForStats.length; // All filtered records
+                const presentCount = todayData.filter(r => r.status === 'present').length; // Today only
+                const lateCount = todayData.filter(r => r.status === 'late').length; // Today only
+                const absentCount = todayData.filter(r => r.status === 'absent').length; // Today only
 
                 console.log('Updating stats:', {
+                    today: today,
                     totalAttendanceRecords: this.attendanceData.length,
                     totalFilteredRecords: totalCount,
+                    todayRecords: todayData.length,
                     present: presentCount,
                     late: lateCount,
                     absent: absentCount,
@@ -2188,9 +2215,15 @@
             }
 
             openModal(record = null) {
+                console.log('✅ openModal called!');
                 console.log('Opening modal for:', record ? 'edit' : 'add new record');
                 
                 const modal = document.getElementById('editAttendanceModal');
+                console.log('Modal element found:', !!modal);
+                if (modal) {
+                    console.log('Modal current display:', window.getComputedStyle(modal).display);
+                    console.log('Modal current classes:', modal.className);
+                }
                 const form = document.getElementById('attendanceForm');
                 const title = document.getElementById('modalTitle');
                 const employeeSelect = document.getElementById('employeeSelect');
@@ -2246,8 +2279,12 @@
                     document.getElementById('attendanceStatus').value = 'present';
                 }
 
+                console.log('🚀 About to show modal...');
                 modal.classList.remove('hidden');
                 modal.style.display = 'flex';
+                console.log('✅ Modal should be visible now!');
+                console.log('Final modal display:', window.getComputedStyle(modal).display);
+                console.log('Final modal classes:', modal.className);
             }
 
             closeModal() {
@@ -2311,8 +2348,34 @@
                     const status = document.getElementById('attendanceStatus').value;
                     const notes = document.getElementById('notes').value;
 
+                    // Validation
+                    if (!employeeId) {
+                        this.showError('Please select an employee');
+                        return;
+                    }
+                    
+                    if (!date) {
+                        this.showError('Please select a date');
+                        return;
+                    }
+                    
+                    if (!status) {
+                        this.showError('Please select a status');
+                        return;
+                    }
+
+                    // Debug logging
+                    console.log('Saving attendance with data:', {
+                        employeeId: employeeId,
+                        date: date,
+                        timeIn: timeIn,
+                        timeOut: timeOut,
+                        status: status,
+                        employees: this.employees.length
+                    });
+
                     const recordData = {
-                        employee_id: employeeId,
+                        employee_id: parseInt(employeeId), // Ensure it's a number
                         date: date,
                         time_in: timeIn || null,
                         time_out: timeOut || null,
@@ -2469,8 +2532,11 @@
             }
 
             async editRecord(id) {
+                console.log('editRecord called with id:', id);
                 const record = this.attendanceData.find(r => r.id === id);
+                console.log('Found record:', record);
                 if (record) {
+                    console.log('Calling openModal with record...');
                     this.openModal(record);
                 } else {
                     this.showError('Record not found');
