@@ -216,6 +216,46 @@ async function handleButtonAction() {
 
 ## Common Issues & Solutions
 
+### Issue: UI not updating after delete/create operations
+**Cause**: Waiting for server refresh instead of immediate local updates
+**Solution**: Update local data immediately, then refresh in background
+```javascript
+// GOOD: Immediate local update for instant feedback
+async function deleteRecord(id) {
+  const response = await api.deleteRecord(id);
+  if (response.success) {
+    // Immediately update local data
+    this.data = this.data.filter(item => item.id !== id);
+    this.updateUI();
+    
+    // Optional background refresh (don't await)
+    this.refreshFromServer().catch(console.warn);
+  }
+}
+
+// GOOD: Immediate local update for create/update
+async function saveRecord(id, recordData) {
+  const response = await api.saveRecord(id, recordData);
+  if (response.success) {
+    if (id) {
+      // Update existing record
+      const index = this.data.findIndex(r => r.id === id);
+      if (index !== -1) {
+        this.data[index] = { ...this.data[index], ...recordData };
+      }
+    } else {
+      // Add new record
+      const newRecord = { 
+        id: response.data?.record?.id || Date.now(),
+        ...recordData 
+      };
+      this.data.push(newRecord);
+    }
+    this.updateUI();
+  }
+}
+```
+
 ### Issue: `refreshBtn is null`
 **Cause**: Element doesn't exist in DOM when accessed
 **Solution**: Always check for element existence

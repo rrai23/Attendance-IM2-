@@ -2064,14 +2064,37 @@
                         this.showSuccess(recordId ? 'Attendance record updated successfully!' : 'Attendance record created successfully!');
                         this.closeModal();
                         
-                        // Refresh data if we have API methods, otherwise just update UI
-                        if (typeof this.directFlow.getAttendanceRecords === 'function') {
-                            await this.refreshData();
+                        // IMMEDIATELY update local data for instant UI feedback
+                        if (recordId) {
+                            // UPDATE: Find and update the existing record
+                            const index = this.attendanceData.findIndex(r => r.id == recordId);
+                            if (index !== -1) {
+                                this.attendanceData[index] = { ...this.attendanceData[index], ...recordData, id: recordId };
+                            }
                         } else {
-                            // Update filtered data and UI
-                            this.filteredData = [...this.attendanceData];
-                            this.updateStats();
-                            this.renderTable();
+                            // CREATE: Add new record to the data array
+                            const newRecord = { 
+                                id: response.data?.record?.id || Date.now(), // Use server ID if available
+                                ...recordData,
+                                // Add additional fields that might come from server
+                                ...response.data?.record
+                            };
+                            this.attendanceData.push(newRecord);
+                        }
+                        
+                        // Update cache and filtered data
+                        this.dataCache.attendance = this.attendanceData;
+                        this.dataCache.lastFetch = Date.now();
+                        this.filteredData = [...this.attendanceData];
+                        
+                        // Apply current filters to show the record correctly
+                        this.applyFilters();
+                        
+                        // Optionally refresh from server in background (don't await to avoid delay)
+                        if (typeof this.directFlow.getAttendanceRecords === 'function') {
+                            this.refreshData().catch(error => {
+                                console.warn('Background refresh failed:', error);
+                            });
                         }
                     } else {
                         throw new Error(response?.message || 'Failed to save attendance record');
@@ -2159,17 +2182,24 @@
                     
                     if (response && response.success) {
                         this.showSuccess('Attendance record deleted successfully!');
-                        // Refresh data to get updated state from server
+                        
+                        // IMMEDIATELY update local data to reflect the deletion
+                        this.attendanceData = this.attendanceData.filter(record => record.id !== id);
+                        this.filteredData = this.filteredData.filter(record => record.id !== id);
+                        
+                        // Update cache
+                        this.dataCache.attendance = this.attendanceData;
+                        this.dataCache.lastFetch = Date.now();
+                        
+                        // Update UI immediately
+                        this.updateStats();
+                        this.renderTable();
+                        
+                        // Optionally refresh from server in background (don't await to avoid delay)
                         if (typeof this.directFlow.getAttendanceRecords === 'function') {
-                            await this.refreshData();
-                        } else {
-                            // Remove from local data if API refresh isn't available
-                            this.attendanceData = this.attendanceData.filter(record => record.id !== id);
-                            this.filteredData = this.filteredData.filter(record => record.id !== id);
-                            this.dataCache.attendance = this.attendanceData;
-                            this.dataCache.lastFetch = Date.now();
-                            this.updateStats();
-                            this.renderTable();
+                            this.refreshData().catch(error => {
+                                console.warn('Background refresh failed:', error);
+                            });
                         }
                     } else {
                         throw new Error(response?.message || 'Failed to delete attendance record');
