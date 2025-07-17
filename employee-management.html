@@ -2430,8 +2430,6 @@
                     this.updateStats();
                     this.renderTable();
                     
-                    this.showSuccess('Data refreshed successfully!', 'Data Updated');
-                    
                 } catch (error) {
                     console.error('Failed to refresh data:', error);
                     this.showError('Failed to refresh data: ' + error.message);
