@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Settings API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; border: 1px solid #ccc; padding: 15px; }
+        .success { color: green; }
+        .error { color: red; }
+        pre { background: #f5f5f5; padding: 10px; overflow: auto; }
+        button { padding: 10px 20px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Settings API Test</h1>
+    
+    <div class="section">
+        <h3>Authentication</h3>
+        <button onclick="testLogin()">Test Login</button>
+        <div id="authResult"></div>
+    </div>
+    
+    <div class="section">
+        <h3>GET Settings</h3>
+        <button onclick="testGetSettings()">Get Settings</button>
+        <div id="getResult"></div>
+    </div>
+    
+    <div class="section">
+        <h3>PUT Settings</h3>
+        <button onclick="testPutSettings()">Update Settings</button>
+        <div id="putResult"></div>
+    </div>
+    
+    <div class="section">
+        <h3>Verify Changes</h3>
+        <button onclick="verifyChanges()">Get Settings Again</button>
+        <div id="verifyResult"></div>
+    </div>
+
+    <script>
+        let authToken = null;
+        
+        async function testLogin() {
+            const resultDiv = document.getElementById('authResult');
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: 'admin', password: 'admin123' })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    authToken = result.data.token;
+                    resultDiv.innerHTML = `<span class="success">✅ Login successful!</span><pre>${JSON.stringify(result, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">❌ Login failed</span><pre>${JSON.stringify(result, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+        
+        async function testGetSettings() {
+            const resultDiv = document.getElementById('getResult');
+            if (!authToken) {
+                resultDiv.innerHTML = `<span class="error">❌ Please login first</span>`;
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/settings', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<span class="success">✅ GET Settings successful!</span><pre>${JSON.stringify(result, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">❌ GET Settings failed</span><pre>${JSON.stringify(result, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+        
+        async function testPutSettings() {
+            const resultDiv = document.getElementById('putResult');
+            if (!authToken) {
+                resultDiv.innerHTML = `<span class="error">❌ Please login first</span>`;
+                return;
+            }
+            
+            const testSettings = {
+                general: {
+                    companyName: 'Test Company Updated ' + new Date().toLocaleTimeString(),
+                    timezone: 'Asia/Manila',
+                    currency: 'PHP'
+                },
+                payroll: {
+                    overtimeRate: 1.75,
+                    autoCalculate: true
+                },
+                security: {
+                    sessionTimeout: 480
+                }
+            };
+            
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'PUT',
+                    headers: { 
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testSettings)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<span class="success">✅ PUT Settings successful!</span><pre>Sent: ${JSON.stringify(testSettings, null, 2)}\n\nResponse: ${JSON.stringify(result, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">❌ PUT Settings failed</span><pre>${JSON.stringify(result, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+        
+        async function verifyChanges() {
+            const resultDiv = document.getElementById('verifyResult');
+            if (!authToken) {
+                resultDiv.innerHTML = `<span class="error">❌ Please login first</span>`;
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/settings', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<span class="success">✅ Verification successful!</span><pre>${JSON.stringify(result, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">❌ Verification failed</span><pre>${JSON.stringify(result, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+    </script>
+</body>
+</html>

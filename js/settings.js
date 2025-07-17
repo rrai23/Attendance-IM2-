@@ -2373,7 +2373,12 @@ class SettingsController {
     // Make authenticated API calls through DirectFlow
     async makeDirectFlowAPICall(endpoint, method = 'GET', data = null) {
         try {
-            const token = this.directFlow.getToken();
+            // Use DirectFlowAuth for token access
+            if (!window.directFlowAuth) {
+                throw new Error('DirectFlow authentication not available');
+            }
+            
+            const token = window.directFlowAuth.getToken();
             if (!token) {
                 throw new Error('No authentication token available');
             }
@@ -2421,8 +2426,8 @@ class SettingsController {
     // Get all employees
     async getAllEmployees() {
         try {
-            const result = await this.makeDirectFlowAPICall('/unified/employees');
-            return result.data || [];
+            const result = await this.makeDirectFlowAPICall('/unified/data');
+            return result.data?.employees || [];
         } catch (error) {
             console.error('Failed to get employees:', error);
             throw error;
@@ -2458,7 +2463,7 @@ class SettingsController {
     // Save settings to backend
     async saveSettingsToBackend(settings) {
         try {
-            const result = await this.makeDirectFlowAPICall('/unified/settings', 'POST', settings);
+            const result = await this.makeDirectFlowAPICall('/api/settings', 'PUT', settings);
             return result;
         } catch (error) {
             console.error('Failed to save settings to backend:', error);
@@ -2469,7 +2474,7 @@ class SettingsController {
     // Load settings from backend
     async loadSettingsFromBackend() {
         try {
-            const result = await this.makeDirectFlowAPICall('/unified/settings');
+            const result = await this.makeDirectFlowAPICall('/api/settings');
             return result.data || {};
         } catch (error) {
             console.error('Failed to load settings from backend:', error);

@@ -127,7 +127,7 @@ router.post('/sync', auth, async (req, res) => {
                             date = ?,
                             time_in = ?,
                             time_out = ?,
-                            total_hours = ?,
+                            hours_worked = ?,
                             overtime_hours = ?,
                             status = ?,
                             notes = ?,
@@ -149,7 +149,7 @@ router.post('/sync', auth, async (req, res) => {
                     await db.execute(`
                         INSERT INTO attendance_records (
                             id, employee_id, date, time_in, time_out,
-                            total_hours, overtime_hours, status, notes, created_at, updated_at
+                            hours_worked, overtime_hours, status, notes, created_at, updated_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     `, [
                         record.id,
@@ -240,7 +240,6 @@ router.get('/data', auth, async (req, res) => {
                 ar.overtime_hours as overtimeHours,
                 ar.status,
                 ar.notes,
-                ar.location,
                 ar.created_at as createdAt,
                 ar.updated_at as updatedAt,
                 e.username as employeeName,
@@ -397,7 +396,7 @@ router.post('/attendance', auth, async (req, res) => {
                     date = ?,
                     time_in = ?,
                     time_out = ?,
-                    total_hours = ?,
+                    hours_worked = ?,
                     overtime_hours = ?,
                     status = ?,
                     notes = ?,
@@ -419,7 +418,7 @@ router.post('/attendance', auth, async (req, res) => {
             const [result] = await db.execute(`
                 INSERT INTO attendance_records (
                     employee_id, date, time_in, time_out,
-                    total_hours, overtime_hours, status, notes
+                    hours_worked, overtime_hours, status, notes
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `, [
                 recordData.employeeId,

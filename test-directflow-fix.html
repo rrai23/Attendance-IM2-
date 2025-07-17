@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DirectFlow Authentication Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; border: 1px solid #ccc; padding: 15px; }
+        .success { color: green; }
+        .error { color: red; }
+        pre { background: #f5f5f5; padding: 10px; overflow: auto; }
+        button { padding: 10px 20px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>DirectFlow Authentication Test</h1>
+    
+    <div class="section">
+        <h3>Test Token Access</h3>
+        <button onclick="testTokenAccess()">Test window.directFlowAuth.getToken()</button>
+        <div id="tokenResult"></div>
+    </div>
+    
+    <div class="section">
+        <h3>Test Employees API</h3>
+        <button onclick="testEmployeesAPI()">Test /api/unified/data</button>
+        <div id="employeesResult"></div>
+    </div>
+    
+    <div class="section">
+        <h3>Settings Controller Test</h3>
+        <button onclick="testSettingsController()">Initialize Settings Controller</button>
+        <div id="settingsResult"></div>
+    </div>
+
+    <!-- Include necessary scripts -->
+    <script src="/js/directflow-auth.js"></script>
+    <script src="/js/directflow.js"></script>
+
+    <script>
+        async function testTokenAccess() {
+            const resultDiv = document.getElementById('tokenResult');
+            try {
+                // Check if DirectFlowAuth is available
+                if (!window.directFlowAuth) {
+                    resultDiv.innerHTML = `<span class="error">❌ window.directFlowAuth not available</span>`;
+                    return;
+                }
+                
+                // Check if authenticated
+                if (!window.directFlowAuth.isAuthenticated()) {
+                    resultDiv.innerHTML = `<span class="error">❌ Not authenticated - please login first</span>`;
+                    return;
+                }
+                
+                // Try to get token
+                const token = window.directFlowAuth.getToken();
+                if (token) {
+                    resultDiv.innerHTML = `<span class="success">✅ Token available!</span><pre>Token: ${token.substring(0, 20)}...</pre>`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">❌ No token available</span>`;
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+        
+        async function testEmployeesAPI() {
+            const resultDiv = document.getElementById('employeesResult');
+            try {
+                if (!window.directFlowAuth || !window.directFlowAuth.isAuthenticated()) {
+                    resultDiv.innerHTML = `<span class="error">❌ Not authenticated</span>`;
+                    return;
+                }
+                
+                const token = window.directFlowAuth.getToken();
+                const response = await fetch('/api/unified/data', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const employeeCount = result.data?.employees?.length || 0;
+                    resultDiv.innerHTML = `<span class="success">✅ API successful!</span><pre>Found ${employeeCount} employees\n${JSON.stringify(result, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">❌ API failed</span><pre>${JSON.stringify(result, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+        
+        async function testSettingsController() {
+            const resultDiv = document.getElementById('settingsResult');
+            try {
+                // Wait a bit for DirectFlow to initialize
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Test if we can create a simple version of the makeDirectFlowAPICall method
+                const testMethod = async function(endpoint) {
+                    if (!window.directFlowAuth) {
+                        throw new Error('DirectFlow authentication not available');
+                    }
+                    
+                    const token = window.directFlowAuth.getToken();
+                    if (!token) {
+                        throw new Error('No authentication token available');
+                    }
+                    
+                    const response = await fetch(`/api${endpoint}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    
+                    const result = await response.json();
+                    if (!response.ok) {
+                        throw new Error(result.message || `API Error: ${response.status}`);
+                    }
+                    
+                    return result;
+                };
+                
+                // Test the method
+                const result = await testMethod('/unified/data');
+                const employeeCount = result.data?.employees?.length || 0;
+                
+                resultDiv.innerHTML = `<span class="success">✅ Settings Controller method works!</span><pre>Successfully got ${employeeCount} employees</pre>`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Settings Controller Error: ${error.message}</span>`;
+            }
+        }
+    </script>
+</body>
+</html>

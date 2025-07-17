@@ -3,27 +3,159 @@ const router = express.Router();
 const db = require('../database/connection');
 const { auth, requireAdmin } = require('../middleware/auth');
 
+// Key mapping between frontend nested structure and database flat keys
+const KEY_MAPPING = {
+    // General settings
+    'general.companyName': 'company_name',
+    'general.timezone': 'timezone',
+    'general.dateFormat': 'date_format',
+    'general.timeFormat': 'time_format',
+    'general.currency': 'currency',
+    'general.language': 'language',
+    
+    // Payroll settings
+    'payroll.payPeriod': 'payroll_frequency',
+    'payroll.payday': 'payday',
+    'payroll.overtimeRate': 'overtime_rate',
+    'payroll.overtimeThreshold': 'overtime_threshold_hours',
+    'payroll.roundingRules': 'rounding_rules',
+    'payroll.autoCalculate': 'auto_calculate',
+    
+    // Attendance settings
+    'attendance.clockInGrace': 'late_grace_period',
+    'attendance.clockOutGrace': 'clock_out_grace',
+    'attendance.lunchBreakDuration': 'lunch_break_duration',
+    'attendance.autoClockOut': 'auto_clock_out',
+    'attendance.autoClockOutTime': 'work_end_time',
+    'attendance.requireNotes': 'require_notes',
+    
+    // Notification settings
+    'notifications.emailNotifications': 'email_notifications',
+    'notifications.tardyAlerts': 'tardy_alerts',
+    'notifications.overtimeAlerts': 'overtime_alerts',
+    'notifications.payrollReminders': 'payroll_reminders',
+    'notifications.systemUpdates': 'system_updates',
+    
+    // Security settings
+    'security.sessionTimeout': 'session_timeout',
+    'security.passwordMinLength': 'password_min_length',
+    'security.requirePasswordChange': 'require_password_change',
+    'security.passwordChangeInterval': 'password_change_interval',
+    'security.twoFactorAuth': 'two_factor_auth',
+    
+    // User settings
+    'users.defaultRole': 'default_role',
+    'users.defaultHourlyRate': 'default_hourly_rate',
+    'users.autoEnableAccounts': 'auto_enable_accounts',
+    'users.requireEmailVerification': 'require_email_verification',
+    'users.lockoutAttempts': 'max_login_attempts',
+    'users.lockoutDuration': 'lockout_duration',
+    'users.autoInactivate': 'auto_inactivate',
+    'users.inactiveThreshold': 'inactive_threshold'
+};
+
+// Reverse mapping for database to frontend
+const REVERSE_KEY_MAPPING = {};
+Object.keys(KEY_MAPPING).forEach(frontendKey => {
+    REVERSE_KEY_MAPPING[KEY_MAPPING[frontendKey]] = frontendKey;
+});
+
+/**
+ * Flatten nested settings object to database keys
+ */
+function flattenSettings(settings) {
+    const flattened = {};
+    
+    function flatten(obj, prefix = '') {
+        for (const [key, value] of Object.entries(obj)) {
+            const fullKey = prefix ? `${prefix}.${key}` : key;
+            
+            if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+                flatten(value, fullKey);
+            } else {
+                // Map frontend key to database key
+                const dbKey = KEY_MAPPING[fullKey] || fullKey;
+                flattened[dbKey] = value;
+            }
+        }
+    }
+    
+    flatten(settings);
+    return flattened;
+}
+
+/**
+ * Unflatten database settings to nested frontend structure
+ */
+function unflattenSettings(flatSettings) {
+    const nested = {};
+    
+    for (const [dbKey, value] of Object.entries(flatSettings)) {
+        // Map database key to frontend key, or use as is
+        const frontendKey = REVERSE_KEY_MAPPING[dbKey] || dbKey;
+        
+        if (frontendKey.includes('.')) {
+            const keys = frontendKey.split('.');
+            let current = nested;
+            
+            for (let i = 0; i < keys.length - 1; i++) {
+                if (!current[keys[i]]) {
+                    current[keys[i]] = {};
+                }
+                current = current[keys[i]];
+            }
+            
+            current[keys[keys.length - 1]] = value;
+        } else {
+            nested[frontendKey] = value;
+        }
+    }
+    
+    return nested;
+}
+
 // Get all system settings
 router.get('/', auth, async (req, res) => {
     try {
         const settings = await db.execute(
-            'SELECT setting_key, setting_value, description FROM system_settings ORDER BY setting_key'
+            'SELECT setting_key, setting_value, setting_type FROM system_settings ORDER BY setting_key'
         );
 
-        // Convert to object format
-        const settingsObject = {};
+        // Convert to flat object format with proper type conversion
+        const flatSettings = {};
         settings.forEach(setting => {
+            let value = setting.setting_value;
+            
+            // Convert based on setting_type
             try {
-                // Try to parse as JSON, fallback to string
-                settingsObject[setting.setting_key] = JSON.parse(setting.setting_value);
-            } catch {
-                settingsObject[setting.setting_key] = setting.setting_value;
+                switch (setting.setting_type) {
+                    case 'number':
+                        value = parseFloat(value);
+                        break;
+                    case 'boolean':
+                        value = value === 'true' || value === '1' || value === 1;
+                        break;
+                    case 'json':
+                        value = JSON.parse(value);
+                        break;
+                    default:
+                        // Keep as string
+                        break;
+                }
+            } catch (e) {
+                console.warn(`Error parsing setting ${setting.setting_key}:`, e);
+                // Keep original value if parsing fails
             }
+            
+            flatSettings[setting.setting_key] = value;
         });
+
+        // Convert flat settings to nested structure for frontend
+        const nestedSettings = unflattenSettings(flatSettings);
 
         res.json({
             success: true,
-            data: { settings: settingsObject }
+            data: nestedSettings
         });
 
     } catch (error) {
@@ -82,7 +214,7 @@ router.get('/:key', auth, async (req, res) => {
 router.put('/', auth, requireAdmin, async (req, res) => {
     try {
         console.log('PUT /settings called with:', req.body);
-        const { settings } = req.body;
+        const settings = req.body;
 
         if (!settings || typeof settings !== 'object') {
             return res.status(400).json({
@@ -91,35 +223,53 @@ router.put('/', auth, requireAdmin, async (req, res) => {
             });
         }
 
+        // Flatten nested settings to database format
+        const flatSettings = flattenSettings(settings);
+        console.log('Flattened settings:', flatSettings);
+
         const results = [];
         const errors = [];
 
-        // Process each setting individually without transaction for now
-        for (const [key, value] of Object.entries(settings)) {
+        // Process each setting individually
+        for (const [key, value] of Object.entries(flatSettings)) {
             try {
                 console.log(`Processing setting: ${key} = ${value}`);
                 
-                // Convert value to string for storage
-                const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+                // Determine setting type and convert value appropriately
+                let settingType = 'string';
+                let stringValue = value;
+                
+                if (typeof value === 'number') {
+                    settingType = 'number';
+                    stringValue = value.toString();
+                } else if (typeof value === 'boolean') {
+                    settingType = 'boolean';
+                    stringValue = value.toString();
+                } else if (typeof value === 'object' && value !== null) {
+                    settingType = 'json';
+                    stringValue = JSON.stringify(value);
+                } else {
+                    stringValue = value.toString();
+                }
 
                 // Check if setting exists first
                 const existing = await db.execute(
-                    'SELECT setting_id FROM system_settings WHERE setting_key = ?',
+                    'SELECT id FROM system_settings WHERE setting_key = ?',
                     [key]
                 );
 
                 if (existing.length > 0) {
                     // Update existing setting
                     await db.execute(
-                        'UPDATE system_settings SET setting_value = ?, updated_at = NOW() WHERE setting_key = ?',
-                        [stringValue, key]
+                        'UPDATE system_settings SET setting_value = ?, setting_type = ?, updated_at = NOW() WHERE setting_key = ?',
+                        [stringValue, settingType, key]
                     );
                     console.log(`Updated setting: ${key}`);
                 } else {
                     // Create new setting
                     await db.execute(
-                        'INSERT INTO system_settings (setting_key, setting_value, created_at, updated_at) VALUES (?, ?, NOW(), NOW())',
-                        [key, stringValue]
+                        'INSERT INTO system_settings (setting_key, setting_value, setting_type, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())',
+                        [key, stringValue, settingType]
                     );
                     console.log(`Created setting: ${key}`);
                 }
@@ -178,7 +328,7 @@ router.put('/:key', auth, requireAdmin, async (req, res) => {
 
         // Check if setting exists
         const existing = await db.execute(
-            'SELECT setting_id FROM system_settings WHERE setting_key = ?',
+            'SELECT id FROM system_settings WHERE setting_key = ?',
             [key]
         );
 
