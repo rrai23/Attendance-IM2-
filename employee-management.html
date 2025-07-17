@@ -957,7 +957,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(255, 0, 255, 0.8) !important;
+            background: rgba(0, 0, 0, 0.5);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -970,7 +970,7 @@
         }
         
         .modal {
-            background: red !important;
+            background: white;
             padding: 20px;
             border-radius: 8px;
             width: 90%;
@@ -978,8 +978,6 @@
             max-height: 80vh;
             overflow-y: auto;
             transition: background-color 0.3s ease;
-            border: 10px solid yellow !important;
-            box-shadow: 0 0 50px 10px cyan !important;
         }
 
         body.dark-mode .modal {
@@ -2215,15 +2213,21 @@
             }
 
             openModal(record = null) {
-                console.log('✅ openModal called!');
-                console.log('Opening modal for:', record ? 'edit' : 'add new record');
+                console.log('🔍 openModal called with:', record ? 'edit mode' : 'add mode');
                 
                 const modal = document.getElementById('editAttendanceModal');
-                console.log('Modal element found:', !!modal);
+                console.log('🔍 Modal element found:', !!modal);
+                
                 if (modal) {
-                    console.log('Modal current display:', window.getComputedStyle(modal).display);
-                    console.log('Modal current classes:', modal.className);
+                    console.log('🔍 Modal initial state:');
+                    console.log('  - display:', window.getComputedStyle(modal).display);
+                    console.log('  - visibility:', window.getComputedStyle(modal).visibility);
+                    console.log('  - opacity:', window.getComputedStyle(modal).opacity);
+                    console.log('  - z-index:', window.getComputedStyle(modal).zIndex);
+                    console.log('  - position:', window.getComputedStyle(modal).position);
+                    console.log('  - classes:', modal.className);
                 }
+                
                 const form = document.getElementById('attendanceForm');
                 const title = document.getElementById('modalTitle');
                 const employeeSelect = document.getElementById('employeeSelect');
@@ -2231,7 +2235,7 @@
                 const employeeDisplayText = document.getElementById('employeeDisplayText');
 
                 if (!modal) {
-                    console.error('Modal element not found');
+                    console.error('❌ Modal element not found');
                     this.showError('Modal not available. Please refresh the page.');
                     return;
                 }
@@ -2282,16 +2286,94 @@
                 console.log('🚀 About to show modal...');
                 modal.classList.remove('hidden');
                 modal.style.display = 'flex';
+                modal.style.visibility = 'visible';
+                modal.style.opacity = '1';
+                
+                // Remove any existing modal style overrides
+                const existingStyle = document.getElementById('modal-style-override');
+                if (existingStyle) {
+                    existingStyle.remove();
+                }
+                
+                // Add a single, reusable style override
+                const styleElement = document.createElement('style');
+                styleElement.id = 'modal-style-override';
+                styleElement.textContent = `
+                    #editAttendanceModal { 
+                        position: fixed !important; 
+                        top: 0 !important; 
+                        left: 0 !important; 
+                        width: 100vw !important; 
+                        height: 100vh !important; 
+                        background: rgba(0,0,0,0.5) !important; 
+                        display: flex !important; 
+                        visibility: visible !important;
+                        opacity: 1 !important;
+                        z-index: 99999 !important; 
+                        align-items: center !important; 
+                        justify-content: center !important; 
+                    }
+                `;
+                document.head.appendChild(styleElement);
+                
+                // Force reflow
+                modal.offsetHeight;
+                
                 console.log('✅ Modal should be visible now!');
-                console.log('Final modal display:', window.getComputedStyle(modal).display);
-                console.log('Final modal classes:', modal.className);
+                console.log('🔍 Modal final state:');
+                console.log('  - display:', window.getComputedStyle(modal).display);
+                console.log('  - visibility:', window.getComputedStyle(modal).visibility);
+                console.log('  - opacity:', window.getComputedStyle(modal).opacity);
+                console.log('  - z-index:', window.getComputedStyle(modal).zIndex);
+                console.log('  - classes:', modal.className);
+                
+                // Check if modal is actually in the DOM and visible
+                const rect = modal.getBoundingClientRect();
+                console.log('🔍 Modal position:', {
+                    top: rect.top,
+                    left: rect.left,
+                    width: rect.width,
+                    height: rect.height,
+                    visible: rect.width > 0 && rect.height > 0
+                });
+                
+                // Check if modal gets hidden shortly after showing
+                setTimeout(() => {
+                    console.log('🕐 Modal state after 100ms:', {
+                        display: window.getComputedStyle(modal).display,
+                        classes: modal.className,
+                        visible: modal.getBoundingClientRect().width > 0
+                    });
+                }, 100);
+                
+                setTimeout(() => {
+                    console.log('🕐 Modal state after 500ms:', {
+                        display: window.getComputedStyle(modal).display,
+                        classes: modal.className,
+                        visible: modal.getBoundingClientRect().width > 0
+                    });
+                }, 500);
             }
 
             closeModal() {
+                console.log('🔒 closeModal called');
                 const modal = document.getElementById('editAttendanceModal');
                 if (modal) {
+                    console.log('🔒 Hiding modal...');
                     modal.classList.add('hidden');
                     modal.style.display = 'none';
+                    modal.style.visibility = 'hidden';
+                    modal.style.opacity = '0';
+                    
+                    // Remove the show style override instead of adding conflicting styles
+                    const existingStyle = document.getElementById('modal-style-override');
+                    if (existingStyle) {
+                        existingStyle.remove();
+                    }
+                    
+                    console.log('🔒 Modal should be hidden now');
+                } else {
+                    console.error('🔒 Modal element not found for closing');
                 }
                 this.currentEditingId = null;
             }
@@ -2532,11 +2614,8 @@
             }
 
             async editRecord(id) {
-                console.log('editRecord called with id:', id);
                 const record = this.attendanceData.find(r => r.id === id);
-                console.log('Found record:', record);
                 if (record) {
-                    console.log('Calling openModal with record...');
                     this.openModal(record);
                 } else {
                     this.showError('Record not found');
