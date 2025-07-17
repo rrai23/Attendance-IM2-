@@ -2187,6 +2187,30 @@
                 return `${diffHours.toFixed(1)}h`;
             }
 
+            // Calculate hours as a number for API submission
+            calculateHoursAsNumber(timeIn, timeOut) {
+                if (!timeIn || !timeOut) return null;
+                
+                const [inHours, inMinutes] = timeIn.split(':').map(Number);
+                const [outHours, outMinutes] = timeOut.split(':').map(Number);
+                
+                const inDate = new Date();
+                inDate.setHours(inHours, inMinutes, 0, 0);
+                
+                const outDate = new Date();
+                outDate.setHours(outHours, outMinutes, 0, 0);
+                
+                // Handle overnight shifts
+                if (outDate < inDate) {
+                    outDate.setDate(outDate.getDate() + 1);
+                }
+                
+                const diffMs = outDate - inDate;
+                const diffHours = diffMs / (1000 * 60 * 60);
+                
+                return parseFloat(diffHours.toFixed(2));
+            }
+
             // Helper method to get employee name with proper field mapping
             getEmployeeName(employee) {
                 if (!employee) return 'Unknown Employee';
@@ -2422,16 +2446,28 @@
 
                 try {
                     const formData = new FormData(form);
-                    const recordId = document.getElementById('recordId').value;
-                    const employeeId = document.getElementById('employeeSelect').value;
-                    const date = document.getElementById('attendanceDate').value;
-                    const timeIn = document.getElementById('clockInTime').value;
-                    const timeOut = document.getElementById('clockOutTime').value;
-                    const status = document.getElementById('attendanceStatus').value;
-                    const notes = document.getElementById('notes').value;
+                    const recordId = document.getElementById('recordId')?.value;
+                    const employeeId = document.getElementById('employeeSelect')?.value;
+                    const date = document.getElementById('attendanceDate')?.value;
+                    const timeIn = document.getElementById('clockInTime')?.value;
+                    const timeOut = document.getElementById('clockOutTime')?.value;
+                    const status = document.getElementById('attendanceStatus')?.value;
+                    const notes = document.getElementById('notes')?.value;
+
+                    // Debug form element presence
+                    console.log('Form elements check:', {
+                        recordId: !!document.getElementById('recordId'),
+                        employeeSelect: !!document.getElementById('employeeSelect'),
+                        attendanceDate: !!document.getElementById('attendanceDate'),
+                        clockInTime: !!document.getElementById('clockInTime'),
+                        clockOutTime: !!document.getElementById('clockOutTime'),
+                        attendanceStatus: !!document.getElementById('attendanceStatus'),
+                        notes: !!document.getElementById('notes')
+                    });
 
                     // Validation
                     if (!employeeId) {
+                        console.error('Employee ID is missing:', { employeeId, formValue: document.getElementById('employeeSelect').value });
                         this.showError('Please select an employee');
                         return;
                     }
@@ -2446,6 +2482,23 @@
                         return;
                     }
 
+                    // Validation - time_in is required by backend
+                    if (!timeIn || timeIn.trim() === '') {
+                        console.warn('time_in is empty, using default value');
+                        // Set a default time_in value since backend requires it
+                        const timeInInput = document.getElementById('clockInTime');
+                        if (timeInInput) {
+                            timeInInput.value = '09:00';
+                            timeIn = '09:00';
+                        }
+                    }
+
+                    // Final validation before sending to API
+                    if (!employeeId || !date || !timeIn) {
+                        this.showError('Please fill in all required fields (Employee, Date, Time In)');
+                        return;
+                    }
+
                     // Debug logging
                     console.log('Saving attendance with data:', {
                         employeeId: employeeId,
@@ -2457,23 +2510,29 @@
                     });
 
                     const recordData = {
-                        employee_id: parseInt(employeeId), // Ensure it's a number
+                        employee_id: employeeId, // Keep as string - employee_id is VARCHAR
                         date: date,
-                        time_in: timeIn || null,
+                        time_in: timeIn, // Now guaranteed to have a value
                         time_out: timeOut || null,
                         status: status,
-                        notes: notes,
-                        hours_worked: this.calculateHours(timeIn, timeOut)
+                        notes: notes || '',
+                        hours_worked: this.calculateHoursAsNumber(timeIn, timeOut) // Send as number, not string with 'h'
                     };
+
+                    console.log('Record data being sent to API:', recordData);
+                    console.log('About to call DirectFlow createAttendanceRecord...');
 
                     let response;
                     if (recordId) {
                         // Update existing record - try different method names
                         if (typeof this.directFlow.updateAttendanceRecord === 'function') {
+                            console.log('Using DirectFlow.updateAttendanceRecord method');
                             response = await this.directFlow.updateAttendanceRecord(recordId, recordData);
                         } else if (typeof this.directFlow.updateRecord === 'function') {
+                            console.log('Using DirectFlow.updateRecord method');
                             response = await this.directFlow.updateRecord('attendance', recordId, recordData);
                         } else if (typeof this.directFlow.update === 'function') {
+                            console.log('Using DirectFlow.update method');
                             response = await this.directFlow.update('attendance', recordId, recordData);
                         } else {
                             // Try direct API call for update
@@ -2512,46 +2571,92 @@
                             }
                         }
                     } else {
-                        // Create new record - try different method names
-                        if (typeof this.directFlow.createAttendanceRecord === 'function') {
-                            response = await this.directFlow.createAttendanceRecord(recordData);
-                        } else if (typeof this.directFlow.createRecord === 'function') {
-                            response = await this.directFlow.createRecord('attendance', recordData);
-                        } else if (typeof this.directFlow.create === 'function') {
-                            response = await this.directFlow.create('attendance', recordData);
-                        } else {
-                            // Try direct API call for create
-                            console.log('DirectFlow create methods not available, trying direct API call...');
-                            
-                            try {
-                                const apiResponse = await fetch('/api/attendance', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-                                    },
-                                    body: JSON.stringify(recordData)
-                                });
+                        // Create new record - try DirectFlow first, then fallback to direct API
+                        let directFlowFailed = false;
+                        try {
+                            if (typeof this.directFlow.createAttendanceRecord === 'function') {
+                                console.log('Using DirectFlow.createAttendanceRecord method');
+                                console.log('Calling with data:', JSON.stringify(recordData, null, 2));
+                                response = await this.directFlow.createAttendanceRecord(recordData);
                                 
-                                if (apiResponse.ok) {
-                                    const data = await apiResponse.json();
-                                    response = { success: true, data };
-                                } else {
-                                    throw new Error(`API request failed: ${apiResponse.status} ${apiResponse.statusText}`);
+                                // Check if DirectFlow response indicates failure
+                                if (!response || !response.success) {
+                                    console.warn('DirectFlow createAttendanceRecord failed:', response);
+                                    directFlowFailed = true;
                                 }
-                            } catch (apiError) {
-                                console.warn('Direct API call failed, using local fallback:', apiError);
+                            } else {
+                                directFlowFailed = true;
+                            }
+                        } catch (directFlowError) {
+                            console.error('DirectFlow createAttendanceRecord threw error:', directFlowError);
+                            directFlowFailed = true;
+                        }
+                        
+                        // If DirectFlow failed, try direct API call immediately
+                        if (directFlowFailed) {
+                            console.log('DirectFlow failed, trying direct API call to /api/attendance/manual...');
+                            console.log('Direct API call with data:', JSON.stringify(recordData, null, 2));
+                            
+                            // Check what tokens we have available
+                            const token = localStorage.getItem('token') || localStorage.getItem('directflow_token') || '';
+                            console.log('Using token:', token ? 'Token available' : 'No token found');
+                            console.log('Token details:', { 
+                                hasToken: !!token,
+                                tokenLength: token.length,
+                                tokenPrefix: token.substring(0, 20) + '...'
+                            });
+                            
+                            const apiResponse = await fetch('/api/attendance/manual', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${token}`
+                                },
+                                body: JSON.stringify(recordData)
+                            });
+                            
+                            console.log('Direct API Response Status:', apiResponse.status, apiResponse.statusText);
+                            console.log('Direct API Response Headers:', [...apiResponse.headers.entries()]);
+                            
+                            if (apiResponse.ok) {
+                                const data = await apiResponse.json();
+                                console.log('Direct API Response Data:', data);
+                                response = { success: true, data };
+                            } else {
+                                const errorText = await apiResponse.text();
+                                console.error('Direct API Error Response:', errorText);
                                 
-                                // Fallback: Add to local data
-                                const newRecord = { 
-                                    id: Date.now(), // Simple ID generation
-                                    ...recordData 
-                                };
-                                this.attendanceData.push(newRecord);
-                                this.dataCache.attendance = this.attendanceData;
-                                this.dataCache.lastFetch = Date.now();
-                                response = { success: true };
-                                this.showInfo('Record created locally only. Server creation failed.', 'Sync Warning');
+                                // Check if it's an authentication error
+                                if (apiResponse.status === 401) {
+                                    throw new Error('Authentication failed - please log in again');
+                                } else if (apiResponse.status === 403) {
+                                    throw new Error('Access denied - insufficient permissions');
+                                } else if (apiResponse.status === 400 && errorData.message && errorData.message.includes('already exists')) {
+                                    // Handle duplicate record error with user confirmation
+                                    const confirmUpdate = confirm(`An attendance record already exists for ${employeeId} on ${date}. Would you like to update the existing record instead?`);
+                                    if (confirmUpdate) {
+                                        // Find the existing record ID and try to update instead
+                                        const existingRecord = this.allAttendanceData.find(r => 
+                                            r.employee_id === employeeId && r.date === date
+                                        );
+                                        if (existingRecord) {
+                                            // Recursive call to update the existing record
+                                            document.getElementById('recordId').value = existingRecord.id;
+                                            return this.saveAttendance();
+                                        }
+                                    }
+                                    throw new Error('Attendance record already exists for this date');
+                                }
+                                
+                                // Try to parse error as JSON for better error message
+                                let errorData;
+                                try {
+                                    errorData = JSON.parse(errorText);
+                                } catch (e) {
+                                    errorData = { message: errorText };
+                                }
+                                
+                                throw new Error(`Direct API failed: ${apiResponse.status} ${apiResponse.statusText} - ${errorData.message || errorText}`);
                             }
                         }
                     }
@@ -2593,7 +2698,13 @@
                             });
                         }
                     } else {
-                        throw new Error(response?.message || 'Failed to save attendance record');
+                        // Enhanced error reporting
+                        const errorMessage = response?.message || 'Failed to save attendance record';
+                        const errorDetails = response?.error || response?.data?.error || '';
+                        const fullError = errorDetails ? `${errorMessage}: ${errorDetails}` : errorMessage;
+                        
+                        console.error('API Response Error:', response);
+                        throw new Error(fullError);
                     }
 
                 } catch (error) {

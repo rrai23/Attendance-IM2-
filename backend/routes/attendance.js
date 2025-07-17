@@ -286,6 +286,10 @@ router.get('/status', auth, async (req, res) => {
 
 // Manual attendance entry (admin/manager only)
 router.post('/manual', auth, requireManagerOrAdmin, async (req, res) => {
+    console.log('🎯 Manual attendance route reached!');
+    console.log('📋 Request body:', JSON.stringify(req.body, null, 2));
+    console.log('👤 Request user:', req.user ? req.user.employee_id : 'No user');
+    
     try {
         const {
             employee_id,
@@ -342,7 +346,7 @@ router.post('/manual', auth, requireManagerOrAdmin, async (req, res) => {
         await db.execute(`
             INSERT INTO attendance_records (
                 employee_id, date, time_in, time_out,
-                hours_worked, status, notes, created_at
+                total_hours, status, notes, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
         `, [
             employee_id, date, 
