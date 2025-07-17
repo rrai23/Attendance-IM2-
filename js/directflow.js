@@ -169,12 +169,13 @@ class DirectFlow {
             let endpoint = '/attendance';
             const params = new URLSearchParams();
             
-            if (employeeId) params.append('employeeId', employeeId);
+            // Request all records by setting a high limit
+            params.append('limit', '1000'); // Set high limit to get all records
+            
+            if (employeeId) params.append('employee_id', employeeId);
             if (date) params.append('date', date);
             
-            if (params.toString()) {
-                endpoint += '?' + params.toString();
-            }
+            endpoint += '?' + params.toString();
             
             const response = await this.makeRequest(endpoint);
             const data = await response.json();
@@ -498,14 +499,15 @@ class DirectFlow {
             let endpoint = '/attendance';
             const params = new URLSearchParams();
             
-            if (options.date) params.append('date', options.date);
-            if (options.employeeId) params.append('employeeId', options.employeeId);
-            if (options.startDate) params.append('startDate', options.startDate);
-            if (options.endDate) params.append('endDate', options.endDate);
+            // Request all records by setting a high limit
+            params.append('limit', '1000'); // Set high limit to get all records
             
-            if (params.toString()) {
-                endpoint += '?' + params.toString();
-            }
+            if (options.date) params.append('date', options.date);
+            if (options.employeeId) params.append('employee_id', options.employeeId);
+            if (options.startDate) params.append('start_date', options.startDate);
+            if (options.endDate) params.append('end_date', options.endDate);
+            
+            endpoint += '?' + params.toString();
             
             const response = await this.makeRequest(endpoint);
             const data = await response.json();
