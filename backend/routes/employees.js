@@ -32,7 +32,7 @@ router.get('/', auth, async (req, res) => {
                 null as manager_id,
                 e.hire_date,
                 e.status,
-                null as hourly_rate,
+                e.wage as hourly_rate,
                 null as overtime_rate,
                 e.wage,
                 null as avatar,
@@ -85,8 +85,7 @@ router.get('/', auth, async (req, res) => {
         query += ' LIMIT ? OFFSET ?';
         params.push(parseInt(limit), offset);
 
-        const employeesResult = await db.execute(query, params);
-        const employees = employeesResult; // MySQL2 promise returns data directly
+        const employees = await db.execute(query, params);
 
         // Get total count for pagination
         let countQuery = `
@@ -112,7 +111,7 @@ router.get('/', auth, async (req, res) => {
         }
 
         if (search) {
-            countQuery += ' AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.employee_id LIKE ?)';
+            countQuery += ' AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.email LIKE ? OR e.employee_id LIKE ?)';
             const searchTerm = `%${search}%`;
             countParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
         }
@@ -157,7 +156,7 @@ router.get('/:employeeId', auth, async (req, res) => {
                 ua.created_at as account_created
             FROM employees e
             LEFT JOIN user_accounts ua ON e.employee_id = ua.employee_id
-            WHERE e.id = ?
+            WHERE e.employee_id = ?
         `, [employeeId]);
 
         if (employees.length === 0) {
@@ -242,12 +241,12 @@ router.post('/', auth, requireManagerOrAdmin, async (req, res) => {
             query: `
                 INSERT INTO employees (
                     employee_id, first_name, last_name, full_name, email, phone, 
-                    department, position, hire_date, hourly_rate, overtime_rate, status, created_at, updated_at
+                    department, position, hire_date, wage, overtime_rate, status, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW(), NOW())
             `,
             params: [
                 employee_code, first_name, last_name, `${first_name} ${last_name}`, email, phone,
-                department, position, hire_date, wage ? (wage / 2080) : 15.00, 1.50
+                department, position, hire_date, wage || 15.00, 1.50
             ]
         });
 
@@ -452,60 +451,38 @@ router.put('/:employeeId', requireManagerOrAdmin, async (req, res) => {
 router.delete('/:employeeId', auth, requireAdmin, async (req, res) => {
     try {
         const { employeeId } = req.params;
-        console.log('🔥 DELETE /api/employees/:employeeId called with ID:', employeeId);
 
         // Check if employee exists
-        const existing = await db.execute('SELECT id, employee_id FROM employees WHERE id = ?', [employeeId]);
+        const existing = await db.execute('SELECT employee_id FROM employees WHERE employee_id = ?', [employeeId]);
         if (existing.length === 0) {
-            console.log('❌ Employee not found for ID:', employeeId);
             return res.status(404).json({
                 success: false,
                 message: 'Employee not found'
             });
         }
 
-        console.log('🔥 Found employee to delete:', existing[0]);
-        const actualEmployeeId = existing[0].employee_id; // Get the employee_id for related tables
+        // Use transaction to safely delete employee
+        const queries = [
+            {
+                query: 'UPDATE employees SET status = ?, updated_at = NOW() WHERE employee_id = ?',
+                params: ['inactive', employeeId]
+            },
+            {
+                query: 'UPDATE user_accounts SET is_active = FALSE, updated_at = NOW() WHERE employee_id = ?',
+                params: [employeeId]
+            },
+            {
+                query: 'UPDATE user_sessions SET is_active = FALSE WHERE employee_id = ?',
+                params: [employeeId]
+            }
+        ];
 
-        // Get a connection from the pool for transaction
-        const connection = await db.pool.getConnection();
-        
-        try {
-            await connection.beginTransaction();
-            
-            // Soft delete employee using primary key
-            await connection.execute(
-                'UPDATE employees SET status = ?, updated_at = NOW() WHERE id = ?',
-                ['inactive', employeeId]
-            );
+        await db.transaction(queries);
 
-            // Deactivate user account using employee_id
-            await connection.execute(
-                'UPDATE user_accounts SET is_active = FALSE, updated_at = NOW() WHERE employee_id = ?',
-                [actualEmployeeId]
-            );
-
-            // Deactivate all sessions using employee_id
-            await connection.execute(
-                'UPDATE user_sessions SET is_active = FALSE WHERE employee_id = ?',
-                [actualEmployeeId]
-            );
-
-            await connection.commit();
-            
-            console.log('✅ Employee soft deleted successfully');
-
-            res.json({
-                success: true,
-                message: 'Employee deleted successfully'
-            });
-            
-        } catch (error) {
-            await connection.rollback();
-            throw error;
-        } finally {
-            connection.release();
-        }
+        res.json({
+            success: true,
+            message: 'Employee deleted successfully'
+        });
 
     } catch (error) {
         console.error('Delete employee error:', error);

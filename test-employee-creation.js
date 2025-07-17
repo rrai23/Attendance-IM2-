@@ -2,21 +2,38 @@ const axios = require('axios');
 
 async function testEmployeeCreation() {
     try {
+        // First login to get a fresh token
+        console.log('🔐 Logging in...');
+        const loginResponse = await axios.post('http://localhost:3000/api/auth/login', {
+            username: 'admin',
+            password: 'admin123'
+        });
+
+        console.log('✅ Login successful');
+        console.log('📊 Login response data:', JSON.stringify(loginResponse.data, null, 2));
+        
+        const token = loginResponse.data.data.token;
+
+        if (!token) {
+            console.error('❌ No token received');
+            return;
+        }
+
+        // Now create employee with correct field names
+        console.log('👤 Creating employee...');
         const response = await axios.post('http://localhost:3000/api/employees', {
-            first_name: 'John',
-            last_name: 'Doe',
-            email: 'john.doe@example.com',
+            first_name: 'Jane',
+            last_name: 'Smith',
+            email: `jane.smith.${Date.now()}@testfresh.com`,
             phone: '123-456-7890',
-            department: 'IT',
-            position: 'Software Developer',
-            date_hired: '2025-01-15',
-            salary: 75000,
-            username: 'johndoe',
-            password: 'password123',
-            role: 'employee'
+            department: 'HR',
+            position: 'HR Manager',
+            hire_date: '2025-01-15',
+            wage: 30.00,
+            salary_type: 'hourly'
         }, {
             headers: {
-                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llX2lkIjoiQURNSU4wMDEiLCJ1c2VybmFtZSI6ImFkbWluIiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzUyNjAyOTcwLCJleHAiOjE3NTI2ODkzNzB9.2K9ajs-EZy-h-jsfENpQkN01_aIZT1jXfDFXH-EdinU',
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             }
         });
