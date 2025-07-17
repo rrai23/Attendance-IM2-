@@ -1104,17 +1104,25 @@ class PayrollController {
                     {
                         text: 'Cancel',
                         class: 'btn-secondary',
-                        action: (modalId) => modalManager.close(modalId)
+                        action: 'cancel'
                     },
                     {
                         text: 'Process Payroll',
                         class: 'btn-primary',
-                        action: async (modalId) => {
-                            modalManager.close(modalId);
-                            await this.processPayroll(payrollCalculations, payPeriodStart, payPeriodEnd);
-                        }
+                        action: 'confirm'
                     }
-                ]
+                ],
+                onCancel: (modalId) => {
+                    console.log('[PAYROLL] Process payroll cancelled');
+                },
+                onConfirm: async (modalId) => {
+                    console.log('[PAYROLL] Processing payroll confirmed');
+                    try {
+                        await this.processPayroll(payrollCalculations, payPeriodStart, payPeriodEnd);
+                    } catch (error) {
+                        console.error('[PAYROLL] Error in onConfirm:', error);
+                    }
+                }
             });
 
         } catch (error) {
@@ -1130,14 +1138,84 @@ class PayrollController {
         try {
             console.log('[PAYROLL] Processing payroll for period:', { payPeriodStart, payPeriodEnd, employees: payrollCalculations.length });
             
-            // For now, just show success - implement actual backend storage later
-            this.showSuccess(`Payroll processed successfully for ${payrollCalculations.length} employees`);
+            // Show processing modal
+            const processingModalId = modalManager.create({
+                title: 'Processing Payroll',
+                content: `
+                    <div class="processing-container">
+                        <div class="spinner"></div>
+                        <p>Generating payroll records for ${payrollCalculations.length} employees...</p>
+                        <div class="progress-info">
+                            <span>This may take a few moments...</span>
+                        </div>
+                    </div>
+                `,
+                buttons: []
+            });
+
+            // Extract employee IDs from calculations
+            const employeeIds = payrollCalculations.map(calc => calc.employee.employee_id);
+            
+            // Prepare the payload for the backend API
+            const payrollPayload = {
+                employee_ids: employeeIds,
+                pay_period_start: payPeriodStart.toISOString().split('T')[0], // YYYY-MM-DD format
+                pay_period_end: payPeriodEnd.toISOString().split('T')[0],
+                include_overtime: true,
+                include_holidays: true
+            };
+
+            console.log('[PAYROLL] Sending payroll generation request:', payrollPayload);
+
+            // Call the backend API to generate payroll records
+            const response = await window.directFlow.makeRequest('/payroll/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payrollPayload)
+            });
+
+            const result = await response.json();
+            
+            // Close processing modal
+            modalManager.close(processingModalId);
+
+            if (result.success) {
+                console.log('[PAYROLL] Payroll generation successful:', result);
+                
+                const successMessage = `
+                    Payroll processed successfully!
+                    <br><br>
+                    <strong>Results:</strong><br>
+                    • ${result.data?.results?.length || 0} records created<br>
+                    • ${result.data?.errors?.length || 0} errors<br>
+                    • Pay Period: ${payPeriodStart.toLocaleDateString()} - ${payPeriodEnd.toLocaleDateString()}
+                `;
+                
+                this.showSuccess(successMessage);
+                
+                // Log any errors for debugging
+                if (result.data?.errors?.length > 0) {
+                    console.warn('[PAYROLL] Some employees had errors:', result.data.errors);
+                }
+            } else {
+                console.error('[PAYROLL] Payroll generation failed:', result);
+                this.showError(result.message || 'Failed to process payroll');
+            }
             
             // Refresh payroll history to show new records
             await this.refreshData();
+            
         } catch (error) {
-            console.error('Error processing payroll:', error);
-            this.showError('Failed to process payroll');
+            console.error('[PAYROLL] Error processing payroll:', error);
+            
+            // Close any open modals
+            try {
+                modalManager.close(processingModalId);
+            } catch (e) { /* ignore */ }
+            
+            this.showError('Failed to process payroll: ' + error.message);
             throw error;
         }
     }

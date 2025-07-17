@@ -153,9 +153,10 @@ router.get('/next-payday', auth, async (req, res) => {
         const lastPayroll = await db.execute(`
             SELECT 
                 pay_period_end,
+                pay_date,
                 'monthly' as pay_frequency
             FROM payroll_records
-            ORDER BY pay_period_end DESC
+            ORDER BY pay_date DESC
             LIMIT 1
         `);
 
@@ -163,7 +164,7 @@ router.get('/next-payday', auth, async (req, res) => {
         let daysUntilPayday = null;
 
         if (lastPayroll && lastPayroll.length > 0) {
-            const lastPayDate = new Date(lastPayroll[0].pay_period_end);
+            const lastPayDate = new Date(lastPayroll[0].pay_date);
             const frequency = lastPayroll[0].pay_frequency || 'monthly';
             
             // Calculate next payday based on frequency
@@ -262,7 +263,7 @@ router.get('/:payrollId', auth, async (req, res) => {
 });
 
 // Create payroll record
-router.post('/', requireManagerOrAdmin, async (req, res) => {
+router.post('/', auth, requireManagerOrAdmin, async (req, res) => {
     try {
         const {
             employee_id,
@@ -593,7 +594,7 @@ router.put('/:payrollId', requireManagerOrAdmin, async (req, res) => {
 });
 
 // Generate payroll for a pay period
-router.post('/generate', requireManagerOrAdmin, async (req, res) => {
+router.post('/generate', auth, requireManagerOrAdmin, async (req, res) => {
     try {
         const {
             employee_ids, // array of employee IDs, or null for all active employees
@@ -640,7 +641,7 @@ router.post('/generate', requireManagerOrAdmin, async (req, res) => {
             try {
                 // Check if payroll already exists for this period
                 const existing = await db.execute(
-                    'SELECT payroll_id FROM payroll_records WHERE employee_id = ? AND pay_period_start = ? AND pay_period_end = ?',
+                    'SELECT id FROM payroll_records WHERE employee_id = ? AND pay_period_start = ? AND pay_period_end = ?',
                     [employee.employee_id, pay_period_start, pay_period_end]
                 );
 
@@ -665,8 +666,8 @@ router.post('/generate', requireManagerOrAdmin, async (req, res) => {
                 let holiday_hours = 0;
 
                 attendanceRecords.forEach(record => {
-                    if (record.total_hours && record.total_hours > 0) {
-                        const hours = parseFloat(record.total_hours);
+                    if (record.hours_worked && record.hours_worked > 0) {
+                        const hours = parseFloat(record.hours_worked);
                         
                         if (record.status === 'holiday' && include_holidays) {
                             holiday_hours += hours;
@@ -685,9 +686,7 @@ router.post('/generate', requireManagerOrAdmin, async (req, res) => {
                 const overtime_rate = hourlyRate * 1.5;
                 const holiday_rate = hourlyRate * 2;
 
-                // Create payroll record
-                const payrollId = `PAY${Date.now()}${Math.floor(Math.random() * 1000)}`;
-                
+                // Calculate pay amounts
                 const regularPay = regular_hours * regular_rate;
                 const overtimePay = overtime_hours * overtime_rate;
                 const holidayPay = holiday_hours * holiday_rate;
@@ -704,28 +703,26 @@ router.post('/generate', requireManagerOrAdmin, async (req, res) => {
                 const totalDeductions = Object.values(deductions).reduce((sum, amount) => sum + amount, 0);
                 const netPay = grossPay - totalDeductions;
 
-                await db.execute(`
+                const insertResult = await db.execute(`
                     INSERT INTO payroll_records (
-                        payroll_id, employee_id, pay_period_start, pay_period_end,
-                        regular_hours, overtime_hours, holiday_hours,
-                        regular_rate, overtime_rate, holiday_rate,
-                        regular_pay, overtime_pay, holiday_pay,
-                        gross_pay, total_deductions, net_pay,
-                        deductions_json, status, created_by, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, NOW())
+                        employee_id, pay_period_start, pay_period_end,
+                        regular_hours, overtime_hours, 
+                        regular_pay, overtime_pay,
+                        gross_pay, deductions, net_pay,
+                        status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')
                 `, [
-                    payrollId, employee.employee_id, pay_period_start, pay_period_end,
-                    regular_hours, overtime_hours, holiday_hours,
-                    regular_rate, overtime_rate, holiday_rate,
-                    regularPay, overtimePay, holidayPay,
-                    grossPay, totalDeductions, netPay,
-                    JSON.stringify(deductions),
-                    req.user.employee_id
+                    employee.employee_id, pay_period_start, pay_period_end,
+                    regular_hours, overtime_hours,
+                    regularPay, overtimePay,
+                    grossPay, totalDeductions, netPay
                 ]);
+
+                const payrollRecordId = insertResult.insertId;
 
                 results.push({
                     employee_id: employee.employee_id,
-                    payroll_id: payrollId,
+                    payroll_id: payrollRecordId,
                     gross_pay: grossPay,
                     net_pay: netPay
                 });
