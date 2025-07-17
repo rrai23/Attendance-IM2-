@@ -106,7 +106,7 @@ class EmployeesPageManager {
                 source: 'DirectFlow',
                 employees: this.employees.map(emp => ({ 
                     id: emp.id, 
-                    name: emp.full_name || emp.fullName || emp.name,
+                    name: emp.fullName || emp.name,
                     department: emp.department 
                 }))
             });
@@ -138,9 +138,9 @@ class EmployeesPageManager {
             const currentDate = new Date();
             const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
             const newThisMonth = this.employees.filter(emp => {
-                if (!emp || !(emp.hire_date || emp.hireDate)) return false;
+                if (!emp || !emp.hireDate) return false;
                 try {
-                    return new Date(emp.hire_date || emp.hireDate) >= firstDayOfMonth;
+                    return new Date(emp.hireDate) >= firstDayOfMonth;
                 } catch (error) {
                     console.warn('Invalid hire date for employee:', emp);
                     return false;
@@ -186,9 +186,7 @@ class EmployeesPageManager {
             
             const managers = this.employees.filter(emp => emp.role === 'manager' || emp.role === 'admin');
             managers.forEach(manager => {
-                const firstName = manager.first_name || manager.firstName || manager.name?.split(' ')[0] || '';
-                const lastName = manager.last_name || manager.lastName || manager.name?.split(' ').slice(1).join(' ') || '';
-                const option = new Option(`${firstName} ${lastName}`, `${firstName} ${lastName}`);
+                const option = new Option(`${manager.firstName} ${manager.lastName}`, `${manager.firstName} ${manager.lastName}`);
                 managerSelect.appendChild(option);
             });
         }
@@ -380,10 +378,10 @@ class EmployeesPageManager {
                 const employee = this.findEmployeeById(rawId);
                 
                 if (employee) {
-                    console.log('Opening edit modal for employee:', employee.full_name || employee.name || employee.fullName);
+                    console.log('Opening edit modal for employee:', employee.name || employee.fullName);
                     this.openModal(employee);
                 } else {
-                    console.error('Employee not found for edit action. ID:', rawId, 'Available employees:', this.employees.map(emp => ({id: emp.id, name: emp.full_name || emp.name || emp.fullName})));
+                    console.error('Employee not found for edit action. ID:', rawId, 'Available employees:', this.employees.map(emp => ({id: emp.id, name: emp.name || emp.fullName})));
                     this.showError(`Employee not found (ID: ${rawId})`);
                 }
             });
@@ -396,10 +394,10 @@ class EmployeesPageManager {
                 const employee = this.findEmployeeById(rawId);
                 
                 if (employee) {
-                    console.log('Opening view modal for employee:', employee.full_name || employee.name || employee.fullName);
+                    console.log('Opening view modal for employee:', employee.name || employee.fullName);
                     this.openViewModal(employee);
                 } else {
-                    console.error('Employee not found for view action. ID:', rawId, 'Available employees:', this.employees.map(emp => ({id: emp.id, name: emp.full_name || emp.name || emp.fullName})));
+                    console.error('Employee not found for view action. ID:', rawId, 'Available employees:', this.employees.map(emp => ({id: emp.id, name: emp.name || emp.fullName})));
                     this.showError(`Employee not found (ID: ${rawId})`);
                 }
             });
@@ -414,11 +412,11 @@ class EmployeesPageManager {
                 const employee = this.findEmployeeById(rawId);
                 
                 if (employee) {
-                    console.log('🔥 Found employee for delete:', employee.full_name || employee.name || employee.fullName);
+                    console.log('🔥 Found employee for delete:', employee.name || employee.fullName);
                     console.log('🔥 Opening delete modal...');
                     this.openDeleteModal(employee);
                 } else {
-                    console.error('❌ Employee not found for delete action. ID:', rawId, 'Available employees:', this.employees.map(emp => ({id: emp.id, name: emp.full_name || emp.name || emp.fullName})));
+                    console.error('❌ Employee not found for delete action. ID:', rawId, 'Available employees:', this.employees.map(emp => ({id: emp.id, name: emp.name || emp.fullName})));
                     this.showError(`Employee not found (ID: ${rawId})`);
                 }
             });
@@ -436,35 +434,35 @@ class EmployeesPageManager {
             return null;
         }
 
-        // Try multiple lookup strategies - prioritize numeric ID since that's what action buttons use
+        // Try multiple lookup strategies to handle both id and employee_id
         const strategies = [
-            // Strategy 1: Look for numeric id (primary key - what action buttons use)
+            // Strategy 1: Look for employee_id first (business ID like "admin_001")
+            (id) => this.employees.find(emp => emp.employee_id === id),
+            // Strategy 2: Look for employee_id with string conversion
+            (id) => this.employees.find(emp => String(emp.employee_id) === String(id)),
+            // Strategy 3: Look for numeric id (fallback)
             (id) => this.employees.find(emp => emp.id == id),
-            // Strategy 2: Parse as number and compare numeric id
+            // Strategy 4: Parse as number and compare numeric id
             (id) => {
                 const numId = parseInt(id);
                 return !isNaN(numId) ? this.employees.find(emp => emp.id === numId) : null;
             },
-            // Strategy 3: Convert both to strings and compare numeric id
+            // Strategy 5: Convert both to strings and compare numeric id
             (id) => this.employees.find(emp => String(emp.id) === String(id)),
-            // Strategy 4: Strict equality with original type for numeric id
-            (id) => this.employees.find(emp => emp.id === id),
-            // Strategy 5: Look for employee_id (business ID like "admin_001") - fallback
-            (id) => this.employees.find(emp => emp.employee_id === id),
-            // Strategy 6: Look for employee_id with string conversion
-            (id) => this.employees.find(emp => String(emp.employee_id) === String(id))
+            // Strategy 6: Strict equality with original type for numeric id
+            (id) => this.employees.find(emp => emp.id === id)
         ];
 
         for (let i = 0; i < strategies.length; i++) {
             const result = strategies[i](rawId);
             if (result) {
-                console.log(`Employee found using strategy ${i + 1}:`, result.full_name || result.name || result.fullName || `${result.first_name} ${result.last_name}`.trim());
+                console.log(`Employee found using strategy ${i + 1}:`, result.full_name || result.name || result.fullName);
                 return result;
             }
         }
 
         console.warn('Employee not found with any strategy. ID:', rawId, 'Type:', typeof rawId);
-        console.warn('Available employees:', this.employees.map(emp => ({ id: emp.id, employee_id: emp.employee_id, name: emp.full_name || `${emp.first_name} ${emp.last_name}`.trim() })));
+        console.warn('Available employees:', this.employees.map(emp => ({ id: emp.id, employee_id: emp.employee_id, name: emp.full_name })));
         return null;
     }
 
@@ -565,13 +563,13 @@ class EmployeesPageManager {
                 </td>
                 <td>
                     <div class="action-buttons">
-                        <button class="btn btn-sm btn-outline action-edit" data-employee-id="${employee.id}" title="Edit Employee">
+                        <button class="btn btn-sm btn-outline action-edit" data-employee-id="${employee.employee_id || employee.id}" title="Edit Employee">
                             <span class="btn-icon">✏️</span>
                         </button>
-                        <button class="btn btn-sm btn-outline action-view" data-employee-id="${employee.id}" title="View Details">
+                        <button class="btn btn-sm btn-outline action-view" data-employee-id="${employee.employee_id || employee.id}" title="View Details">
                             <span class="btn-icon">👁️</span>
                         </button>
-                        <button class="btn btn-sm btn-danger action-delete" data-employee-id="${employee.id}" title="Delete Employee">
+                        <button class="btn btn-sm btn-danger action-delete" data-employee-id="${employee.employee_id || employee.id}" title="Delete Employee">
                             <span class="btn-icon">🗑️</span>
                         </button>
                     </div>
@@ -653,29 +651,20 @@ class EmployeesPageManager {
     }
 
     populateForm(employee) {
-        // Map database fields to form fields with fallbacks
-        const fieldMapping = {
-            'employeeId': employee.id,
-            'firstName': employee.first_name || employee.firstName || '',
-            'lastName': employee.last_name || employee.lastName || '',
-            'email': employee.email || '',
-            'phone': employee.phone || '',
-            'employeeCode': employee.employee_id || employee.employeeCode || '',
-            'department': employee.department || '',
-            'position': employee.position || '',
-            'manager': employee.manager || '',
-            'hireDate': employee.hire_date || employee.hireDate || '',
-            'hourlyRate': employee.wage || employee.hourlyRate || '',
-            'salaryType': employee.salary_type || employee.salaryType || 'hourly',
-            'salary': employee.salary || '',
-            'role': employee.role || 'employee',
-            'status': employee.status || 'active'
-        };
+        const fields = [
+            'employeeId', 'firstName', 'lastName', 'email', 'phone',
+            'employeeCode', 'department', 'position', 'manager',
+            'hireDate', 'hourlyRate', 'salaryType', 'salary', 'role', 'status'
+        ];
 
-        Object.keys(fieldMapping).forEach(field => {
+        fields.forEach(field => {
             const element = document.getElementById(field);
             if (element) {
-                element.value = fieldMapping[field];
+                if (field === 'employeeId') {
+                    element.value = employee.id;
+                } else {
+                    element.value = employee[field] || '';
+                }
             }
         });
 
@@ -711,31 +700,23 @@ class EmployeesPageManager {
             
             if (this.currentEmployee) {
                 // Update existing employee using DirectFlow
-                // Map frontend fields to backend expected database fields (match exact schema)
+                // Map frontend fields to backend expected fields
                 const backendEmployeeData = {
-                    id: this.currentEmployee.id, // Keep the ID for update
-                    employee_id: employeeData.employeeCode,
-                    username: employeeData.employeeCode || `${employeeData.firstName.toLowerCase()}.${employeeData.lastName.toLowerCase()}`,
-                    role: employeeData.role || 'employee',
-                    full_name: `${employeeData.firstName} ${employeeData.lastName}`,
                     first_name: employeeData.firstName,
                     last_name: employeeData.lastName,
                     email: employeeData.email,
-                    phone: employeeData.phone || '',
+                    phone: employeeData.phone,
                     department: employeeData.department,
                     position: employeeData.position,
                     hire_date: employeeData.hireDate,
-                    status: employeeData.status || 'active',
-                    wage: employeeData.hourlyRate || 15.00, // Use wage field from schema
-                    salary_type: employeeData.salaryType || 'hourly'
+                    wage: employeeData.salary || employeeData.hourlyRate,
+                    employment_type: 'full-time',
+                    shift_schedule: 'day',
+                    status: employeeData.status || 'active'
                 };
                 
-                const updatedEmployee = await this.directFlow.updateEmployee(this.currentEmployee.id, backendEmployeeData);
+                const updatedEmployee = await this.directFlow.updateEmployee(this.currentEmployee.employeeId || this.currentEmployee.employee_id || this.currentEmployee.id, backendEmployeeData);
                 console.log('[DATA INTEGRITY] Employee updated via DirectFlow:', updatedEmployee);
-                
-                if (!updatedEmployee.success) {
-                    throw new Error(updatedEmployee.message || 'Failed to update employee');
-                }
             } else {
                 // For new employees, don't require employee code - it will be auto-generated
                 if (!employeeData.employeeCode || employeeData.employeeCode.trim() === '') {
@@ -746,32 +727,25 @@ class EmployeesPageManager {
                 delete employeeData.id;
                 
                 // Add new employee using DirectFlow
-                // Map frontend fields to backend expected database fields (match exact schema)
+                // Map frontend fields to backend expected fields
                 const backendEmployeeData = {
-                    employee_id: employeeData.employeeCode,
-                    username: employeeData.employeeCode || `${employeeData.firstName.toLowerCase()}.${employeeData.lastName.toLowerCase()}`,
-                    password: 'password123', // Default password
-                    role: employeeData.role || 'employee',
-                    full_name: `${employeeData.firstName} ${employeeData.lastName}`,
                     first_name: employeeData.firstName,
                     last_name: employeeData.lastName,
                     email: employeeData.email,
-                    phone: employeeData.phone || '',
+                    phone: employeeData.phone,
                     department: employeeData.department,
                     position: employeeData.position,
                     hire_date: employeeData.hireDate,
-                    status: employeeData.status || 'active',
-                    wage: employeeData.hourlyRate || 15.00, // Use wage field from schema
-                    salary_type: employeeData.salaryType || 'hourly'
-                    // Note: ID is auto-increment, don't include it
+                    wage: employeeData.salary || employeeData.hourlyRate,
+                    employment_type: 'full-time',
+                    shift_schedule: 'day',
+                    username: employeeData.employeeCode || employeeData.firstName.toLowerCase() + employeeData.lastName.toLowerCase(),
+                    password: 'password123', // Default password
+                    role: employeeData.role || 'employee'
                 };
                 
                 const newEmployee = await this.directFlow.createEmployee(backendEmployeeData);
                 console.log('[DATA INTEGRITY] Employee added via DirectFlow:', newEmployee);
-                
-                if (!newEmployee.success) {
-                    throw new Error(newEmployee.message || 'Failed to create employee');
-                }
             }
 
             // Reload data from DirectFlow
@@ -802,44 +776,14 @@ class EmployeesPageManager {
     async generateNextEmployeeId() {
         try {
             // Get employees from DirectFlow
-            const employeesResponse = await this.directFlow.getEmployees();
-            
-            // Handle DirectFlow API response structure (same as loadEmployees)
-            let employeesData = [];
-            
-            if (Array.isArray(employeesResponse)) {
-                // Direct array response
-                employeesData = employeesResponse;
-            } else if (employeesResponse && employeesResponse.success) {
-                // Standard API response with success flag
-                if (employeesResponse.data) {
-                    if (Array.isArray(employeesResponse.data)) {
-                        employeesData = employeesResponse.data;
-                    } else if (employeesResponse.data.employees && Array.isArray(employeesResponse.data.employees)) {
-                        employeesData = employeesResponse.data.employees;
-                    } else {
-                        console.warn('Unexpected data structure in response.data:', employeesResponse.data);
-                        employeesData = [];
-                    }
-                } else {
-                    console.warn('API response has no data property');
-                    employeesData = [];
-                }
-            } else if (employeesResponse && typeof employeesResponse === 'object' && Array.isArray(employeesResponse.employees)) {
-                // Handle case where data is wrapped in an object with employees property
-                employeesData = employeesResponse.employees;
-            } else {
-                console.warn('Unexpected employees response format:', employeesResponse);
-                employeesData = [];
-            }
+            const employees = await this.directFlow.getEmployees();
             
             let maxId = 0;
             
             // Find the highest existing employee code number
-            employeesData.forEach(emp => {
-                if (emp.employeeCode || emp.employee_code) {
-                    const empCode = emp.employeeCode || emp.employee_code;
-                    const match = empCode.match(/emp_(\d+)/i);
+            employees.forEach(emp => {
+                if (emp.employeeCode) {
+                    const match = emp.employeeCode.match(/emp_(\d+)/i);
                     if (match) {
                         const num = parseInt(match[1]);
                         if (num > maxId) {
@@ -874,17 +818,13 @@ class EmployeesPageManager {
             { id: 'firstName', name: 'First Name' },
             { id: 'lastName', name: 'Last Name' },
             { id: 'email', name: 'Email' },
+            { id: 'employeeCode', name: 'Employee ID' },
             { id: 'department', name: 'Department' },
             { id: 'position', name: 'Position' },
             { id: 'hireDate', name: 'Hire Date' },
             { id: 'role', name: 'Role' },
             { id: 'status', name: 'Status' }
         ];
-
-        // Only validate employee code for existing employees (editing)
-        if (this.currentEmployee) {
-            requiredFields.push({ id: 'employeeCode', name: 'Employee ID' });
-        }
 
         for (const field of requiredFields) {
             const element = document.getElementById(field.id);
@@ -901,13 +841,9 @@ class EmployeesPageManager {
         }
 
         // Check for duplicate employee code (only for new employees)
-        const employeeCode = document.getElementById('employeeCode')?.value || '';
-        if (!this.currentEmployee && employeeCode && employeeCode !== 'Auto-generated') {
-            const existingEmployee = this.employees.find(emp => 
-                emp.employeeCode === employeeCode || 
-                emp.employee_id === employeeCode ||
-                emp.employee_code === employeeCode
-            );
+        const employeeCode = document.getElementById('employeeCode').value;
+        if (!this.currentEmployee) {
+            const existingEmployee = this.employees.find(emp => emp.employeeCode === employeeCode);
             if (existingEmployee) {
                 throw new Error('Employee ID already exists');
             }
@@ -982,26 +918,19 @@ class EmployeesPageManager {
         
         this.currentViewEmployee = employee;
         
-        // Populate view modal data with flexible field mapping
+        // Populate view modal data
         this.setElementText('viewEmployeeName', this.getEmployeeName(employee));
-        this.setElementText('viewEmployeeCode', employee.employee_id || employee.employeeCode || 'N/A');
-        this.setElementText('viewEmployeeEmail', employee.email || 'N/A');
+        this.setElementText('viewEmployeeCode', employee.employeeCode);
+        this.setElementText('viewEmployeeEmail', employee.email);
         this.setElementText('viewEmployeePhone', employee.phone || 'N/A');
-        this.setElementText('viewEmployeeDepartment', employee.department || 'N/A');
-        this.setElementText('viewEmployeePosition', employee.position || 'N/A');
+        this.setElementText('viewEmployeeDepartment', employee.department);
+        this.setElementText('viewEmployeePosition', employee.position);
         this.setElementText('viewEmployeeManager', employee.manager || 'N/A');
-        
-        const hireDate = employee.hire_date || employee.hireDate;
-        this.setElementText('viewEmployeeHireDate', hireDate ? new Date(hireDate).toLocaleDateString() : 'N/A');
-        
-        const hourlyRate = employee.wage || employee.hourlyRate;
-        this.setElementText('viewEmployeeHourlyRate', hourlyRate ? `₱${parseFloat(hourlyRate).toFixed(2)}/hr` : 'N/A');
-        
-        const salaryType = employee.salary_type || employee.salaryType;
-        this.setElementText('viewEmployeeSalaryType', salaryType ? this.capitalizeFirst(salaryType) : 'Hourly');
-        
+        this.setElementText('viewEmployeeHireDate', new Date(employee.hireDate).toLocaleDateString());
+        this.setElementText('viewEmployeeHourlyRate', employee.hourlyRate ? `₱${employee.hourlyRate.toFixed(2)}/hr` : 'N/A');
+        this.setElementText('viewEmployeeSalaryType', employee.salaryType ? this.capitalizeFirst(employee.salaryType) : 'Hourly');
         this.setElementText('viewEmployeeSalary', employee.salary ? `₱${employee.salary.toLocaleString()}` : 'N/A');
-        this.setElementText('viewEmployeeRole', this.capitalizeFirst(employee.role || 'employee'));
+        this.setElementText('viewEmployeeRole', this.capitalizeFirst(employee.role));
         
         const statusElement = document.getElementById('viewEmployeeStatus');
         if (statusElement) {
@@ -1041,10 +970,9 @@ class EmployeesPageManager {
         console.log('🔥 Employee name:', employeeName);
         
         this.setElementText('deleteEmployeeName', employeeName);
-        // Use numeric id for backend API (not employee_id)
-        const employeeId = employee.id; // Backend expects numeric database ID
-        console.log('🔥 Employee ID to delete (numeric):', employeeId);
-        console.log('🔥 Employee business ID:', employee.employee_id);
+        // Use database id (primary key) for backend API compatibility
+        const employeeId = employee.id;
+        console.log('🔥 Employee ID to delete (database id):', employeeId);
         
         this.setElementValue('deleteEmployeeId', employeeId);
         
@@ -1512,17 +1440,12 @@ class EmployeesPageManager {
     }
 
     getEmployeeName(employee) {
-        // Handle various name field formats from database and API
         if (employee.fullName) {
             return employee.fullName;
         }
         
-        if (employee.full_name) {
-            return employee.full_name;
-        }
-        
-        const firstName = employee.firstName || employee.first_name || '';
-        const lastName = employee.lastName || employee.last_name || '';
+        const firstName = employee.firstName || '';
+        const lastName = employee.lastName || '';
         
         if (firstName && lastName) {
             return `${firstName} ${lastName}`;
@@ -1533,7 +1456,7 @@ class EmployeesPageManager {
         } else if (employee.name) {
             return employee.name;
         } else {
-            return `Employee ${employee.employee_id || employee.id || 'Unknown'}`;
+            return `Employee ${employee.id || 'Unknown'}`;
         }
     }
 }

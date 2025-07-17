@@ -452,8 +452,8 @@ router.delete('/:employeeId', auth, requireAdmin, async (req, res) => {
     try {
         const { employeeId } = req.params;
 
-        // Check if employee exists
-        const existing = await db.execute('SELECT employee_id FROM employees WHERE employee_id = ?', [employeeId]);
+        // Check if employee exists - use database id (primary key)
+        const existing = await db.execute('SELECT id, employee_id FROM employees WHERE id = ?', [employeeId]);
         if (existing.length === 0) {
             return res.status(404).json({
                 success: false,
@@ -461,19 +461,21 @@ router.delete('/:employeeId', auth, requireAdmin, async (req, res) => {
             });
         }
 
+        const employeeCode = existing[0].employee_id;
+
         // Use transaction to safely delete employee
         const queries = [
             {
-                query: 'UPDATE employees SET status = ?, updated_at = NOW() WHERE employee_id = ?',
+                query: 'UPDATE employees SET status = ?, updated_at = NOW() WHERE id = ?',
                 params: ['inactive', employeeId]
             },
             {
                 query: 'UPDATE user_accounts SET is_active = FALSE, updated_at = NOW() WHERE employee_id = ?',
-                params: [employeeId]
+                params: [employeeCode]
             },
             {
                 query: 'UPDATE user_sessions SET is_active = FALSE WHERE employee_id = ?',
-                params: [employeeId]
+                params: [employeeCode]
             }
         ];
 
