@@ -30,6 +30,204 @@
             color: #e2e8f0;
         }
         
+        /* Notification System - Top Right Overlay */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            pointer-events: none;
+            max-width: 400px;
+            width: 100%;
+        }
+        
+        .notification {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #667eea;
+            pointer-events: auto;
+            transform: translateX(420px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        
+        .notification.removing {
+            transform: translateX(420px);
+            opacity: 0;
+            margin-bottom: 0;
+            padding: 0;
+            height: 0;
+        }
+        
+        .notification-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        
+        .notification-content {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .notification-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 2px;
+            color: #1a202c;
+        }
+        
+        .notification-message {
+            font-size: 13px;
+            color: #718096;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+        
+        .notification-close {
+            background: none;
+            border: none;
+            color: #a0aec0;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .notification-close:hover {
+            background: #f7fafc;
+            color: #4a5568;
+        }
+        
+        .notification-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.3);
+            transition: width linear;
+        }
+        
+        /* Notification Types */
+        .notification.notification-success {
+            border-left-color: #48bb78;
+        }
+        
+        .notification.notification-success .notification-icon {
+            background: #48bb78;
+        }
+        
+        .notification.notification-success .notification-progress {
+            background: #48bb78;
+        }
+        
+        .notification.notification-error {
+            border-left-color: #f56565;
+        }
+        
+        .notification.notification-error .notification-icon {
+            background: #f56565;
+        }
+        
+        .notification.notification-error .notification-progress {
+            background: #f56565;
+        }
+        
+        .notification.notification-info {
+            border-left-color: #4299e1;
+        }
+        
+        .notification.notification-info .notification-icon {
+            background: #4299e1;
+        }
+        
+        .notification.notification-info .notification-progress {
+            background: #4299e1;
+        }
+        
+        .notification.notification-warning {
+            border-left-color: #ed8936;
+        }
+        
+        .notification.notification-warning .notification-icon {
+            background: #ed8936;
+        }
+        
+        .notification.notification-warning .notification-progress {
+            background: #ed8936;
+        }
+        
+        /* Dark Mode Notifications */
+        body.dark-mode .notification {
+            background: #2d3748;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+        }
+        
+        body.dark-mode .notification-title {
+            color: #e2e8f0;
+        }
+        
+        body.dark-mode .notification-message {
+            color: #cbd5e0;
+        }
+        
+        body.dark-mode .notification-close {
+            color: #a0aec0;
+        }
+        
+        body.dark-mode .notification-close:hover {
+            background: #4a5568;
+            color: #e2e8f0;
+        }
+        
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .notification-container {
+                top: 10px;
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+            
+            .notification {
+                transform: translateY(-100px);
+            }
+            
+            .notification.show {
+                transform: translateY(0);
+            }
+            
+            .notification.removing {
+                transform: translateY(-100px);
+            }
+        }
+        
         .container {
             max-width: 1800px;
             margin: 0 auto;
@@ -916,6 +1114,9 @@
     </style>
 </head>
 <body class="loading">
+    <!-- Notification Container - Fixed Top Right Overlay -->
+    <div id="notificationContainer" class="notification-container"></div>
+    
     <!-- Sidebar -->
     <div class="sidebar"></div>
     
@@ -1044,9 +1245,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Alert Container -->
-            <div id="alertContainer"></div>
 
             <!-- Table -->
             <div class="table-container">
@@ -2009,7 +2207,7 @@
                                     this.dataCache.attendance = this.attendanceData;
                                     this.dataCache.lastFetch = Date.now();
                                     response = { success: true };
-                                    this.showInfo('Record updated locally only. Server update failed.');
+                                    this.showInfo('Record updated locally only. Server update failed.', 'Sync Warning');
                                 } else {
                                     throw new Error('Record not found for update');
                                 }
@@ -2055,13 +2253,13 @@
                                 this.dataCache.attendance = this.attendanceData;
                                 this.dataCache.lastFetch = Date.now();
                                 response = { success: true };
-                                this.showInfo('Record created locally only. Server creation failed.');
+                                this.showInfo('Record created locally only. Server creation failed.', 'Sync Warning');
                             }
                         }
                     }
 
                     if (response && response.success) {
-                        this.showSuccess(recordId ? 'Attendance record updated successfully!' : 'Attendance record created successfully!');
+                        this.showSuccess(recordId ? 'Attendance record updated successfully!' : 'Attendance record created successfully!', 'Record Saved');
                         this.closeModal();
                         
                         // IMMEDIATELY update local data for instant UI feedback
@@ -2175,13 +2373,13 @@
                             this.updateStats();
                             this.renderTable();
                             
-                            this.showError('Could not delete from server. Record removed locally only. Please refresh to see server state.');
+                            this.showError('Could not delete from server. Record removed locally only. Please refresh to see server state.', 'Sync Warning');
                             return;
                         }
                     }
                     
                     if (response && response.success) {
-                        this.showSuccess('Attendance record deleted successfully!');
+                        this.showSuccess('Attendance record deleted successfully!', 'Record Deleted');
                         
                         // IMMEDIATELY update local data to reflect the deletion
                         this.attendanceData = this.attendanceData.filter(record => record.id !== id);
@@ -2232,7 +2430,7 @@
                     this.updateStats();
                     this.renderTable();
                     
-                    this.showSuccess('Data refreshed successfully!');
+                    this.showSuccess('Data refreshed successfully!', 'Data Updated');
                     
                 } catch (error) {
                     console.error('Failed to refresh data:', error);
@@ -2268,7 +2466,7 @@
                         document.body.removeChild(link);
                     }
                     
-                    this.showSuccess('Data exported successfully!');
+                    this.showSuccess('Data exported successfully!', 'Export Complete');
                 } catch (error) {
                     console.error('Failed to export data:', error);
                     this.showError('Failed to export data: ' + error.message);
@@ -2311,40 +2509,112 @@
                 }
             }
 
-            showAlert(message, type = 'info') {
-                const alertContainer = document.getElementById('alertContainer');
-                if (!alertContainer) return;
+            showAlert(message, type = 'info', title = null, duration = 5000) {
+                const notificationContainer = document.getElementById('notificationContainer');
+                if (!notificationContainer) return;
 
-                const alert = document.createElement('div');
-                alert.className = `alert alert-${type}`;
-                alert.textContent = message;
-
-                alertContainer.appendChild(alert);
-
-                // Auto-remove after 5 seconds
-                setTimeout(() => {
-                    alert.remove();
-                }, 5000);
-            }
-
-            showError(message) {
-                console.error(message);
-                this.showAlert(message, 'error');
-                // Ensure container is visible when showing errors
-                const container = document.querySelector('.container');
-                if (container) {
-                    container.style.display = 'block';
+                // Generate unique ID for this notification
+                const notificationId = 'notification-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                
+                // Create notification element
+                const notification = document.createElement('div');
+                notification.className = `notification notification-${type}`;
+                notification.id = notificationId;
+                
+                // Get appropriate icon and title based on type
+                let icon, defaultTitle;
+                switch (type) {
+                    case 'success':
+                        icon = '✓';
+                        defaultTitle = 'Success';
+                        break;
+                    case 'error':
+                        icon = '✕';
+                        defaultTitle = 'Error';
+                        break;
+                    case 'warning':
+                        icon = '⚠';
+                        defaultTitle = 'Warning';
+                        break;
+                    case 'info':
+                    default:
+                        icon = 'ℹ';
+                        defaultTitle = 'Info';
+                        break;
                 }
+                
+                // Use provided title or default
+                const notificationTitle = title || defaultTitle;
+                
+                // Build notification HTML
+                notification.innerHTML = `
+                    <div class="notification-icon">${icon}</div>
+                    <div class="notification-content">
+                        <div class="notification-title">${notificationTitle}</div>
+                        <div class="notification-message">${message}</div>
+                    </div>
+                    <button class="notification-close" onclick="employeeManagement.removeNotification('${notificationId}')" aria-label="Close notification">
+                        ✕
+                    </button>
+                    <div class="notification-progress" style="width: 100%;"></div>
+                `;
+                
+                // Add to container
+                notificationContainer.appendChild(notification);
+                
+                // Trigger show animation
+                setTimeout(() => {
+                    notification.classList.add('show');
+                }, 10);
+                
+                // Start progress bar animation if duration is set
+                if (duration > 0) {
+                    const progressBar = notification.querySelector('.notification-progress');
+                    if (progressBar) {
+                        progressBar.style.transitionDuration = duration + 'ms';
+                        setTimeout(() => {
+                            progressBar.style.width = '0%';
+                        }, 50);
+                    }
+                    
+                    // Auto-remove notification
+                    setTimeout(() => {
+                        this.removeNotification(notificationId);
+                    }, duration);
+                }
+                
+                return notificationId;
             }
-
-            showSuccess(message) {
-                console.log(message);
-                this.showAlert(message, 'success');
+            
+            removeNotification(notificationId) {
+                const notification = document.getElementById(notificationId);
+                if (!notification) return;
+                
+                notification.classList.add('removing');
+                
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 400); // Match CSS transition duration
             }
-
-            showInfo(message) {
-                console.info(message);
-                this.showAlert(message, 'info');
+            
+            // Enhanced notification methods
+            showSuccess(message, title = null, duration = 4000) {
+                return this.showAlert(message, 'success', title, duration);
+            }
+            
+            showError(message, title = null, duration = 8000) {
+                console.error(message);
+                return this.showAlert(message, 'error', title, duration);
+            }
+            
+            showWarning(message, title = null, duration = 6000) {
+                return this.showAlert(message, 'warning', title, duration);
+            }
+            
+            showInfo(message, title = null, duration = 5000) {
+                return this.showAlert(message, 'info', title, duration);
             }
         }
 
