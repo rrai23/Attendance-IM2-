@@ -666,8 +666,8 @@ router.post('/generate', auth, requireManagerOrAdmin, async (req, res) => {
                 let holiday_hours = 0;
 
                 attendanceRecords.forEach(record => {
-                    if (record.hours_worked && record.hours_worked > 0) {
-                        const hours = parseFloat(record.hours_worked);
+                    if (record.total_hours && record.total_hours > 0) {
+                        const hours = parseFloat(record.total_hours);
                         
                         if (record.status === 'holiday' && include_holidays) {
                             holiday_hours += hours;
@@ -680,8 +680,8 @@ router.post('/generate', auth, requireManagerOrAdmin, async (req, res) => {
                     }
                 });
 
-                // Calculate rates (using wage or default rates)
-                const hourlyRate = employee.wage ? (parseFloat(employee.wage) / 2080) : 15; // Assuming 2080 work hours per year
+                // Calculate rates (using hourly wage directly)
+                const hourlyRate = employee.wage ? parseFloat(employee.wage) : 15; // Use wage as hourly rate
                 const regular_rate = hourlyRate;
                 const overtime_rate = hourlyRate * 1.5;
                 const holiday_rate = hourlyRate * 2;
