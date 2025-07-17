@@ -434,35 +434,35 @@ class EmployeesPageManager {
             return null;
         }
 
-        // Try multiple lookup strategies to handle both id and employee_id
+        // Try multiple lookup strategies - prioritize numeric ID since that's what action buttons use
         const strategies = [
-            // Strategy 1: Look for employee_id first (business ID like "admin_001")
-            (id) => this.employees.find(emp => emp.employee_id === id),
-            // Strategy 2: Look for employee_id with string conversion
-            (id) => this.employees.find(emp => String(emp.employee_id) === String(id)),
-            // Strategy 3: Look for numeric id (fallback)
+            // Strategy 1: Look for numeric id (primary key - what action buttons use)
             (id) => this.employees.find(emp => emp.id == id),
-            // Strategy 4: Parse as number and compare numeric id
+            // Strategy 2: Parse as number and compare numeric id
             (id) => {
                 const numId = parseInt(id);
                 return !isNaN(numId) ? this.employees.find(emp => emp.id === numId) : null;
             },
-            // Strategy 5: Convert both to strings and compare numeric id
+            // Strategy 3: Convert both to strings and compare numeric id
             (id) => this.employees.find(emp => String(emp.id) === String(id)),
-            // Strategy 6: Strict equality with original type for numeric id
-            (id) => this.employees.find(emp => emp.id === id)
+            // Strategy 4: Strict equality with original type for numeric id
+            (id) => this.employees.find(emp => emp.id === id),
+            // Strategy 5: Look for employee_id (business ID like "admin_001") - fallback
+            (id) => this.employees.find(emp => emp.employee_id === id),
+            // Strategy 6: Look for employee_id with string conversion
+            (id) => this.employees.find(emp => String(emp.employee_id) === String(id))
         ];
 
         for (let i = 0; i < strategies.length; i++) {
             const result = strategies[i](rawId);
             if (result) {
-                console.log(`Employee found using strategy ${i + 1}:`, result.full_name || result.name || result.fullName);
+                console.log(`Employee found using strategy ${i + 1}:`, result.full_name || result.name || result.fullName || `${result.first_name} ${result.last_name}`.trim());
                 return result;
             }
         }
 
         console.warn('Employee not found with any strategy. ID:', rawId, 'Type:', typeof rawId);
-        console.warn('Available employees:', this.employees.map(emp => ({ id: emp.id, employee_id: emp.employee_id, name: emp.full_name })));
+        console.warn('Available employees:', this.employees.map(emp => ({ id: emp.id, employee_id: emp.employee_id, name: emp.full_name || `${emp.first_name} ${emp.last_name}`.trim() })));
         return null;
     }
 
@@ -563,13 +563,13 @@ class EmployeesPageManager {
                 </td>
                 <td>
                     <div class="action-buttons">
-                        <button class="btn btn-sm btn-outline action-edit" data-employee-id="${employee.employee_id || employee.id}" title="Edit Employee">
+                        <button class="btn btn-sm btn-outline action-edit" data-employee-id="${employee.id}" title="Edit Employee">
                             <span class="btn-icon">✏️</span>
                         </button>
-                        <button class="btn btn-sm btn-outline action-view" data-employee-id="${employee.employee_id || employee.id}" title="View Details">
+                        <button class="btn btn-sm btn-outline action-view" data-employee-id="${employee.id}" title="View Details">
                             <span class="btn-icon">👁️</span>
                         </button>
-                        <button class="btn btn-sm btn-danger action-delete" data-employee-id="${employee.employee_id || employee.id}" title="Delete Employee">
+                        <button class="btn btn-sm btn-danger action-delete" data-employee-id="${employee.id}" title="Delete Employee">
                             <span class="btn-icon">🗑️</span>
                         </button>
                     </div>
@@ -970,9 +970,10 @@ class EmployeesPageManager {
         console.log('🔥 Employee name:', employeeName);
         
         this.setElementText('deleteEmployeeName', employeeName);
-        // Use employee_id for backend API compatibility
-        const employeeId = employee.employee_id || employee.id;
-        console.log('🔥 Employee ID to delete:', employeeId);
+        // Use numeric id for backend API (not employee_id)
+        const employeeId = employee.id; // Backend expects numeric database ID
+        console.log('🔥 Employee ID to delete (numeric):', employeeId);
+        console.log('🔥 Employee business ID:', employee.employee_id);
         
         this.setElementValue('deleteEmployeeId', employeeId);
         
@@ -1440,12 +1441,17 @@ class EmployeesPageManager {
     }
 
     getEmployeeName(employee) {
+        // Handle various name field formats from database and API
         if (employee.fullName) {
             return employee.fullName;
         }
         
-        const firstName = employee.firstName || '';
-        const lastName = employee.lastName || '';
+        if (employee.full_name) {
+            return employee.full_name;
+        }
+        
+        const firstName = employee.firstName || employee.first_name || '';
+        const lastName = employee.lastName || employee.last_name || '';
         
         if (firstName && lastName) {
             return `${firstName} ${lastName}`;
@@ -1456,7 +1462,7 @@ class EmployeesPageManager {
         } else if (employee.name) {
             return employee.name;
         } else {
-            return `Employee ${employee.id || 'Unknown'}`;
+            return `Employee ${employee.employee_id || employee.id || 'Unknown'}`;
         }
     }
 }
