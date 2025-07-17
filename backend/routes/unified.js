@@ -27,7 +27,7 @@ router.post('/sync', auth, async (req, res) => {
                 // Check if employee exists in employees table
                 const existing = await db.execute(
                     'SELECT employee_id FROM employees WHERE employee_id = ?',
-                    [emp.employee_id || emp.employeeId || emp.employeeCode || emp.id]
+                    [emp.employeeId || emp.employeeCode || emp.id]
                 );
 
                 if (existing.length > 0) {
@@ -45,15 +45,15 @@ router.post('/sync', auth, async (req, res) => {
                             updated_at = CURRENT_TIMESTAMP
                         WHERE employee_id = ?
                     `, [
-                        emp.full_name || emp.name || emp.fullName,
-                        emp.first_name || emp.firstName || emp.name?.split(' ')[0] || '',
-                        emp.last_name || emp.lastName || emp.name?.split(' ').slice(1).join(' ') || '',
+                        emp.name || emp.fullName,
+                        emp.firstName || emp.name?.split(' ')[0] || '',
+                        emp.lastName || emp.name?.split(' ').slice(1).join(' ') || '',
                         emp.email,
                         emp.department,
                         emp.position,
-                        emp.hire_date || emp.dateHired || emp.hireDate,
+                        emp.dateHired || emp.hireDate,
                         emp.status || 'active',
-                        emp.employee_id || emp.employeeId || emp.employeeCode || emp.id
+                        emp.employeeId || emp.employeeCode || emp.id
                     ]);
                     
                     // Also update user_accounts if needed
@@ -66,7 +66,7 @@ router.post('/sync', auth, async (req, res) => {
                     `, [
                         emp.username || emp.email || emp.name,
                         emp.role || 'employee',
-                        emp.employee_id || emp.employeeId || emp.employeeCode || emp.id
+                        emp.employeeId || emp.employeeCode || emp.id
                     ]);
                     
                 } else {
@@ -78,14 +78,14 @@ router.post('/sync', auth, async (req, res) => {
                             created_at, updated_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     `, [
-                        emp.employee_id || emp.employeeId || emp.employeeCode || emp.id,
-                        emp.full_name || emp.name || emp.fullName,
-                        emp.first_name || emp.firstName || emp.name?.split(' ')[0] || '',
-                        emp.last_name || emp.lastName || emp.name?.split(' ').slice(1).join(' ') || '',
+                        emp.employeeId || emp.employeeCode || emp.id,
+                        emp.name || emp.fullName,
+                        emp.firstName || emp.name?.split(' ')[0] || '',
+                        emp.lastName || emp.name?.split(' ').slice(1).join(' ') || '',
                         emp.email,
                         emp.department,
                         emp.position,
-                        emp.hire_date || emp.dateHired || emp.hireDate,
+                        emp.dateHired || emp.hireDate,
                         emp.status || 'active'
                     ]);
                     
@@ -96,8 +96,8 @@ router.post('/sync', auth, async (req, res) => {
                             is_active, created_at, updated_at
                         ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     `, [
-                        emp.employee_id || emp.employeeId || emp.employeeCode || emp.id,
-                        emp.employee_id || emp.employeeId || emp.employeeCode || emp.id,
+                        emp.employeeId || emp.employeeCode || emp.id,
+                        emp.employeeId || emp.employeeCode || emp.id,
                         emp.username || emp.email || emp.name,
                         emp.password ? await bcrypt.hash(emp.password, 12) : null,
                         emp.role || 'employee',
@@ -127,19 +127,19 @@ router.post('/sync', auth, async (req, res) => {
                             date = ?,
                             time_in = ?,
                             time_out = ?,
-                            hours_worked = ?,
+                            total_hours = ?,
                             overtime_hours = ?,
                             status = ?,
                             notes = ?,
                             updated_at = CURRENT_TIMESTAMP
                         WHERE id = ?
                     `, [
-                        record.employee_id || record.employeeId,
+                        record.employeeId,
                         record.date,
-                        record.time_in || record.timeIn || record.clockIn,
-                        record.time_out || record.timeOut || record.clockOut,
-                        record.hours_worked || record.hours || record.hoursWorked || 0,
-                        record.overtime_hours || record.overtimeHours || 0,
+                        record.timeIn || record.clockIn,
+                        record.timeOut || record.clockOut,
+                        record.hours || record.hoursWorked || 0,
+                        record.overtimeHours || 0,
                         record.status || 'present',
                         record.notes,
                         record.id
@@ -149,16 +149,16 @@ router.post('/sync', auth, async (req, res) => {
                     await db.execute(`
                         INSERT INTO attendance_records (
                             id, employee_id, date, time_in, time_out,
-                            hours_worked, overtime_hours, status, notes, created_at, updated_at
+                            total_hours, overtime_hours, status, notes, created_at, updated_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     `, [
                         record.id,
-                        record.employee_id || record.employeeId,
+                        record.employeeId,
                         record.date,
-                        record.time_in || record.timeIn || record.clockIn,
-                        record.time_out || record.timeOut || record.clockOut,
-                        record.hours_worked || record.hours || record.hoursWorked || 0,
-                        record.overtime_hours || record.overtimeHours || 0,
+                        record.timeIn || record.clockIn,
+                        record.timeOut || record.clockOut,
+                        record.hours || record.hoursWorked || 0,
+                        record.overtimeHours || 0,
                         record.status || 'present',
                         record.notes
                     ]);
@@ -235,8 +235,8 @@ router.get('/data', auth, async (req, res) => {
                 ar.time_in as clockIn,
                 ar.time_out as timeOut,
                 ar.time_out as clockOut,
-                ar.hours_worked as hours,
-                ar.hours_worked as hoursWorked,
+                ar.total_hours as hours,
+                ar.total_hours as hoursWorked,
                 ar.overtime_hours as overtimeHours,
                 ar.status,
                 ar.notes,
@@ -286,13 +286,11 @@ router.post('/employees', auth, requireManagerOrAdmin, async (req, res) => {
     try {
         const employeeData = req.body;
         
-        // Extract name parts from various field combinations
-        const firstName = employeeData.first_name || employeeData.firstName || 
-                         (employeeData.full_name || employeeData.fullName || employeeData.name || '').split(' ')[0] || '';
-        const lastName = employeeData.last_name || employeeData.lastName || 
-                        (employeeData.full_name || employeeData.fullName || employeeData.name || '').split(' ').slice(1).join(' ') || '';
-        const fullName = employeeData.full_name || employeeData.fullName || employeeData.name || 
-                        `${firstName} ${lastName}`.trim();
+        // Extract name parts
+        const nameParts = employeeData.name ? employeeData.name.split(' ') : 
+                         employeeData.fullName ? employeeData.fullName.split(' ') : ['', ''];
+        const firstName = employeeData.firstName || nameParts[0] || '';
+        const lastName = employeeData.lastName || nameParts.slice(1).join(' ') || '';
 
         // Hash password if provided and not already hashed
         let hashedPassword = employeeData.password;
@@ -319,27 +317,25 @@ router.post('/employees', auth, requireManagerOrAdmin, async (req, res) => {
                     status = ?,
                     wage = ?,
                     overtime_rate = ?,
-                    salary_type = ?,
                     avatar = ?,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             `, [
-                employeeData.employee_id || employeeData.employeeId || employeeData.employeeCode,
+                employeeData.employeeId || employeeData.employeeCode,
                 employeeData.username,
                 hashedPassword,
                 employeeData.role || 'employee',
-                fullName,
+                employeeData.name || employeeData.fullName,
                 firstName,
                 lastName,
                 employeeData.email,
-                employeeData.phone || '',
+                employeeData.phone,
                 employeeData.department,
                 employeeData.position,
-                employeeData.hire_date || employeeData.hireDate || employeeData.dateHired,
+                employeeData.dateHired || employeeData.hireDate,
                 employeeData.status || 'active',
                 employeeData.wage || employeeData.hourlyRate || 15.00,
-                employeeData.overtime_rate || employeeData.overtimeRate || 1.5,
-                employeeData.salary_type || employeeData.salaryType || 'hourly',
+                employeeData.overtimeRate || 1.5,
                 employeeData.avatar,
                 employeeData.id
             ]);
@@ -349,25 +345,24 @@ router.post('/employees', auth, requireManagerOrAdmin, async (req, res) => {
                 INSERT INTO employees (
                     employee_id, username, password, role, full_name,
                     first_name, last_name, email, phone, department, position,
-                    hire_date, status, wage, overtime_rate, salary_type, avatar
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    hire_date, status, wage, overtime_rate, avatar
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
-                employeeData.employee_id || employeeData.employeeId || employeeData.employeeCode,
+                employeeData.employeeId || employeeData.employeeCode,
                 employeeData.username,
                 hashedPassword,
                 employeeData.role || 'employee',
-                fullName,
+                employeeData.name || employeeData.fullName,
                 firstName,
                 lastName,
                 employeeData.email,
-                employeeData.phone || '',
+                employeeData.phone,
                 employeeData.department,
                 employeeData.position,
-                employeeData.hire_date || employeeData.hireDate || employeeData.dateHired,
+                employeeData.dateHired || employeeData.hireDate,
                 employeeData.status || 'active',
                 employeeData.wage || employeeData.hourlyRate || 15.00,
-                employeeData.overtime_rate || employeeData.overtimeRate || 1.5,
-                employeeData.salary_type || employeeData.salaryType || 'hourly',
+                employeeData.overtimeRate || 1.5,
                 employeeData.avatar
             ]);
 
@@ -402,19 +397,19 @@ router.post('/attendance', auth, async (req, res) => {
                     date = ?,
                     time_in = ?,
                     time_out = ?,
-                    hours_worked = ?,
+                    total_hours = ?,
                     overtime_hours = ?,
                     status = ?,
                     notes = ?,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             `, [
-                recordData.employee_id || recordData.employeeId,
+                recordData.employeeId,
                 recordData.date,
-                recordData.time_in || recordData.timeIn || recordData.clockIn,
-                recordData.time_out || recordData.timeOut || recordData.clockOut,
-                recordData.hours_worked || recordData.hours || recordData.hoursWorked || 0,
-                recordData.overtime_hours || recordData.overtimeHours || 0,
+                recordData.timeIn || recordData.clockIn,
+                recordData.timeOut || recordData.clockOut,
+                recordData.hours || recordData.hoursWorked || 0,
+                recordData.overtimeHours || 0,
                 recordData.status || 'present',
                 recordData.notes,
                 recordData.id
@@ -424,15 +419,15 @@ router.post('/attendance', auth, async (req, res) => {
             const [result] = await db.execute(`
                 INSERT INTO attendance_records (
                     employee_id, date, time_in, time_out,
-                    hours_worked, overtime_hours, status, notes
+                    total_hours, overtime_hours, status, notes
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `, [
-                recordData.employee_id || recordData.employeeId,
+                recordData.employeeId,
                 recordData.date,
-                recordData.time_in || recordData.timeIn || recordData.clockIn,
-                recordData.time_out || recordData.timeOut || recordData.clockOut,
-                recordData.hours_worked || recordData.hours || recordData.hoursWorked || 0,
-                recordData.overtime_hours || recordData.overtimeHours || 0,
+                recordData.timeIn || recordData.clockIn,
+                recordData.timeOut || recordData.clockOut,
+                recordData.hours || recordData.hoursWorked || 0,
+                recordData.overtimeHours || 0,
                 recordData.status || 'present',
                 recordData.notes
             ]);

@@ -5,14 +5,34 @@ async function checkAttendanceTable() {
         console.log('📋 Checking attendance_records table structure...');
         
         // Check if table exists and get structure
-        const [columns] = await db.execute(`
+        const result = await db.execute(`
             DESCRIBE attendance_records
         `);
         
+        console.log('Raw database result:', result);
+        
+        // The result might be structured differently
+        let columns = result[0];
+        if (!Array.isArray(columns) && result.length > 1) {
+            columns = result; // Sometimes the entire result is the columns array
+        }
+        
         console.log('📋 attendance_records columns:');
-        columns.forEach(col => {
-            console.log(`  - ${col.Field} (${col.Type}) ${col.Null === 'YES' ? 'NULL' : 'NOT NULL'}`);
-        });
+        
+        if (Array.isArray(columns)) {
+            console.log(`Found ${columns.length} columns:`);
+            columns.forEach(col => {
+                console.log(`  - ${col.Field} (${col.Type}) ${col.Null === 'YES' ? 'NULL' : 'NOT NULL'}`);
+            });
+            
+            // List just the column names
+            console.log('\n🔍 Column names only:');
+            const columnNames = columns.map(col => col.Field);
+            console.log(columnNames.join(', '));
+            
+        } else {
+            console.log('Single column result:', columns);
+        }
         
         // Check sample data
         console.log('\n📋 Sample attendance records:');

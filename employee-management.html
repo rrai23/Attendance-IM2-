@@ -1257,7 +1257,7 @@
                     <div class="stat-header">
                         <div>
                             <div class="stat-value" id="presentCount">0</div>
-                            <div class="stat-label">Present Today</div>
+                            <div class="stat-label">On Time</div>
                         </div>
                         <div class="stat-icon" style="background: linear-gradient(135deg, #48bb78, #38a169);">
                             <i class="fas fa-check-circle"></i>
@@ -2282,10 +2282,17 @@
                     // Hide select dropdown and show readonly display
                     employeeSelect.style.display = 'none';
                     employeeSelect.required = false;
+                    
+                    // Set the employee select value even though it's hidden (for form consistency)
+                    const employeeIdValue = record.employee_id || record.employeeId;
+                    if (employeeIdValue) {
+                        employeeSelect.value = employeeIdValue;
+                    }
+                    
                     if (employeeDisplay) {
                         employeeDisplay.classList.remove('hidden');
-                        const employee = this.employees.find(emp => (emp.id || emp.employee_id) == record.employee_id);
-                        const employeeName = employee ? this.getEmployeeName(employee) : `Employee ${record.employee_id}`;
+                        const employee = this.employees.find(emp => (emp.id || emp.employee_id) == employeeIdValue);
+                        const employeeName = employee ? this.getEmployeeName(employee) : `Employee ${employeeIdValue}`;
                         employeeDisplayText.textContent = employeeName;
                     }
                     
@@ -2447,12 +2454,32 @@
                 try {
                     const formData = new FormData(form);
                     const recordId = document.getElementById('recordId')?.value;
-                    const employeeId = document.getElementById('employeeSelect')?.value;
                     const date = document.getElementById('attendanceDate')?.value;
                     const timeIn = document.getElementById('clockInTime')?.value;
                     const timeOut = document.getElementById('clockOutTime')?.value;
                     const status = document.getElementById('attendanceStatus')?.value;
                     const notes = document.getElementById('notes')?.value;
+
+                    // Get employee ID - different logic for add vs edit mode
+                    let employeeId;
+                    if (recordId) {
+                        // EDIT MODE: Get employee ID from the record being edited
+                        const existingRecord = this.attendanceData.find(r => r.id == recordId);
+                        if (existingRecord) {
+                            employeeId = existingRecord.employee_id || existingRecord.employeeId;
+                        }
+                        
+                        // Fallback: try to get from the hidden dropdown (in case it was set)
+                        if (!employeeId) {
+                            employeeId = document.getElementById('employeeSelect')?.value;
+                        }
+                        
+                        console.log('Edit mode - Employee ID:', employeeId, 'from record:', !!existingRecord);
+                    } else {
+                        // ADD MODE: Get employee ID from the dropdown
+                        employeeId = document.getElementById('employeeSelect')?.value;
+                        console.log('Add mode - Employee ID from dropdown:', employeeId);
+                    }
 
                     // Debug form element presence
                     console.log('Form elements check:', {
@@ -2465,9 +2492,25 @@
                         notes: !!document.getElementById('notes')
                     });
 
+                    // Debug values
+                    console.log('Form values:', {
+                        recordId,
+                        employeeId,
+                        date,
+                        timeIn,
+                        timeOut,
+                        status,
+                        notes
+                    });
+
                     // Validation
                     if (!employeeId) {
-                        console.error('Employee ID is missing:', { employeeId, formValue: document.getElementById('employeeSelect').value });
+                        console.error('Employee ID is missing:', { 
+                            employeeId, 
+                            recordId,
+                            mode: recordId ? 'edit' : 'add',
+                            formValue: document.getElementById('employeeSelect')?.value 
+                        });
                         this.showError('Please select an employee');
                         return;
                     }

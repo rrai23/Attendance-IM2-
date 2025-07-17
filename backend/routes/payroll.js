@@ -665,8 +665,8 @@ router.post('/generate', requireManagerOrAdmin, async (req, res) => {
                 let holiday_hours = 0;
 
                 attendanceRecords.forEach(record => {
-                    if (record.hours_worked && record.hours_worked > 0) {
-                        const hours = parseFloat(record.hours_worked);
+                    if (record.total_hours && record.total_hours > 0) {
+                        const hours = parseFloat(record.total_hours);
                         
                         if (record.status === 'holiday' && include_holidays) {
                             holiday_hours += hours;

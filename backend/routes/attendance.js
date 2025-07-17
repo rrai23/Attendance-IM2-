@@ -85,7 +85,7 @@ router.post('/clock', auth, async (req, res) => {
             // Update the record with clock out time
             await db.execute(`
                 UPDATE attendance_records 
-                SET time_out = ?, hours_worked = ?, clock_out_location = ?, 
+                SET time_out = ?, total_hours = ?, clock_out_location = ?, 
                     clock_out_notes = ?, status = ?, updated_at = NOW()
                 WHERE attendance_id = ?
             `, [timeOut, parseFloat(hoursWorked), location, notes, status, record.attendance_id]);
@@ -180,7 +180,7 @@ router.get('/', auth, async (req, res) => {
         }
 
         // Add sorting
-        const validSortFields = ['date', 'time_in', 'time_out', 'hours_worked', 'status'];
+        const validSortFields = ['date', 'time_in', 'time_out', 'total_hours', 'status'];
         const sortField = validSortFields.includes(sort) ? sort : 'date';
         const sortOrder = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
         query += ` ORDER BY ar.${sortField} ${sortOrder}`;
@@ -425,7 +425,7 @@ router.put('/:id', auth, requireManagerOrAdmin, async (req, res) => {
         }
 
         if (hours_worked !== undefined) {
-            updateFields.push('hours_worked = ?');
+            updateFields.push('total_hours = ?');
             updateParams.push(parseFloat(hours_worked));
         }
 
@@ -435,24 +435,14 @@ router.put('/:id', auth, requireManagerOrAdmin, async (req, res) => {
         }
 
         if (notes !== undefined) {
-            updateFields.push('clock_in_notes = ?');
+            updateFields.push('notes = ?');
             updateParams.push(notes);
-        }
-
-        // Add manual entry tracking
-        updateFields.push('manual_entry = TRUE');
-        updateFields.push('manual_entry_by = ?');
-        updateParams.push(req.user.employee_id);
-
-        if (reason) {
-            updateFields.push('manual_entry_reason = ?');
-            updateParams.push(reason);
         }
 
         updateFields.push('updated_at = NOW()');
         updateParams.push(id);
 
-        if (updateFields.length <= 3) { // Only manual entry fields
+        if (updateFields.length <= 1) { // Only updated_at field
             return res.status(400).json({
                 success: false,
                 message: 'No fields to update'
@@ -530,9 +520,9 @@ router.get('/summary/:employeeId?', auth, async (req, res) => {
 
             // Total hours worked
             db.execute(`
-                SELECT SUM(hours_worked) as total_hours
+                SELECT SUM(total_hours) as total_hours
                 FROM attendance_records 
-                WHERE employee_id = ? AND date >= ? AND date <= ? AND hours_worked IS NOT NULL
+                WHERE employee_id = ? AND date >= ? AND date <= ? AND total_hours IS NOT NULL
             `, [targetEmployeeId, startDate, endDate]),
 
             // Status breakdown
@@ -545,10 +535,10 @@ router.get('/summary/:employeeId?', auth, async (req, res) => {
 
             // Average hours per day
             db.execute(`
-                SELECT AVG(hours_worked) as avg_hours
+                SELECT AVG(total_hours) as avg_hours
                 FROM attendance_records 
                 WHERE employee_id = ? AND date >= ? AND date <= ? 
-                AND hours_worked IS NOT NULL AND hours_worked > 0
+                AND total_hours IS NOT NULL AND total_hours > 0
             `, [targetEmployeeId, startDate, endDate])
         ]);
 
