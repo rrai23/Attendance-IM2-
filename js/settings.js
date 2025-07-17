@@ -2270,16 +2270,6 @@ class SettingsController {
                         <div class="stat-value">${stats.admins}</div>
                         <div class="stat-label">Administrators</div>
                     </div>
-                    ${accountStats ? `
-                        <div class="stat-card">
-                            <div class="stat-value">${accountStats.total}</div>
-                            <div class="stat-label">User Accounts</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value">${accountStats.mustChangePassword}</div>
-                            <div class="stat-label">Need Password Change</div>
-                        </div>
-                    ` : ''}
                 `;
             }
 
@@ -2398,7 +2388,7 @@ class SettingsController {
                 options.body = JSON.stringify(data);
             }
 
-            const response = await fetch(`/api${endpoint}`, options);
+            const response = await fetch(endpoint, options);
             const result = await response.json();
 
             if (!response.ok) {
@@ -2426,7 +2416,7 @@ class SettingsController {
     // Get all employees
     async getAllEmployees() {
         try {
-            const result = await this.makeDirectFlowAPICall('/unified/data');
+            const result = await this.makeDirectFlowAPICall('/api/unified/data');
             return result.data?.employees || [];
         } catch (error) {
             console.error('Failed to get employees:', error);
