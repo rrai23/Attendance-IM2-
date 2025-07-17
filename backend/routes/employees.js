@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../database/connection');
 const { auth, requireAdmin, requireManagerOrAdmin } = require('../middleware/auth');
 const bcrypt = require('bcryptjs');
+const { createJWTToken, calculateExpiryDate } = require('./auth');
 
 // Get all employees (with optional filtering)
 router.get('/', auth, async (req, res) => {
@@ -194,8 +195,6 @@ router.post('/', auth, requireManagerOrAdmin, async (req, res) => {
             wage,
             employment_type = 'full-time',
             shift_schedule = 'day',
-            username,
-            password,
             role = 'employee'
         } = req.body;
 
@@ -206,6 +205,21 @@ router.post('/', auth, requireManagerOrAdmin, async (req, res) => {
                 message: 'Required fields: first_name, last_name, email, department, position, hire_date'
             });
         }
+
+        // Auto-generate username and password based on the naming convention
+        // Username: concatenate all names, remove spaces, lowercase
+        // Password: lastname + "123", remove spaces, lowercase
+        const generateCredentials = (firstName, lastName) => {
+            const username = `${firstName}${lastName}`.toLowerCase().replace(/\s+/g, '');
+            const password = `${lastName.toLowerCase().replace(/\s+/g, '')}123`;
+            return { username, password };
+        };
+
+        const { username, password } = generateCredentials(first_name, last_name);
+
+        console.log(`🔧 Auto-generating credentials for ${first_name} ${last_name}:`);
+        console.log(`   Username: ${username}`);
+        console.log(`   Password: ${password}`);
 
         // Generate unique employee code
         const generateEmployeeCode = async () => {
@@ -233,6 +247,27 @@ router.post('/', auth, requireManagerOrAdmin, async (req, res) => {
             });
         }
 
+        // Check if generated username already exists and make it unique if needed
+        const ensureUniqueUsername = async (baseUsername) => {
+            let uniqueUsername = baseUsername;
+            let counter = 1;
+            
+            while (true) {
+                const existing = await db.execute('SELECT username FROM user_accounts WHERE username = ?', [uniqueUsername]);
+                if (existing.length === 0) {
+                    return uniqueUsername;
+                }
+                counter++;
+                uniqueUsername = `${baseUsername}${counter}`;
+            }
+        };
+
+        const finalUsername = await ensureUniqueUsername(username);
+        
+        if (finalUsername !== username) {
+            console.log(`   📝 Username '${username}' was taken, using '${finalUsername}' instead`);
+        }
+
         // Prepare transaction queries
         const queries = [];
         
@@ -250,37 +285,19 @@ router.post('/', auth, requireManagerOrAdmin, async (req, res) => {
             ]
         });
 
-        // Create user account if username and password provided
-        if (username && password) {
-            // Check if username already exists
-            const existingUsername = await db.execute('SELECT username FROM user_accounts WHERE username = ?', [username]);
-            if (existingUsername.length > 0) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Username already exists'
-                });
-            }
+        // Always create user account with auto-generated credentials
+        const saltRounds = 12;
+        const password_hash = await bcrypt.hash(password, saltRounds);
 
-            if (password.length < 6) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Password must be at least 6 characters long'
-                });
-            }
-
-            const saltRounds = 12;
-            const password_hash = await bcrypt.hash(password, saltRounds);
-
-            queries.push({
-                query: `
-                    INSERT INTO user_accounts (
-                        employee_id, username, password_hash, role, 
-                        is_active, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, TRUE, NOW(), NOW())
-                `,
-                params: [employee_code, username, password_hash, role]
-            });
-        }
+        queries.push({
+            query: `
+                INSERT INTO user_accounts (
+                    employee_id, username, password_hash, role, 
+                    is_active, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, TRUE, NOW(), NOW())
+            `,
+            params: [employee_code, finalUsername, password_hash, role]
+        });
 
         // Execute transaction
         await db.transaction(queries);
@@ -297,22 +314,56 @@ router.post('/', auth, requireManagerOrAdmin, async (req, res) => {
             WHERE e.employee_id = ?
         `, [employee_code]);
 
+        // Create JWT token with 365-day expiry for the new employee
+        const tokenPayload = {
+            employee_id: employee_code,
+            username: finalUsername,
+            role: role
+        };
+
+        const longTermToken = createJWTToken(tokenPayload, '365d');
+        const tokenExpiryDate = calculateExpiryDate('365d');
+
+        // Store the session in database
+        try {
+            await db.execute(`
+                INSERT INTO user_sessions (employee_id, token_hash, expires_at, is_active, created_at)
+                VALUES (?, ?, ?, TRUE, NOW())
+            `, [employee_code, longTermToken, tokenExpiryDate]);
+            
+            console.log(`🔑 Long-term JWT token created for ${finalUsername} (expires: ${tokenExpiryDate.toISOString()})`);
+        } catch (sessionError) {
+            console.warn('⚠️ Failed to store session, but employee creation was successful:', sessionError.message);
+        }
+
+        // Log the successful creation with credentials
+        console.log(`✅ Employee created successfully:`);
+        console.log(`   Name: ${first_name} ${last_name}`);
+        console.log(`   Employee ID: ${employee_code}`);
+        console.log(`   Username: ${finalUsername}`);
+        console.log(`   Password: ${password}`);
+        console.log(`   Email: ${email}`);
+        console.log(`   JWT Token: ${longTermToken.substring(0, 20)}...`);
+        console.log(`   Token Expires: ${tokenExpiryDate.toISOString()}`);
+
         res.status(201).json({
             success: true,
-            message: 'Employee created successfully',
-            data: { employee: newEmployee[0] }
+            message: 'Employee and user account created successfully',
+            data: { 
+                employee: newEmployee[0],
+                credentials: {
+                    username: finalUsername,
+                    password: password,
+                    token: longTermToken,
+                    tokenExpiry: tokenExpiryDate.toISOString(),
+                    note: "Please share these credentials securely with the employee. The JWT token has a 365-day expiry and can be used for API access."
+                }
+            }
         });
 
     } catch (error) {
         console.error('Create employee error:', error);
         
-        if (error.message === 'Username already exists' || error.message === 'Password must be at least 6 characters long') {
-            return res.status(400).json({
-                success: false,
-                message: error.message
-            });
-        }
-
         res.status(500).json({
             success: false,
             message: 'Server error creating employee'
