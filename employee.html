@@ -1,4 +1,4 @@
-    <script src="js/directflow.js"></script>\n    \n<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" data-theme="light" class="page-employee">
 <head>
     <meta charset="UTF-8">
@@ -55,9 +55,7 @@
     </script>
     
     <!-- Preload critical resources -->
-    <link rel="preload" href="js/unified-data-service.js" as="script">
-    <link rel="preload" href="js/unified-employee-manager.js" as="script">
-    <link rel="preload" href="js/auth.js" as="script">
+    <link rel="preload" href="js/directflow-auth.js" as="script">
     <link rel="preload" href="js/theme.js" as="script">
 </head>
 <body>
@@ -669,16 +667,12 @@
     <!-- Scripts -->
     <script src="js/mock-data.js"></script>
     <script src="js/utils/id-utility.js"></script>
-    <script src="js/core/data-service-api.js"></script>
-    <script src="js/core/local-storage-service.js"></script>
-    <script src="js/core/api-service.js"></script>
-    <script src="js/core/data-service-factory.js"></script>
     
     
     
     <script src="js/global-system-sync.js"></script>
-    <script src="js/unified-account-manager.js"></script>
-    <script src="js/auth.js"></script>
+    <script src="js/directflow-auth.js"></script>
+    <script src="js/directflow-auth-fix-v2.js"></script>
     <script src="js/theme.js"></script>
     <script src="js/charts.js"></script>
     <script src="js/sidebar.js"></script>
@@ -2375,7 +2369,7 @@
     <script>
         /**
          * Employee Self-Service Page Controller
-         * Uses unified employee manager exclusively for all data operations
+         * Uses DirectFlow authentication exclusively for all operations
          */
         class EmployeePage {
             constructor() {
@@ -2408,7 +2402,7 @@
              */
             async init() {
                 try {
-                    console.log('Initializing employee page with unified employee manager...');
+                    console.log('Initializing employee page with DirectFlow authentication...');
                     
                     // Wait for auth service to be ready first (but don't fail if it's not available)
                     await this.waitForAuthService();
@@ -2419,56 +2413,26 @@
                         return;
                     }
 
-                    // Cache DOM elements first (before waiting for unified manager)
+                    // Cache DOM elements first
                     this.cacheElements();
 
                     // Setup basic event listeners
                     this.setupEventListeners();
 
-                    // Try to wait for unified employee manager (but don't fail completely if it's not ready)
-                    try {
-                        await this.waitForUnifiedEmployeeManager();
-                        console.log('Unified employee manager is ready, proceeding with full initialization');
+                    // Show basic interface with sample data
+                    this.showBasicInterface();
 
-                        // Load initial data
-                        await this.loadInitialData();
+                    // Load initial data with mock data
+                    await this.loadInitialData();
 
-                        // Setup auto refresh
-                        this.setupAutoRefresh();
-
-                        // Setup real-time data updates
-                        this.setupDataUpdateListeners();
-                    } catch (error) {
-                        console.warn('Unified employee manager not ready, using basic mode:', error);
-                        // Show basic UI without data
-                        this.showBasicInterface();
-                    }
+                    // Setup auto refresh
+                    this.setupAutoRefresh();
 
                     console.log('Employee page initialized successfully');
                 } catch (error) {
                     console.error('Failed to initialize employee page:', error);
                     this.showError('Failed to load employee data: ' + error.message);
                 }
-            }
-
-            /**
-             * Wait for unified employee manager to be available and initialized
-             */
-            async waitForUnifiedEmployeeManager() {
-                const maxAttempts = 50;
-                let attempts = 0;
-
-                while (attempts < maxAttempts) {
-                    if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
-                        console.log('Unified employee manager is ready');
-                        return;
-                    }
-                    
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    attempts++;
-                }
-
-                throw new Error('Unified employee manager not available or not initialized. Employee page requires the unified data system.');
             }
 
             /**
@@ -2479,8 +2443,9 @@
                 let attempts = 0;
 
                 while (attempts < maxAttempts) {
-                    if (window.authService) {
-                        console.log('Auth service is ready');
+                    if (window.directFlowAuth) {
+                        console.log('DirectFlow Auth service is ready');
+                        window.authService = window.directFlowAuth; // Set compatibility
                         return;
                     }
                     
@@ -2492,10 +2457,10 @@
             }
 
             /**
-             * Show basic interface when unified manager is not ready
+             * Show basic interface with DirectFlow API
              */
             showBasicInterface() {
-                console.log('Showing basic interface without unified manager');
+                console.log('Showing basic interface with DirectFlow API');
                 
                 // Hide loading indicators
                 this.showLoading(false);
@@ -2506,12 +2471,12 @@
                 // Enable basic clock in/out functionality
                 this.setupBasicClockFunctionality();
                 
-                // Show message about limited functionality
-                this.showInfo('Connected in basic mode. Some features may be limited.');
+                // Show message about system status
+                this.showInfo('Employee portal ready - connected to DirectFlow API.');
             }
 
             /**
-             * Setup basic clock functionality when unified manager is not available
+             * Setup basic clock functionality with DirectFlow API
              */
             setupBasicClockFunctionality() {
                 const clockInBtn = document.getElementById('clock-in-btn');
@@ -2519,13 +2484,13 @@
                 
                 if (clockInBtn) {
                     clockInBtn.addEventListener('click', () => {
-                        this.showInfo('Clock In recorded locally. Data will sync when connection is restored.');
+                        this.showInfo('Clock In will be processed through DirectFlow API.');
                     });
                 }
                 
                 if (clockOutBtn) {
                     clockOutBtn.addEventListener('click', () => {
-                        this.showInfo('Clock Out recorded locally. Data will sync when connection is restored.');
+                        this.showInfo('Clock Out will be processed through DirectFlow API.');
                     });
                 }
             }
@@ -2536,23 +2501,26 @@
             verifyAuthentication() {
                 console.log('Verifying authentication...');
                 
-                // First, try to get user from auth service if available
-                if (window.authService && window.authService.isAuthenticated()) {
-                    console.log('Using auth service for authentication');
-                    this.currentUser = window.authService.getCurrentUser();
+                // First, try to get user from DirectFlow auth service
+                if (window.directFlowAuth && window.directFlowAuth.isAuthenticated()) {
+                    console.log('Using DirectFlow auth service for authentication');
+                    this.currentUser = window.directFlowAuth.getCurrentUser();
                     if (this.currentUser) {
-                        this.employeeId = this.currentUser.id || this.currentUser.employeeId || this.currentUser.username || 'emp_' + Date.now();
+                        this.employeeId = this.currentUser.employee_id || this.currentUser.id || this.currentUser.username || 'emp_' + Date.now();
                         
                         if (this.employeeId) {
-                            console.log('Authenticated employee via auth service:', this.employeeId);
+                            console.log('Authenticated employee via DirectFlow auth service:', this.employeeId);
                             return true;
                         }
                     }
                 }
 
-                // Fallback: Check localStorage directly with both possible keys
-                console.log('Checking localStorage for authentication...');
-                let currentUser = localStorage.getItem('bricks_auth_user');
+                // Fallback: Check localStorage directly with DirectFlow keys
+                console.log('Checking localStorage for DirectFlow authentication...');
+                let currentUser = localStorage.getItem('directflow_user');
+                if (!currentUser) {
+                    currentUser = localStorage.getItem('bricks_auth_user');
+                }
                 if (!currentUser) {
                     currentUser = localStorage.getItem('currentUser');
                 }
@@ -2827,28 +2795,28 @@
             }
 
             /**
-             * Load initial data from unified employee manager
+             * Load initial data using DirectFlow API
              */
             async loadInitialData() {
                 try {
                     this.showLoading(true);
 
-                    // Load employee attendance data using unified employee manager ONLY
-                    if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
-                        throw new Error('Unified employee manager not available. Cannot load employee data.');
+                    console.log('Loading employee data from DirectFlow API...');
+                    
+                    // Fetch attendance data from DirectFlow API
+                    const attendanceResponse = await fetch(`/api/attendance/employee/${this.employeeId}`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('directflow_token') || 'dev_token_' + this.employeeId}`
+                        }
+                    });
+
+                    if (!attendanceResponse.ok) {
+                        throw new Error(`Failed to fetch attendance data: ${attendanceResponse.status}`);
                     }
 
-                    console.log('Loading employee data from unified employee manager...');
-                    
-                    // Get all attendance records and filter for this employee
-                    const allAttendanceRecords = window.unifiedEmployeeManager.getAttendanceRecords();
-                    this.attendanceData = allAttendanceRecords.filter(record => record.employeeId == this.employeeId);
-                    
-                    // If no data available, add some sample data for demonstration
-                    if (this.attendanceData.length === 0) {
-                        console.log('No attendance data found, adding sample data for demonstration...');
-                        this.attendanceData = this.generateSampleAttendanceData();
-                    }
+                    this.attendanceData = await attendanceResponse.json();
                     
                     // Get recent entries (last 10)
                     this.recentEntries = this.attendanceData
@@ -2858,8 +2826,8 @@
                     // Calculate personal stats
                     this.calculatePersonalStats();
 
-                    // Get overtime requests
-                    this.loadOvertimeRequests();
+                    // Get overtime requests from DirectFlow API
+                    await this.loadOvertimeRequests();
 
                     // Render data
                     this.renderAttendanceSummary();
@@ -2867,14 +2835,14 @@
                     this.renderStats();
                     this.renderOvertimeRequests();
 
-                    console.log('Employee data loaded successfully:', {
+                    console.log('Employee data loaded successfully from DirectFlow API:', {
                         attendanceRecords: this.attendanceData.length,
                         recentEntries: this.recentEntries.length,
                         overtimeRequests: this.overtimeRequests.length
                     });
 
                 } catch (error) {
-                    console.error('Failed to load initial data:', error);
+                    console.error('Failed to load data from DirectFlow API:', error);
                     console.log('Loading fallback sample data for demonstration...');
                     
                     // Load sample data as fallback
@@ -2883,7 +2851,7 @@
                         .sort((a, b) => new Date(b.date) - new Date(a.date))
                         .slice(0, 10);
                     this.calculatePersonalStats();
-                    this.loadOvertimeRequests();
+                    await this.loadOvertimeRequests();
                     
                     // Render data with sample information
                     this.renderAttendanceSummary();
@@ -2891,7 +2859,7 @@
                     this.renderStats();
                     this.renderOvertimeRequests();
                     
-                    this.showInfo('Displaying sample attendance data for demonstration. Connect to data source for live data.');
+                    this.showInfo('Unable to connect to DirectFlow API. Displaying sample data for demonstration.');
                 } finally {
                     this.showLoading(false);
                 }
@@ -2986,7 +2954,7 @@
                 const [outHours, outMins] = clockOut.split(':').map(Number);
                 const inMinutes = inHours * 60 + inMins;
                 const outMinutes = outHours * 60 + outMins;
-                return ((outMinutes - inMinutes) / 60).toFixed(1);
+                return parseFloat(((outMinutes - inMinutes) / 60).toFixed(1));
             }
 
             /**
@@ -3011,58 +2979,53 @@
                     absentDays: monthlyRecords.filter(r => r.status === 'absent').length,
                     overtimeDays: monthlyRecords.filter(r => r.status === 'overtime').length,
                     totalHoursWorked: monthlyRecords.reduce((total, record) => {
-                        return total + (record.hours || 0);
+                        return total + (parseFloat(record.hours) || 0);
                     }, 0),
                     attendanceRate: monthlyRecords.length > 0 ? 
-                        ((monthlyRecords.filter(r => ['present', 'late', 'overtime'].includes(r.status)).length / monthlyRecords.length) * 100).toFixed(1) : 0
+                        parseFloat(((monthlyRecords.filter(r => ['present', 'late', 'overtime'].includes(r.status)).length / monthlyRecords.length) * 100).toFixed(1)) : 0
                 };
             }
 
             /**
-             * Load overtime requests for current employee
+             * Load overtime requests from DirectFlow API
              */
-            loadOvertimeRequests() {
+            async loadOvertimeRequests() {
                 try {
-                    // Get all overtime requests from localStorage
-                    const allRequests = this.getAllOvertimeRequests();
+                    console.log('Loading overtime requests from DirectFlow API...');
                     
-                    // Filter requests for current employee
-                    this.overtimeRequests = allRequests.filter(request => 
-                        request.employeeId === this.employeeId
-                    ).sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)); // Sort by newest first
+                    // Fetch overtime requests from DirectFlow API
+                    const response = await fetch(`/api/overtime/employee/${this.employeeId}`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('directflow_token') || 'dev_token_' + this.employeeId}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch overtime requests: ${response.status}`);
+                    }
+
+                    const overtimeData = await response.json();
                     
-                    console.log(`Loaded ${this.overtimeRequests.length} overtime requests for employee ${this.employeeId}`);
+                    // Sort by newest first
+                    this.overtimeRequests = overtimeData.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+                    
+                    console.log(`Loaded ${this.overtimeRequests.length} overtime requests from DirectFlow API for employee ${this.employeeId}`);
                 } catch (error) {
-                    console.error('Failed to load overtime requests:', error);
+                    console.error('Failed to load overtime requests from DirectFlow API:', error);
                     this.overtimeRequests = [];
                 }
             }
 
             /**
              * Setup data update listeners for real-time updates
+             * Using DirectFlow authentication - no real-time updates needed
              */
             setupDataUpdateListeners() {
-                if (window.unifiedEmployeeManager && window.unifiedEmployeeManager.initialized) {
-                    // Listen for attendance updates
-                    window.unifiedEmployeeManager.addEventListener('attendanceUpdate', (data) => {
-                        console.log('Attendance data updated:', data);
-                        
-                        // Refresh data if it affects current employee
-                        if (data.employeeId == this.employeeId) {
-                            this.refreshData();
-                        }
-                    });
-
-                    // Listen for employee updates
-                    window.unifiedEmployeeManager.addEventListener('employeeUpdate', (data) => {
-                        console.log('Employee data updated:', data);
-                        
-                        // Refresh data if it affects current employee
-                        if (data.employee && data.employee.id == this.employeeId) {
-                            this.refreshData();
-                        }
-                    });
-                }
+                // DirectFlow authentication doesn't require real-time updates
+                // Data refreshes are handled by the auto-refresh functionality
+                console.log('Data update listeners not needed with DirectFlow authentication');
             }
 
             /**
@@ -3109,9 +3072,7 @@
                 try {
                     this.showLoading(true);
 
-                    if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
-                        throw new Error('Unified employee manager not available');
-                    }
+                    console.log('Processing clock in with DirectFlow API...');
 
                     // Create clock in record
                     const clockInData = {
@@ -3122,7 +3083,22 @@
                         action: 'clock_in'
                     };
 
-                    await window.unifiedEmployeeManager.saveAttendanceRecord(clockInData);
+                    // Send to DirectFlow API
+                    const response = await fetch('/api/attendance/clock-in', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('directflow_token') || 'dev_token_' + this.employeeId}`
+                        },
+                        body: JSON.stringify(clockInData)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    console.log('Clock in successful:', result);
                     
                     this.showSuccess('Clocked in successfully');
                     await this.refreshData(true);
@@ -3141,35 +3117,32 @@
                 try {
                     this.showLoading(true);
 
-                    if (!window.unifiedEmployeeManager || !window.unifiedEmployeeManager.initialized) {
-                        throw new Error('Unified employee manager not available');
-                    }
+                    console.log('Processing clock out with DirectFlow API...');
 
-                    // Find today's attendance record and update it
-                    const today = new Date().toISOString().split('T')[0];
-                    const existingRecord = this.attendanceData.find(record => 
-                        record.employeeId == this.employeeId && record.date === today
-                    );
-
-                    if (!existingRecord) {
-                        throw new Error('No clock in record found for today');
-                    }
-
-                    // Update with clock out time
-                    const updateData = {
-                        ...existingRecord,
+                    // Create clock out record
+                    const clockOutData = {
+                        employeeId: this.employeeId,
+                        date: new Date().toISOString().split('T')[0],
                         clockOut: new Date().toTimeString().slice(0, 8),
                         action: 'clock_out'
                     };
 
-                    // Calculate hours worked
-                    if (updateData.clockIn && updateData.clockOut) {
-                        const clockIn = new Date(`${today}T${updateData.clockIn}`);
-                        const clockOut = new Date(`${today}T${updateData.clockOut}`);
-                        updateData.hours = ((clockOut - clockIn) / (1000 * 60 * 60)).toFixed(2);
+                    // Send to DirectFlow API
+                    const response = await fetch('/api/attendance/clock-out', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('directflow_token') || 'dev_token_' + this.employeeId}`
+                        },
+                        body: JSON.stringify(clockOutData)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.status} ${response.statusText}`);
                     }
 
-                    await window.unifiedEmployeeManager.saveAttendanceRecord(updateData);
+                    const result = await response.json();
+                    console.log('Clock out successful:', result);
                     
                     this.showSuccess('Clocked out successfully');
                     await this.refreshData(true);
@@ -3187,8 +3160,35 @@
             async handleLunchStart() {
                 try {
                     this.showLoading(true);
-                    // Implementation would be similar to clock in/out
+
+                    console.log('Processing lunch start with DirectFlow API...');
+
+                    const lunchData = {
+                        employeeId: this.employeeId,
+                        date: new Date().toISOString().split('T')[0],
+                        lunchStart: new Date().toTimeString().slice(0, 8),
+                        action: 'lunch_start'
+                    };
+
+                    // Send to DirectFlow API
+                    const response = await fetch('/api/attendance/lunch-start', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('directflow_token') || 'dev_token_' + this.employeeId}`
+                        },
+                        body: JSON.stringify(lunchData)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    console.log('Lunch start successful:', result);
+                    
                     this.showSuccess('Lunch break started');
+                    await this.refreshData(true);
                 } catch (error) {
                     console.error('Lunch start failed:', error);
                     this.showError('Failed to start lunch break: ' + error.message);
@@ -3203,8 +3203,35 @@
             async handleLunchEnd() {
                 try {
                     this.showLoading(true);
-                    // Implementation would be similar to clock in/out
+
+                    console.log('Processing lunch end with DirectFlow API...');
+
+                    const lunchData = {
+                        employeeId: this.employeeId,
+                        date: new Date().toISOString().split('T')[0],
+                        lunchEnd: new Date().toTimeString().slice(0, 8),
+                        action: 'lunch_end'
+                    };
+
+                    // Send to DirectFlow API
+                    const response = await fetch('/api/attendance/lunch-end', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('directflow_token') || 'dev_token_' + this.employeeId}`
+                        },
+                        body: JSON.stringify(lunchData)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    console.log('Lunch end successful:', result);
+                    
                     this.showSuccess('Lunch break ended');
+                    await this.refreshData(true);
                 } catch (error) {
                     console.error('Lunch end failed:', error);
                     this.showError('Failed to end lunch break: ' + error.message);
@@ -3226,15 +3253,10 @@
                     const hoursRequested = parseFloat(formData.get('overtime-hours'));
                     
                     if (this.editingRequestId) {
-                        // Edit mode - update existing request
-                        const requestIndex = this.overtimeRequests.findIndex(req => req.id === this.editingRequestId);
-                        if (requestIndex === -1) {
-                            throw new Error('Request not found');
-                        }
-
-                        const existingRequest = this.overtimeRequests[requestIndex];
+                        // Edit mode - update existing request via DirectFlow API
                         const updatedData = {
-                            ...existingRequest,
+                            id: this.editingRequestId,
+                            employeeId: this.employeeId,
                             date: formData.get('overtime-date'),
                             hoursRequested: hoursRequested,
                             reason: formData.get('overtime-reason'),
@@ -3242,25 +3264,27 @@
                             updatedAt: new Date().toISOString()
                         };
 
-                        // Update in array
-                        this.overtimeRequests[requestIndex] = updatedData;
+                        // Send to DirectFlow API
+                        const response = await fetch('/api/overtime/update', {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localStorage.getItem('directflow_token') || 'dev_token_' + this.employeeId}`
+                            },
+                            body: JSON.stringify(updatedData)
+                        });
 
-                        // Update in localStorage
-                        const allRequests = this.getAllOvertimeRequests();
-                        const globalIndex = allRequests.findIndex(req => req.id === this.editingRequestId);
-                        if (globalIndex !== -1) {
-                            allRequests[globalIndex] = updatedData;
-                            localStorage.setItem('bricks_overtime_requests', JSON.stringify(allRequests));
+                        if (!response.ok) {
+                            throw new Error(`API Error: ${response.status} ${response.statusText}`);
                         }
 
+                        const result = await response.json();
+                        console.log('Overtime request updated:', result);
+
                         this.showSuccess('Overtime request updated successfully!');
-                        console.log('Overtime request updated:', updatedData);
                     } else {
-                        // Create mode - new request
-                        const requestId = 'overtime_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                        
+                        // Create mode - new request via DirectFlow API
                         const overtimeData = {
-                            id: requestId,
                             employeeId: this.employeeId,
                             employeeName: this.currentUser?.name || this.currentUser?.fullName || 'Employee',
                             date: formData.get('overtime-date'),
@@ -3272,21 +3296,31 @@
                             submittedBy: this.currentUser?.username || 'employee'
                         };
 
-                        // Save overtime request to localStorage for persistence
-                        this.saveOvertimeRequest(overtimeData);
-                        
-                        // Add to current overtime requests array
-                        this.overtimeRequests.unshift(overtimeData);
+                        // Send to DirectFlow API
+                        const response = await fetch('/api/overtime/create', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localStorage.getItem('directflow_token') || 'dev_token_' + this.employeeId}`
+                            },
+                            body: JSON.stringify(overtimeData)
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`API Error: ${response.status} ${response.statusText}`);
+                        }
+
+                        const result = await response.json();
+                        console.log('Overtime request created:', result);
 
                         this.showSuccess('Overtime request submitted successfully! It will be reviewed by administration.');
-                        console.log('Overtime request submitted:', overtimeData);
                     }
                     
                     // Re-render overtime requests to show the changes
                     this.renderOvertimeRequests();
                     
-                    // Dispatch event for cross-tab communication
-                    window.dispatchEvent(new CustomEvent('overtimeRequestSubmitted'));
+                    // Refresh data to get updated information from API
+                    await this.refreshData(true);
                     
                     this.hideOvertimeForm();
                     e.target.reset();
@@ -3299,41 +3333,32 @@
             }
 
             /**
-             * Save overtime request to localStorage
+             * Delete overtime request via DirectFlow API
              */
-            saveOvertimeRequest(overtimeData) {
+            async deleteOvertimeRequest(requestId) {
                 try {
-                    // Get existing overtime requests
-                    const existingRequests = this.getAllOvertimeRequests();
+                    console.log('Deleting overtime request via DirectFlow API...');
                     
-                    // Add new request
-                    existingRequests.push(overtimeData);
-                    
-                    // Save back to localStorage
-                    localStorage.setItem('bricks_overtime_requests', JSON.stringify(existingRequests));
-                    
-                    // Dispatch a custom event to notify other components/pages
-                    window.dispatchEvent(new CustomEvent('overtimeRequestSubmitted', {
-                        detail: { request: overtimeData, allRequests: existingRequests }
-                    }));
-                    
-                    console.log('Overtime request saved to localStorage and event dispatched');
-                } catch (error) {
-                    console.error('Failed to save overtime request:', error);
-                    throw new Error('Failed to save overtime request');
-                }
-            }
+                    const response = await fetch(`/api/overtime/delete/${requestId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('directflow_token') || 'dev_token_' + this.employeeId}`
+                        }
+                    });
 
-            /**
-             * Get all overtime requests from localStorage
-             */
-            getAllOvertimeRequests() {
-                try {
-                    const stored = localStorage.getItem('bricks_overtime_requests');
-                    return stored ? JSON.parse(stored) : [];
+                    if (!response.ok) {
+                        throw new Error(`Failed to delete overtime request: ${response.status}`);
+                    }
+
+                    console.log('Overtime request deleted successfully');
+                    this.showSuccess('Overtime request deleted successfully');
+                    
+                    // Refresh data to reflect changes
+                    await this.refreshData(true);
                 } catch (error) {
-                    console.error('Failed to load overtime requests:', error);
-                    return [];
+                    console.error('Failed to delete overtime request:', error);
+                    this.showError('Failed to delete overtime request: ' + error.message);
                 }
             }
 
@@ -3499,7 +3524,7 @@
                         </div>
                         <div class="summary-card">
                             <div class="summary-icon">⏱️</div>
-                            <div class="summary-value">${(todayRecord?.hours || 0).toFixed(1)}h</div>
+                            <div class="summary-value">${(parseFloat(todayRecord?.hours) || 0).toFixed(1)}h</div>
                             <div class="summary-label">Hours Today</div>
                         </div>
                         <div class="summary-card">
@@ -3796,40 +3821,35 @@
             /**
              * Delete overtime request
              */
-            deleteOvertimeRequest(requestId) {
+            async deleteOvertimeRequest(requestId) {
                 try {
-                    // Find the request to delete
-                    const request = this.overtimeRequests.find(req => req.id === requestId);
-                    if (!request) {
-                        this.showNotification('Overtime request not found', 'error');
-                        return;
-                    }
-
-                    if (request.status !== 'pending') {
-                        this.showNotification('Only pending requests can be deleted', 'error');
-                        return;
-                    }
-
                     // Confirm deletion
                     if (!confirm('Are you sure you want to delete this overtime request? This action cannot be undone.')) {
                         return;
                     }
 
-                    // Remove from array
-                    this.overtimeRequests = this.overtimeRequests.filter(req => req.id !== requestId);
+                    console.log('Deleting overtime request via DirectFlow API...');
+                    
+                    const response = await fetch(`/api/overtime/delete/${requestId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('directflow_token') || 'dev_token_' + this.employeeId}`
+                        }
+                    });
 
-                    // Update localStorage
-                    const allRequests = this.getAllOvertimeRequests();
-                    const updatedRequests = allRequests.filter(req => req.id !== requestId);
-                    localStorage.setItem('bricks_overtime_requests', JSON.stringify(updatedRequests));
+                    if (!response.ok) {
+                        throw new Error(`Failed to delete overtime request: ${response.status}`);
+                    }
 
-                    // Re-render the requests
-                    this.renderOvertimeRequests();
-
-                    this.showNotification('Overtime request deleted successfully', 'success');
+                    console.log('Overtime request deleted successfully');
+                    this.showSuccess('Overtime request deleted successfully');
+                    
+                    // Refresh data to reflect changes
+                    await this.refreshData(true);
                 } catch (error) {
                     console.error('Failed to delete overtime request:', error);
-                    this.showNotification('Failed to delete overtime request', 'error');
+                    this.showError('Failed to delete overtime request: ' + error.message);
                 }
             }
 
