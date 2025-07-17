@@ -581,7 +581,7 @@ router.get('/stats', auth, async (req, res) => {
         const today = new Date().toISOString().split('T')[0];
         
         // Get today's attendance stats
-        const [todayStats] = await db.execute(`
+        const todayStats = await db.execute(`
             SELECT 
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present,
@@ -593,7 +593,7 @@ router.get('/stats', auth, async (req, res) => {
         `, [today]);
 
         // Get total employees count
-        const [totalEmployees] = await db.execute(`
+        const totalEmployees = await db.execute(`
             SELECT COUNT(*) as count
             FROM employees e
             JOIN user_accounts ua ON e.employee_id = ua.employee_id

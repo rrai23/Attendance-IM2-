@@ -153,10 +153,9 @@ router.get('/next-payday', auth, async (req, res) => {
         const lastPayroll = await db.execute(`
             SELECT 
                 pay_period_end,
-                pay_date,
                 'monthly' as pay_frequency
             FROM payroll_records
-            ORDER BY pay_date DESC
+            ORDER BY pay_period_end DESC
             LIMIT 1
         `);
 
@@ -164,7 +163,7 @@ router.get('/next-payday', auth, async (req, res) => {
         let daysUntilPayday = null;
 
         if (lastPayroll && lastPayroll.length > 0) {
-            const lastPayDate = new Date(lastPayroll[0].pay_date);
+            const lastPayDate = new Date(lastPayroll[0].pay_period_end);
             const frequency = lastPayroll[0].pay_frequency || 'monthly';
             
             // Calculate next payday based on frequency
