@@ -161,8 +161,9 @@ class PayrollController {
                 };
             }
 
-            // Initialize overtime requests as empty (load from backend if endpoint exists)
-            this.overtimeRequests = [];
+            // Load overtime requests from backend
+            console.log('[PAYROLL] Loading overtime requests...');
+            await this.loadOvertimeRequests();
 
             console.log('[PAYROLL] Initial data loaded successfully from backend');
 
@@ -179,6 +180,104 @@ class PayrollController {
         } catch (error) {
             console.error('[PAYROLL] Error loading payroll data:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Load overtime requests from DirectFlow backend
+     */
+    async loadOvertimeRequests() {
+        try {
+            console.log('[PAYROLL] Loading overtime requests from DirectFlow...');
+            
+            if (!window.directFlow || !window.directFlow.isAuthenticated()) {
+                console.warn('[PAYROLL] DirectFlow not available or not authenticated, skipping overtime requests');
+                this.overtimeRequests = [];
+                return;
+            }
+
+            // Use the /all endpoint to get all overtime requests for payroll management
+            console.log('[PAYROLL] Making request to /overtime/all...');
+            const response = await window.directFlow.makeRequest('/overtime/all?limit=100');
+            
+            console.log('[PAYROLL] Overtime API response status:', response.status);
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                    console.warn('[PAYROLL] Unauthorized access to overtime requests - user may not have admin/manager role');
+                } else if (response.status === 403) {
+                    console.warn('[PAYROLL] Forbidden access to overtime requests - insufficient permissions');
+                } else {
+                    console.warn('[PAYROLL] Failed to load overtime requests:', response.status, response.statusText);
+                }
+                
+                // Fallback: Try to get just the current user's overtime requests
+                console.log('[PAYROLL] Attempting fallback to user\'s own overtime requests...');
+                try {
+                    const fallbackResponse = await window.directFlow.makeRequest('/overtime?limit=100');
+                    if (fallbackResponse.ok) {
+                        const fallbackResult = await fallbackResponse.json();
+                        if (fallbackResult.success && fallbackResult.data?.requests) {
+                            console.log('[PAYROLL] Successfully loaded user\'s own overtime requests as fallback');
+                            this.overtimeRequests = fallbackResult.data.requests.map(request => ({
+                                id: request.id,
+                                employeeId: request.employee_id,
+                                employeeName: request.first_name && request.last_name ? 
+                                    `${request.first_name} ${request.last_name}` : 
+                                    'Unknown Employee',
+                                requestDate: request.request_date,
+                                hoursRequested: request.hours_requested,
+                                reason: request.reason,
+                                status: request.status,
+                                approvedBy: request.approved_by,
+                                approvedAt: request.approved_at,
+                                createdAt: request.created_at,
+                                department: request.department,
+                                position: request.position
+                            }));
+                            return;
+                        }
+                    }
+                } catch (fallbackError) {
+                    console.warn('[PAYROLL] Fallback request also failed:', fallbackError.message);
+                }
+                
+                this.overtimeRequests = [];
+                return;
+            }
+
+            const result = await response.json();
+            console.log('[PAYROLL] Overtime API response:', result);
+            
+            if (result.success && result.data?.requests) {
+                this.overtimeRequests = result.data.requests.map(request => ({
+                    id: request.id,
+                    employeeId: request.employee_id,
+                    employeeName: request.first_name && request.last_name ? 
+                        `${request.first_name} ${request.last_name}` : 
+                        'Unknown Employee',
+                    requestDate: request.request_date,
+                    hoursRequested: request.hours_requested,
+                    reason: request.reason,
+                    status: request.status,
+                    approvedBy: request.approved_by,
+                    approvedAt: request.approved_at,
+                    createdAt: request.created_at,
+                    department: request.department,
+                    position: request.position
+                }));
+                
+                console.log('[PAYROLL] Successfully loaded overtime requests:', this.overtimeRequests.length);
+                console.log('[PAYROLL] Overtime requests data:', this.overtimeRequests);
+                console.log('[PAYROLL] Sample request IDs:', this.overtimeRequests.map(r => ({ id: r.id, type: typeof r.id, employeeId: r.employeeId })));
+            } else {
+                console.warn('[PAYROLL] No overtime requests data in response');
+                this.overtimeRequests = [];
+            }
+
+        } catch (error) {
+            console.error('[PAYROLL] Error loading overtime requests:', error);
+            this.overtimeRequests = [];
         }
     }
 
@@ -403,10 +502,28 @@ class PayrollController {
         // Overtime request action buttons
         document.addEventListener('click', (e) => {
             if (e.target.matches('.approve-overtime-btn')) {
-                const requestId = e.target.dataset.requestId;
+                const requestId = e.target.getAttribute('data-request-id');
+                console.log('[PAYROLL] Approve button clicked, requestId:', requestId);
+                console.log('[PAYROLL] Button element:', e.target);
+                console.log('[PAYROLL] All data attributes:', e.target.dataset);
+                
+                if (!requestId) {
+                    console.error('[PAYROLL] No request ID found on approve button');
+                    this.showError('Invalid request ID');
+                    return;
+                }
+                
                 this.approveOvertimeRequest(requestId);
             } else if (e.target.matches('.deny-overtime-btn')) {
-                const requestId = e.target.dataset.requestId;
+                const requestId = e.target.getAttribute('data-request-id');
+                console.log('[PAYROLL] Deny button clicked, requestId:', requestId);
+                
+                if (!requestId) {
+                    console.error('[PAYROLL] No request ID found on deny button');
+                    this.showError('Invalid request ID');
+                    return;
+                }
+                
                 this.showDenyOvertimeModal(requestId);
             }
         });
@@ -658,7 +775,7 @@ class PayrollController {
      * Render individual overtime request
      */
     renderOvertimeRequest(request, isPending) {
-        const employee = this.employees.find(emp => emp.id === request.employeeId);
+        const employee = this.employees.find(emp => emp.employee_id === request.employeeId);
         
         // Handle different name property variations - use backend snake_case format
         let employeeName = 'Unknown Employee';
@@ -681,9 +798,9 @@ class PayrollController {
 
         // Format employee ID properly
         const formattedEmployeeId = request.employeeId ? 
-            (typeof request.employeeId === 'string' && request.employeeId.startsWith('emp_') ? 
+            (typeof request.employeeId === 'string' && request.employeeId.startsWith('EMP') ? 
                 request.employeeId : 
-                `emp_${String(request.employeeId).padStart(3, '0')}`) : 
+                `EMP${String(request.employeeId).padStart(6, '0')}`) : 
             'N/A';
 
         // Format request ID for display
@@ -704,7 +821,7 @@ class PayrollController {
                         </div>
                     </div>
                     <div class="request-details">
-                        <span class="request-date">${this.formatDate(request.date)}</span>
+                        <span class="request-date">${this.formatDate(request.requestDate)}</span>
                         <span class="request-hours">${hours} hours</span>
                         <span class="request-reason">${this.formatReason(request.reason)}</span>
                     </div>
@@ -715,15 +832,15 @@ class PayrollController {
                     ` : ''}
                     <div class="request-metadata">
                         <small style="color: var(--text-tertiary);">
-                            Submitted: ${this.formatDateTime(request.submittedAt)}
+                            Submitted: ${this.formatDateTime(request.createdAt)}
                         </small>
                     </div>
                 </div>
                 <div class="request-status">
                     <span class="status-badge status-${request.status}">${request.status.toUpperCase()}</span>
-                    ${request.approvedDate ? `
+                    ${request.approvedAt ? `
                         <div class="approval-date">
-                            ${this.formatDate(request.approvedDate)}
+                            ${this.formatDate(request.approvedAt)}
                         </div>
                     ` : ''}
                 </div>
@@ -979,28 +1096,54 @@ class PayrollController {
     }
 
     /**
-     * Approve overtime request (simplified - no backend endpoint yet)
+     * Approve overtime request using backend API
      */
     async approveOvertimeRequest(requestId) {
         try {
-            console.log(`[PAYROLL] Approving overtime request ${requestId}`);
+            console.log(`[PAYROLL] Approving overtime request ${requestId} (type: ${typeof requestId})`);
+            console.log(`[PAYROLL] Available overtime requests:`, this.overtimeRequests.map(r => ({ id: r.id, type: typeof r.id })));
             
-            // For now, just update local data since we don't have overtime backend endpoint
-            const request = this.overtimeRequests.find(req => String(req.id) === String(requestId));
-            if (request) {
-                request.status = 'approved';
-                request.approvedBy = 'admin';
-                request.approvedDate = new Date().toISOString().split('T')[0];
+            if (!requestId) {
+                throw new Error('Request ID is required');
+            }
+            
+            // Make API call to approve the request
+            const response = await window.directFlow.makeRequest(`/overtime/${requestId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    status: 'approved',
+                    notes: 'Approved by payroll manager'
+                })
+            });
+
+            console.log(`[PAYROLL] API response status:`, response.status);
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error(`[PAYROLL] API error response:`, errorData);
+                throw new Error(errorData.message || `HTTP ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.success) {
+                console.log('[PAYROLL] Overtime request approved successfully:', result);
                 
+                // Reload overtime requests to get updated data
+                await this.loadOvertimeRequests();
                 this.renderOvertimeRequests();
-                this.showSuccess('Overtime request approved');
+                
+                this.showSuccess('Overtime request approved successfully');
             } else {
-                throw new Error(`Overtime request not found: ${requestId}`);
+                throw new Error(result.message || 'Unknown error');
             }
 
         } catch (error) {
             console.error('[PAYROLL] Error approving overtime request:', error);
-            this.showError('Failed to approve overtime request');
+            this.showError(`Failed to approve overtime request: ${error.message}`);
         }
     }
 
@@ -1009,12 +1152,25 @@ class PayrollController {
      */
     showDenyOvertimeModal(requestId) {
         const request = this.overtimeRequests.find(req => req.id === requestId);
-        if (!request) return;
+        if (!request) {
+            console.warn('[PAYROLL] Overtime request not found:', requestId);
+            return;
+        }
 
-        const employee = this.employees.find(emp => emp.id === request.employeeId);
-        const employeeName = employee ? `${employee.first_name} ${employee.last_name}` : 'Unknown';
+        const employee = this.employees.find(emp => emp.employee_id === request.employeeId);
+        const employeeName = employee ? 
+            (employee.full_name || `${employee.first_name || ''} ${employee.last_name || ''}`.trim()) : 
+            request.employeeName || 'Unknown Employee';
 
-        modalManager.create({
+        // Check if modal manager is available
+        const manager = window.modalManager;
+        if (!manager) {
+            console.error('[PAYROLL] Modal manager not available');
+            this.showError('Modal system not available. Please refresh the page.');
+            return;
+        }
+
+        manager.create({
             title: `Deny Overtime Request - ${employeeName}`,
             form: {
                 fields: [
@@ -1054,29 +1210,46 @@ class PayrollController {
     }
 
     /**
-     * Deny overtime request (simplified - no backend endpoint yet)
+     * Deny overtime request using backend API
      */
     async denyOvertimeRequest(requestId, reason) {
         try {
             console.log(`[PAYROLL] Denying overtime request ${requestId} with reason: ${reason}`);
             
-            // For now, just update local data since we don't have overtime backend endpoint
-            const request = this.overtimeRequests.find(req => String(req.id) === String(requestId));
-            if (request) {
-                request.status = 'denied';
-                request.deniedBy = 'admin';
-                request.deniedDate = new Date().toISOString().split('T')[0];
-                request.notes = reason;
+            // Make API call to reject the request
+            const response = await window.directFlow.makeRequest(`/overtime/${requestId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    status: 'rejected',
+                    notes: reason
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `HTTP ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.success) {
+                console.log('[PAYROLL] Overtime request denied successfully:', result);
                 
+                // Reload overtime requests to get updated data
+                await this.loadOvertimeRequests();
                 this.renderOvertimeRequests();
-                this.showSuccess('Overtime request denied');
+                
+                this.showSuccess('Overtime request denied successfully');
             } else {
-                throw new Error(`Overtime request not found: ${requestId}`);
+                throw new Error(result.message || 'Unknown error');
             }
 
         } catch (error) {
             console.error('[PAYROLL] Error denying overtime request:', error);
-            this.showError('Failed to deny overtime request');
+            this.showError(`Failed to deny overtime request: ${error.message}`);
             throw error;
         }
     }

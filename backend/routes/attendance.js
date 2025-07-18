@@ -3,11 +3,80 @@ const router = express.Router();
 const db = require('../database/connection');
 const { auth, requireManagerOrAdmin } = require('../middleware/auth');
 
+// Get current attendance status
+router.get('/current-status', auth, async (req, res) => {
+    try {
+        const employee_id = req.user.employee_id;
+        const today = new Date().toLocaleDateString('en-CA'); // Use local date in YYYY-MM-DD format
+
+        // Get today's attendance record
+        const result = await db.execute(`
+            SELECT * FROM attendance_records 
+            WHERE employee_id = ? AND date = ? 
+            ORDER BY created_at DESC LIMIT 1
+        `, [employee_id, today]);
+
+        const records = Array.isArray(result[0]) ? result[0] : (result[0] ? [result[0]] : []);
+        const currentRecord = records.length > 0 ? records[0] : null;
+
+        let status = 'not_clocked_in';
+        let lastAction = null;
+        let canClockIn = true;
+        let canClockOut = false;
+        let canStartBreak = false;
+        let canEndBreak = false;
+
+        if (currentRecord) {
+            if (currentRecord.time_in && !currentRecord.time_out) {
+                status = 'clocked_in';
+                canClockIn = false;
+                canClockOut = true;
+                
+                if (!currentRecord.break_start) {
+                    canStartBreak = true;
+                } else if (currentRecord.break_start && !currentRecord.break_end) {
+                    status = 'on_break';
+                    canEndBreak = true;
+                } else {
+                    canStartBreak = true; // Can take another break
+                }
+            } else if (currentRecord.time_in && currentRecord.time_out) {
+                status = 'clocked_out';
+                canClockIn = true; // Allow clocking in again for additional shifts
+                canClockOut = false;
+            }
+        }
+
+        res.json({
+            success: true,
+            data: {
+                status,
+                record: currentRecord,
+                capabilities: {
+                    canClockIn,
+                    canClockOut,
+                    canStartBreak,
+                    canEndBreak
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Current status error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get current status'
+        });
+    }
+});
+
 // Clock in/out endpoint
 router.post('/clock', auth, async (req, res) => {
     try {
         const { action, location, notes } = req.body; // action: 'in' or 'out'
         const employee_id = req.user.employee_id;
+
+        console.log('Clock operation:', { action, employee_id, notes });
 
         if (!action || !['in', 'out'].includes(action)) {
             return res.status(400).json({
@@ -17,37 +86,58 @@ router.post('/clock', auth, async (req, res) => {
         }
 
         const now = new Date();
-        const today = now.toISOString().split('T')[0];
-        const currentTime = now.toTimeString().split(' ')[0].substring(0, 5);
+        const today = now.toLocaleDateString('en-CA'); // Use local date in YYYY-MM-DD format
+        const currentTime = now.toTimeString().split(' ')[0].substring(0, 8); // HH:MM:SS format
 
         // Get today's attendance record
-        const [existingRecords] = await db.execute(`
+        const result = await db.execute(`
             SELECT * FROM attendance_records 
             WHERE employee_id = ? AND date = ? 
             ORDER BY created_at DESC LIMIT 1
         `, [employee_id, today]);
+        
+        const existingRecords = Array.isArray(result[0]) ? result[0] : (result[0] ? [result[0]] : []);
 
         if (action === 'in') {
-            // Check if already clocked in today
+            // Check if already clocked in today (but not yet clocked out)
             if (existingRecords.length > 0 && existingRecords[0].time_in && !existingRecords[0].time_out) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Already clocked in. Please clock out first.'
+                    message: 'Already clocked in. Please clock out first.',
+                    data: {
+                        current_record: existingRecords[0]
+                    }
                 });
             }
 
-            // Create new attendance record
-            await db.execute(`
-                INSERT INTO attendance_records (
-                    employee_id, date, time_in, clock_in, status, location, notes, created_at
-                ) VALUES (?, ?, ?, ?, 'present', ?, ?, NOW())
-            `, [employee_id, today, currentTime, now, location, notes]);
+            let attendanceId;
+            
+            if (existingRecords.length > 0) {
+                // Update existing record for additional clock-in
+                await db.execute(`
+                    UPDATE attendance_records 
+                    SET time_in = ?, time_out = NULL, status = 'present', notes = ?, updated_at = NOW()
+                    WHERE id = ?
+                `, [currentTime, notes, existingRecords[0].id]);
+                attendanceId = existingRecords[0].id;
+            } else {
+                // Create new record for first clock-in of the day
+                const [result] = await db.execute(`
+                    INSERT INTO attendance_records (
+                        employee_id, date, time_in, status, notes, created_at, updated_at
+                    ) VALUES (?, ?, ?, 'present', ?, NOW(), NOW())
+                `, [employee_id, today, currentTime, notes]);
+                attendanceId = result.insertId;
+            }
 
             res.json({
                 success: true,
                 message: 'Clocked in successfully',
                 data: {
-                    attendance_id: attendanceId,
+                    id: attendanceId,
+                    employee_id: employee_id,
+                    date: today,
+                    time_in: currentTime,
                     action: 'in',
                     time: now,
                     location: location || null
@@ -64,20 +154,34 @@ router.post('/clock', auth, async (req, res) => {
             }
 
             const record = existingRecords[0];
-            const timeIn = new Date(record.time_in);
-            const timeOut = now;
+            
+            // Parse time_in properly
+            const timeInStr = record.time_in;
+            const timeIn = new Date(`${today}T${timeInStr}`);
+            const timeOut = new Date(`${today}T${currentTime}`);
 
-            // Calculate hours worked
-            const hoursWorked = ((timeOut - timeIn) / (1000 * 60 * 60)).toFixed(2);
+            // Calculate total hours worked excluding break time
+            let totalMinutes = (timeOut - timeIn) / (1000 * 60);
+            
+            // Subtract break time if exists
+            if (record.break_start && record.break_end) {
+                const breakStart = new Date(`${today}T${record.break_start}`);
+                const breakEnd = new Date(`${today}T${record.break_end}`);
+                const breakMinutes = (breakEnd - breakStart) / (1000 * 60);
+                totalMinutes -= breakMinutes;
+            }
+            
+            const totalHours = Math.max(0, totalMinutes / 60);
+            
+            // Calculate overtime (assuming 8 hour standard)
+            const standardHours = 8;
+            const overtimeHours = Math.max(0, totalHours - standardHours);
 
-            // Determine if late or early departure
-            const standardWorkHours = 8;
+            // Determine status
             let status = 'present';
             
             // Check if late (assuming 9 AM start time)
-            const standardStartTime = new Date(timeIn);
-            standardStartTime.setHours(9, 0, 0, 0);
-            
+            const standardStartTime = new Date(`${today}T09:00:00`);
             if (timeIn > standardStartTime) {
                 status = 'late';
             }
@@ -85,19 +189,23 @@ router.post('/clock', auth, async (req, res) => {
             // Update the record with clock out time
             await db.execute(`
                 UPDATE attendance_records 
-                SET time_out = ?, total_hours = ?, clock_out_location = ?, 
-                    clock_out_notes = ?, status = ?, updated_at = NOW()
-                WHERE attendance_id = ?
-            `, [timeOut, parseFloat(hoursWorked), location, notes, status, record.attendance_id]);
+                SET time_out = ?, total_hours = ?, overtime_hours = ?, status = ?, notes = ?, updated_at = NOW()
+                WHERE id = ?
+            `, [currentTime, totalHours.toFixed(2), overtimeHours.toFixed(2), status, notes, record.id]);
 
             res.json({
                 success: true,
                 message: 'Clocked out successfully',
                 data: {
-                    attendance_id: record.attendance_id,
+                    id: record.id,
+                    employee_id: employee_id,
+                    date: today,
+                    time_in: timeInStr,
+                    time_out: currentTime,
+                    total_hours: totalHours.toFixed(2),
+                    overtime_hours: overtimeHours.toFixed(2),
                     action: 'out',
-                    time: timeOut,
-                    hours_worked: parseFloat(hoursWorked),
+                    time: now,
                     location: location || null
                 }
             });
@@ -105,9 +213,125 @@ router.post('/clock', auth, async (req, res) => {
 
     } catch (error) {
         console.error('Clock in/out error:', error);
+        console.error('Error details:', {
+            message: error.message,
+            code: error.code,
+            sqlState: error.sqlState,
+            stack: error.stack
+        });
         res.status(500).json({
             success: false,
-            message: 'Server error during clock operation'
+            message: 'Server error during clock operation',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+// Break/Lunch start endpoint
+router.post('/break', auth, async (req, res) => {
+    try {
+        const { action, notes } = req.body; // action: 'start' or 'end'
+        const employee_id = req.user.employee_id;
+
+        if (!action || !['start', 'end'].includes(action)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Action must be "start" or "end"'
+            });
+        }
+
+        const now = new Date();
+        const today = now.toLocaleDateString('en-CA'); // Use local date in YYYY-MM-DD format
+        const currentTime = now.toTimeString().split(' ')[0].substring(0, 8); // HH:MM:SS format
+
+        // Get today's attendance record
+        const result = await db.execute(`
+            SELECT * FROM attendance_records 
+            WHERE employee_id = ? AND date = ? 
+            ORDER BY created_at DESC LIMIT 1
+        `, [employee_id, today]);
+        
+        const existingRecords = Array.isArray(result[0]) ? result[0] : (result[0] ? [result[0]] : []);
+
+        if (existingRecords.length === 0 || !existingRecords[0].time_in) {
+            return res.status(400).json({
+                success: false,
+                message: 'You must clock in before starting a break'
+            });
+        }
+
+        const record = existingRecords[0];
+
+        if (action === 'start') {
+            // Check if already on break
+            if (record.break_start && !record.break_end) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Break already started. Please end current break first.'
+                });
+            }
+
+            // Start break
+            await db.execute(`
+                UPDATE attendance_records 
+                SET break_start = ?, notes = ?, updated_at = NOW()
+                WHERE id = ?
+            `, [currentTime, notes, record.id]);
+
+            res.json({
+                success: true,
+                message: 'Break started successfully',
+                data: {
+                    id: record.id,
+                    employee_id: employee_id,
+                    date: today,
+                    break_start: currentTime,
+                    action: 'start'
+                }
+            });
+
+        } else { // action === 'end'
+            // Check if break was started
+            if (!record.break_start) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'No active break found. Please start a break first.'
+                });
+            }
+
+            if (record.break_end) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Break already ended.'
+                });
+            }
+
+            // End break
+            await db.execute(`
+                UPDATE attendance_records 
+                SET break_end = ?, notes = ?, updated_at = NOW()
+                WHERE id = ?
+            `, [currentTime, notes, record.id]);
+
+            res.json({
+                success: true,
+                message: 'Break ended successfully',
+                data: {
+                    id: record.id,
+                    employee_id: employee_id,
+                    date: today,
+                    break_start: record.break_start,
+                    break_end: currentTime,
+                    action: 'end'
+                }
+            });
+        }
+
+    } catch (error) {
+        console.error('Break operation error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error during break operation'
         });
     }
 });
@@ -247,13 +471,15 @@ router.get('/', auth, async (req, res) => {
 router.get('/status', auth, async (req, res) => {
     try {
         const employee_id = req.user.employee_id;
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toLocaleDateString('en-CA'); // Use local date in YYYY-MM-DD format
 
-        const records = await db.execute(`
+        const result = await db.execute(`
             SELECT * FROM attendance_records 
-            WHERE employee_id = ? AND DATE(date) = ? 
+            WHERE employee_id = ? AND date = ? 
             ORDER BY created_at DESC LIMIT 1
         `, [employee_id, today]);
+
+        const records = Array.isArray(result[0]) ? result[0] : (result[0] ? [result[0]] : []);
 
         let status = 'clocked_out';
         let currentRecord = null;

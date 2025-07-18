@@ -21,6 +21,7 @@ const payrollRoutes = require('./backend/routes/payroll');
 const settingsRoutes = require('./backend/routes/settings');
 const accountRoutes = require('./backend/routes/accounts');
 const unifiedRoutes = require('./backend/routes/unified');
+const overtimeRoutes = require('./backend/routes/overtime');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -107,6 +108,7 @@ app.use('/api/payroll', payrollRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/unified', unifiedRoutes);
+app.use('/api/overtime', overtimeRoutes);
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
