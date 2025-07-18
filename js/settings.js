@@ -267,6 +267,37 @@ class SettingsController {
             resetLocalStorageBtn.addEventListener('click', () => this.resetLocalStorage());
         }
 
+        // Data Recovery buttons
+        const openRecoveryModalBtn = document.getElementById('open-recovery-modal-btn');
+        if (openRecoveryModalBtn) {
+            openRecoveryModalBtn.addEventListener('click', () => this.openDataRecoveryModal());
+        }
+
+        const closeRecoveryModalBtn = document.getElementById('close-recovery-modal');
+        if (closeRecoveryModalBtn) {
+            closeRecoveryModalBtn.addEventListener('click', () => this.closeDataRecoveryModal());
+        }
+
+        const cancelRecoveryBtn = document.getElementById('cancel-recovery');
+        if (cancelRecoveryBtn) {
+            cancelRecoveryBtn.addEventListener('click', () => this.closeDataRecoveryModal());
+        }
+
+        const bulkRecoverBtn = document.getElementById('bulk-recover-btn');
+        if (bulkRecoverBtn) {
+            bulkRecoverBtn.addEventListener('click', () => this.bulkRecoverEmployees());
+        }
+
+        // Close modal on overlay click
+        const recoveryModal = document.getElementById('data-recovery-modal');
+        if (recoveryModal) {
+            recoveryModal.addEventListener('click', (e) => {
+                if (e.target.classList.contains('modal-overlay')) {
+                    this.closeDataRecoveryModal();
+                }
+            });
+        }
+
         // Listen for hash changes
         window.addEventListener('hashchange', () => {
             const hash = window.location.hash.slice(1);
@@ -2199,12 +2230,19 @@ class SettingsController {
                 throw new Error('DirectFlow not available for user stats');
             }
             
-            const employees = await this.getAllEmployees();
+            const employeesData = await this.getAllEmployees();
             
-            // Ensure employees is an array
-            if (!Array.isArray(employees)) {
-                console.warn('Employees data is not an array:', employees);
-                throw new Error('Invalid employees data format');
+            // Handle different data formats that might be returned
+            let employees = employeesData;
+            if (!Array.isArray(employeesData)) {
+                if (employeesData && employeesData.employees && Array.isArray(employeesData.employees)) {
+                    // Response is { employees: [...], pagination: {...} }
+                    employees = employeesData.employees;
+                    console.log('Extracted employees array from API response object');
+                } else {
+                    console.warn('Employees data is not an array:', employeesData);
+                    throw new Error('Invalid employees data format');
+                }
             }
             
             const stats = {
@@ -2241,6 +2279,9 @@ class SettingsController {
 
             // Update any other stat displays that might exist
             this.updateAdditionalStats(stats);
+
+            // Update deleted employees count
+            await this.updateDeletedEmployeesCount();
 
         } catch (error) {
             console.error('Failed to load user stats from DirectFlow:', error);
@@ -2281,6 +2322,394 @@ class SettingsController {
         
         totalUsersElements.forEach(el => el.textContent = stats.total);
         activeUsersElements.forEach(el => el.textContent = stats.active);
+    }
+
+    /**
+     * Update deleted employees count and button state
+     */
+    async updateDeletedEmployeesCount() {
+        try {
+            console.log('Updating deleted employees count...');
+            const deletedEmployees = await this.getDeletedEmployees();
+            const count = deletedEmployees.length;
+            
+            console.log(`Found ${count} deleted employees:`, deletedEmployees.map(emp => ({
+                id: emp.employee_id,
+                name: `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
+                status: emp.status,
+                is_active: emp.is_active,
+                account_active: emp.account_active
+            })));
+            
+            // Update count display
+            const countElement = document.getElementById('deleted-employees-count');
+            if (countElement) {
+                countElement.textContent = count;
+            }
+            
+            // Update button state
+            const openModalBtn = document.getElementById('open-recovery-modal-btn');
+            if (openModalBtn) {
+                openModalBtn.disabled = count === 0;
+                openModalBtn.textContent = count > 0 ? `View Deleted Employees (${count})` : 'No Deleted Employees';
+            }
+        } catch (error) {
+            console.error('Failed to update deleted employees count:', error);
+        }
+    }
+
+    /**
+     * Get deleted employees (those with inactive status)
+     */
+    async getDeletedEmployees() {
+        try {
+            const employees = await this.getAllEmployees();
+            
+            // Filter for employees with inactive status (representing deleted employees)
+            const deletedEmployees = employees.filter(emp => {
+                // Check multiple possible status field names and values
+                const status = emp.status || emp.employment_status || emp.employee_status || '';
+                const isActive = emp.is_active;
+                const accountActive = emp.account_active;
+                
+                // Consider deleted if:
+                // 1. Status is explicitly inactive/terminated/etc.
+                // 2. is_active flag is false/0
+                // 3. account_active flag is false/0
+                const inactiveStatuses = ['inactive', 'retired', 'terminated', 'disabled', 'former', 'ex', 'deleted'];
+                const hasInactiveStatus = inactiveStatuses.includes(status.toLowerCase());
+                const hasInactiveFlag = (isActive !== null && isActive !== undefined && !isActive) ||
+                                       (accountActive !== null && accountActive !== undefined && !accountActive);
+                
+                return hasInactiveStatus || hasInactiveFlag;
+            });
+            
+            console.log(`Found ${deletedEmployees.length} deleted/inactive employees out of ${employees.length} total employees`);
+            return deletedEmployees;
+        } catch (error) {
+            console.error('Failed to get deleted employees:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Open the data recovery modal
+     */
+    async openDataRecoveryModal() {
+        try {
+            const modal = document.getElementById('data-recovery-modal');
+            const loadingState = document.getElementById('recovery-loading');
+            const emptyState = document.getElementById('recovery-empty');
+            const tableContainer = document.getElementById('deleted-employees-table');
+            
+            if (!modal) return;
+            
+            // Show modal
+            modal.classList.remove('hidden');
+            
+            // Show loading state
+            loadingState.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+            tableContainer.classList.add('hidden');
+            
+            // Load deleted employees
+            const deletedEmployees = await this.getDeletedEmployees();
+            
+            // Hide loading state
+            loadingState.classList.add('hidden');
+            
+            if (deletedEmployees.length === 0) {
+                // Show empty state
+                emptyState.classList.remove('hidden');
+            } else {
+                // Show table with deleted employees
+                tableContainer.classList.remove('hidden');
+                this.populateDeletedEmployeesTable(deletedEmployees);
+            }
+        } catch (error) {
+            console.error('Failed to open data recovery modal:', error);
+            this.showErrorMessage('Failed to load deleted employees: ' + error.message);
+        }
+    }
+
+    /**
+     * Close the data recovery modal
+     */
+    closeDataRecoveryModal() {
+        const modal = document.getElementById('data-recovery-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    }
+
+    /**
+     * Populate the deleted employees table
+     */
+    populateDeletedEmployeesTable(deletedEmployees) {
+        const tbody = document.getElementById('deleted-employees-tbody');
+        if (!tbody) return;
+        
+        tbody.innerHTML = deletedEmployees.map(employee => {
+            const employeeName = this.getEmployeeName(employee);
+            const employeeId = employee.employee_id || employee.id || 'N/A';
+            const department = employee.department || 'N/A';
+            const dateDeleted = employee.date_deleted || employee.updated_at || 'Unknown';
+            
+            return `
+                <tr data-employee-id="${employee.id || employee.employee_id}">
+                    <td>
+                        <div class="employee-info">
+                            <strong>${employeeName}</strong>
+                        </div>
+                    </td>
+                    <td>${employeeId}</td>
+                    <td>${department}</td>
+                    <td>${this.formatDate(dateDeleted)}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <label class="checkbox-label">
+                                <input type="checkbox" class="employee-checkbox" data-employee-id="${employee.id || employee.employee_id}">
+                                <span class="checkmark"></span>
+                                Select
+                            </label>
+                            <button class="btn btn-sm btn-success recover-btn" data-employee-id="${employee.id || employee.employee_id}">
+                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"></path>
+                                    <path d="M8 5v4"></path>
+                                    <path d="M16 5v4"></path>
+                                    <path d="M3 9h18"></path>
+                                </svg>
+                                Recover
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        
+        // Add event listeners for recover buttons
+        tbody.querySelectorAll('.recover-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const employeeId = e.currentTarget.getAttribute('data-employee-id');
+                this.recoverEmployee(employeeId);
+            });
+        });
+        
+        // Add event listeners for checkboxes
+        tbody.querySelectorAll('.employee-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                this.updateBulkRecoverButton();
+            });
+        });
+    }
+
+    /**
+     * Get employee name with proper formatting
+     */
+    getEmployeeName(employee) {
+        if (!employee) return 'Unknown Employee';
+        
+        const firstName = employee.first_name || employee.firstName || '';
+        const lastName = employee.last_name || employee.lastName || '';
+        
+        if (firstName && lastName) {
+            return `${firstName} ${lastName}`;
+        } else if (firstName) {
+            return firstName;
+        } else if (lastName) {
+            return lastName;
+        } else if (employee.full_name) {
+            return employee.full_name;
+        } else if (employee.name) {
+            return employee.name;
+        } else {
+            return employee.employee_id || employee.id || 'Unknown Employee';
+        }
+    }
+
+    /**
+     * Format date for display
+     */
+    formatDate(dateString) {
+        if (!dateString) return 'Unknown';
+        
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        } catch (error) {
+            return 'Invalid Date';
+        }
+    }
+
+    /**
+     * Recover a single employee
+     */
+    async recoverEmployee(employeeId) {
+        try {
+            if (!confirm('Are you sure you want to recover this employee? They will be restored to active status.')) {
+                return;
+            }
+            
+            // Update employee status to active
+            const updateData = {
+                status: 'active',
+                employment_status: 'active',
+                employee_status: 'active'
+            };
+            
+            await this.directFlow.updateEmployee(employeeId, updateData);
+            
+            this.showSuccessMessage('Employee recovered successfully!');
+            
+            // Refresh the modal and stats
+            await this.updateDeletedEmployeesCount();
+            await this.openDataRecoveryModal();
+            await this.loadUserStats();
+            
+        } catch (error) {
+            console.error('Failed to recover employee:', error);
+            this.showErrorMessage('Failed to recover employee: ' + error.message);
+        }
+    }
+
+    /**
+     * Update bulk recover button state
+     */
+    updateBulkRecoverButton() {
+        const checkboxes = document.querySelectorAll('.employee-checkbox:checked');
+        const bulkRecoverBtn = document.getElementById('bulk-recover-btn');
+        
+        if (bulkRecoverBtn) {
+            bulkRecoverBtn.disabled = checkboxes.length === 0;
+            const count = checkboxes.length;
+            bulkRecoverBtn.innerHTML = count > 0 
+                ? `<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                     <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"></path>
+                     <path d="M8 5v4"></path>
+                     <path d="M16 5v4"></path>
+                     <path d="M3 9h18"></path>
+                   </svg>
+                   Recover Selected (${count})`
+                : `<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                     <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"></path>
+                     <path d="M8 5v4"></path>
+                     <path d="M16 5v4"></path>
+                     <path d="M3 9h18"></path>
+                   </svg>
+                   Recover Selected`;
+        }
+    }
+
+    /**
+     * Bulk recover selected employees
+     */
+    async bulkRecoverEmployees() {
+        try {
+            const checkboxes = document.querySelectorAll('.employee-checkbox:checked');
+            const employeeIds = Array.from(checkboxes).map(cb => cb.getAttribute('data-employee-id'));
+            
+            if (employeeIds.length === 0) {
+                this.showErrorMessage('Please select employees to recover.');
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to recover ${employeeIds.length} selected employees?`)) {
+                return;
+            }
+            
+            // Update all selected employees
+            const updateData = {
+                status: 'active',
+                employment_status: 'active',
+                employee_status: 'active'
+            };
+            
+            const promises = employeeIds.map(id => this.directFlow.updateEmployee(id, updateData));
+            await Promise.all(promises);
+            
+            this.showSuccessMessage(`Successfully recovered ${employeeIds.length} employees!`);
+            
+            // Refresh the modal and stats
+            await this.updateDeletedEmployeesCount();
+            await this.openDataRecoveryModal();
+            await this.loadUserStats();
+            
+        } catch (error) {
+            console.error('Failed to bulk recover employees:', error);
+            this.showErrorMessage('Failed to recover employees: ' + error.message);
+        }
+    }
+
+    /**
+     * Show success message
+     */
+    showSuccessMessage(message) {
+        try {
+            // Create or get notification container
+            let container = document.getElementById('notification-container');
+            
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'notification-container';
+                container.className = 'notification-container';
+                container.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 10000;
+                    max-width: 400px;
+                `;
+                document.body.appendChild(container);
+            }
+
+            // Create success notification
+            const notification = document.createElement('div');
+            notification.className = 'notification notification-success';
+            notification.style.cssText = `
+                background: #28a745;
+                color: white;
+                padding: 1rem;
+                border-radius: 8px;
+                margin-bottom: 10px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                transform: translateX(420px);
+                transition: transform 0.3s ease;
+            `;
+
+            notification.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20,6 9,17 4,12"></polyline>
+                </svg>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(notification);
+
+            // Animate in
+            setTimeout(() => {
+                notification.style.transform = 'translateX(0)';
+            }, 10);
+
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                notification.style.transform = 'translateX(420px)';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 5000);
+
+        } catch (error) {
+            console.error('Error showing success message:', error);
+        }
     }
 
     /**
@@ -2382,8 +2811,66 @@ class SettingsController {
     // Get all employees
     async getAllEmployees() {
         try {
-            const result = await this.makeDirectFlowAPICall('/api/unified/data');
-            return result.data?.employees || [];
+            console.log('Getting all employees (including inactive)...');
+            
+            if (!this.directFlow || !this.directFlow.initialized) {
+                throw new Error('DirectFlow not available');
+            }
+            
+            let employees = [];
+            
+            // Try DirectFlow's getAllEmployeesForPayroll method which includes all statuses
+            try {
+                const directFlowResponse = await this.directFlow.getAllEmployeesForPayroll();
+                console.log('DirectFlow getAllEmployeesForPayroll response:', directFlowResponse);
+                
+                if (directFlowResponse.success && directFlowResponse.data) {
+                    if (Array.isArray(directFlowResponse.data)) {
+                        employees = directFlowResponse.data;
+                    } else if (directFlowResponse.data.employees && Array.isArray(directFlowResponse.data.employees)) {
+                        employees = directFlowResponse.data.employees;
+                    }
+                } else if (Array.isArray(directFlowResponse)) {
+                    employees = directFlowResponse;
+                }
+            } catch (error) {
+                console.warn('DirectFlow getAllEmployeesForPayroll failed, trying API call:', error);
+                
+                // Fallback to direct API call
+                try {
+                    const result = await this.makeDirectFlowAPICall('/api/employees?status=all&limit=1000');
+                    console.log('API response for all employees:', result);
+                    
+                    if (result.success && result.data) {
+                        if (Array.isArray(result.data)) {
+                            employees = result.data;
+                        } else if (result.data.employees && Array.isArray(result.data.employees)) {
+                            employees = result.data.employees;
+                        } else {
+                            console.warn('Unexpected API response format:', result);
+                            employees = [];
+                        }
+                    } else if (result.employees && Array.isArray(result.employees)) {
+                        employees = result.employees;
+                    } else if (Array.isArray(result)) {
+                        employees = result;
+                    } else {
+                        console.warn('Unexpected API response format:', result);
+                        employees = [];
+                    }
+                } catch (apiError) {
+                    console.error('API call also failed:', apiError);
+                }
+            }
+            
+            console.log(`getAllEmployees returning ${employees.length} employees`);
+            console.log('Employee status breakdown:', employees.reduce((acc, emp) => {
+                const status = emp.status || 'unknown';
+                acc[status] = (acc[status] || 0) + 1;
+                return acc;
+            }, {}));
+            
+            return employees;
         } catch (error) {
             console.error('Failed to get employees:', error);
             throw error;

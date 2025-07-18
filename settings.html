@@ -940,6 +940,45 @@
                                     </form>
                                 </div>
                             </div>
+
+                            <!-- Data Recovery Card -->
+                            <div class="tile">
+                                <div class="tile-header">
+                                    <h3 class="tile-title">Data Recovery</h3>
+                                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"></path>
+                                        <path d="M8 5v4"></path>
+                                        <path d="M16 5v4"></path>
+                                        <path d="M3 9h18"></path>
+                                        <path d="M12 16v-3"></path>
+                                        <path d="M9 13h6"></path>
+                                    </svg>
+                                </div>
+                                <div class="tile-content">
+                                    <p>Recover deleted employee accounts and restore them to active status.</p>
+                                    
+                                    <div class="recovery-stats">
+                                        <div class="stat-card">
+                                            <div class="stat-value" id="deleted-employees-count">0</div>
+                                            <div class="stat-label">Deleted Employees</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="recovery-actions">
+                                        <button type="button" class="btn btn-primary" id="open-recovery-modal-btn">
+                                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"></path>
+                                                <path d="M8 5v4"></path>
+                                                <path d="M16 5v4"></path>
+                                                <path d="M3 9h18"></path>
+                                                <path d="M12 16v-3"></path>
+                                                <path d="M9 13h6"></path>
+                                            </svg>
+                                            View Deleted Employees
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1016,6 +1055,71 @@
                     title="Reset">
                 <span>�</span>
             </button>
+        </div>
+    </div>
+
+    <!-- Data Recovery Modal -->
+    <div id="data-recovery-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Deleted Employees Recovery</h3>
+                <button class="modal-close" id="close-recovery-modal" aria-label="Close modal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-content">
+                <div class="modal-body">
+                    <p>Below are employees that have been deleted from the system. You can recover them to restore their access and data.</p>
+                    
+                    <div class="deleted-employees-list" id="deleted-employees-list">
+                        <div class="loading-state" id="recovery-loading">
+                            <div class="spinner"></div>
+                            <p>Loading deleted employees...</p>
+                        </div>
+                        
+                        <div class="empty-state hidden" id="recovery-empty">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M12 6v6l4 2"></path>
+                            </svg>
+                            <h4>No Deleted Employees</h4>
+                            <p>There are currently no deleted employees to recover.</p>
+                        </div>
+                        
+                        <div class="employees-table" id="deleted-employees-table">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Employee</th>
+                                        <th>Employee ID</th>
+                                        <th>Department</th>
+                                        <th>Date Deleted</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="deleted-employees-tbody">
+                                    <!-- Deleted employees will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancel-recovery">Cancel</button>
+                    <button class="btn btn-primary" id="bulk-recover-btn" disabled>
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"></path>
+                            <path d="M8 5v4"></path>
+                            <path d="M16 5v4"></path>
+                            <path d="M3 9h18"></path>
+                        </svg>
+                        Recover Selected
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1804,6 +1908,221 @@
                 width: 16px;
                 height: 16px;
             }
+        }
+
+        /* Data Recovery Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.hidden {
+            display: none;
+        }
+
+        .modal {
+            background: var(--bg-primary);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            max-width: 90vw;
+            max-height: 90vh;
+            width: 800px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-lg);
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+        }
+
+        .modal-title {
+            margin: 0;
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .modal-close:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .modal-close svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .modal-content {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .modal-body {
+            padding: var(--spacing-lg);
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .modal-footer {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: var(--spacing-md);
+            padding: var(--spacing-lg);
+            border-top: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+        }
+
+        .recovery-stats {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .recovery-actions {
+            margin-top: var(--spacing-lg);
+        }
+
+        .recovery-actions .btn {
+            width: 100%;
+        }
+
+        .deleted-employees-list {
+            min-height: 300px;
+        }
+
+        .loading-state,
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: var(--spacing-xl);
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .loading-state .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border-color);
+            border-top: 3px solid var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: var(--spacing-md);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: var(--spacing-md);
+            color: var(--text-muted);
+        }
+
+        .empty-state h4 {
+            margin: 0 0 var(--spacing-sm) 0;
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-secondary);
+        }
+
+        .employees-table {
+            overflow-x: auto;
+        }
+
+        .employees-table .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .employees-table .table th,
+        .employees-table .table td {
+            padding: var(--spacing-md);
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .employees-table .table th {
+            background: var(--bg-secondary);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+        }
+
+        .employees-table .table tr:hover {
+            background: var(--bg-hover);
+        }
+
+        .employee-info strong {
+            color: var(--text-primary);
+        }
+
+        .action-buttons {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            cursor: pointer;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            margin: 0;
+        }
+
+        .recover-btn {
+            background: var(--success-color);
+            color: white;
+            border: 1px solid var(--success-color);
+        }
+
+        .recover-btn:hover {
+            background: var(--success-hover);
+            border-color: var(--success-hover);
+        }
+
+        .btn-success {
+            background: var(--success-color, #28a745);
+            color: white;
+            border: 1px solid var(--success-color, #28a745);
+        }
+
+        .btn-success:hover {
+            background: var(--success-hover, #218838);
+            border-color: var(--success-hover, #218838);
         }
     </style>
 

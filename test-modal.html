@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Modal</title>
+    <style>
+        .btn {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>Modal Test</h1>
+    <button type="button" class="btn btn-primary" id="open-recovery-modal-btn">
+        Test Modal Button
+    </button>
+
+    <script>
+        // Test script to check if the button is working
+        document.addEventListener('DOMContentLoaded', function() {
+            const button = document.getElementById('open-recovery-modal-btn');
+            
+            if (button) {
+                console.log('Button found:', button);
+                console.log('Button disabled:', button.disabled);
+                
+                button.addEventListener('click', function() {
+                    console.log('Button clicked!');
+                    alert('Button click event fired successfully!');
+                });
+                
+                // Enable the button for testing
+                button.disabled = false;
+                
+                console.log('Button setup complete. Try clicking it.');
+            } else {
+                console.error('Button not found!');
+            }
+        });
+    </script>
+</body>
+</html>
