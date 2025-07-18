@@ -91,27 +91,63 @@ class EmployeeController {
     }
 
     /**
+     * Get consistent authentication service
+     */
+    getAuthService() {
+        const authService = window.directFlowAuth || window.directFlow;
+        if (!authService) {
+            console.error('❌ No DirectFlow authentication service available');
+            return null;
+        }
+        
+        if (typeof authService.isAuthenticated !== 'function') {
+            console.error('❌ Authentication service missing isAuthenticated method');
+            return null;
+        }
+        
+        return authService;
+    }
+
+    /**
+     * Check if user is authenticated
+     */
+    isAuthenticated() {
+        const authService = this.getAuthService();
+        return authService && authService.isAuthenticated();
+    }
+
+    /**
+     * Get current user from authentication service
+     */
+    getCurrentUser() {
+        const authService = this.getAuthService();
+        if (!authService || !authService.isAuthenticated()) {
+            return null;
+        }
+        
+        if (typeof authService.getCurrentUser === 'function') {
+            return authService.getCurrentUser();
+        }
+        
+        console.warn('⚠️ getCurrentUser method not available on auth service');
+        return null;
+    }
+
+    /**
      * Verify user authentication and role using DirectFlow
      */
     verifyAuthentication() {
-        // Check DirectFlow authentication first
-        if (window.directFlowAuth && window.directFlowAuth.isAuthenticated && window.directFlowAuth.isAuthenticated()) {
-            const user = window.directFlowAuth.getCurrentUser();
-            if (user) {
-                this.currentUser = user;
-                this.employeeId = user.employee_id || user.id || user.username;
-                console.log('✅ Authenticated via DirectFlowAuth:', this.employeeId);
-                return true;
-            }
-        }
+        console.log('🔐 Verifying authentication...');
         
-        // Check if DirectFlow interface is available (might be fallback)
-        if (window.directFlow && window.directFlow.isAuthenticated && window.directFlow.isAuthenticated()) {
-            const user = window.directFlow.getCurrentUser();
+        // Check DirectFlow authentication first
+        const authService = this.getAuthService();
+        if (authService && authService.isAuthenticated()) {
+            const user = this.getCurrentUser();
             if (user) {
                 this.currentUser = user;
                 this.employeeId = user.employee_id || user.id || user.username;
-                console.log('✅ Authenticated via DirectFlow interface:', this.employeeId);
+                console.log('✅ Authenticated via DirectFlow:', this.employeeId);
+                console.log('👤 Current user:', user);
                 return true;
             }
         }
@@ -129,21 +165,35 @@ class EmployeeController {
             }
         }
 
-        // Last resort: Create demo user for development
-        console.warn('⚠️ No authentication found, creating demo user');
-        this.currentUser = {
-            id: 'demo.user',
-            username: 'demo.user',
-            name: 'Demo User',
-            email: 'demo@company.com',
-            role: 'employee',
-            department: 'General',
-            employee_id: 'demo.user'
-        };
-        this.employeeId = 'demo.user';
-        localStorage.setItem('directflow_user', JSON.stringify(this.currentUser));
-        console.log('✅ Demo user created:', this.employeeId);
-        return true;
+        // Last resort: Create demo user for development - but only in dev mode
+        const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        if (isDevelopment) {
+            console.warn('⚠️ No authentication found, creating demo user for development');
+            this.currentUser = {
+                id: 'demo.user',
+                username: 'demo.user',
+                name: 'Demo User',
+                email: 'demo@company.com',
+                role: 'employee',
+                department: 'General',
+                employee_id: 'demo.user'
+            };
+            this.employeeId = 'demo.user';
+            localStorage.setItem('directflow_user', JSON.stringify(this.currentUser));
+            console.log('✅ Demo user created:', this.employeeId);
+            return true;
+        }
+
+        // No authentication available
+        console.error('❌ No authentication available');
+        this.showError('Please log in to access the employee dashboard');
+        // Redirect to login page
+        setTimeout(() => {
+            if (window.location.pathname !== '/login.html') {
+                window.location.href = '/login.html';
+            }
+        }, 2000);
+        return false;
     }
 
     /**
@@ -312,14 +362,15 @@ class EmployeeController {
      */
     async loadAttendanceData() {
         try {
-            if (!window.directFlowAuth || !window.directFlowAuth.isAuthenticated()) {
-                throw new Error('DirectFlow authentication not available');
+            const authService = this.getAuthService();
+            if (!authService || !authService.isAuthenticated()) {
+                throw new Error('Authentication required to load attendance data');
             }
 
             console.log('Loading attendance data for employee:', this.employeeId);
             
             // Use the unified data endpoint instead of non-existent employee-specific endpoint
-            const response = await window.directFlowAuth.apiRequest('/api/unified/data');
+            const response = await authService.apiRequest('/api/unified/data');
             
             if (!response.ok) {
                 throw new Error(`Failed to load attendance data: ${response.status}`);
@@ -399,14 +450,15 @@ class EmployeeController {
      */
     async loadOvertimeRequests() {
         try {
-            if (!window.directFlowAuth || !window.directFlowAuth.isAuthenticated()) {
-                throw new Error('DirectFlow authentication not available');
+            const authService = this.getAuthService();
+            if (!authService || !authService.isAuthenticated()) {
+                throw new Error('Authentication required to load overtime requests');
             }
 
             console.log('Loading overtime requests for employee:', this.employeeId);
             
             // Use the unified data endpoint to get overtime data
-            const response = await window.directFlowAuth.apiRequest('/api/unified/data');
+            const response = await authService.apiRequest('/api/unified/data');
             
             if (!response.ok) {
                 // Overtime requests are optional, so don't throw error
@@ -899,10 +951,10 @@ class EmployeeController {
         try {
             this.showButtonLoading('clock-in-btn', true);
             
-            // Check for DirectFlow authentication - use either DirectFlowAuth or fallback interface
-            const authService = window.directFlowAuth || window.directFlow;
-            if (!authService || !authService.isAuthenticated()) {
-                throw new Error('Authentication service not available or not authenticated');
+            // Use centralized authentication service
+            const authService = this.getAuthService();
+            if (!authService || !this.isAuthenticated()) {
+                throw new Error('Authentication service not available or not authenticated. Please log in again.');
             }
 
             const currentTime = new Date();
@@ -914,8 +966,22 @@ class EmployeeController {
             // First get current data to preserve existing records
             let currentDataResponse;
             try {
+                console.log('📡 Fetching current data from /api/unified/data...');
                 currentDataResponse = await authService.apiRequest('/api/unified/data');
+                console.log('📡 Response status:', currentDataResponse.status);
+                
+                // Handle 401 specifically
+                if (currentDataResponse.status === 401) {
+                    throw new Error('Authentication expired. Please log in again.');
+                }
             } catch (error) {
+                if (error.message.includes('401') || error.message.includes('Authentication')) {
+                    this.showError('Authentication expired. Please log in again.');
+                    setTimeout(() => {
+                        window.location.href = '/login.html';
+                    }, 2000);
+                    return;
+                }
                 console.warn('Could not fetch current data, using empty structure:', error.message);
                 currentDataResponse = {
                     ok: true,
@@ -935,22 +1001,39 @@ class EmployeeController {
             }
             
             const currentDataResult = await currentDataResponse.json();
+            console.log('📊 Current data result:', currentDataResult);
+            
             if (!currentDataResult || !currentDataResult.success) {
                 throw new Error('Failed to get current data: Invalid response');
             }
 
             const currentData = currentDataResult.data;
             let attendanceRecords = currentData.attendanceRecords || [];
+            
+            console.log(`📋 Found ${attendanceRecords.length} existing attendance records`);
 
-            // Check if there's already a record for today
-            const todayRecordIndex = attendanceRecords.findIndex(record => 
-                (record.employeeId == this.employeeId || record.employee_id == this.employeeId) && 
-                record.date === dateString
-            );
+            // Check if there's already a record for today with enhanced ID checking
+            const todayRecordIndex = attendanceRecords.findIndex(record => {
+                const employeeMatch = record.employeeId == this.employeeId || 
+                                    record.employee_id == this.employeeId || 
+                                    record.user_id == this.employeeId ||
+                                    String(record.employeeId) === String(this.employeeId) || 
+                                    String(record.employee_id) === String(this.employeeId) || 
+                                    String(record.user_id) === String(this.employeeId);
+                const dateMatch = record.date === dateString;
+                
+                console.log(`🔍 Clock-in check - Record: emp=${record.employeeId}, emp_id=${record.employee_id}, user_id=${record.user_id}, date=${record.date}`);
+                console.log(`🔍 Clock-in check - Match: employee=${employeeMatch}, date=${dateMatch}, looking for=${this.employeeId}`);
+                
+                return employeeMatch && dateMatch;
+            });
 
+            // Create comprehensive record with all ID variants for maximum compatibility
             const newRecord = {
+                id: Date.now() + '_' + this.employeeId,
                 employeeId: this.employeeId,
                 employee_id: this.employeeId,
+                user_id: this.employeeId, // Add user_id for compatibility
                 date: dateString,
                 clockIn: timeString,
                 timeIn: timeString,
@@ -958,7 +1041,11 @@ class EmployeeController {
                 status: 'present',
                 clockOut: null,
                 clock_out: null,
+                timeOut: null,
                 hours: 0,
+                hoursWorked: 0,
+                overtimeHours: 0,
+                notes: '',
                 created_at: currentTime.toISOString(),
                 updated_at: currentTime.toISOString()
             };
@@ -989,22 +1076,60 @@ class EmployeeController {
             };
 
             console.log('🔄 Syncing attendance data with backend...');
+            console.log('📤 Sync data:', JSON.stringify(syncData, null, 2));
+            
             const response = await authService.apiRequest('/api/unified/sync', {
                 method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify(syncData)
             });
 
+            console.log('📥 Sync response status:', response.status);
+            
             if (!response.ok) {
-                throw new Error(`Clock in failed: ${response.status}`);
+                const errorText = await response.text();
+                console.error('❌ Sync failed with response:', errorText);
+                
+                // Handle specific error codes
+                if (response.status === 401) {
+                    throw new Error('Authentication expired. Please log in again.');
+                } else if (response.status === 403) {
+                    throw new Error('Access denied. You may not have permission to perform this action.');
+                } else {
+                    throw new Error(`Clock in failed: ${response.status} - ${errorText}`);
+                }
             }
 
             const result = await response.json();
+            console.log('✅ Sync result:', result);
+            
             if (result.success) {
                 this.showSuccess('✅ Clocked in successfully at ' + timeString);
                 console.log('✅ Clock in successful, refreshing data...');
                 
+                // Store clock-in time in localStorage as backup for clock-out recovery
+                const localStorageKey = `clockIn_${this.employeeId}_${dateString}`;
+                localStorage.setItem(localStorageKey, timeString);
+                console.log(`📱 Stored clock-in time in localStorage: ${timeString}`);
+                
                 // Update local data immediately for better UX
                 this.updateLocalAttendanceData(newRecord);
+                
+                // Also update the main attendance data array to ensure clock-out can find the record
+                const existingIndex = this.attendanceData.findIndex(record => 
+                    record.date === newRecord.date && 
+                    (record.employeeId === this.employeeId || record.employee_id === this.employeeId)
+                );
+                
+                if (existingIndex >= 0) {
+                    this.attendanceData[existingIndex] = { ...this.attendanceData[existingIndex], ...newRecord };
+                } else {
+                    this.attendanceData.unshift(newRecord);
+                }
+                
+                console.log('✅ Local attendance data updated for clock-out compatibility');
                 
                 // Refresh full data from backend
                 await this.loadInitialData();
@@ -1027,10 +1152,10 @@ class EmployeeController {
         try {
             this.showButtonLoading('clock-out-btn', true);
             
-            // Check for DirectFlow authentication - use either DirectFlowAuth or fallback interface
-            const authService = window.directFlowAuth || window.directFlow;
-            if (!authService || !authService.isAuthenticated()) {
-                throw new Error('Authentication service not available or not authenticated');
+            // Use centralized authentication service
+            const authService = this.getAuthService();
+            if (!authService || !this.isAuthenticated()) {
+                throw new Error('Authentication service not available or not authenticated. Please log in again.');
             }
 
             const currentTime = new Date();
@@ -1043,7 +1168,19 @@ class EmployeeController {
             let currentDataResponse;
             try {
                 currentDataResponse = await authService.apiRequest('/api/unified/data');
+                
+                // Handle 401 specifically
+                if (currentDataResponse.status === 401) {
+                    throw new Error('Authentication expired. Please log in again.');
+                }
             } catch (error) {
+                if (error.message.includes('401') || error.message.includes('Authentication')) {
+                    this.showError('Authentication expired. Please log in again.');
+                    setTimeout(() => {
+                        window.location.href = '/login.html';
+                    }, 2000);
+                    return;
+                }
                 console.warn('Could not fetch current data, using empty structure:', error.message);
                 currentDataResponse = {
                     ok: true,
@@ -1069,15 +1206,156 @@ class EmployeeController {
 
             const currentData = currentDataResult.data;
             let attendanceRecords = currentData.attendanceRecords || [];
-
-            // Find today's attendance record to update
-            const todayRecordIndex = attendanceRecords.findIndex(record => 
-                (record.employeeId == this.employeeId || record.employee_id == this.employeeId) && 
-                record.date === dateString
-            );
+            
+            console.log(`📋 Found ${attendanceRecords.length} attendance records from backend`);
+            console.log('🔍 Looking for today\'s record for employee:', this.employeeId, 'on date:', dateString);
+            
+            // Debug: Log all records to understand the data structure
+            console.log('🔍 All attendance records:', attendanceRecords);
+            
+            // Enhanced record finding with multiple employee ID field checks
+            let todayRecordIndex = attendanceRecords.findIndex(record => {
+                const employeeMatch = record.employeeId == this.employeeId || 
+                                    record.employee_id == this.employeeId || 
+                                    record.user_id == this.employeeId ||
+                                    record.id == this.employeeId;
+                const dateMatch = record.date === dateString;
+                
+                console.log(`🔍 Checking record: employeeId=${record.employeeId}, employee_id=${record.employee_id}, user_id=${record.user_id}, date=${record.date}`);
+                console.log(`🔍 Employee match: ${employeeMatch}, Date match: ${dateMatch}, Looking for: ${this.employeeId}`);
+                
+                return employeeMatch && dateMatch;
+            });
+            
+            console.log('🔍 Backend record index:', todayRecordIndex);
+            
+            // If not found in backend data, try a more aggressive search
+            if (todayRecordIndex === -1) {
+                console.log('⚠️ No record found in backend with strict matching, trying flexible search...');
+                
+                // Try finding any record for today regardless of employee ID format
+                const todayRecords = attendanceRecords.filter(record => record.date === dateString);
+                console.log('📅 All records for today:', todayRecords);
+                
+                // Try to find by converting IDs to strings for comparison
+                todayRecordIndex = attendanceRecords.findIndex(record => {
+                    const employeeMatch = String(record.employeeId) === String(this.employeeId) || 
+                                        String(record.employee_id) === String(this.employeeId) || 
+                                        String(record.user_id) === String(this.employeeId) ||
+                                        String(record.id) === String(this.employeeId);
+                    const dateMatch = record.date === dateString;
+                    return employeeMatch && dateMatch;
+                });
+                
+                console.log('🔍 Flexible search result index:', todayRecordIndex);
+            }
+            
+            // If still not found in backend data, check local attendance data
+            if (todayRecordIndex === -1) {
+                console.log('⚠️ No record found in backend, checking local data...');
+                console.log('📋 Local attendance data:', this.attendanceData);
+                
+                const localRecord = this.attendanceData.find(record => {
+                    const employeeMatch = record.employeeId == this.employeeId || 
+                                        record.employee_id == this.employeeId || 
+                                        record.user_id == this.employeeId ||
+                                        String(record.employeeId) === String(this.employeeId) || 
+                                        String(record.employee_id) === String(this.employeeId) || 
+                                        String(record.user_id) === String(this.employeeId);
+                    const dateMatch = record.date === dateString;
+                    const hasClockIn = record.clockIn || record.clock_in || record.timeIn;
+                    
+                    console.log(`🔍 Local record check: emp=${employeeMatch}, date=${dateMatch}, hasClockIn=${!!hasClockIn}`);
+                    return employeeMatch && dateMatch && hasClockIn;
+                });
+                
+                if (localRecord) {
+                    console.log('✅ Found local record with clock-in, adding to backend records:', localRecord);
+                    // Ensure the local record has all required ID fields for backend compatibility
+                    const enhancedRecord = {
+                        ...localRecord,
+                        employeeId: this.employeeId,
+                        employee_id: this.employeeId,
+                        user_id: this.employeeId
+                    };
+                    attendanceRecords.push(enhancedRecord);
+                    todayRecordIndex = attendanceRecords.length - 1;
+                } else {
+                    console.log('❌ No local record with clock-in found either');
+                }
+            }
 
             if (todayRecordIndex === -1) {
-                throw new Error('No clock-in record found for today. Please clock in first.');
+                // Last resort: Check if user might have clocked in earlier and offer to create a record
+                console.log('⚠️ Final attempt: Checking for any evidence of clock-in today...');
+                
+                // Check browser localStorage for any clock-in evidence
+                const localStorageKey = `clockIn_${this.employeeId}_${dateString}`;
+                const localClockInTime = localStorage.getItem(localStorageKey);
+                
+                if (localClockInTime) {
+                    console.log(`📱 Found clock-in evidence in localStorage: ${localClockInTime}`);
+                    
+                    // Create a recovery record
+                    const recoveryRecord = {
+                        id: `recovery_${Date.now()}_${this.employeeId}`,
+                        employeeId: this.employeeId,
+                        employee_id: this.employeeId,
+                        user_id: this.employeeId,
+                        date: dateString,
+                        clockIn: localClockInTime,
+                        timeIn: localClockInTime,
+                        clock_in: localClockInTime,
+                        status: 'present',
+                        clockOut: null,
+                        clock_out: null,
+                        timeOut: null,
+                        hours: 0,
+                        hoursWorked: 0,
+                        notes: 'Recovered from localStorage',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    };
+                    
+                    attendanceRecords.push(recoveryRecord);
+                    todayRecordIndex = attendanceRecords.length - 1;
+                    console.log('✅ Created recovery record from localStorage');
+                } else {
+                    // Provide detailed error information
+                    const errorInfo = {
+                        employeeId: this.employeeId,
+                        employeeIdType: typeof this.employeeId,
+                        date: dateString,
+                        backendRecordCount: attendanceRecords.length,
+                        localRecordCount: this.attendanceData.length,
+                        todayBackendRecords: attendanceRecords.filter(r => r.date === dateString).length,
+                        todayLocalRecords: this.attendanceData.filter(r => r.date === dateString).length,
+                        allEmployeeIds: attendanceRecords.map(r => ({
+                            employeeId: r.employeeId,
+                            employee_id: r.employee_id,
+                            user_id: r.user_id,
+                            date: r.date
+                        }))
+                    };
+                    console.error('❌ No clock-in record found. Debug info:', errorInfo);
+                    
+                    // Try one more manual search for debugging
+                    console.log('🔍 Manual search attempt:');
+                    attendanceRecords.forEach((record, index) => {
+                        console.log(`Record ${index}:`, {
+                            employeeId: record.employeeId,
+                            employee_id: record.employee_id,
+                            user_id: record.user_id,
+                            date: record.date,
+                            employeeMatch: record.employeeId == this.employeeId || 
+                                         record.employee_id == this.employeeId || 
+                                         record.user_id == this.employeeId,
+                            dateMatch: record.date === dateString
+                        });
+                    });
+                    
+                    throw new Error(`No clock-in record found for today. Employee ID: ${this.employeeId} (${typeof this.employeeId}), Date: ${dateString}, Backend records: ${errorInfo.backendRecordCount}, Today's backend records: ${errorInfo.todayBackendRecords}. Please clock in first before clocking out. Check console for detailed debug info.`);
+                }
             }
 
             const existingRecord = attendanceRecords[todayRecordIndex];
@@ -1127,17 +1405,35 @@ class EmployeeController {
             console.log('🔄 Syncing clock out data with backend...');
             const response = await authService.apiRequest('/api/unified/sync', {
                 method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify(syncData)
             });
 
             if (!response.ok) {
-                throw new Error(`Clock out failed: ${response.status}`);
+                const errorText = await response.text();
+                console.error('❌ Clock out sync failed with response:', errorText);
+                
+                // Handle specific error codes
+                if (response.status === 401) {
+                    throw new Error('Authentication expired. Please log in again.');
+                } else if (response.status === 403) {
+                    throw new Error('Access denied. You may not have permission to perform this action.');
+                } else {
+                    throw new Error(`Clock out failed: ${response.status} - ${errorText}`);
+                }
             }
 
             const result = await response.json();
             if (result.success) {
                 this.showSuccess(`✅ Clocked out successfully at ${timeString} (${hoursWorked.toFixed(2)} hours worked)`);
                 console.log('✅ Clock out successful, refreshing data...');
+                
+                // Clean up localStorage clock-in backup since clock-out was successful
+                const localStorageKey = `clockIn_${this.employeeId}_${dateString}`;
+                localStorage.removeItem(localStorageKey);
+                console.log(`📱 Cleaned up localStorage clock-in backup`);
                 
                 // Update local data immediately for better UX
                 this.updateLocalAttendanceData(updatedRecord);
@@ -1163,8 +1459,9 @@ class EmployeeController {
         try {
             this.showButtonLoading('lunch-start-btn', true);
             
-            if (!window.directFlowAuth || !window.directFlowAuth.isAuthenticated()) {
-                throw new Error('DirectFlow authentication not available');
+            const authService = this.getAuthService();
+            if (!authService || !authService.isAuthenticated()) {
+                throw new Error('Authentication required for lunch tracking');
             }
 
             const currentTime = new Date();
@@ -1172,7 +1469,7 @@ class EmployeeController {
             const dateString = currentTime.toISOString().split('T')[0];
 
             // Get current data
-            const currentDataResponse = await window.directFlowAuth.apiRequest('/api/unified/data');
+            const currentDataResponse = await authService.apiRequest('/api/unified/data');
             if (!currentDataResponse.ok) {
                 throw new Error(`Failed to get current data: ${currentDataResponse.status}`);
             }
@@ -1204,7 +1501,7 @@ class EmployeeController {
                     attendanceRecords: attendanceRecords
                 };
 
-                const response = await window.directFlowAuth.apiRequest('/api/unified/sync', {
+                const response = await authService.apiRequest('/api/unified/sync', {
                     method: 'POST',
                     body: JSON.stringify(syncData)
                 });
@@ -1237,8 +1534,9 @@ class EmployeeController {
         try {
             this.showButtonLoading('lunch-end-btn', true);
             
-            if (!window.directFlowAuth || !window.directFlowAuth.isAuthenticated()) {
-                throw new Error('DirectFlow authentication not available');
+            const authService = this.getAuthService();
+            if (!authService || !authService.isAuthenticated()) {
+                throw new Error('Authentication required for lunch tracking');
             }
 
             const currentTime = new Date();
@@ -1246,7 +1544,7 @@ class EmployeeController {
             const dateString = currentTime.toISOString().split('T')[0];
 
             // Get current data
-            const currentDataResponse = await window.directFlowAuth.apiRequest('/api/unified/data');
+            const currentDataResponse = await authService.apiRequest('/api/unified/data');
             if (!currentDataResponse.ok) {
                 throw new Error(`Failed to get current data: ${currentDataResponse.status}`);
             }
@@ -1278,7 +1576,7 @@ class EmployeeController {
                     attendanceRecords: attendanceRecords
                 };
 
-                const response = await window.directFlowAuth.apiRequest('/api/unified/sync', {
+                const response = await authService.apiRequest('/api/unified/sync', {
                     method: 'POST',
                     body: JSON.stringify(syncData)
                 });
@@ -1329,8 +1627,9 @@ class EmployeeController {
                 throw new Error('Hours must be between 0 and 12');
             }
 
-            if (!window.directFlowAuth || !window.directFlowAuth.isAuthenticated()) {
-                throw new Error('DirectFlow authentication not available');
+            const authService = this.getAuthService();
+            if (!authService || !authService.isAuthenticated()) {
+                throw new Error('Authentication required for overtime requests');
             }
 
             // For now, we'll just show a success message since overtime requests
@@ -1358,8 +1657,9 @@ class EmployeeController {
         }
 
         try {
-            if (!window.directFlowAuth || !window.directFlowAuth.isAuthenticated()) {
-                throw new Error('DirectFlow authentication not available');
+            const authService = this.getAuthService();
+            if (!authService || !authService.isAuthenticated()) {
+                throw new Error('Authentication required for overtime management');
             }
 
             // For now, just show success since overtime backend isn't fully implemented
@@ -1524,6 +1824,33 @@ class EmployeeController {
             this.showError('Failed to refresh data');
         } finally {
             this.showLoading(false);
+        }
+    }
+
+    /**
+     * Update current time display (required by employee.html)
+     */
+    updateCurrentTime() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString();
+        const dateString = now.toLocaleDateString();
+        
+        // Update time displays if they exist
+        const timeElement = document.getElementById('current-time');
+        const dateElement = document.getElementById('current-date');
+        
+        if (timeElement) {
+            timeElement.textContent = timeString;
+        }
+        
+        if (dateElement) {
+            dateElement.textContent = dateString;
+        }
+        
+        // Update any other time-related elements
+        const clockDisplay = document.querySelector('.clock-display');
+        if (clockDisplay) {
+            clockDisplay.textContent = timeString;
         }
     }
 
@@ -1870,11 +2197,256 @@ class EmployeeController {
             }
             
             // Update attendance summary if today's data is being shown
-            this.updateAttendanceData();
+            this.updatePersonalStats(this.calculatePersonalStats(this.attendanceData));
+            this.updateAttendanceSummary(this.attendanceData);
             
         } catch (error) {
             console.error('Error updating local data:', error);
         }
+    }
+
+    // === UTILITY METHODS ===
+
+    /**
+     * Show loading state
+     */
+    showLoading(show = true) {
+        const loadingElements = document.querySelectorAll('.loading-indicator');
+        loadingElements.forEach(element => {
+            element.style.display = show ? 'block' : 'none';
+        });
+    }
+
+    /**
+     * Show success message
+     */
+    showSuccess(message) {
+        this.showToast(message, 'success');
+    }
+
+    /**
+     * Show error message
+     */
+    showError(message) {
+        this.showToast(message, 'error');
+    }
+
+    /**
+     * Show toast notification
+     */
+    showToast(message, type = 'info') {
+        // Create toast if toast system is available
+        if (typeof showToast === 'function') {
+            showToast(message, type);
+            return;
+        }
+
+        // Fallback: Use browser alert or console
+        if (type === 'error') {
+            console.error(message);
+        } else {
+            console.log(message);
+        }
+
+        // Try to show in a notification area
+        const notificationArea = document.querySelector('.notification-area') || 
+                                document.querySelector('.alerts-container') ||
+                                document.querySelector('#notifications');
+        
+        if (notificationArea) {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `
+                <span class="toast-message">${message}</span>
+                <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+            `;
+            notificationArea.appendChild(toast);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, 5000);
+        }
+    }
+
+    /**
+     * Show button loading state
+     */
+    showButtonLoading(buttonId, isLoading = true) {
+        const button = document.getElementById(buttonId);
+        if (!button) return;
+
+        if (isLoading) {
+            button.disabled = true;
+            button.classList.add('loading');
+            const originalText = button.textContent;
+            button.dataset.originalText = originalText;
+            button.textContent = 'Loading...';
+        } else {
+            button.disabled = false;
+            button.classList.remove('loading');
+            if (button.dataset.originalText) {
+                button.textContent = button.dataset.originalText;
+                delete button.dataset.originalText;
+            }
+        }
+    }
+
+    /**
+     * Format date for display
+     */
+    formatDate(dateString, format = 'YYYY-MM-DD') {
+        const date = new Date(dateString);
+        
+        switch (format) {
+            case 'DD':
+                return date.getDate().toString().padStart(2, '0');
+            case 'MMM':
+                return date.toLocaleDateString('en-US', { month: 'short' });
+            case 'MMM DD':
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            case 'YYYY-MM-DD':
+            default:
+                return date.toLocaleDateString('en-CA'); // YYYY-MM-DD format
+        }
+    }
+
+    /**
+     * Convert time string to minutes
+     */
+    timeToMinutes(timeString) {
+        if (!timeString) return 0;
+        const [hours, minutes] = timeString.split(':').map(Number);
+        return hours * 60 + minutes;
+    }
+
+    /**
+     * Convert minutes to time string
+     */
+    minutesToTime(minutes) {
+        const hours = Math.floor(minutes / 60);
+        const mins = Math.round(minutes % 60);
+        return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+    }
+
+    /**
+     * Get status CSS class
+     */
+    getStatusClass(status) {
+        switch (status) {
+            case 'present': return 'status-present';
+            case 'late': return 'status-late';
+            case 'absent': return 'status-absent';
+            case 'on-leave': return 'status-leave';
+            default: return 'status-unknown';
+        }
+    }
+
+    /**
+     * Get status icon
+     */
+    getStatusIcon(status) {
+        switch (status) {
+            case 'present': return '✅';
+            case 'late': return '⏰';
+            case 'absent': return '❌';
+            case 'on-leave': return '🏖️';
+            default: return '❓';
+        }
+    }
+
+    /**
+     * Get overtime status CSS class
+     */
+    getOvertimeStatusClass(status) {
+        switch (status) {
+            case 'pending': return 'overtime-pending';
+            case 'approved': return 'overtime-approved';
+            case 'rejected': return 'overtime-rejected';
+            default: return 'overtime-unknown';
+        }
+    }
+
+    /**
+     * Get overtime status icon
+     */
+    getOvertimeStatusIcon(status) {
+        switch (status) {
+            case 'pending': return '⏳';
+            case 'approved': return '✅';
+            case 'rejected': return '❌';
+            default: return '❓';
+        }
+    }
+
+    /**
+     * Setup auto refresh
+     */
+    setupAutoRefresh() {
+        // Clear existing interval
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+            this.refreshInterval = null;
+        }
+
+        // Setup new interval if enabled
+        if (this.autoRefreshEnabled) {
+            this.refreshInterval = setInterval(() => {
+                this.refreshData();
+            }, this.refreshIntervalTime);
+            console.log(`Auto-refresh enabled: ${this.refreshIntervalTime / 1000}s interval`);
+        } else {
+            console.log('Auto-refresh disabled');
+        }
+    }
+
+    /**
+     * Handle window focus
+     */
+    handleWindowFocus() {
+        // Refresh data when window gains focus
+        this.refreshData();
+    }
+
+    /**
+     * Handle user update
+     */
+    handleUserUpdate(user) {
+        this.currentUser = user;
+        this.updateUserInfo();
+    }
+
+    /**
+     * Handle theme change
+     */
+    handleThemeChange(themeData) {
+        // Update charts if theme changes
+        if (this.charts.size > 0) {
+            this.initializeCharts();
+        }
+    }
+
+    /**
+     * Cleanup resources
+     */
+    cleanup() {
+        // Clear intervals
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+            this.refreshInterval = null;
+        }
+
+        // Clear charts
+        this.charts.forEach(chart => {
+            if (chart && typeof chart.destroy === 'function') {
+                chart.destroy();
+            }
+        });
+        this.charts.clear();
+
+        console.log('EmployeeController cleanup completed');
     }
 }
 
@@ -1889,10 +2461,12 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 // Auto-initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        console.log('DOM ready, EmployeeController will auto-initialize when DirectFlow is ready');
-    });
-} else {
-    console.log('DOM already ready, EmployeeController will auto-initialize when DirectFlow is ready');
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM ready, EmployeeController will auto-initialize when DirectFlow is ready');
+        });
+    } else {
+        console.log('DOM already ready, EmployeeController will auto-initialize when DirectFlow is ready');
+    }
 }
