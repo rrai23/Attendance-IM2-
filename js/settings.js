@@ -1433,32 +1433,55 @@ class SettingsController {
     }
 
     /**
-     * Render specific section
+     * Render specific section with debouncing to handle rapid switching
      */
     renderSection(sectionId) {
-        switch (sectionId) {
-            case 'general':
-                this.renderGeneralSettings();
-                break;
-            case 'payroll':
-                this.renderPayrollSettings();
-                break;
-            case 'attendance':
-                this.renderAttendanceSettings();
-                break;
-            case 'notifications':
-                this.renderNotificationSettings();
-                break;
-            case 'security':
-                this.renderSecuritySettings();
-                break;
-            case 'theme':
-                this.renderThemeSettings();
-                break;
-            case 'users':
-                this.renderUserManagement();
-                break;
+        // Clear any existing timeout for this section
+        if (this.renderTimeouts) {
+            clearTimeout(this.renderTimeouts[sectionId]);
+        } else {
+            this.renderTimeouts = {};
         }
+        
+        // Debounce the rendering to prevent race conditions during rapid switching
+        this.renderTimeouts[sectionId] = setTimeout(() => {
+            try {
+                switch (sectionId) {
+                    case 'general':
+                        this.renderGeneralSettings();
+                        break;
+                    case 'payroll':
+                        this.renderPayrollSettings();
+                        break;
+                    case 'attendance':
+                        this.renderAttendanceSettings();
+                        break;
+                    case 'notifications':
+                        this.renderNotificationSettings();
+                        break;
+                    case 'security':
+                        this.renderSecuritySettings();
+                        break;
+                    case 'theme':
+                        this.renderThemeSettings();
+                        break;
+                    case 'users':
+                        this.renderUserManagement();
+                        break;
+                    default:
+                        console.warn('Unknown section:', sectionId);
+                }
+            } catch (error) {
+                console.error(`Error rendering section ${sectionId}:`, error);
+                // If rendering fails, clear the container and try again
+                const container = document.getElementById(`${sectionId}-settings`);
+                if (container) {
+                    container.innerHTML = '';
+                    // Retry once after clearing
+                    setTimeout(() => this.renderSection(sectionId), 100);
+                }
+            }
+        }, 50); // 50ms debounce to handle rapid clicking
     }
 
     /**
@@ -1468,8 +1491,13 @@ class SettingsController {
         const container = document.getElementById('general-settings');
         if (!container) return;
         
-        // If content already exists, don't replace it (preserve styled HTML)
-        if (container.innerHTML.trim() && container.children.length > 0) {
+        // Check if content exists and is valid (not just whitespace or loading state)
+        const hasValidContent = container.innerHTML.trim() && 
+                               container.children.length > 0 && 
+                               !container.querySelector('.loading') &&
+                               container.querySelector('.settings-section');
+        
+        if (hasValidContent) {
             console.log('Preserving existing general settings content');
             return;
         }
@@ -1538,8 +1566,13 @@ class SettingsController {
         const container = document.getElementById('payroll-settings');
         if (!container) return;
         
-        // If content already exists, don't replace it (preserve styled HTML)
-        if (container.innerHTML.trim() && container.children.length > 0) {
+        // Check if content exists and is valid (not just whitespace or loading state)
+        const hasValidContent = container.innerHTML.trim() && 
+                               container.children.length > 0 && 
+                               !container.querySelector('.loading') &&
+                               container.querySelector('.settings-section');
+        
+        if (hasValidContent) {
             console.log('Preserving existing payroll settings content');
             return;
         }
@@ -1627,8 +1660,13 @@ class SettingsController {
         const container = document.getElementById('attendance-settings');
         if (!container) return;
         
-        // If content already exists, don't replace it (preserve styled HTML)
-        if (container.innerHTML.trim() && container.children.length > 0) {
+        // Check if content exists and is valid (not just whitespace or loading state)
+        const hasValidContent = container.innerHTML.trim() && 
+                               container.children.length > 0 && 
+                               !container.querySelector('.loading') &&
+                               container.querySelector('.settings-section');
+        
+        if (hasValidContent) {
             console.log('Preserving existing attendance settings content');
             return;
         }
@@ -1705,8 +1743,13 @@ class SettingsController {
         const container = document.getElementById('notifications-settings');
         if (!container) return;
         
-        // If content already exists, don't replace it (preserve styled HTML)
-        if (container.innerHTML.trim() && container.children.length > 0) {
+        // Check if content exists and is valid (not just whitespace or loading state)
+        const hasValidContent = container.innerHTML.trim() && 
+                               container.children.length > 0 && 
+                               !container.querySelector('.loading') &&
+                               container.querySelector('.settings-section');
+        
+        if (hasValidContent) {
             console.log('Preserving existing notification settings content');
             return;
         }
@@ -1793,8 +1836,13 @@ class SettingsController {
         const container = document.getElementById('security-settings');
         if (!container) return;
         
-        // If content already exists, don't replace it (preserve styled HTML)
-        if (container.innerHTML.trim() && container.children.length > 0) {
+        // Check if content exists and is valid (not just whitespace or loading state)
+        const hasValidContent = container.innerHTML.trim() && 
+                               container.children.length > 0 && 
+                               !container.querySelector('.loading') &&
+                               container.querySelector('.settings-section');
+        
+        if (hasValidContent) {
             console.log('Preserving existing security settings content');
             return;
         }
@@ -1864,8 +1912,13 @@ class SettingsController {
         const container = document.getElementById('theme-settings');
         if (!container) return;
         
-        // If content already exists, don't replace it (preserve styled HTML)
-        if (container.innerHTML.trim() && container.children.length > 0) {
+        // Check if content exists and is valid (not just whitespace or loading state)
+        const hasValidContent = container.innerHTML.trim() && 
+                               container.children.length > 0 && 
+                               !container.querySelector('.loading') &&
+                               container.querySelector('.settings-section');
+        
+        if (hasValidContent) {
             console.log('Preserving existing theme settings content');
             return;
         }
@@ -1930,8 +1983,13 @@ class SettingsController {
         const container = document.getElementById('users-settings');
         if (!container) return;
         
-        // If content already exists, don't replace it (preserve styled HTML)
-        if (container.innerHTML.trim() && container.children.length > 0) {
+        // Check if content exists and is valid (not just whitespace or loading state)
+        const hasValidContent = container.innerHTML.trim() && 
+                               container.children.length > 0 && 
+                               !container.querySelector('.loading') &&
+                               container.querySelector('.settings-section');
+        
+        if (hasValidContent) {
             console.log('Preserving existing user management content');
             return;
         }
