@@ -80,8 +80,8 @@ class EmployeeController {
             // Setup auto-refresh
             this.setupAutoRefresh();
 
-            // Initialize charts
-            this.initializeCharts();
+            // Initialize payroll data cards
+            this.initializePayrollCards();
 
             console.log('Employee controller initialized successfully');
         } catch (error) {
@@ -207,10 +207,10 @@ class EmployeeController {
             statsContainer: document.getElementById('personal-stats'),
             overtimeContainer: document.getElementById('overtime-requests'),
             
-            // Charts
-            attendanceChart: document.getElementById('attendance-chart'),
-            hoursChart: document.getElementById('hours-chart'),
-            performanceChart: document.getElementById('performance-chart'),
+            // Payroll Data Cards
+            monthlyEarnings: document.getElementById('monthly-earnings'),
+            hoursBreakdown: document.getElementById('hours-breakdown'),
+            payrollSummary: document.getElementById('payroll-summary'),
             
             // Forms
             overtimeForm: document.getElementById('overtime-form'),
@@ -887,89 +887,138 @@ class EmployeeController {
     }
 
     /**
-     * Initialize charts
+     * Initialize payroll data cards
      */
-    initializeCharts() {
-        if (typeof chartsManager === 'undefined') {
-            console.warn('Charts manager not available');
-            return;
+    initializePayrollCards() {
+        console.log('Initializing payroll data cards...');
+
+        // Render monthly earnings card
+        if (this.elements.monthlyEarnings) {
+            this.renderMonthlyEarnings();
         }
 
-        // Attendance overview chart
-        if (this.elements.attendanceChart) {
-            this.createAttendanceChart();
+        // Render hours breakdown card
+        if (this.elements.hoursBreakdown) {
+            this.renderHoursBreakdown();
         }
 
-        // Hours tracking chart
-        if (this.elements.hoursChart) {
-            this.createHoursChart();
-        }
-
-        // Performance radar chart
-        if (this.elements.performanceChart) {
-            this.createPerformanceChart();
+        // Render payroll summary card
+        if (this.elements.payrollSummary) {
+            this.renderPayrollSummary();
         }
     }
 
     /**
-     * Create attendance overview chart
+     * Render monthly earnings card
      */
-    createAttendanceChart() {
-        const stats = this.personalStats.currentMonth;
-        const data = {
-            present: stats.presentDays - stats.lateDays,
-            late: stats.lateDays,
-            absent: stats.absentDays,
-            onLeave: 0 // Could be calculated from attendance data
-        };
+    renderMonthlyEarnings() {
+        const container = this.elements.monthlyEarnings;
+        if (!container) return;
 
-        this.charts.set('attendance', chartsManager.createAttendanceStatsChart('attendance-chart', data));
+        const stats = this.personalStats.hours;
+        const hourlyRate = this.currentUser.employee?.hourlyRate || 15;
+        const overtimeRate = hourlyRate * 1.5;
+
+        // Calculate earnings
+        const regularPay = stats.totalRegularHours * hourlyRate;
+        const overtimePay = stats.totalOvertimeHours * overtimeRate;
+        const totalEarnings = regularPay + overtimePay;
+
+        container.innerHTML = `
+            <div class="earnings-card">
+                <div class="earnings-total">$${totalEarnings.toFixed(2)}</div>
+                <div class="earnings-label">Monthly Earnings</div>
+                <div class="earnings-breakdown">
+                    <div class="breakdown-item">
+                        <div class="breakdown-value">$${regularPay.toFixed(2)}</div>
+                        <div class="breakdown-label">Regular Pay</div>
+                    </div>
+                    <div class="breakdown-item">
+                        <div class="breakdown-value">$${overtimePay.toFixed(2)}</div>
+                        <div class="breakdown-label">Overtime Pay</div>
+                    </div>
+                    <div class="breakdown-item">
+                        <div class="breakdown-value">${stats.totalHours}h</div>
+                        <div class="breakdown-label">Total Hours</div>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
     /**
-     * Create hours tracking chart
+     * Render hours breakdown card
      */
-    createHoursChart() {
-        // Get last 7 days of data
-        const last7Days = this.attendanceData
-            .slice(-7)
-            .map(record => ({
-                date: this.formatDate(record.date, 'MMM DD'),
-                regular: record.regularHours || 0,
-                overtime: record.overtimeHours || 0
-            }));
+    renderHoursBreakdown() {
+        const container = this.elements.hoursBreakdown;
+        if (!container) return;
 
-        const data = {
-            labels: last7Days.map(d => d.date),
-            regularHours: last7Days.map(d => d.regular),
-            overtimeHours: last7Days.map(d => d.overtime),
-            regularRate: this.currentUser.employee?.hourlyRate || 15,
-            overtimeRate: (this.currentUser.employee?.hourlyRate || 15) * 1.5
-        };
+        const stats = this.personalStats.hours;
+        const hourlyRate = this.currentUser.employee?.hourlyRate || 15;
+        const overtimeRate = hourlyRate * 1.5;
 
-        this.charts.set('hours', chartsManager.createPayrollChart('hours-chart', data));
+        container.innerHTML = `
+            <div class="pay-breakdown">
+                <div class="pay-row regular">
+                    <div class="pay-description">
+                        <div class="pay-type">Regular Hours</div>
+                        <div class="pay-details">${stats.totalRegularHours}h @ $${hourlyRate.toFixed(2)}/hr</div>
+                    </div>
+                    <div class="pay-amount">$${(stats.totalRegularHours * hourlyRate).toFixed(2)}</div>
+                </div>
+                <div class="pay-row overtime">
+                    <div class="pay-description">
+                        <div class="pay-type">Overtime Hours</div>
+                        <div class="pay-details">${stats.totalOvertimeHours}h @ $${overtimeRate.toFixed(2)}/hr</div>
+                    </div>
+                    <div class="pay-amount">$${(stats.totalOvertimeHours * overtimeRate).toFixed(2)}</div>
+                </div>
+                <div class="breakdown-item">
+                    <div class="breakdown-value">${stats.avgDailyHours}h</div>
+                    <div class="breakdown-label">Avg Daily Hours</div>
+                </div>
+            </div>
+        `;
     }
 
     /**
-     * Create performance radar chart
+     * Render payroll summary card
      */
-    createPerformanceChart() {
-        const performance = this.personalStats.performance;
-        const data = {
-            labels: ['Punctuality', 'Attendance', 'Overtime', 'Consistency', 'Reliability'],
-            scores: [
-                performance.punctuality || 0,
-                performance.attendance || 0,
-                performance.overtime || 0,
-                performance.consistency || 0,
-                performance.reliability || 0
-            ],
-            employeeName: this.currentUser.employee ? 
-                `${this.currentUser.employee.firstName} ${this.currentUser.employee.lastName}` : 
-                'Employee Performance'
-        };
+    renderPayrollSummary() {
+        const container = this.elements.payrollSummary;
+        if (!container) return;
 
-        this.charts.set('performance', chartsManager.createPerformanceChart('performance-chart', data));
+        const stats = this.personalStats;
+        const hourlyRate = this.currentUser.employee?.hourlyRate || 15;
+        
+        // Calculate monthly projection (assuming 22 working days)
+        const workingDaysInMonth = 22;
+        const avgDailyEarnings = (stats.hours.totalHours * hourlyRate) / stats.currentMonth.totalDays || 0;
+        const monthlyProjection = avgDailyEarnings * workingDaysInMonth;
+
+        container.innerHTML = `
+            <div class="summary-stats">
+                <div class="summary-stat">
+                    <div class="stat-number">${stats.currentMonth.totalDays}</div>
+                    <div class="stat-description">Days Worked</div>
+                </div>
+                <div class="summary-stat">
+                    <div class="stat-number">$${hourlyRate.toFixed(2)}</div>
+                    <div class="stat-description">Hourly Rate</div>
+                </div>
+                <div class="summary-stat">
+                    <div class="stat-number">${stats.currentMonth.attendanceRate}%</div>
+                    <div class="stat-description">Attendance Rate</div>
+                </div>
+                <div class="summary-stat">
+                    <div class="stat-number">$${monthlyProjection.toFixed(0)}</div>
+                    <div class="stat-description">Monthly Projection</div>
+                </div>
+            </div>
+            <div class="projection-note">
+                <p><strong>Note:</strong> Monthly projection based on current attendance and hourly rate for ${workingDaysInMonth} working days.</p>
+            </div>
+        `;
     }
 
     /**
@@ -1490,7 +1539,7 @@ class EmployeeController {
             
             this.updateAttendanceSummary(this.attendanceData);
             this.updatePersonalStats(this.personalStats);
-            this.updateCharts();
+            this.updatePayrollCards();
             
         } catch (error) {
             console.error('Date range change error:', error);
@@ -1543,7 +1592,7 @@ class EmployeeController {
         try {
             this.showLoading(true);
             await this.loadInitialData();
-            this.updateCharts();
+            this.updatePayrollCards();
             this.showSuccess('Data refreshed successfully');
         } catch (error) {
             console.error('Refresh error:', error);
@@ -1581,63 +1630,15 @@ class EmployeeController {
     }
 
     /**
-     * Update all charts with new data
+     * Update all payroll cards with new data
      */
-    updateCharts() {
-        if (typeof chartsManager === 'undefined') return;
+    updatePayrollCards() {
+        console.log('Updating payroll cards with new data...');
 
-        // Update attendance chart
-        if (this.charts.has('attendance')) {
-            const stats = this.personalStats.currentMonth;
-            const data = {
-                datasets: [{
-                    data: [
-                        stats.presentDays - stats.lateDays,
-                        stats.lateDays,
-                        stats.absentDays,
-                        0
-                    ]
-                }]
-            };
-            chartsManager.updateChart('attendance-chart', data);
-        }
-
-        // Update hours chart
-        if (this.charts.has('hours')) {
-            const last7Days = this.attendanceData
-                .slice(-7)
-                .map(record => ({
-                    date: this.formatDate(record.date, 'MMM DD'),
-                    regular: record.regularHours || 0,
-                    overtime: record.overtimeHours || 0
-                }));
-
-            const data = {
-                labels: last7Days.map(d => d.date),
-                datasets: [
-                    { data: last7Days.map(d => d.regular) },
-                    { data: last7Days.map(d => d.overtime) }
-                ]
-            };
-            chartsManager.updateChart('hours-chart', data);
-        }
-
-        // Update performance chart
-        if (this.charts.has('performance')) {
-            const performance = this.personalStats.performance;
-            const data = {
-                datasets: [{
-                    data: [
-                        performance.punctuality || 0,
-                        performance.attendance || 0,
-                        performance.overtime || 0,
-                        performance.consistency || 0,
-                        performance.reliability || 0
-                    ]
-                }]
-            };
-            chartsManager.updateChart('performance-chart', data);
-        }
+        // Re-render all payroll cards with updated data
+        this.renderMonthlyEarnings();
+        this.renderHoursBreakdown();
+        this.renderPayrollSummary();
     }
 
     /**
@@ -1676,12 +1677,8 @@ class EmployeeController {
      * Handle theme change
      */
     handleThemeChange(themeData) {
-        // Update charts theme if available
-        if (typeof chartsManager !== 'undefined') {
-            chartsManager.updateThemeColors();
-            // Recreate charts with new theme
-            this.updateCharts();
-        }
+        // Update payroll cards for theme change
+        this.updatePayrollCards();
     }
 
     /**
@@ -2148,10 +2145,8 @@ class EmployeeController {
      * Handle theme change
      */
     handleThemeChange(themeData) {
-        // Update charts if theme changes
-        if (this.charts.size > 0) {
-            this.initializeCharts();
-        }
+        // Update payroll cards if theme changes
+        this.initializePayrollCards();
     }
 
     /**

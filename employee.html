@@ -406,44 +406,53 @@
                 </div>
             </div>
 
-            <!-- Charts Section -->
+            <!-- Payroll Data Section -->
             <section class="charts-section">
                 <div class="tiles-grid grid-3">
-                    <!-- Attendance Overview Chart -->
-                    <div class="tile">
+                    <!-- Monthly Earnings Card -->
+                    <div class="tile tile-accent">
                         <div class="tile-header">
-                            <h3 class="tile-title">Attendance Overview</h3>
-                            <span class="tile-icon">🎯</span>
+                            <h3 class="tile-title">Monthly Earnings</h3>
+                            <span class="tile-icon">💰</span>
                         </div>
                         <div class="tile-content">
-                            <div class="chart-container chart-sm">
-                                <canvas id="attendance-chart"></canvas>
+                            <div id="monthly-earnings" class="earnings-container">
+                                <div class="loading-indicator">
+                                    <div class="loading-spinner"></div>
+                                    <span>Calculating earnings...</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Hours Tracking Chart -->
+                    <!-- Hours & Pay Breakdown Card -->
                     <div class="tile">
                         <div class="tile-header">
-                            <h3 class="tile-title">Hours Tracking</h3>
-                            <span class="tile-icon">⏳</span>
+                            <h3 class="tile-title">Hours & Pay Breakdown</h3>
+                            <span class="tile-icon">⏰</span>
                         </div>
                         <div class="tile-content">
-                            <div class="chart-container chart-sm">
-                                <canvas id="hours-chart"></canvas>
+                            <div id="hours-breakdown" class="breakdown-container">
+                                <div class="loading-indicator">
+                                    <div class="loading-spinner"></div>
+                                    <span>Loading breakdown...</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Performance Radar Chart -->
+                    <!-- Payroll Summary Card -->
                     <div class="tile">
                         <div class="tile-header">
-                            <h3 class="tile-title">Performance Metrics</h3>
-                            <span class="tile-icon">🎖️</span>
+                            <h3 class="tile-title">Payroll Summary</h3>
+                            <span class="tile-icon">📊</span>
                         </div>
                         <div class="tile-content">
-                            <div class="chart-container chart-sm">
-                                <canvas id="performance-chart"></canvas>
+                            <div id="payroll-summary" class="summary-container">
+                                <div class="loading-indicator">
+                                    <div class="loading-spinner"></div>
+                                    <span>Loading summary...</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -909,22 +918,25 @@
 
         /* Summary Grid */
         .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr) !important;
             gap: var(--spacing-md);
+            width: 100%;
         }
 
         .summary-card {
-            display: flex;
-            flex-direction: column;
+            display: flex !important;
+            flex-direction: row !important;
             align-items: center;
+            justify-content: flex-start;
             padding: 12px;
             background-color: var(--bg-secondary);
             border-radius: var(--radius-md);
-            text-align: center;
+            text-align: left;
             transition: all var(--transition-fast);
             min-height: 100px;
             overflow: hidden;
+            gap: var(--spacing-sm);
         }
 
         .summary-card:hover {
@@ -937,16 +949,37 @@
         }
 
         .summary-icon {
-            font-size: 1.25rem;
-            margin-bottom: 4px;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .summary-content {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            flex: 1;
+        }
+
+        /* Force horizontal layout for all summary cards */
+        #attendance-summary .summary-card,
+        .summary-grid .summary-card {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+        }
+
+        #attendance-summary .summary-icon,
+        .summary-grid .summary-icon {
+            margin-right: var(--spacing-sm) !important;
+            margin-bottom: 0 !important;
         }
 
         .summary-value {
             font-size: 1.125rem;
             font-weight: var(--font-weight-bold);
             color: var(--text-primary);
-            margin-bottom: 2px;
             word-break: break-word;
+            line-height: 1.2;
         }
 
         .summary-label {
@@ -959,6 +992,8 @@
 
         /* Entry Cards - Enhanced Row Layout with Better Scrolling */
         .entries-scroll-container {
+            display: flex;
+            flex-direction: column;
             max-height: 380px;
             overflow-y: auto;
             overflow-x: hidden;
@@ -990,14 +1025,15 @@
             background: var(--text-tertiary);
         }
 
-        /* Enhanced Entries List Container */
+        /* Enhanced Entries List Container - Vertical Stacking */
         .entries-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0;
-            padding: 0;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm);
             margin: 0;
             width: 100%;
+            align-items: stretch;
         }
 
         /* Fixed Entry Card Layout */
@@ -1005,7 +1041,7 @@
             display: flex;
             gap: var(--spacing-sm);
             padding: 12px;
-            margin: 8px;
+            margin: 0;
             background-color: var(--bg-secondary);
             border-radius: var(--radius-md);
             border-left: 4px solid var(--border-color);
@@ -1014,7 +1050,7 @@
             min-height: 60px;
             max-height: 70px;
             align-items: center;
-            width: calc(100% - 16px);
+            width: 100%;
             box-sizing: border-box;
         }
 
@@ -1178,9 +1214,10 @@
 
         /* Stats Grid */
         .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
             gap: var(--spacing-lg);
+            width: 100%;
         }
 
         .stat-card {
@@ -1972,18 +2009,29 @@
             }
 
             .summary-grid {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: repeat(4, 1fr) !important;
                 gap: 8px;
             }
 
             .summary-card {
                 padding: 8px;
                 min-height: 85px;
+                flex-direction: row !important;
+                text-align: left !important;
             }
 
             .summary-icon {
                 font-size: 1rem;
-                margin-bottom: 2px;
+                margin-bottom: 0;
+                margin-right: 8px;
+                flex-shrink: 0;
+            }
+
+            .summary-content {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+                flex: 1;
             }
 
             .summary-value {
@@ -1995,7 +2043,7 @@
             }
 
             .stats-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(2, 1fr) !important;
             }
 
             .stat-card {
@@ -2082,18 +2130,29 @@
             }
 
             .summary-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(4, 1fr) !important;
                 gap: 6px;
             }
 
             .summary-card {
                 padding: 6px;
                 min-height: 75px;
+                flex-direction: row !important;
+                text-align: left !important;
             }
 
             .summary-icon {
                 font-size: 0.9rem;
-                margin-bottom: 1px;
+                margin-bottom: 0;
+                margin-right: 6px;
+                flex-shrink: 0;
+            }
+
+            .summary-content {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+                flex: 1;
             }
 
             .summary-value {
@@ -2371,6 +2430,187 @@
             
             .security-form .form-input {
                 font-size: 16px; /* Prevent zoom on iOS */
+            }
+        }
+
+        /* Payroll Data Cards Styles */
+        .earnings-container,
+        .breakdown-container,
+        .summary-container {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+            padding: var(--spacing-sm);
+            min-height: 200px;
+        }
+
+        .earnings-card {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-md);
+            background: linear-gradient(135deg, var(--accent-light), var(--bg-secondary));
+            border-radius: var(--radius-md);
+            border: 1px solid var(--accent-primary);
+            text-align: center;
+        }
+
+        .earnings-total {
+            font-size: 2rem;
+            font-weight: var(--font-weight-bold);
+            color: var(--accent-primary);
+            font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+        }
+
+        .earnings-label {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .earnings-breakdown {
+            display: flex;
+            justify-content: space-between;
+            margin-top: var(--spacing-sm);
+            padding-top: var(--spacing-sm);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .breakdown-item {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+            padding: var(--spacing-sm);
+            background-color: var(--bg-secondary);
+            border-radius: var(--radius-sm);
+            flex: 1;
+            margin: 0 2px;
+            text-align: center;
+        }
+
+        .breakdown-value {
+            font-size: 1.1rem;
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+        }
+
+        .breakdown-label {
+            font-size: var(--font-size-xs);
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .pay-breakdown {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .pay-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-sm);
+            background-color: var(--bg-secondary);
+            border-radius: var(--radius-sm);
+            border-left: 3px solid var(--border-color);
+        }
+
+        .pay-row.regular {
+            border-left-color: var(--color-success, #34c759);
+        }
+
+        .pay-row.overtime {
+            border-left-color: var(--color-warning, #ff9500);
+        }
+
+        .pay-description {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .pay-type {
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+        }
+
+        .pay-details {
+            font-size: var(--font-size-xs);
+            color: var(--text-secondary);
+        }
+
+        .pay-amount {
+            font-size: 1.1rem;
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-sm);
+        }
+
+        .summary-stat {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+            padding: var(--spacing-sm);
+            background-color: var(--bg-secondary);
+            border-radius: var(--radius-sm);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 1.2rem;
+            font-weight: var(--font-weight-bold);
+            color: var(--accent-primary);
+            font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+        }
+
+        .stat-description {
+            font-size: var(--font-size-xs);
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .projection-note {
+            padding: var(--spacing-sm);
+            background-color: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+            border-left: 3px solid var(--accent-primary);
+            margin-top: var(--spacing-sm);
+        }
+
+        .projection-note p {
+            margin: 0;
+            font-size: var(--font-size-xs);
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        @media (max-width: 768px) {
+            .earnings-breakdown {
+                flex-direction: column;
+                gap: var(--spacing-xs);
+            }
+
+            .breakdown-item {
+                margin: 2px 0;
+            }
+
+            .summary-stats {
+                grid-template-columns: 1fr;
+            }
+
+            .earnings-total {
+                font-size: 1.5rem;
             }
         }
     </style>
@@ -3705,23 +3945,31 @@
                     <div class="summary-grid">
                         <div class="summary-card ${isClocked ? 'highlight' : ''}">
                             <div class="summary-icon">🕐</div>
-                            <div class="summary-value">${formatTime(todayRecord?.clock_in)}</div>
-                            <div class="summary-label">Clock In</div>
+                            <div class="summary-content">
+                                <div class="summary-value">${formatTime(todayRecord?.clock_in)}</div>
+                                <div class="summary-label">Clock In</div>
+                            </div>
                         </div>
                         <div class="summary-card ${isClockedOut ? 'highlight' : ''}">
                             <div class="summary-icon">🕕</div>
-                            <div class="summary-value">${formatTime(todayRecord?.clock_out)}</div>
-                            <div class="summary-label">Clock Out</div>
+                            <div class="summary-content">
+                                <div class="summary-value">${formatTime(todayRecord?.clock_out)}</div>
+                                <div class="summary-label">Clock Out</div>
+                            </div>
                         </div>
                         <div class="summary-card">
                             <div class="summary-icon">⏱️</div>
-                            <div class="summary-value">${(parseFloat(todayRecord?.hours_worked) || 0).toFixed(1)}h</div>
-                            <div class="summary-label">Hours Today</div>
+                            <div class="summary-content">
+                                <div class="summary-value">${(parseFloat(todayRecord?.hours_worked) || 0).toFixed(1)}h</div>
+                                <div class="summary-label">Hours Today</div>
+                            </div>
                         </div>
                         <div class="summary-card">
                             <div class="summary-icon">📊</div>
-                            <div class="summary-value">${formatStatus(todayRecord?.status)}</div>
-                            <div class="summary-label">Status</div>
+                            <div class="summary-content">
+                                <div class="summary-value">${formatStatus(todayRecord?.status)}</div>
+                                <div class="summary-label">Status</div>
+                            </div>
                         </div>
                     </div>
                 `;
