@@ -772,9 +772,19 @@ window.confirmLogout = (options = {}) => {
     return modalManager.create({
         title: options.title || 'Confirm Logout',
         content: `
-            <div class="text-center">
-                <p>${options.message || 'Are you sure you want to logout? You will be redirected to the login page.'}</p>
-                ${options.unsavedChanges ? '<p style="color: var(--color-orange-600); font-weight: 500;">⚠️ You have unsaved changes that will be lost.</p>' : ''}
+            <div class="logout-modal-content">
+                <div class="logout-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16,17 21,12 16,7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                </div>
+                <div class="logout-message">
+                    <p>${options.message || 'Are you sure you want to logout?'}</p>
+                    ${options.unsavedChanges ? '<p class="warning-text">⚠️ You have unsaved changes that will be lost.</p>' : ''}
+                    <p class="logout-note">You will be redirected to the login page.</p>
+                </div>
             </div>
         `,
         buttons: [
@@ -785,16 +795,86 @@ window.confirmLogout = (options = {}) => {
             },
             {
                 text: options.confirmText || 'Logout',
-                class: options.unsavedChanges ? 'btn-warning' : 'btn-primary',
+                class: options.unsavedChanges ? 'btn-warning' : 'btn-danger',
                 action: 'confirm'
             }
         ],
-        onConfirm: options.onConfirm,
+        onConfirm: () => {
+            // Execute the logout immediately
+            if (options.onConfirm) {
+                options.onConfirm();
+            } else {
+                // Default logout behavior with immediate redirect
+                window.performLogout();
+            }
+        },
         onCancel: options.onCancel,
         options: {
             size: 'sm',
             customClass: 'modal-logout-confirm',
+            escapeClose: true,
+            overlayClose: true,
             ...options.modalOptions
         }
     });
+};
+
+// Global unified logout function
+window.performLogout = async () => {
+    console.log('🔐 Performing logout...');
+    
+    try {
+        // Show loading state
+        const loadingModal = modalManager.create({
+            title: 'Logging Out',
+            content: `
+                <div class="logout-loading">
+                    <div class="loading-spinner"></div>
+                    <p>Signing you out...</p>
+                </div>
+            `,
+            buttons: [],
+            options: {
+                size: 'sm',
+                customClass: 'modal-logout-loading',
+                escapeClose: false,
+                overlayClose: false
+            }
+        });
+
+        // Call DirectFlowAuth logout if available
+        if (window.directFlowAuth && typeof window.directFlowAuth.logout === 'function') {
+            await window.directFlowAuth.logout();
+        } else {
+            // Fallback: clear any local auth data
+            localStorage.removeItem('directflow_token');
+            localStorage.removeItem('directflow_user');
+            localStorage.removeItem('directflow_expires');
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('auth_user');
+            localStorage.removeItem('bricks_auth_session');
+        }
+        
+        // Close the loading modal
+        modalManager.close();
+        
+        // Immediate redirect - no delay
+        console.log('🔐 Logout complete, redirecting...');
+        window.location.href = '/login.html';
+        
+    } catch (error) {
+        console.error('Logout error:', error);
+        
+        // Close loading modal and show error
+        modalManager.close();
+        
+        modalManager.alert({
+            title: 'Logout Error',
+            message: 'There was an issue logging you out. You will be redirected to the login page.',
+            type: 'error'
+        }).then(() => {
+            // Redirect anyway after error acknowledgment
+            window.location.href = '/login.html';
+        });
+    }
 };

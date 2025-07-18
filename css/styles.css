@@ -2777,3 +2777,328 @@ select.form-select {
 .activity-status.system {
     background-color: var(--color-gray-400);
 }
+
+/* ===== LOGOUT MODAL STYLES ===== */
+
+/* Ensure consistent modal sizing for logout modals */
+.modal-logout-confirm {
+    min-width: 400px;
+    max-width: 480px;
+    width: 100%;
+}
+
+.modal-logout-loading {
+    min-width: 320px;
+    max-width: 400px;
+    width: 100%;
+}
+
+/* Logout confirmation modal content */
+.modal-logout-confirm .logout-modal-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 24px;
+    padding: 8px 0;
+}
+
+.modal-logout-confirm .logout-icon {
+    flex-shrink: 0;
+    width: 56px;
+    height: 56px;
+    color: #dc2626; /* Red warning color */
+    margin-top: 4px; /* Slight adjustment to align with text */
+}
+
+.modal-logout-confirm .logout-icon svg {
+    width: 100%;
+    height: 100%;
+    stroke-width: 1.8; /* Slightly thicker stroke for better visibility */
+}
+
+.modal-logout-confirm .logout-message {
+    flex: 1;
+    min-width: 0; /* Allow text to wrap */
+}
+
+.modal-logout-confirm .logout-message p {
+    margin: 0 0 12px 0;
+    color: var(--text-primary);
+    line-height: 1.5;
+    font-size: 15px;
+}
+
+.modal-logout-confirm .logout-message p:last-child {
+    margin-bottom: 0;
+}
+
+.modal-logout-confirm .logout-message .warning-text {
+    color: #d97706; /* Orange warning color */
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.modal-logout-confirm .logout-message .logout-note {
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-style: italic;
+}
+
+/* Logout loading modal */
+.modal-logout-loading .logout-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    padding: 24px 20px;
+    text-align: center;
+}
+
+.modal-logout-loading .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--bg-tertiary);
+    border-top: 3px solid var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.modal-logout-loading .logout-loading p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 15px;
+    font-weight: 500;
+}
+
+/* Button styling adjustments for logout modals */
+.modal-logout-confirm .modal-footer {
+    gap: 12px;
+    padding-top: 20px;
+}
+
+.modal-logout-confirm .btn {
+    min-width: 100px;
+    font-weight: 500;
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] .modal-logout-confirm .logout-icon {
+    color: #ef4444; /* Slightly brighter red for dark theme */
+}
+
+[data-theme="dark"] .modal-logout-confirm .logout-message .warning-text {
+    color: #fbbf24; /* Brighter orange for dark theme */
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+    .modal-logout-confirm {
+        min-width: auto;
+        max-width: calc(100vw - 32px);
+        margin: 16px;
+    }
+    
+    .modal-logout-loading {
+        min-width: auto;
+        max-width: calc(100vw - 32px);
+        margin: 16px;
+    }
+    
+    .modal-logout-confirm .logout-modal-content {
+        gap: 16px;
+    }
+    
+    .modal-logout-confirm .logout-icon {
+        width: 48px;
+        height: 48px;
+    }
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ===== LOGOUT MODAL STYLES ===== */
+
+/* Ensure consistent modal sizing for logout modals */
+.modal-logout-confirm .modal {
+    min-width: 420px !important;
+    max-width: 480px !important;
+    width: 420px !important;
+}
+
+.modal-logout-loading .modal {
+    min-width: 350px !important;
+    max-width: 400px !important;
+    width: 350px !important;
+}
+
+/* Logout confirmation modal content */
+.modal-logout-confirm .logout-modal-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 20px;
+    padding: 8px 0;
+}
+
+.modal-logout-confirm .logout-icon {
+    flex-shrink: 0;
+    width: 56px;
+    height: 56px;
+    color: #dc2626; /* Red warning color */
+    margin-top: 4px; /* Slight adjustment to align with text */
+}
+
+.modal-logout-confirm .logout-icon svg {
+    width: 100%;
+    height: 100%;
+    stroke-width: 1.8; /* Slightly thicker stroke for better visibility */
+}
+
+.modal-logout-confirm .logout-message {
+    flex: 1;
+    min-width: 0; /* Allow text to wrap */
+}
+
+.modal-logout-confirm .logout-message p {
+    margin: 0 0 12px 0;
+    color: var(--text-primary);
+    line-height: 1.5;
+    font-size: 15px;
+}
+
+.modal-logout-confirm .logout-message p:last-child {
+    margin-bottom: 0;
+}
+
+.modal-logout-confirm .logout-message .warning-text {
+    color: #d97706; /* Orange warning color */
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.modal-logout-confirm .logout-message .logout-note {
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-style: italic;
+}
+
+/* Logout loading modal */
+.modal-logout-loading .logout-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    padding: 24px 20px;
+    text-align: center;
+}
+
+.modal-logout-loading .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--bg-tertiary);
+    border-top: 3px solid var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.modal-logout-loading .logout-loading p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 15px;
+    font-weight: 500;
+}
+
+/* Button styling adjustments for logout modals */
+.modal-logout-confirm .modal-footer {
+    gap: 12px;
+    padding-top: 20px;
+    justify-content: flex-end;
+}
+
+.modal-logout-confirm .btn {
+    min-width: 100px;
+    font-weight: 500;
+    padding: 10px 20px;
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] .modal-logout-confirm .logout-icon {
+    color: #ef4444; /* Slightly brighter red for dark theme */
+}
+
+[data-theme="dark"] .modal-logout-confirm .logout-message .warning-text {
+    color: #fbbf24; /* Brighter orange for dark theme */
+}
+
+/* Responsive adjustments */
+@media (max-width: 580px) {
+    .modal-logout-confirm .modal {
+        min-width: auto !important;
+        max-width: calc(100vw - 32px) !important;
+        width: calc(100vw - 32px) !important;
+        margin: 16px auto !important;
+    }
+    
+    .modal-logout-loading .modal {
+        min-width: auto !important;
+        max-width: calc(100vw - 32px) !important;
+        width: calc(100vw - 32px) !important;
+        margin: 16px auto !important;
+    }
+    
+    .modal-logout-confirm .logout-modal-content {
+        gap: 16px;
+    }
+    
+    .modal-logout-confirm .logout-icon {
+        width: 48px;
+        height: 48px;
+    }
+    
+    .modal-logout-confirm .btn {
+        min-width: 80px;
+        padding: 8px 16px;
+    }
+}
+
+/* ===== EMPLOYEES PAGE LOGOUT MODAL FIX ===== */
+
+/* Override employees page modal.large rule for logout modals */
+.page-employees .modal-logout-confirm .modal,
+.page-employees .modal-logout-loading .modal {
+    max-width: 480px !important;
+    width: 420px !important;
+}
+
+.page-employees .modal-logout-loading .modal {
+    width: 350px !important;
+    max-width: 400px !important;
+}
+
+/* Ultra-specific selector to override employees page .modal.large { width: 90vw; } */
+.modal-overlay .modal.modal-logout-confirm,
+.modal-overlay .modal.modal-logout-loading {
+    width: 420px !important;
+    max-width: 480px !important;
+}
+
+.modal-overlay .modal.modal-logout-loading {
+    width: 350px !important;
+    max-width: 400px !important;
+}
+
+/* Force override for employees page specifically */
+body.page-employees .modal-logout-confirm .modal,
+html.page-employees .modal-logout-confirm .modal {
+    width: 420px !important;
+    max-width: 480px !important;
+}
+
+body.page-employees .modal-logout-loading .modal,
+html.page-employees .modal-logout-loading .modal {
+    width: 350px !important;
+    max-width: 400px !important;
+}

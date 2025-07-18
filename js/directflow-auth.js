@@ -125,7 +125,7 @@ class DirectFlowAuth {
     }
 
     // Logout
-    async logout() {
+    async logout(redirectToLogin = true) {
         try {
             const token = localStorage.getItem(this.tokenKey);
             
@@ -145,6 +145,12 @@ class DirectFlowAuth {
             // Always clear local data
             this.clearAuth();
             console.log('🔐 Logged out');
+            
+            // Redirect immediately if requested
+            if (redirectToLogin) {
+                console.log('🔐 Redirecting to login...');
+                window.location.href = '/login.html';
+            }
         }
     }
 
