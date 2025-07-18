@@ -30,7 +30,68 @@ class SettingsController {
         this.activeTab = 'general';
         this.isPopulating = false; // Flag to prevent marking dirty during form population
         
+        this.initializeDefaultSettings();
         this.init();
+    }
+
+    /**
+     * Initialize default settings structure to prevent undefined errors
+     */
+    initializeDefaultSettings() {
+        this.currentSettings = {
+            general: {},
+            payroll: {
+                overtimeRate: 1.5,
+                overtimeThreshold: 40
+            },
+            attendance: {},
+            notifications: {},
+            security: {},
+            theme: {}
+        };
+    }
+
+    /**
+     * Merge loaded settings with default structure to ensure all sections exist
+     */
+    mergeWithDefaults(savedSettings) {
+        const defaultSettings = {
+            general: {},
+            payroll: {
+                overtimeRate: 1.5,
+                overtimeThreshold: 40
+            },
+            attendance: {},
+            notifications: {},
+            security: {},
+            theme: {}
+        };
+
+        // Handle flat structure (from backend) vs nested structure (from localStorage)
+        if (savedSettings && typeof savedSettings === 'object') {
+            // If it's a flat structure (from backend), keep it flat but ensure payroll defaults
+            if (!savedSettings.payroll || typeof savedSettings.payroll !== 'object') {
+                return {
+                    ...savedSettings,
+                    payroll: defaultSettings.payroll
+                };
+            } else {
+                return {
+                    ...defaultSettings,
+                    ...savedSettings,
+                    payroll: {
+                        ...defaultSettings.payroll,
+                        ...savedSettings.payroll
+                    },
+                    theme: {
+                        ...defaultSettings.theme,
+                        ...(savedSettings.theme || {})
+                    }
+                };
+            }
+        }
+
+        return defaultSettings;
     }
 
     /**
@@ -144,8 +205,8 @@ class SettingsController {
                 savedSettings = {};
             }
             
-            // Store settings in flat structure (matches backend and database)
-            this.currentSettings = savedSettings;
+            // Merge saved settings with defaults to ensure all sections exist
+            this.currentSettings = this.mergeWithDefaults(savedSettings);
             
             console.log('Final settings loaded:', this.currentSettings);
             
@@ -1228,42 +1289,58 @@ class SettingsController {
         const payrollContainer = document.getElementById('payroll-settings');
         if (!payrollContainer) return;
 
-        // Check for overtime rate field
-        if (!document.querySelector('input[name="payroll.overtimeRate"]')) {
-            this.addMissingField(payrollContainer, {
-                name: 'payroll.overtimeRate',
-                type: 'number',
-                label: 'Overtime Rate Multiplier',
-                value: this.currentSettings.payroll.overtimeRate || 1.5,
-                attributes: { min: '1', max: '3', step: '0.1' }
-            });
+        // Ensure payroll settings exist with defaults
+        if (!this.currentSettings.payroll) {
+            this.currentSettings.payroll = {};
         }
 
-        // Check for overtime threshold field
-        if (!document.querySelector('input[name="payroll.overtimeThreshold"]')) {
-            this.addMissingField(payrollContainer, {
-                name: 'payroll.overtimeThreshold',
-                type: 'number',
-                label: 'Overtime Threshold (hours/week)',
-                value: this.currentSettings.payroll.overtimeThreshold || 40,
-                attributes: { min: '30', max: '60' }
-            });
-        }
+        // Note: Overtime fields are handled in the separate Overtime Configuration card
+        // No additional dynamic fields needed for the Pay Period Configuration card
     }
 
     /**
      * Add other enhancement methods for different sections
      */
     enhanceAttendanceFields() {
+        // Ensure attendance settings exist with defaults
+        if (!this.currentSettings.attendance) {
+            this.currentSettings.attendance = {};
+        }
         // Add attendance field enhancements if needed
     }
 
     enhanceNotificationFields() {
+        // Ensure notification settings exist with defaults
+        if (!this.currentSettings.notifications) {
+            this.currentSettings.notifications = {};
+        }
         // Add notification field enhancements if needed
     }
 
     enhanceSecurityFields() {
+        // Ensure security settings exist with defaults
+        if (!this.currentSettings.security) {
+            this.currentSettings.security = {};
+        }
         // Add security field enhancements if needed
+    }
+
+    enhanceGeneralFields() {
+        // Ensure general settings exist with defaults
+        if (!this.currentSettings.general) {
+            this.currentSettings.general = {};
+        }
+        // Add general field enhancements if needed
+    }
+
+    /**
+     * Ensure a specific settings section exists to prevent undefined errors
+     */
+    ensureSettingsSection(sectionName, defaults = {}) {
+        if (!this.currentSettings[sectionName]) {
+            this.currentSettings[sectionName] = defaults;
+        }
+        return this.currentSettings[sectionName];
     }
 
     /**
@@ -1389,6 +1466,18 @@ class SettingsController {
         
         console.log('Populating all form fields with flat settings:', settings);
         
+        // List of settings that should have form fields (the rest are internal/system settings)
+        const expectedFormFields = [
+            'companyName', 'timezone', 'dateFormat', 'timeFormat', 'currency', 'language',
+            'payPeriod', 'payday', 'overtimeRate', 'overtimeThreshold', 'roundingRules', 
+            'autoCalculate', 'clockInGrace', 'clockOutGrace', 'lunchBreakDuration',
+            'autoClockOut', 'autoClockOutTime', 'requireNotes', 'emailNotifications',
+            'tardyAlerts', 'overtimeAlerts', 'payrollReminders', 'systemUpdates',
+            'sessionTimeout', 'passwordMinLength', 'requirePasswordChange', 
+            'passwordChangeInterval', 'twoFactorAuth', 'defaultTheme', 'allowUserThemes',
+            'accentColor', 'defaultRole', 'defaultHourlyRate'
+        ];
+
         // Iterate through all settings and populate form fields
         for (const [key, value] of Object.entries(settings)) {
             // Find the form field by name (camelCase)
@@ -1396,7 +1485,7 @@ class SettingsController {
                        document.getElementById(key);
             
             if (field) {
-                console.log(`Setting field ${field.name || field.id} = ${value}`);
+                console.log(`✅ Setting field ${field.name || field.id} = ${value}`);
                 
                 if (field.type === 'checkbox') {
                     field.checked = Boolean(value);
@@ -1411,10 +1500,11 @@ class SettingsController {
                 // Trigger change event to update any dependent UI
                 field.dispatchEvent(new Event('change', { bubbles: true }));
             } else {
-                // Only warn for known important fields, not debug/internal fields
-                if (key && !key.startsWith('_') && key !== 'id' && key !== 'created_at' && key !== 'updated_at') {
-                    console.warn(`❌ Field not found for setting: ${key}`);
+                // Only warn for settings that should have form fields
+                if (expectedFormFields.includes(key)) {
+                    console.warn(`⚠️ Form field not found for UI setting: ${key}`);
                 }
+                // Silently ignore internal/system settings that don't need form fields
             }
         }
     }
@@ -1502,7 +1592,7 @@ class SettingsController {
             return;
         }
 
-        const settings = this.currentSettings.general;
+        const settings = this.ensureSettingsSection('general');
 
         container.innerHTML = `
             <div class="settings-section">
@@ -1577,7 +1667,10 @@ class SettingsController {
             return;
         }
 
-        const settings = this.currentSettings.payroll;
+        const settings = this.ensureSettingsSection('payroll', {
+            overtimeRate: 1.5,
+            overtimeThreshold: 40
+        });
 
         container.innerHTML = `
             <div class="settings-section">
@@ -1671,7 +1764,7 @@ class SettingsController {
             return;
         }
 
-        const settings = this.currentSettings.attendance;
+        const settings = this.ensureSettingsSection('attendance');
 
         container.innerHTML = `
             <div class="settings-section">
@@ -1754,7 +1847,7 @@ class SettingsController {
             return;
         }
 
-        const settings = this.currentSettings.notifications;
+        const settings = this.ensureSettingsSection('notifications');
 
         container.innerHTML = `
             <div class="settings-section">
@@ -1847,7 +1940,7 @@ class SettingsController {
             return;
         }
 
-        const settings = this.currentSettings.security;
+        const settings = this.ensureSettingsSection('security');
 
         container.innerHTML = `
             <div class="settings-section">
@@ -1923,7 +2016,7 @@ class SettingsController {
             return;
         }
 
-        const settings = this.currentSettings.theme;
+        const settings = this.ensureSettingsSection('theme');
 
         container.innerHTML = `
             <div class="settings-section">

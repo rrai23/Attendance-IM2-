@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "close": "node close-servers.js",
     "setup-db": "node setup-database.js",
     "setup-db-simple": "node setup-database-simple.js",
     "test-db": "node test-db-connection.js",

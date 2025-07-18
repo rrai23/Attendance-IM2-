@@ -1,0 +1,875 @@
+-- phpMyAdmin SQL Dump
+-- version 5.2.1
+-- https://www.phpmyadmin.net/
+--
+-- Host: 127.0.0.1
+-- Generation Time: Jul 18, 2025 at 11:19 AM
+-- Server version: 10.4.32-MariaDB
+-- PHP Version: 8.2.12
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+
+--
+-- Database: `bricks_attendance`
+--
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `attendance_records`
+--
+
+CREATE TABLE `attendance_records` (
+  `id` int(11) NOT NULL,
+  `employee_id` varchar(50) NOT NULL,
+  `date` date NOT NULL,
+  `time_in` time DEFAULT NULL,
+  `time_out` time DEFAULT NULL,
+  `break_start` time DEFAULT NULL,
+  `break_end` time DEFAULT NULL,
+  `total_hours` decimal(5,2) DEFAULT 0.00,
+  `overtime_hours` decimal(5,2) DEFAULT 0.00,
+  `status` enum('present','absent','late','half_day','sick','vacation','holiday') DEFAULT 'present',
+  `notes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `attendance_records`
+--
+
+INSERT INTO `attendance_records` (`id`, `employee_id`, `date`, `time_in`, `time_out`, `break_start`, `break_end`, `total_hours`, `overtime_hours`, `status`, `notes`, `created_at`, `updated_at`) VALUES
+(6, 'EMP002', '2025-07-16', '08:15:00', '17:32:00', '12:15:00', '12:47:00', 8.75, 0.75, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(7, 'EMP003', '2025-07-16', NULL, NULL, NULL, NULL, 0.00, 0.00, 'absent', 'Unexcused absence', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(8, 'EMP004', '2025-07-16', '08:05:00', '17:50:00', '12:12:00', '12:51:00', 9.10, 1.10, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(9, 'EMP005', '2025-07-16', '08:02:00', '17:42:00', '12:13:00', '12:56:00', 8.95, 0.95, 'vacation', 'Personal vacation', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(11, 'john.smith', '2025-07-15', '08:18:00', '17:36:00', '12:59:00', '13:29:00', 8.80, 0.80, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(12, 'jane.doe', '2025-07-15', '08:17:00', '17:16:00', '12:17:00', '12:48:00', 8.47, 0.47, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(13, 'EMP001', '2025-07-15', '08:24:00', '17:22:00', '12:08:00', '12:51:00', 8.25, 0.25, 'half_day', 'Medical appointment', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(14, 'EMP002', '2025-07-15', '08:59:00', '17:01:00', '12:14:00', '13:07:00', 7.15, 0.00, 'vacation', 'Annual leave', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(15, 'EMP003', '2025-07-15', '08:58:00', '17:06:00', '12:28:00', '13:07:00', 7.48, 0.00, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(16, 'EMP004', '2025-07-15', '08:08:00', '17:20:00', '12:16:00', '13:11:00', 8.28, 0.28, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(17, 'EMP005', '2025-07-15', '08:57:00', '17:11:00', '12:25:00', '13:12:00', 7.45, 0.00, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(19, 'john.smith', '2025-07-14', '08:13:00', '17:56:00', '12:15:00', '13:02:00', 8.93, 0.93, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(20, 'jane.doe', '2025-07-14', '08:27:00', '17:23:00', '12:10:00', '13:07:00', 7.98, 0.00, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(21, 'EMP001', '2025-07-14', '08:26:00', '17:47:00', '12:48:00', '13:27:00', 8.70, 0.70, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(22, 'EMP002', '2025-07-14', '08:12:00', '17:40:00', '12:26:00', '13:12:00', 8.70, 0.70, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(23, 'EMP003', '2025-07-14', '08:34:00', '17:24:00', '12:36:00', '13:07:00', 8.32, 0.32, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(24, 'EMP004', '2025-07-14', '08:49:00', '17:38:00', '12:21:00', '13:01:00', 8.15, 0.15, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(25, 'EMP005', '2025-07-14', '08:40:00', '17:43:00', '12:30:00', '13:13:00', 8.33, 0.33, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(26, 'admin_001', '2025-07-13', NULL, NULL, NULL, NULL, 0.00, 0.00, 'absent', 'Unexcused absence', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(27, 'john.smith', '2025-07-13', '08:39:00', '17:26:00', '12:37:00', '13:15:00', 8.15, 0.15, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(28, 'jane.doe', '2025-07-13', '08:34:00', '17:20:00', '12:37:00', '13:24:00', 7.98, 0.00, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(29, 'EMP001', '2025-07-13', NULL, NULL, NULL, NULL, 0.00, 0.00, 'absent', 'Unexcused absence', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(30, 'EMP002', '2025-07-13', '08:50:00', '17:04:00', '12:50:00', '13:39:00', 7.42, 0.00, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(31, 'EMP003', '2025-07-13', '08:27:00', '17:32:00', '12:09:00', '13:05:00', 8.15, 0.15, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(32, 'EMP004', '2025-07-13', '08:11:00', '17:09:00', '12:35:00', '13:23:00', 8.17, 0.17, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(33, 'EMP005', '2025-07-13', '08:10:00', '17:18:00', '12:03:00', '12:37:00', 8.57, 0.57, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(34, 'admin_001', '2025-07-10', '08:11:00', '17:24:00', '12:21:00', '12:51:00', 8.72, 0.72, 'half_day', 'Medical appointment', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(35, 'john.smith', '2025-07-10', '08:25:00', '17:35:00', '12:28:00', '13:02:00', 8.60, 0.60, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(36, 'jane.doe', '2025-07-10', '08:06:00', '17:27:00', '12:46:00', '13:20:00', 8.78, 0.78, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(37, 'EMP001', '2025-07-10', '08:56:00', '17:14:00', '12:45:00', '13:35:00', 7.47, 0.00, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(38, 'EMP002', '2025-07-10', '08:41:00', '17:29:00', '12:21:00', '12:56:00', 8.22, 0.22, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(39, 'EMP003', '2025-07-10', NULL, NULL, NULL, NULL, 0.00, 0.00, 'absent', 'Unexcused absence', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(40, 'EMP004', '2025-07-10', '08:06:00', '17:10:00', '12:16:00', '12:53:00', 8.45, 0.45, 'sick', 'Flu symptoms', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(41, 'EMP005', '2025-07-10', '08:08:00', '17:49:00', '12:05:00', '12:42:00', 9.07, 1.07, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(43, 'john.smith', '2025-07-09', '08:08:00', '17:39:00', '12:49:00', '13:31:00', 8.82, 0.82, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(44, 'jane.doe', '2025-07-09', NULL, NULL, NULL, NULL, 0.00, 0.00, 'absent', 'Unexcused absence', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(45, 'EMP001', '2025-07-09', '08:46:00', '17:43:00', '12:36:00', '13:23:00', 8.17, 0.17, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(46, 'EMP002', '2025-07-09', '08:49:00', '17:56:00', '12:34:00', '13:24:00', 8.28, 0.28, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(47, 'EMP003', '2025-07-09', '08:34:00', '17:51:00', '12:11:00', '12:58:00', 8.50, 0.50, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(48, 'EMP004', '2025-07-09', '08:08:00', '17:07:00', '12:14:00', '12:47:00', 8.43, 0.43, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(49, 'EMP005', '2025-07-09', '08:25:00', '17:55:00', '12:55:00', '13:44:00', 8.68, 0.68, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(51, 'john.smith', '2025-07-08', '08:15:00', '17:42:00', '12:08:00', '12:57:00', 8.63, 0.63, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(52, 'jane.doe', '2025-07-08', '08:59:00', '17:13:00', '12:59:00', '13:58:00', 7.25, 0.00, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(53, 'EMP001', '2025-07-08', '08:24:00', '17:13:00', '12:25:00', '13:14:00', 8.00, 0.00, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(54, 'EMP002', '2025-07-08', '08:40:00', '17:22:00', '12:37:00', '13:28:00', 7.85, 0.00, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(55, 'EMP003', '2025-07-08', '08:45:00', '17:50:00', '12:18:00', '12:50:00', 8.55, 0.55, 'sick', 'Flu symptoms', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(56, 'EMP004', '2025-07-08', '08:04:00', '17:53:00', '12:49:00', '13:39:00', 8.98, 0.98, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(57, 'EMP005', '2025-07-08', '08:08:00', '17:31:00', '12:17:00', '13:16:00', 8.40, 0.40, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(58, 'admin_001', '2025-07-07', '08:39:00', '17:54:00', '12:49:00', '13:33:00', 8.52, 0.52, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(59, 'john.smith', '2025-07-07', '08:43:00', '17:04:00', '12:17:00', '12:47:00', 7.85, 0.00, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(60, 'jane.doe', '2025-07-07', NULL, NULL, NULL, NULL, 0.00, 0.00, 'absent', 'Unexcused absence', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(61, 'EMP001', '2025-07-07', '08:33:00', '17:13:00', '12:50:00', '13:20:00', 8.17, 0.17, 'sick', 'Flu symptoms', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(62, 'EMP002', '2025-07-07', '08:08:00', '17:03:00', '12:44:00', '13:42:00', 7.95, 0.00, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(63, 'EMP003', '2025-07-07', '08:50:00', '17:48:00', '12:55:00', '13:46:00', 8.12, 0.12, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(64, 'EMP004', '2025-07-07', '08:31:00', '17:03:00', '12:04:00', '12:39:00', 7.95, 0.00, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(65, 'EMP005', '2025-07-07', '08:50:00', '17:44:00', '12:53:00', '13:52:00', 7.92, 0.00, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(67, 'john.smith', '2025-07-06', '08:33:00', '17:44:00', '12:17:00', '13:08:00', 8.33, 0.33, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(68, 'jane.doe', '2025-07-06', '08:18:00', '17:31:00', '12:31:00', '13:03:00', 8.68, 0.68, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(69, 'EMP001', '2025-07-06', '08:27:00', '17:22:00', '12:53:00', '13:51:00', 7.95, 0.00, 'half_day', 'Family emergency', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(70, 'EMP002', '2025-07-06', '08:43:00', '17:59:00', '12:06:00', '13:04:00', 8.30, 0.30, 'half_day', 'Medical appointment', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(71, 'EMP003', '2025-07-06', '08:35:00', '17:15:00', '12:29:00', '13:18:00', 7.85, 0.00, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(72, 'EMP004', '2025-07-06', '08:45:00', '17:19:00', '12:38:00', '13:21:00', 7.85, 0.00, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(73, 'EMP005', '2025-07-06', NULL, NULL, NULL, NULL, 0.00, 0.00, 'absent', 'Unexcused absence', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(74, 'admin_001', '2025-07-03', '08:15:00', '17:54:00', '12:51:00', '13:31:00', 8.98, 0.98, 'vacation', 'Family time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(75, 'john.smith', '2025-07-03', NULL, NULL, NULL, NULL, 0.00, 0.00, 'absent', 'Unexcused absence', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(76, 'jane.doe', '2025-07-03', '08:37:00', '17:56:00', '12:47:00', '13:42:00', 8.40, 0.40, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(77, 'EMP001', '2025-07-03', '08:27:00', '17:50:00', '12:21:00', '12:51:00', 8.88, 0.88, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(78, 'EMP002', '2025-07-03', '08:07:00', '17:06:00', '12:57:00', '13:31:00', 8.42, 0.42, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(79, 'EMP003', '2025-07-03', '08:41:00', '17:22:00', '12:59:00', '13:39:00', 8.02, 0.02, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(80, 'EMP004', '2025-07-03', NULL, NULL, NULL, NULL, 0.00, 0.00, 'absent', 'Unexcused absence', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(81, 'EMP005', '2025-07-03', '08:20:00', '17:54:00', '12:25:00', '13:08:00', 8.85, 0.85, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(82, 'admin_001', '2025-07-02', '08:48:00', '17:58:00', '12:04:00', '13:02:00', 8.20, 0.20, 'half_day', 'Medical appointment', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(83, 'john.smith', '2025-07-02', NULL, NULL, NULL, NULL, 0.00, 0.00, 'absent', 'Unexcused absence', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(84, 'jane.doe', '2025-07-02', '08:48:00', '17:32:00', '12:07:00', '12:56:00', 7.92, 0.00, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(85, 'EMP001', '2025-07-02', '08:22:00', '17:51:00', '12:03:00', '12:44:00', 8.80, 0.80, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(86, 'EMP002', '2025-07-02', '08:56:00', '17:12:00', '12:39:00', '13:34:00', 7.35, 0.00, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(87, 'EMP003', '2025-07-02', '08:05:00', '17:09:00', '12:18:00', '12:57:00', 8.42, 0.42, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(88, 'EMP004', '2025-07-02', '08:55:00', '17:28:00', '12:49:00', '13:22:00', 8.00, 0.00, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(89, 'EMP005', '2025-07-02', '08:53:00', '17:20:00', '12:36:00', '13:26:00', 7.62, 0.00, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(90, 'admin_001', '2025-07-01', '08:30:00', '17:02:00', '12:10:00', '12:57:00', 7.75, 0.00, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(91, 'john.smith', '2025-07-01', '08:52:00', '17:25:00', '12:02:00', '12:41:00', 7.90, 0.00, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(92, 'jane.doe', '2025-07-01', '08:33:00', '17:14:00', '12:10:00', '13:05:00', 7.77, 0.00, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(93, 'EMP001', '2025-07-01', '08:15:00', '17:10:00', '12:10:00', '12:57:00', 8.13, 0.13, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(94, 'EMP002', '2025-07-01', NULL, NULL, NULL, NULL, 0.00, 0.00, 'absent', 'Unexcused absence', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(95, 'EMP003', '2025-07-01', '08:45:00', '17:52:00', '12:42:00', '13:31:00', 8.30, 0.30, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(96, 'EMP004', '2025-07-01', '08:36:00', '17:13:00', '12:20:00', '12:53:00', 8.07, 0.07, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(97, 'EMP005', '2025-07-01', '08:15:00', '17:55:00', '12:21:00', '13:15:00', 8.77, 0.77, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(99, 'john.smith', '2025-06-30', '08:44:00', '17:34:00', '12:29:00', '13:11:00', 8.13, 0.13, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(100, 'jane.doe', '2025-06-30', '08:58:00', '17:44:00', '12:25:00', '13:11:00', 8.00, 0.00, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(101, 'EMP001', '2025-06-30', '08:27:00', '17:46:00', '12:51:00', '13:22:00', 8.80, 0.80, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(102, 'EMP002', '2025-06-30', '08:44:00', '17:21:00', '12:40:00', '13:26:00', 7.85, 0.00, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(103, 'EMP003', '2025-06-30', '08:23:00', '17:53:00', '12:06:00', '12:59:00', 8.62, 0.62, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(104, 'EMP004', '2025-06-30', '08:14:00', '17:45:00', '12:03:00', '12:55:00', 8.65, 0.65, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(105, 'EMP005', '2025-06-30', '08:21:00', '17:05:00', '12:45:00', '13:36:00', 7.88, 0.00, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(107, 'john.smith', '2025-06-29', '08:48:00', '17:26:00', '12:39:00', '13:38:00', 7.65, 0.00, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(108, 'jane.doe', '2025-06-29', '08:33:00', '17:44:00', '12:53:00', '13:27:00', 8.62, 0.62, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(109, 'EMP001', '2025-06-29', '08:53:00', '17:54:00', '12:14:00', '12:53:00', 8.37, 0.37, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(110, 'EMP002', '2025-06-29', '08:04:00', '17:29:00', '12:29:00', '13:19:00', 8.58, 0.58, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(111, 'EMP003', '2025-06-29', '08:52:00', '17:06:00', '12:47:00', '13:39:00', 7.37, 0.00, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(112, 'EMP004', '2025-06-29', '08:31:00', '17:28:00', '12:36:00', '13:13:00', 8.33, 0.33, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(113, 'EMP005', '2025-06-29', '08:48:00', '17:24:00', '12:40:00', '13:10:00', 8.10, 0.10, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(114, 'admin_001', '2025-06-26', NULL, NULL, NULL, NULL, 0.00, 0.00, 'absent', 'Unexcused absence', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(115, 'john.smith', '2025-06-26', '08:10:00', '17:52:00', '12:42:00', '13:23:00', 9.02, 1.02, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(116, 'jane.doe', '2025-06-26', '08:54:00', '17:35:00', '12:51:00', '13:37:00', 7.92, 0.00, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(117, 'EMP001', '2025-06-26', '08:34:00', '17:40:00', '12:08:00', '13:01:00', 8.22, 0.22, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(118, 'EMP002', '2025-06-26', '08:54:00', '17:15:00', '12:06:00', '12:41:00', 7.77, 0.00, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(119, 'EMP003', '2025-06-26', '08:22:00', '17:29:00', '12:29:00', '13:16:00', 8.33, 0.33, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(120, 'EMP004', '2025-06-26', '08:42:00', '17:21:00', '12:10:00', '13:00:00', 7.82, 0.00, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(121, 'EMP005', '2025-06-26', '08:25:00', '17:34:00', '12:41:00', '13:19:00', 8.52, 0.52, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(122, 'admin_001', '2025-06-25', '08:09:00', '17:35:00', '12:42:00', '13:41:00', 8.45, 0.45, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(123, 'john.smith', '2025-06-25', '08:42:00', '17:24:00', '12:07:00', '12:37:00', 8.20, 0.20, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(124, 'jane.doe', '2025-06-25', '08:59:00', '17:56:00', '12:30:00', '13:27:00', 8.00, 0.00, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(125, 'EMP001', '2025-06-25', '08:00:00', '17:06:00', '12:24:00', '12:57:00', 8.55, 0.55, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(126, 'EMP002', '2025-06-25', '08:02:00', '17:45:00', '12:51:00', '13:30:00', 9.07, 1.07, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(127, 'EMP003', '2025-06-25', '08:08:00', '17:55:00', '12:05:00', '12:54:00', 8.97, 0.97, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(128, 'EMP004', '2025-06-25', '08:20:00', '17:00:00', '12:45:00', '13:39:00', 7.77, 0.00, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(129, 'EMP005', '2025-06-25', '08:43:00', '17:01:00', '12:54:00', '13:24:00', 7.80, 0.00, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(130, 'admin_001', '2025-06-24', '08:08:00', '17:35:00', '12:06:00', '12:44:00', 8.82, 0.82, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(131, 'john.smith', '2025-06-24', '08:32:00', '17:03:00', '12:29:00', '13:12:00', 7.80, 0.00, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(132, 'jane.doe', '2025-06-24', '08:58:00', '17:20:00', '12:54:00', '13:43:00', 7.55, 0.00, 'sick', 'Flu symptoms', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(133, 'EMP001', '2025-06-24', '08:26:00', '17:49:00', '12:46:00', '13:43:00', 8.43, 0.43, 'sick', 'Medical appointment', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(134, 'EMP002', '2025-06-24', '08:05:00', '17:04:00', '12:58:00', '13:29:00', 8.47, 0.47, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(135, 'EMP003', '2025-06-24', '08:48:00', '17:40:00', '12:25:00', '13:23:00', 7.90, 0.00, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(136, 'EMP004', '2025-06-24', '08:43:00', '17:01:00', '12:03:00', '12:54:00', 7.45, 0.00, 'sick', 'Medical appointment', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(137, 'EMP005', '2025-06-24', NULL, NULL, NULL, NULL, 0.00, 0.00, 'absent', 'Unexcused absence', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(138, 'admin_001', '2025-06-23', '08:13:00', '17:23:00', '12:36:00', '13:06:00', 8.67, 0.67, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(139, 'john.smith', '2025-06-23', '08:45:00', '17:39:00', '12:30:00', '13:16:00', 8.13, 0.13, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(140, 'jane.doe', '2025-06-23', '08:10:00', '17:41:00', '12:46:00', '13:41:00', 8.60, 0.60, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(141, 'EMP001', '2025-06-23', '08:59:00', '17:47:00', '12:06:00', '12:57:00', 7.95, 0.00, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(142, 'EMP002', '2025-06-23', '08:04:00', '17:31:00', '12:27:00', '13:16:00', 8.63, 0.63, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(143, 'EMP003', '2025-06-23', '08:19:00', '17:55:00', '12:57:00', '13:31:00', 9.03, 1.03, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(144, 'EMP004', '2025-06-23', '08:36:00', '17:10:00', '12:42:00', '13:28:00', 7.80, 0.00, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(145, 'EMP005', '2025-06-23', '08:52:00', '17:50:00', '12:54:00', '13:51:00', 8.02, 0.02, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(146, 'admin_001', '2025-06-22', '08:39:00', '17:06:00', '12:10:00', '12:54:00', 7.72, 0.00, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(147, 'john.smith', '2025-06-22', '08:13:00', '17:01:00', '12:31:00', '13:07:00', 8.20, 0.20, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(148, 'jane.doe', '2025-06-22', NULL, NULL, NULL, NULL, 0.00, 0.00, 'absent', 'Unexcused absence', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(149, 'EMP001', '2025-06-22', NULL, NULL, NULL, NULL, 0.00, 0.00, 'absent', 'Unexcused absence', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(150, 'EMP002', '2025-06-22', '08:07:00', '17:08:00', '12:21:00', '12:55:00', 8.45, 0.45, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(151, 'EMP003', '2025-06-22', '08:12:00', '17:20:00', '12:39:00', '13:14:00', 8.55, 0.55, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(152, 'EMP004', '2025-06-22', '08:00:00', '17:12:00', '12:03:00', '12:36:00', 8.65, 0.65, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(153, 'EMP005', '2025-06-22', '08:31:00', '17:18:00', '12:36:00', '13:29:00', 7.90, 0.00, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(154, 'admin_001', '2025-06-19', '08:26:00', '17:21:00', '12:17:00', '13:15:00', 7.95, 0.00, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(155, 'john.smith', '2025-06-19', '08:32:00', '17:04:00', '12:51:00', '13:22:00', 8.02, 0.02, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(156, 'jane.doe', '2025-06-19', '08:04:00', '17:30:00', '12:18:00', '13:08:00', 8.60, 0.60, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(157, 'EMP001', '2025-06-19', '08:40:00', '17:26:00', '12:44:00', '13:43:00', 7.78, 0.00, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(158, 'EMP002', '2025-06-19', '08:25:00', '17:40:00', '12:00:00', '12:38:00', 8.62, 0.62, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(159, 'EMP003', '2025-06-19', '08:56:00', '17:27:00', '12:59:00', '13:36:00', 7.90, 0.00, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(160, 'EMP004', '2025-06-19', '08:03:00', '17:27:00', '12:33:00', '13:04:00', 8.88, 0.88, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(161, 'EMP005', '2025-06-19', NULL, NULL, NULL, NULL, 0.00, 0.00, 'absent', 'Unexcused absence', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(162, 'admin_001', '2025-06-18', '08:21:00', '17:16:00', '12:53:00', '13:44:00', 8.07, 0.07, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(163, 'john.smith', '2025-06-18', '08:35:00', '17:11:00', '12:27:00', '13:20:00', 7.72, 0.00, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(164, 'jane.doe', '2025-06-18', '08:20:00', '17:38:00', '12:44:00', '13:42:00', 8.33, 0.33, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(165, 'EMP001', '2025-06-18', '08:24:00', '17:40:00', '12:31:00', '13:07:00', 8.67, 0.67, 'vacation', 'Annual leave', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(166, 'EMP002', '2025-06-18', '08:56:00', '17:52:00', '12:29:00', '13:21:00', 8.07, 0.07, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(167, 'EMP003', '2025-06-18', '08:05:00', '17:05:00', '12:52:00', '13:35:00', 8.28, 0.28, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(168, 'EMP004', '2025-06-18', '08:27:00', '17:22:00', '12:00:00', '12:51:00', 8.07, 0.07, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(169, 'EMP005', '2025-06-18', '08:00:00', '17:17:00', '12:32:00', '13:13:00', 8.60, 0.60, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(170, 'admin_001', '2025-06-17', '08:10:00', '17:21:00', '12:07:00', '12:59:00', 8.32, 0.32, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(171, 'john.smith', '2025-06-17', NULL, NULL, NULL, NULL, 0.00, 0.00, 'absent', 'Unexcused absence', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(172, 'jane.doe', '2025-06-17', '08:53:00', '17:35:00', '12:08:00', '12:51:00', 7.98, 0.00, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(173, 'EMP001', '2025-06-17', '08:05:00', '17:53:00', '12:08:00', '12:44:00', 9.20, 1.20, 'sick', 'Medical appointment', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(174, 'EMP002', '2025-06-17', '08:44:00', '17:35:00', '12:13:00', '13:08:00', 7.93, 0.00, 'present', 'Regular attendance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(175, 'EMP003', '2025-06-17', '08:08:00', '17:25:00', '12:34:00', '13:32:00', 8.32, 0.32, 'present', 'On time', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(176, 'EMP004', '2025-06-17', '08:11:00', '17:39:00', '12:37:00', '13:32:00', 8.55, 0.55, 'present', 'Good performance', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(177, 'EMP005', '2025-06-17', '08:26:00', '17:04:00', '12:07:00', '12:55:00', 7.83, 0.00, 'sick', 'Fever', '2025-07-16 19:09:32', '2025-07-16 19:09:32'),
+(178, 'EMP250008', '2025-07-18', '06:00:00', '18:00:00', NULL, NULL, 12.00, 0.00, 'present', '', '2025-07-18 09:14:09', '2025-07-18 09:14:09'),
+(179, 'EMP250005', '2025-07-18', '06:00:00', '16:00:00', NULL, NULL, 10.00, 0.00, 'present', '', '2025-07-18 09:15:41', '2025-07-18 09:15:41');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `audit_log`
+--
+
+CREATE TABLE `audit_log` (
+  `id` int(11) NOT NULL,
+  `user_id` varchar(50) DEFAULT NULL,
+  `action` varchar(100) NOT NULL,
+  `table_name` varchar(100) DEFAULT NULL,
+  `record_id` varchar(100) DEFAULT NULL,
+  `old_values` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`old_values`)),
+  `new_values` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`new_values`)),
+  `ip_address` varchar(45) DEFAULT NULL,
+  `user_agent` varchar(500) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `departments`
+--
+
+CREATE TABLE `departments` (
+  `id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `description` text DEFAULT NULL,
+  `manager_id` varchar(50) DEFAULT NULL,
+  `budget` decimal(15,2) DEFAULT 0.00,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `departments`
+--
+
+INSERT INTO `departments` (`id`, `name`, `description`, `manager_id`, `budget`, `is_active`, `created_at`, `updated_at`) VALUES
+(1, 'ADMIN', 'System Administration', NULL, 0.00, 1, '2025-07-16 18:34:54', '2025-07-16 18:34:54'),
+(2, 'HR', 'Human Resources', NULL, 0.00, 1, '2025-07-16 18:34:54', '2025-07-16 18:34:54'),
+(3, 'IT', 'Information Technology', NULL, 0.00, 1, '2025-07-16 18:34:54', '2025-07-16 18:34:54'),
+(4, 'SALES', 'Sales Department', NULL, 0.00, 1, '2025-07-16 18:34:54', '2025-07-16 18:34:54'),
+(5, 'MARKETING', 'Marketing Department', NULL, 0.00, 1, '2025-07-16 18:34:54', '2025-07-16 18:34:54'),
+(6, 'FINANCE', 'Finance Department', NULL, 0.00, 1, '2025-07-16 18:34:54', '2025-07-16 18:34:54'),
+(7, 'OPERATIONS', 'Operations Department', NULL, 0.00, 1, '2025-07-16 18:34:54', '2025-07-16 18:34:54');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `employees`
+--
+
+CREATE TABLE `employees` (
+  `id` int(11) NOT NULL,
+  `employee_id` varchar(50) NOT NULL,
+  `username` varchar(100) DEFAULT NULL,
+  `password` varchar(255) DEFAULT NULL,
+  `role` enum('admin','manager','employee') DEFAULT 'employee',
+  `full_name` varchar(255) NOT NULL,
+  `first_name` varchar(100) DEFAULT NULL,
+  `last_name` varchar(100) DEFAULT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `department_id` int(11) DEFAULT NULL,
+  `department` varchar(100) DEFAULT NULL,
+  `position` varchar(100) DEFAULT NULL,
+  `manager_id` varchar(50) DEFAULT NULL,
+  `hire_date` date DEFAULT NULL,
+  `status` enum('active','inactive','terminated') DEFAULT 'active',
+  `wage` decimal(10,2) DEFAULT 15.00,
+  `overtime_rate` decimal(4,2) DEFAULT 1.50,
+  `salary_type` enum('hourly','salary') DEFAULT 'hourly',
+  `avatar` varchar(500) DEFAULT NULL,
+  `address` text DEFAULT NULL,
+  `emergency_contact` varchar(255) DEFAULT NULL,
+  `emergency_phone` varchar(20) DEFAULT NULL,
+  `work_schedule` longtext DEFAULT NULL,
+  `permissions` longtext DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `last_login` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `employees`
+--
+
+INSERT INTO `employees` (`id`, `employee_id`, `username`, `password`, `role`, `full_name`, `first_name`, `last_name`, `email`, `phone`, `department_id`, `department`, `position`, `manager_id`, `hire_date`, `status`, `wage`, `overtime_rate`, `salary_type`, `avatar`, `address`, `emergency_contact`, `emergency_phone`, `work_schedule`, `permissions`, `is_active`, `last_login`, `created_at`, `updated_at`) VALUES
+(1, 'admin_001', 'admin', '$2a$12$csl2YiJvnyBVSRrK0BF1A.35oemRSk58GVlnkXPoX1SvDZ2Tt8Aga', 'admin', 'System Administrator', 'System', 'Administrator', 'admin@brickscompany.com', NULL, NULL, 'ADMIN', 'System Administrator', NULL, '2025-07-17', 'active', 15.00, 1.50, 'hourly', NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, '2025-07-16 18:34:54', '2025-07-16 18:34:54'),
+(2, 'john.smith', 'john.smith', '$2a$12$gKVKUJrZMwYfuKXpZSNY8uLmdgY9.QmplZnhGHZkN7VExDDUtVVY6', 'manager', 'John Smith', 'John', 'Smith', 'john.smith@brickscompany.com', NULL, NULL, 'HR', 'Manager', NULL, '2025-07-17', 'inactive', 15.00, 1.50, 'hourly', NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, '2025-07-16 18:34:54', '2025-07-17 06:51:01'),
+(3, 'jane.doe', 'jane.doe', '$2a$12$6yvwJiytyGqSBSxU/dm3puvGUsLjwTzD1Q2kO9iHAQ/UU76TGMIyO', 'employee', 'Jane Doe', 'Jane', 'Doe', 'jane.doe@brickscompany.com', NULL, NULL, 'IT', 'Developer', NULL, '2025-07-17', 'active', 15.00, 1.50, 'hourly', NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, '2025-07-16 18:34:55', '2025-07-16 18:34:55'),
+(4, 'EMP001', NULL, NULL, 'employee', 'John Doe', NULL, NULL, 'john.doe@company.com', NULL, NULL, 'IT', NULL, NULL, NULL, 'inactive', 15.00, 1.50, 'hourly', NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, '2025-07-16 19:08:05', '2025-07-18 09:11:37'),
+(5, 'EMP002', NULL, NULL, 'employee', 'Jane Smith', NULL, NULL, 'jane.smith@company.com', NULL, NULL, 'HR', NULL, NULL, NULL, 'inactive', 15.00, 1.50, 'hourly', NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, '2025-07-16 19:08:05', '2025-07-18 09:11:39'),
+(6, 'EMP003', NULL, NULL, 'employee', 'Mike Johnson', NULL, NULL, 'mike.johnson@company.com', NULL, NULL, 'Finance', NULL, NULL, NULL, 'inactive', 15.00, 1.50, 'hourly', NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, '2025-07-16 19:08:05', '2025-07-17 05:21:51'),
+(7, 'EMP004', NULL, NULL, 'employee', 'Sarah Wilson', NULL, NULL, 'sarah.wilson@company.com', NULL, NULL, 'Marketing', NULL, NULL, NULL, 'inactive', 15.00, 1.50, 'hourly', NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, '2025-07-16 19:08:05', '2025-07-17 06:03:45'),
+(8, 'EMP005', NULL, NULL, 'employee', 'David Brown', NULL, NULL, 'david.brown@company.com', NULL, NULL, 'IT', NULL, NULL, NULL, 'inactive', 15.00, 1.50, 'hourly', NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, '2025-07-16 19:08:05', '2025-07-17 05:56:02'),
+(10, 'TEST_DIRECT_002', 'test.direct.002', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewNdGNOqOyXM', 'employee', 'Test Direct Employee', 'Test', 'Direct', 'test.direct.002@example.com', '1234567890', NULL, 'IT', 'Developer', NULL, '2025-01-15', 'inactive', 25.00, 1.50, 'hourly', NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, '2025-07-17 05:35:20', '2025-07-17 05:44:55'),
+(12, 'EMP250001', NULL, NULL, 'employee', 'John Doe', 'John', 'Doe', 'john.doe@testfresh.com', '123-456-7890', NULL, 'IT', 'Software Developer', NULL, '2025-01-15', 'inactive', 25.00, 1.50, 'hourly', NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, '2025-07-17 06:26:02', '2025-07-17 06:50:56'),
+(13, 'EMP250002', NULL, NULL, 'employee', 'Jane Smith', 'Jane', 'Smith', 'jane.smith.1752733785167@testfresh.com', '123-456-7890', NULL, 'HR', 'HR Manager', NULL, '2025-01-15', 'inactive', 30.00, 1.50, 'hourly', NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, '2025-07-17 06:29:45', '2025-07-17 06:41:19'),
+(14, 'EMP250003', NULL, NULL, 'employee', 'Jane Smith', 'Jane', 'Smith', 'jane.smith.1752734398227@testfresh.com', '123-456-7890', NULL, 'HR', 'HR Manager', NULL, '2025-01-15', 'inactive', 30.00, 1.50, 'hourly', NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, '2025-07-17 06:39:58', '2025-07-17 06:46:51'),
+(15, 'EMP250004', NULL, NULL, 'employee', 'asedsdf asdafd', 'asedsdf', 'asdafd', 'afasd!@gmail.com', '', NULL, 'Sales', 'zxf', NULL, '2025-07-17', 'inactive', 15.00, 1.50, 'hourly', NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, '2025-07-17 06:42:02', '2025-07-17 06:54:50'),
+(16, 'EMP250005', NULL, NULL, 'employee', 'Erika Bianca', 'Erika', 'Bianca', 'APi@gmail.com', '', NULL, 'Engineering', 'ADMIN cutie', NULL, '2025-07-17', 'active', 15.00, 1.50, 'hourly', NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, '2025-07-17 06:51:37', '2025-07-17 06:51:37'),
+(17, 'EMP250006', NULL, NULL, 'employee', 'dfwADAWD ASDASD', 'dfwADAWD', 'ASDASD', 'SAFASF@GMAIL.COM', '', NULL, 'Marketing', 'SAD', NULL, '2025-07-17', 'active', 15.00, 1.50, 'hourly', NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, '2025-07-17 06:52:18', '2025-07-17 06:52:18'),
+(18, 'EMP250007', NULL, NULL, 'employee', 'Erikaur Biancaur Apiuar', 'Erikaur', 'Biancaur Apiuar', 'asdhasduhg@gmail.com', '', NULL, 'Engineering', 'ASdffsa', NULL, '2025-07-17', 'active', 15.00, 1.50, 'hourly', NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, '2025-07-17 06:55:13', '2025-07-17 06:55:13'),
+(19, 'EMP250008', NULL, NULL, 'employee', 'Yuan Alarde', 'Yuan', 'Alarde', 'yuanalarde@gmail.com', '09201981181', NULL, 'Operations', 'NA', NULL, '2025-07-18', 'active', 6005.00, 1.50, 'hourly', NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, '2025-07-18 09:12:33', '2025-07-18 09:18:46');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `overtime_requests`
+--
+
+CREATE TABLE `overtime_requests` (
+  `id` int(11) NOT NULL,
+  `employee_id` varchar(50) NOT NULL,
+  `request_date` date NOT NULL,
+  `hours_requested` decimal(5,2) NOT NULL,
+  `reason` text DEFAULT NULL,
+  `status` enum('pending','approved','rejected') DEFAULT 'pending',
+  `approved_by` varchar(50) DEFAULT NULL,
+  `approved_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `payroll_records`
+--
+
+CREATE TABLE `payroll_records` (
+  `id` int(11) NOT NULL,
+  `employee_id` varchar(50) NOT NULL,
+  `pay_period_start` date NOT NULL,
+  `pay_period_end` date NOT NULL,
+  `regular_hours` decimal(5,2) DEFAULT 0.00,
+  `overtime_hours` decimal(5,2) DEFAULT 0.00,
+  `regular_pay` decimal(10,2) DEFAULT 0.00,
+  `overtime_pay` decimal(10,2) DEFAULT 0.00,
+  `gross_pay` decimal(10,2) DEFAULT 0.00,
+  `deductions` decimal(10,2) DEFAULT 0.00,
+  `net_pay` decimal(10,2) DEFAULT 0.00,
+  `status` enum('draft','approved','paid') DEFAULT 'draft',
+  `processed_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `payroll_records`
+--
+
+INSERT INTO `payroll_records` (`id`, `employee_id`, `pay_period_start`, `pay_period_end`, `regular_hours`, `overtime_hours`, `regular_pay`, `overtime_pay`, `gross_pay`, `deductions`, `net_pay`, `status`, `processed_at`, `created_at`, `updated_at`) VALUES
+(1, 'admin_001', '2025-07-04', '2025-07-18', 16.00, 1.24, 240.00, 27.90, 267.90, 61.62, 206.28, 'draft', NULL, '2025-07-18 09:14:18', '2025-07-18 09:14:18'),
+(2, 'jane.doe', '2025-07-04', '2025-07-18', 47.21, 1.93, 708.15, 43.43, 751.57, 172.86, 578.71, 'draft', NULL, '2025-07-18 09:14:18', '2025-07-18 09:14:18'),
+(3, 'EMP250005', '2025-07-04', '2025-07-18', 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 'draft', NULL, '2025-07-18 09:14:18', '2025-07-18 09:14:18'),
+(4, 'EMP250006', '2025-07-04', '2025-07-18', 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 'draft', NULL, '2025-07-18 09:14:18', '2025-07-18 09:14:18'),
+(5, 'EMP250007', '2025-07-04', '2025-07-18', 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 'draft', NULL, '2025-07-18 09:14:18', '2025-07-18 09:14:18'),
+(6, 'EMP250008', '2025-07-04', '2025-07-18', 8.00, 4.00, 48040.00, 36030.00, 84070.00, 14971.55, 69098.45, 'draft', NULL, '2025-07-18 09:14:18', '2025-07-18 09:14:18');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `system_settings`
+--
+
+CREATE TABLE `system_settings` (
+  `id` int(11) NOT NULL,
+  `setting_key` varchar(100) NOT NULL,
+  `setting_value` text DEFAULT NULL,
+  `setting_type` enum('string','number','boolean','json') DEFAULT 'string',
+  `description` text DEFAULT NULL,
+  `is_editable` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `system_settings`
+--
+
+INSERT INTO `system_settings` (`id`, `setting_key`, `setting_value`, `setting_type`, `description`, `is_editable`, `created_at`, `updated_at`) VALUES
+(1, 'company_name', 'Bricks Company', 'string', 'Company name', 1, '2025-07-16 18:34:54', '2025-07-16 18:34:54'),
+(2, 'work_hours_per_day', '8', 'number', 'Standard work hours per day', 1, '2025-07-16 18:34:54', '2025-07-16 18:34:54'),
+(3, 'work_days_per_week', '5', 'number', 'Standard work days per week', 1, '2025-07-16 18:34:54', '2025-07-16 18:34:54'),
+(4, 'overtime_rate', '1.5', 'number', 'Overtime pay rate multiplier', 1, '2025-07-16 18:34:54', '2025-07-16 18:34:54'),
+(5, 'timezone', 'Asia/Manila', 'string', 'System timezone', 1, '2025-07-16 18:34:54', '2025-07-18 09:11:12'),
+(6, 'currency', 'PHP', 'string', 'System currency', 1, '2025-07-16 18:34:54', '2025-07-18 09:11:12'),
+(7, 'date_format', 'YYYY-MM-DD', 'string', 'Date format', 1, '2025-07-16 18:34:54', '2025-07-16 18:34:54'),
+(8, 'time_format', 'HH:mm:ss', 'string', 'Time format', 1, '2025-07-16 18:34:54', '2025-07-16 18:34:54'),
+(9, 'max_login_attempts', '5', 'number', 'Maximum login attempts before lockout', 1, '2025-07-16 18:34:54', '2025-07-16 18:34:54'),
+(10, 'session_timeout', '24', 'number', 'Session timeout in hours', 1, '2025-07-16 18:34:54', '2025-07-16 18:34:54'),
+(11, 'session_maintenance_enabled', 'true', 'string', NULL, 1, '2025-07-16 21:15:09', '2025-07-16 21:15:09'),
+(12, 'companyName', 'Bricks Hardware', 'string', 'Company name displayed throughout the system', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(13, 'companyAddress', 'Your Company Address', 'string', 'Company physical address', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(14, 'companyPhone', '+1 (555) 123-4567', 'string', 'Company phone number', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(15, 'companyEmail', 'admin@company.com', 'string', 'Company email address', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(16, 'dateFormat', 'MM/DD/YYYY', 'string', 'Date format used throughout the system', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(17, 'timeFormat', '12', 'string', 'Time format (12 or 24 hour)', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(18, 'currencySymbol', '₱', 'string', 'Currency symbol', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(19, 'language', 'en', 'string', 'System default language', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(20, 'workingHoursStart', '09:00', 'string', 'Standard work start time', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(21, 'workingHoursEnd', '17:00', 'string', 'Standard work end time', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(22, 'workingHoursPerDay', '8', 'number', 'Standard working hours per day', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(23, 'workDaysPerWeek', '5', 'number', 'Standard work days per week', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(24, 'payPeriod', 'monthly', 'string', 'Pay period frequency (weekly, biweekly, monthly)', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(25, 'payday', 'friday', 'string', 'Day of the week for payday', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(26, 'payrollStartDate', '2024-01-01', 'string', 'Payroll period start date', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(27, 'overtimeRate', '2.2', 'string', 'Overtime rate multiplier', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(28, 'overtimeThreshold', '40', 'string', 'Hours threshold for overtime (weekly)', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(29, 'overtimeThresholdHours', '8.5', 'number', 'Daily overtime threshold in hours', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(30, 'holidayMultiplier', '2.0', 'number', 'Holiday pay rate multiplier', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(31, 'roundingRules', 'nearest_quarter', 'string', 'Time rounding rules for payroll', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(32, 'autoCalculate', 'true', 'boolean', 'Auto-calculate payroll at period end', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(33, 'autoApproveRegular', 'false', 'boolean', 'Auto-approve regular time entries', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(34, 'requireOvertimeApproval', 'true', 'boolean', 'Require approval for overtime', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(35, 'cutoffTime', '23:59', 'string', 'Daily payroll cutoff time', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(36, 'minimumWage', '15000', 'number', 'Minimum wage amount', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(37, 'taxRate', '0.20', 'number', 'Default tax rate (20%)', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(38, 'sssRate', '0.045', 'number', 'SSS contribution rate (4.5%)', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(39, 'sssContributionRate', '0.045', 'number', 'SSS contribution rate (duplicate key for compatibility)', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(40, 'philhealthRate', '0.025', 'number', 'PhilHealth contribution rate (2.5%)', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(41, 'pagibigRate', '0.02', 'number', 'Pag-IBIG contribution rate (2%)', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(42, 'clockInGrace', '5', 'string', 'Grace period for clock in (minutes)', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(43, 'clockOutGrace', '5', 'string', 'Grace period for clock out (minutes)', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(44, 'lateGracePeriod', '15', 'number', 'Grace period for late arrival (minutes)', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(45, 'lateThresholdMinutes', '15', 'number', 'Late threshold in minutes', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(46, 'requireLocation', 'false', 'boolean', 'Require location for clock in/out', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(47, 'lunchBreakDuration', '30', 'string', 'Default lunch break duration (minutes)', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(48, 'shortBreakDuration', '15', 'string', 'Default short break duration (minutes)', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(49, 'autoDeductLunch', 'true', 'boolean', 'Automatically deduct lunch break', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(50, 'autoClockOut', 'false', 'boolean', 'Auto clock out employees at end of day', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(51, 'autoClockOutTime', '18:00', 'string', 'Auto clock out time', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(52, 'requireNotes', 'false', 'boolean', 'Require notes for manual time adjustments', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(53, 'tardyThreshold', '3', 'string', 'Number of tardies before warning', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(54, 'absenceThreshold', '2', 'string', 'Number of absences before warning', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(55, 'sendTardyAlerts', 'true', 'boolean', 'Send alerts for tardiness', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(56, 'minimumOvertimeHours', '1', 'number', 'Minimum hours before overtime applies', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(57, 'emailNotifications', 'true', 'boolean', 'Enable email notifications', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(58, 'smtpServer', 'smtp.gmail.com', 'string', 'SMTP server for email notifications', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(59, 'smtpPort', '587', 'string', 'SMTP port number', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(60, 'smtpUsername', '', 'string', 'SMTP username', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(61, 'smtpPassword', '', 'string', 'SMTP password (encrypted)', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(62, 'fromEmail', 'noreply@company.com', 'string', 'From email address for notifications', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(63, 'emailAddress', 'admin@company.com', 'string', 'Admin email address for notifications', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(64, 'tardyAlerts', 'true', 'boolean', 'Send tardiness alerts', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(65, 'overtimeAlerts', 'true', 'boolean', 'Send overtime alerts', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(66, 'payrollReminders', 'true', 'boolean', 'Send payroll reminder notifications', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(67, 'systemUpdates', 'true', 'boolean', 'Send system update notifications', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(68, 'absenceAlerts', 'true', 'boolean', 'Send absence alert notifications', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(69, 'smsNotifications', 'false', 'boolean', 'Enable SMS notifications', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(70, 'systemNotifications', 'true', 'boolean', 'Enable in-system notifications', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(71, 'sessionTimeout', '24', 'string', 'Session timeout in hours', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(72, 'allowRememberMe', 'true', 'boolean', 'Allow remember me functionality', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(73, 'maxLoginAttempts', '5', 'string', 'Maximum login attempts before lockout', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(74, 'lockoutDuration', '30', 'string', 'Account lockout duration in minutes', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(75, 'passwordMinLength', '6', 'string', 'Minimum password length', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(76, 'requireUppercase', 'false', 'boolean', 'Require uppercase letters in passwords', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(77, 'requireNumbers', 'false', 'boolean', 'Require numbers in passwords', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(78, 'requireSpecialChars', 'false', 'boolean', 'Require special characters in passwords', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(79, 'requirePasswordChange', 'false', 'boolean', 'Require periodic password changes', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(80, 'passwordChangeInterval', '90', 'string', 'Password change interval in days', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(81, 'twoFactorAuth', 'false', 'boolean', 'Enable two-factor authentication', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(82, 'require2FAAdmin', 'false', 'boolean', 'Require 2FA for admin accounts', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(83, 'twoFactorMethod', 'email', 'string', 'Two-factor authentication method', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(84, 'defaultTheme', 'light', 'string', 'Default system theme (light, dark, auto)', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(85, 'allowUserThemes', 'true', 'boolean', 'Allow users to change themes', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(86, 'accentColor', '#3B82F6', 'string', 'Primary accent color for the interface', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(87, 'defaultRole', 'employee', 'string', 'Default role for new users', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(88, 'defaultHourlyRate', '500', 'string', 'Default hourly rate for new employees', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(89, 'autoEnableAccounts', 'true', 'boolean', 'Auto-enable new user accounts', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(90, 'requireEmailVerification', 'false', 'boolean', 'Require email verification for new accounts', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(91, 'autoInactivate', 'false', 'boolean', 'Auto-inactivate unused accounts', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(92, 'inactiveThreshold', '90', 'string', 'Days before marking account as inactive', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(93, 'autoBackup', 'true', 'boolean', 'Enable automatic backups', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(94, 'backupFrequency', 'daily', 'string', 'Backup frequency (daily, weekly, monthly)', 1, '2025-07-18 08:30:45', '2025-07-18 09:11:12'),
+(95, 'backupEnabled', 'true', 'boolean', 'Enable automatic backups (duplicate for compatibility)', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(96, 'autoLogoutMinutes', '30', 'number', 'Auto logout time in minutes', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(97, 'work_start_time', '09:00', 'string', 'Work start time (legacy key)', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(98, 'work_end_time', '17:00', 'string', 'Work end time (legacy key)', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(99, 'overtime_rate_multiplier', '1.5', 'number', 'Overtime rate multiplier (legacy key)', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(100, 'working_hours_per_day', '8', 'number', 'Working hours per day (legacy key)', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(101, 'payroll_frequency', 'biweekly', 'string', 'Payroll frequency (legacy key)', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(102, 'company_timezone', 'Asia/Manila', 'string', 'Company timezone (legacy key)', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(103, 'standard_work_hours', '8', 'number', 'Standard work hours (legacy key)', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(104, 'workingHours', '8', 'number', 'Daily working hours', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(105, 'lunchBreakStart', '12:00', 'string', 'Default lunch break start time', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(106, 'lunchBreakEnd', '13:00', 'string', 'Default lunch break end time', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(107, 'attendanceRequiredFields', '[\"time_in\", \"time_out\"]', 'json', 'Required fields for attendance', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(108, 'notificationSettings', '{\"email_notifications\": true, \"sms_notifications\": false, \"system_notifications\": true}', 'json', 'Notification settings object', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(109, 'securitySettings', '{\"session_timeout\": 24, \"password_min_length\": 6, \"require_password_change\": false, \"max_login_attempts\": 5}', 'json', 'Security settings object', 1, '2025-07-18 08:30:45', '2025-07-18 08:30:45'),
+(110, 'address', '', 'string', NULL, 1, '2025-07-18 08:33:20', '2025-07-18 09:11:12'),
+(112, 'phone', '', 'string', NULL, 1, '2025-07-18 08:33:20', '2025-07-18 09:11:12'),
+(114, 'startDate', '', 'string', NULL, 1, '2025-07-18 08:33:20', '2025-07-18 09:11:12'),
+(116, 'autoGeneratePasswords', 'true', 'boolean', NULL, 1, '2025-07-18 08:33:20', '2025-07-18 09:11:12'),
+(118, 'lockoutAttempts', '5', 'string', NULL, 1, '2025-07-18 08:33:20', '2025-07-18 09:11:12'),
+(120, 'autoDeactivateInactive', 'false', 'boolean', NULL, 1, '2025-07-18 08:33:20', '2025-07-18 09:11:12'),
+(122, 'payroll.overtimeRate', '2.3', 'string', NULL, 1, '2025-07-18 08:53:03', '2025-07-18 09:05:08'),
+(124, 'payroll.overtimeThreshold', '40', 'string', NULL, 1, '2025-07-18 08:53:03', '2025-07-18 09:05:08');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `user_accounts`
+--
+
+CREATE TABLE `user_accounts` (
+  `id` int(11) NOT NULL,
+  `employee_id` varchar(50) NOT NULL,
+  `username` varchar(100) NOT NULL,
+  `password_hash` varchar(255) NOT NULL,
+  `role` enum('admin','manager','employee') DEFAULT 'employee',
+  `is_active` tinyint(1) DEFAULT 1,
+  `last_login` timestamp NULL DEFAULT NULL,
+  `failed_login_attempts` int(11) DEFAULT 0,
+  `account_locked_until` timestamp NULL DEFAULT NULL,
+  `password_reset_token` varchar(255) DEFAULT NULL,
+  `password_reset_expires` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `first_name` varchar(100) DEFAULT NULL,
+  `last_name` varchar(100) DEFAULT NULL,
+  `full_name` varchar(255) DEFAULT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `department` varchar(100) DEFAULT NULL,
+  `position` varchar(100) DEFAULT NULL,
+  `hire_date` date DEFAULT NULL,
+  `employee_status` enum('active','inactive','terminated') DEFAULT 'active'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `user_accounts`
+--
+
+INSERT INTO `user_accounts` (`id`, `employee_id`, `username`, `password_hash`, `role`, `is_active`, `last_login`, `failed_login_attempts`, `account_locked_until`, `password_reset_token`, `password_reset_expires`, `created_at`, `updated_at`, `first_name`, `last_name`, `full_name`, `email`, `phone`, `department`, `position`, `hire_date`, `employee_status`) VALUES
+(1, 'admin_001', 'admin', '$2a$12$csl2YiJvnyBVSRrK0BF1A.35oemRSk58GVlnkXPoX1SvDZ2Tt8Aga', 'admin', 1, '2025-07-18 08:53:50', 0, NULL, NULL, NULL, '2025-07-16 18:34:54', '2025-07-18 08:53:50', 'System', 'Administrator', 'System Administrator', 'admin@brickscompany.com', NULL, 'ADMIN', 'System Administrator', '2025-07-17', 'active'),
+(2, 'john.smith', 'john.smith', '$2a$12$gKVKUJrZMwYfuKXpZSNY8uLmdgY9.QmplZnhGHZkN7VExDDUtVVY6', 'manager', 0, NULL, 0, NULL, NULL, NULL, '2025-07-16 18:34:55', '2025-07-17 06:51:01', 'John', 'Smith', 'John Smith', 'john.smith@brickscompany.com', NULL, 'HR', 'Manager', '2025-07-17', 'active'),
+(3, 'jane.doe', 'jane.doe', '$2a$12$6yvwJiytyGqSBSxU/dm3puvGUsLjwTzD1Q2kO9iHAQ/UU76TGMIyO', 'employee', 1, NULL, 0, NULL, NULL, NULL, '2025-07-16 18:34:55', '2025-07-16 18:34:55', 'Jane', 'Doe', 'Jane Doe', 'jane.doe@brickscompany.com', NULL, 'IT', 'Developer', '2025-07-17', 'active'),
+(4, 'EMP250004', 'emp_015', '$2a$12$/AmGeXeN9sK0zRAas/cRcuMgZVSd2fJaxNtam8mE5Fu7pJvHgsHjm', 'employee', 0, NULL, 0, NULL, NULL, NULL, '2025-07-17 06:42:02', '2025-07-17 06:54:50', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'active'),
+(5, 'EMP250005', 'emp_097316', '$2a$12$jIffbjYbC3O9xIVEYqqXe.oGVwGW3RbiVqB8PAslugQp76K5FygF6', 'admin', 1, NULL, 0, NULL, NULL, NULL, '2025-07-17 06:51:37', '2025-07-17 06:51:37', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'active'),
+(6, 'EMP250006', 'emp_138215', '$2a$12$hsWbknil72ObxkIRkkInMueS66boUB8Wlks7PR1.3vSuG2agMlfkW', 'employee', 1, NULL, 0, NULL, NULL, NULL, '2025-07-17 06:52:18', '2025-07-17 06:52:18', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'active'),
+(7, 'EMP250007', 'emp_312820', '$2a$12$5p5am1wFHE4cvTArMIdi1OCD1x4Jap0PdwckvBTlbnFwV0ZavHEXa', 'employee', 1, NULL, 0, NULL, NULL, NULL, '2025-07-17 06:55:13', '2025-07-17 06:55:13', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'active'),
+(8, 'EMP250008', 'yuanalarde', '$2a$12$eyIb1txZ9exwYqvlM4118OHlWo07cMBLD0bEYcwYNMjN7tY91P0Ji', 'admin', 0, NULL, 0, NULL, NULL, NULL, '2025-07-18 09:12:33', '2025-07-18 09:18:30', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'active');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `user_sessions`
+--
+
+CREATE TABLE `user_sessions` (
+  `id` int(11) NOT NULL,
+  `employee_id` varchar(50) NOT NULL,
+  `token_hash` varchar(500) NOT NULL,
+  `expires_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `user_agent` varchar(500) DEFAULT NULL,
+  `ip_address` varchar(45) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `user_sessions`
+--
+
+INSERT INTO `user_sessions` (`id`, `employee_id`, `token_hash`, `expires_at`, `is_active`, `created_at`, `user_agent`, `ip_address`) VALUES
+(2, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI2OTE0MjIsImV4cCI6MTc1Mjc3NzgyMn0.RwHvvaHbWg1tLdLomIVDXBsIskFiOvGavSW7VLJ6mC0', '2026-07-16 21:15:09', 1, '2025-07-16 18:43:42', NULL, NULL),
+(3, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI2OTE0MzksImV4cCI6MTc1Mjc3NzgzOX0.ZflX2t23JJZJfGlT8SXRaduRLqQUl3inTGXHynp7Oak', '2026-07-16 21:15:09', 1, '2025-07-16 18:43:59', NULL, NULL),
+(4, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI2OTE1NjEsImV4cCI6MTc1Mjc3Nzk2MX0.qxG3NhwHWjmEJf3Klnl001V36TzZ8pyJB4W4H0sikgQ', '2026-07-16 21:15:09', 1, '2025-07-16 18:46:01', NULL, NULL),
+(5, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI2OTE2MDUsImV4cCI6MTc1Mjc3ODAwNX0.VPTFvXEWLLi4ZAICLAiTRQIq8VSpdYmJzzcCEe78eBU', '2026-07-16 21:15:09', 1, '2025-07-16 18:46:45', NULL, NULL),
+(6, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI2OTI0MTEsImV4cCI6MTc1Mjc3ODgxMX0.2GSEx5tdYXX2kl4pBpPEAnkUf90cpOmj2TkIgig8j3g', '2026-07-16 21:15:09', 1, '2025-07-16 19:00:11', NULL, NULL),
+(8, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI2OTQ3ODIsImV4cCI6MTc1Mjc4MTE4Mn0.H1fzWnlLnkuZ0eoaBu5v0we72kuFNINMJCAUghM6RwY', '2026-07-16 21:15:09', 1, '2025-07-16 19:39:42', NULL, NULL),
+(9, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI2OTUxNzUsImV4cCI6MTc1Mjc4MTU3NX0._LXDPIzsFJwtahZOEa6XZyFSrS4vvhaiRJ3sLHX71jQ', '2026-07-16 21:15:09', 1, '2025-07-16 19:46:15', NULL, NULL),
+(10, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI2OTUyNTksImV4cCI6MTc1Mjc4MTY1OX0.5OibCPAewcM6wawGbv1uO2Pgi5UtidMVXeNxjDgdDys', '2026-07-16 21:15:09', 1, '2025-07-16 19:47:39', NULL, NULL),
+(11, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI2OTUzMzksImV4cCI6MTc1Mjc4MTczOX0.8FfZ667naR_IkI2Tpk0lZBk2lCTtdJe_NWFFTQq6UHU', '2026-07-16 21:15:09', 1, '2025-07-16 19:48:59', NULL, NULL),
+(12, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI2OTUzNzgsImV4cCI6MTc1Mjc4MTc3OH0._kFjKNxvi8lLNROCxeIipNQbmB1PpgDrHut5N55hEvg', '2026-07-16 21:15:09', 1, '2025-07-16 19:49:38', NULL, NULL),
+(13, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI2OTU1MDgsImV4cCI6MTc1Mjc4MTkwOH0.hmHQXG3ZNZxTo-XFAdCJyOULDrV5vCcqWLx5JHN2fZ0', '2026-07-16 21:15:09', 1, '2025-07-16 19:51:48', NULL, NULL),
+(14, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI2OTU1NDAsImV4cCI6MTc1Mjc4MTk0MH0.m25ELa-Ha0oIz6XmtbOse61mG5tnrqLSFhxQZokfLm8', '2026-07-16 21:15:09', 1, '2025-07-16 19:52:20', NULL, NULL),
+(15, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI2OTU1OTYsImV4cCI6MTc1Mjc4MTk5Nn0.inHeOkHTpDMV20wOQ5E3P0Zi-DnPxxpV7JXe2Ewh2UY', '2026-07-16 21:15:09', 1, '2025-07-16 19:53:16', NULL, NULL),
+(16, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI2OTU2MzEsImV4cCI6MTc1Mjc4MjAzMX0.yBl2m8di7L2uLFRkUvcgFZkzh2TsnpEgSRX0ef53QQw', '2026-07-16 21:15:09', 1, '2025-07-16 19:53:51', NULL, NULL),
+(17, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI2OTU2NjUsImV4cCI6MTc1Mjc4MjA2NX0.jSuyOQiD78aKYRAj_C6KlGQoGbef2RlNX8lWUQFZLfg', '2026-07-16 21:15:09', 1, '2025-07-16 19:54:25', NULL, NULL),
+(19, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI2OTY0OTksImV4cCI6MTc1Mjc4Mjg5OX0.OGnaV_BqwRifru5vDvyVu7Kt0Mf_IZoFMO9bKVhV1Yo', '2026-07-16 21:15:09', 1, '2025-07-16 20:08:19', NULL, NULL),
+(28, 'admin_001', 'dev_token_admin_1752700205259', '2026-07-16 21:15:09', 1, '2025-07-16 21:10:05', 'Test User Agent', '127.0.0.1'),
+(30, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MDAyOTksImV4cCI6MTc1Mjc4NjY5OX0.PYfGDxzQmsELj9bMKDHSCx-m0k84riGK2pCSp1bM3ug', '2025-07-16 21:18:48', 0, '2025-07-16 21:11:39', NULL, NULL),
+(31, 'john.smith', 'auto_token_john.smith_1752700327852', '2025-07-17 06:51:01', 0, '2025-07-16 21:12:07', 'System Auto-Generated', '127.0.0.1'),
+(32, 'jane.doe', 'auto_token_jane.doe_1752700327853', '2026-07-16 21:15:09', 1, '2025-07-16 21:12:07', 'System Auto-Generated', '127.0.0.1'),
+(33, 'EMP001', 'auto_token_EMP001_1752700327854', '2025-07-18 09:11:37', 0, '2025-07-16 21:12:07', 'System Auto-Generated', '127.0.0.1'),
+(34, 'EMP002', 'auto_token_EMP002_1752700327855', '2025-07-18 09:11:39', 0, '2025-07-16 21:12:07', 'System Auto-Generated', '127.0.0.1'),
+(35, 'EMP003', 'auto_token_EMP003_1752700327856', '2025-07-17 05:21:51', 0, '2025-07-16 21:12:07', 'System Auto-Generated', '127.0.0.1'),
+(36, 'EMP004', 'auto_token_EMP004_1752700327857', '2025-07-17 06:03:45', 0, '2025-07-16 21:12:07', 'System Auto-Generated', '127.0.0.1'),
+(37, 'EMP005', 'auto_token_EMP005_1752700327859', '2025-07-17 05:56:02', 0, '2025-07-16 21:12:07', 'System Auto-Generated', '127.0.0.1'),
+(38, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MDA3MzAsImV4cCI6MTc1Mjc4NzEzMH0.EslP0-heekpgh0tq24VIBVSIO9iTd3d-3oo7u21Kk0g', '2025-07-16 21:18:55', 0, '2025-07-16 21:18:50', NULL, NULL),
+(39, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MDA3NDIsImV4cCI6MTc1Mjc4NzE0Mn0.j8nAIOQ96kKpYzFs4SeUcc9PH0RwOSPIKttMPOoeQiY', '2025-07-16 21:25:38', 0, '2025-07-16 21:19:02', NULL, NULL),
+(40, 'admin_001', 'admin_delete_token_1752701007587', '2025-07-17 21:23:27', 1, '2025-07-16 21:23:27', 'Employee Delete Fix', '127.0.0.1'),
+(41, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MDExNDUsImV4cCI6MTc1Mjc4NzU0NX0.3OxSHvz5qcm3HZCaiLqrEhGCjxGeBoBtEWCVuJ2VnH4', '2025-08-15 13:38:18', 1, '2025-07-16 21:25:45', NULL, NULL),
+(42, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MDIwMDUsImV4cCI6MTc1Mjc4ODQwNX0.ssZcdZtiZPe1NVwGjQG4mXu9UJlImQ5ZmP1NVp0yVsc', '2025-08-15 13:42:12', 1, '2025-07-16 21:40:05', NULL, NULL),
+(43, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MjAzNDIsImV4cCI6MTc1MjgwNjc0Mn0.4LOfUWTE9e71BRCCAD0jux93x1VuEvQFHiCLHPFlvQE', '2025-07-17 02:46:24', 0, '2025-07-17 02:45:42', NULL, NULL),
+(44, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MjAzOTUsImV4cCI6MTc1MjgwNjc5NX0.0ndYtdlvhfYN0TtRNgOQ4YZvpQe2mjINZInp2-0nUBA', '2025-08-15 22:01:32', 1, '2025-07-17 02:46:35', NULL, NULL),
+(45, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzAyMDAsImV4cCI6MTc1MjgxNjYwMH0._4Azx8Kshx5zauQFn82lIiqLQxVLcykyZ5IHoTEXx0c', '2026-07-16 21:30:00', 1, '2025-07-17 05:30:00', NULL, NULL),
+(46, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzAyMjQsImV4cCI6MTc1MjgxNjYyNH0.ccl5nMzioBSMUtd-Cs2n3HL0qfQSLQp0ekVTYP9yyvM', '2026-07-16 21:30:24', 1, '2025-07-17 05:30:24', NULL, NULL),
+(47, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzAyNDMsImV4cCI6MTc1MjgxNjY0M30.04V8gZjOzx3ElI8aQMpLlm3sAFdPKc-PS4vW_MaHX30', '2025-08-15 21:30:43', 1, '2025-07-17 05:30:43', NULL, NULL),
+(48, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzAyOTMsImV4cCI6MTc1MjgxNjY5M30.VFT3GK0Jf_yyDFf0PFpfqfmmlzYAh63NolYTDDFJZ7c', '2025-08-15 21:31:33', 1, '2025-07-17 05:31:33', NULL, NULL),
+(49, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzA0MDEsImV4cCI6MTc1MjgxNjgwMX0.OS1_ROqNl-5jYR-mJspmBucjjesqTt6lAFYcG3P4CJU', '2025-08-15 21:33:21', 1, '2025-07-17 05:33:21', NULL, NULL),
+(50, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzA1NzgsImV4cCI6MTc1MjgxNjk3OH0.xc2FwJQjsOcUsTmw4NlIBi4yGT6xIrwmAG2121ePWxo', '2025-08-15 21:36:18', 1, '2025-07-17 05:36:18', NULL, NULL),
+(51, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzA5ODgsImV4cCI6MTc1MjgxNzM4OH0.NCZAmyWGcZKxKJY_cW3woOnxSgaKFSdQopcborgZpLs', '2026-07-16 21:43:08', 1, '2025-07-17 05:43:08', NULL, NULL),
+(52, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzExNjEsImV4cCI6MTc1MjgxNzU2MX0.WNcsPMg783vXbE4uD1ux1vxBvgZOFW6xbGM8_cc8saQ', '2026-07-16 21:46:01', 1, '2025-07-17 05:46:01', NULL, NULL),
+(53, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzExODQsImV4cCI6MTc1MjgxNzU4NH0.F9RjXSl4RZp314E7Nhiq728K-RXyc4u83k4H5flZy9k', '2026-07-16 21:46:24', 1, '2025-07-17 05:46:24', NULL, NULL),
+(54, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzEyOTcsImV4cCI6MTc1MjgxNzY5N30.Ya5bH2YlJ8njgt1hgxmcyiS0Fd8UeIlJl68-I-MUm34', '2026-07-16 21:48:17', 1, '2025-07-17 05:48:17', NULL, NULL),
+(55, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzIyMTIsImV4cCI6MTc1MjgxODYxMn0.II5V874qkY_9tqGIZ5gROPiUM5TqX6rLPHL_W8c5Hz4', '2025-08-15 22:04:05', 1, '2025-07-17 06:03:32', NULL, NULL),
+(56, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzIzMDcsImV4cCI6MTc1MjgxODcwN30.f86G3GNFI141agBVmzVOaXYuKcOvMY37xOrJNuwpHMA', '2025-07-17 06:26:34', 0, '2025-07-17 06:05:07', NULL, NULL),
+(57, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzIzODAsImV4cCI6MTc1MjgxODc4MH0.S_nlqw20Zq6kuLNTolXCVjkE5OzGnOep5V_uUEQfMVU', '2026-07-16 22:06:20', 1, '2025-07-17 06:06:20', NULL, NULL),
+(58, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzI5OTcsImV4cCI6MTc1MjgxOTM5N30.XxKGn1pJtXsbuKBEAM9ihfkxs0t1vbJz6tIKIGSDrjk', '2026-07-16 22:16:37', 1, '2025-07-17 06:16:37', NULL, NULL),
+(59, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzMwMDcsImV4cCI6MTc1MjgxOTQwN30.tVtb3-Lnd0L_q6pOYkweM992uGU6OFtDhsWBEO5Kmpg', '2026-07-16 22:16:47', 1, '2025-07-17 06:16:47', NULL, NULL),
+(60, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzMwMjgsImV4cCI6MTc1MjgxOTQyOH0.DXmPpnT0UaSV8A3QguP5YjpNCnHWdy2rA3m6FS22b3A', '2026-07-16 22:17:08', 1, '2025-07-17 06:17:08', NULL, NULL),
+(61, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzMzMTgsImV4cCI6MTc1MjgxOTcxOH0.nPWmcKMagrYkL4j8OrNcoV-8FJgw5IFmbsfvWEHKN1g', '2026-07-16 22:21:58', 1, '2025-07-17 06:21:58', NULL, NULL),
+(62, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzM1NDcsImV4cCI6MTc1MjgxOTk0N30.GErZKrvVL5sJOhmsQltDUXTA6M-FE0Eg0-5G-FdxFaA', '2026-07-16 22:25:47', 1, '2025-07-17 06:25:47', NULL, NULL),
+(63, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzM1NjIsImV4cCI6MTc1MjgxOTk2Mn0.7dsP0WwJuJuTj7MfF5RSKALQN67Nv5gDChpx3q0hFHs', '2025-08-15 22:26:02', 1, '2025-07-17 06:26:02', NULL, NULL),
+(64, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzM1OTcsImV4cCI6MTc1MjgxOTk5N30.LEsD1sGhUix2WvFWbAIycM4B0aTY0v1YCkFXJLbaKXc', '2025-07-17 06:26:43', 0, '2025-07-17 06:26:37', NULL, NULL),
+(65, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzM2MTMsImV4cCI6MTc1MjgyMDAxM30.ktiC8demLG1P7ZKVY_vzzEpsvr-zbVRTC5W9TF07oFY', '2025-07-17 06:27:28', 0, '2025-07-17 06:26:53', NULL, NULL),
+(66, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzM3NjYsImV4cCI6MTc1MjgyMDE2Nn0.wVAU4l33QZ86uHbW2TXefzartNonTLIMquqLfu8kYus', '2025-08-15 22:29:26', 1, '2025-07-17 06:29:26', NULL, NULL),
+(67, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzM3ODUsImV4cCI6MTc1MjgyMDE4NX0.8QXIv2-fVrcmbZ8PHan8olt-Egu_OqEq33ftb_TONOE', '2025-08-15 22:29:45', 1, '2025-07-17 06:29:45', NULL, NULL),
+(68, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzM4ODYsImV4cCI6MTc1MjgyMDI4Nn0.pQtGkgjh3lzxUoaYMgIghp86i0CzKLDdjBWn8lAzzhk', '2025-08-15 22:31:26', 1, '2025-07-17 06:31:26', NULL, NULL),
+(69, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzM5NDIsImV4cCI6MTc1MjgyMDM0Mn0.1aoNK2RmwRIcUDHEwlffU6wbdRPQWZf-ibA_JjoZSFo', '2025-08-15 22:32:22', 1, '2025-07-17 06:32:22', NULL, NULL),
+(70, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzQwMjEsImV4cCI6MTc1MjgyMDQyMX0.qXVY5FgM44BZdhpIcC47u-8SUZrrxAMjBc-hCnim2nc', '2025-08-15 22:33:41', 1, '2025-07-17 06:33:41', NULL, NULL),
+(71, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzQwNTAsImV4cCI6MTc1MjgyMDQ1MH0.pdewfmpzZREL5o95tYMEHZGq6dH0J5vqc8mJeo6Pw3I', '2025-08-15 22:34:10', 1, '2025-07-17 06:34:10', NULL, NULL),
+(72, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzQwOTQsImV4cCI6MTc1MjgyMDQ5NH0.DU4hRfPONiqVrRb1IPf5fDySrbYj4jG-4R04Vi3BdTM', '2025-08-15 22:34:54', 1, '2025-07-17 06:34:54', NULL, NULL),
+(73, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzQzOTgsImV4cCI6MTc1MjgyMDc5OH0.OmI1jSS1ms-JRx1S9tceeBmRuWodQJatE6dVnk5i6X4', '2025-08-15 22:39:58', 1, '2025-07-17 06:39:58', NULL, NULL),
+(74, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzQ0MDYsImV4cCI6MTc1MjgyMDgwNn0.OTaSkFqKarfd9zy5AumGx00u0pls7Wnrp5Fmdciz_IY', '2025-08-15 22:40:06', 1, '2025-07-17 06:40:06', NULL, NULL),
+(75, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzQ0MzksImV4cCI6MTc1MjgyMDgzOX0.Qtmwkag44aFAD8PD4x81pRqRTlHulQaxjagK_u9Mv98', '2025-07-17 06:58:53', 0, '2025-07-17 06:40:39', NULL, NULL),
+(76, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzQ0NTEsImV4cCI6MTc1MjgyMDg1MX0.1N3DzFsEPC3r85wJ9cPX1juWSfojgnZgd9n4wPsx3go', '2025-08-15 22:40:52', 1, '2025-07-17 06:40:51', NULL, NULL),
+(77, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzQ0NzksImV4cCI6MTc1MjgyMDg3OX0.pmhyX2ddeXDT0GzoN8Kv5Hsve2skgULeb3317er1Sqs', '2025-08-15 22:41:19', 1, '2025-07-17 06:41:19', NULL, NULL),
+(78, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzQ1ODgsImV4cCI6MTc1MjgyMDk4OH0.LuLEH-SyV_AxKayAAB23r63USyBa7Tbhju0m0kn3Dlk', '2025-08-15 22:43:08', 1, '2025-07-17 06:43:08', NULL, NULL),
+(79, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzQ3NzksImV4cCI6MTc1MjgyMTE3OX0.Vw8CjSZUzWQPX1IM0rkA_7FU584sZzqBRBZjHzSlM5U', '2026-07-16 22:46:19', 1, '2025-07-17 06:46:19', NULL, NULL),
+(80, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzQ4MTEsImV4cCI6MTc1MjgyMTIxMX0.dd0f-R_xwVsl2U1x4NfHHl7zGzx7oEjryFih0ZLHRAY', '2025-08-15 22:46:51', 1, '2025-07-17 06:46:51', NULL, NULL),
+(81, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzU1NzUsImV4cCI6MTc1MjgyMTk3NX0.-2XusXDhhQdXNdFkar7-4aREDIdiNbUH1cgtKalAzWg', '2025-07-17 07:07:11', 0, '2025-07-17 06:59:35', NULL, NULL),
+(82, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzYwNDAsImV4cCI6MTc1MjgyMjQ0MH0.w-Vdn9DCeJ1FGcV4IAIB6Jilv4Pl6E6Dvt0e9OZLIMM', '2025-07-17 07:11:43', 0, '2025-07-17 07:07:20', NULL, NULL),
+(83, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3Mzc2NzYsImV4cCI6MTc1MjgyNDA3Nn0.t6zWMP6oCtMQYRjSg1eP_w14VOWhp1j1wZX1X3u1spc', '2025-07-17 07:34:42', 0, '2025-07-17 07:34:36', NULL, NULL),
+(84, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3Mzc2OTIsImV4cCI6MTc1MjgyNDA5Mn0.eGH4bRbFMCv9iATctKfQwwdxMCd2_o9vuc93TpDJPQ8', '2025-07-17 07:35:04', 0, '2025-07-17 07:34:52', NULL, NULL),
+(85, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3MzgwOTMsImV4cCI6MTc1MjgyNDQ5M30.o_wsXiTwcFjTa5xFxr6qAWq3BYrTAIeqsDdIpz8L75Q', '2025-08-15 23:41:33', 1, '2025-07-17 07:41:33', NULL, NULL),
+(86, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3Mzg1MDAsImV4cCI6MTc1MjgyNDkwMH0.ZJvr76pIVCVntleW-Igm_sS9hxPl_7xEHSiBvWzZX1U', '2026-07-16 23:48:20', 1, '2025-07-17 07:48:20', NULL, NULL),
+(87, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3NDM5NTYsImV4cCI6MTc1MjgzMDM1Nn0.FfDoUxoNPrks0ZBl46ZbPA1GkmK_SBh0c-Rh_85hOwA', '2026-07-17 01:19:16', 1, '2025-07-17 09:19:16', NULL, NULL),
+(88, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3NDQwNjEsImV4cCI6MTc1MjgzMDQ2MX0.gFr2ivdGIhQa0GJDFwSlaeGPdWIk25UI6YNvJEsFZpY', '2026-07-17 01:21:01', 1, '2025-07-17 09:21:01', NULL, NULL),
+(89, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3NDQxMTMsImV4cCI6MTc1MjgzMDUxM30.n-n_zUcy88YViHlAG6Sws2_wbqGzd0MNJSp0dyDoF-g', '2026-07-17 01:21:53', 1, '2025-07-17 09:21:53', NULL, NULL),
+(90, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3NDQxNTgsImV4cCI6MTc1MjgzMDU1OH0.4oxjLl9NXu2mBSRYNGBuSZrjZDTGiz79C0jwozigDvg', '2026-07-17 01:22:38', 1, '2025-07-17 09:22:38', NULL, NULL),
+(91, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI3NDQzNDksImV4cCI6MTc1MjgzMDc0OX0.33MzKkFtML53lbqIMBbY8KUPVzdK8mz5eisqF3uhI9w', '2026-07-17 01:25:49', 1, '2025-07-17 09:25:49', NULL, NULL),
+(92, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI4Mjc1MjYsImV4cCI6MTc1MjkxMzkyNn0.AFy_btbPE6r39Ecu64z1LN6fESfjUhP7kDywfJsPkmM', '2025-07-19 00:32:06', 1, '2025-07-18 08:32:06', NULL, NULL),
+(93, 'admin_001', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6ImFkbWluXzAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTI4Mjg4MzAsImV4cCI6MTc1MjkxNTIzMH0.4jWABuRbIHXaK-zyU5Tl8SyjZpaYlM592PK_r1sq_uA', '2025-07-19 00:53:50', 1, '2025-07-18 08:53:50', NULL, NULL),
+(94, 'EMP250008', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBsb3llZV9pZCI6IkVNUDI1MDAwOCIsInVzZXJuYW1lIjoieXVhbmFsYXJkZSIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc1MjgyOTk1MywiZXhwIjoxNzg0MzY1OTUzfQ.yGosqJIncFXVJ77wbLnpd4k5tCFGvWYFDKx6O0KI4h4', '2025-07-18 09:18:30', 0, '2025-07-18 09:12:33', NULL, NULL);
+
+--
+-- Indexes for dumped tables
+--
+
+--
+-- Indexes for table `attendance_records`
+--
+ALTER TABLE `attendance_records`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_employee_date` (`employee_id`,`date`),
+  ADD KEY `idx_attendance_employee` (`employee_id`),
+  ADD KEY `idx_attendance_date` (`date`),
+  ADD KEY `idx_attendance_status` (`status`);
+
+--
+-- Indexes for table `audit_log`
+--
+ALTER TABLE `audit_log`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_audit_user` (`user_id`),
+  ADD KEY `idx_audit_action` (`action`),
+  ADD KEY `idx_audit_table` (`table_name`),
+  ADD KEY `idx_audit_created` (`created_at`);
+
+--
+-- Indexes for table `departments`
+--
+ALTER TABLE `departments`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `name` (`name`),
+  ADD KEY `idx_department_name` (`name`),
+  ADD KEY `idx_department_manager` (`manager_id`),
+  ADD KEY `idx_department_active` (`is_active`);
+
+--
+-- Indexes for table `employees`
+--
+ALTER TABLE `employees`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `employee_id` (`employee_id`),
+  ADD UNIQUE KEY `username` (`username`),
+  ADD KEY `idx_employee_id` (`employee_id`),
+  ADD KEY `idx_employee_username` (`username`),
+  ADD KEY `idx_employee_email` (`email`),
+  ADD KEY `idx_employee_department` (`department`),
+  ADD KEY `idx_employee_manager` (`manager_id`),
+  ADD KEY `idx_employee_role` (`role`),
+  ADD KEY `idx_employee_status` (`status`),
+  ADD KEY `idx_employee_active` (`is_active`),
+  ADD KEY `department_id` (`department_id`);
+
+--
+-- Indexes for table `overtime_requests`
+--
+ALTER TABLE `overtime_requests`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_overtime_employee` (`employee_id`),
+  ADD KEY `idx_overtime_date` (`request_date`),
+  ADD KEY `idx_overtime_status` (`status`);
+
+--
+-- Indexes for table `payroll_records`
+--
+ALTER TABLE `payroll_records`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_payroll_employee` (`employee_id`),
+  ADD KEY `idx_payroll_period` (`pay_period_start`,`pay_period_end`),
+  ADD KEY `idx_payroll_status` (`status`);
+
+--
+-- Indexes for table `system_settings`
+--
+ALTER TABLE `system_settings`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `setting_key` (`setting_key`),
+  ADD KEY `idx_setting_key` (`setting_key`);
+
+--
+-- Indexes for table `user_accounts`
+--
+ALTER TABLE `user_accounts`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `employee_id` (`employee_id`),
+  ADD UNIQUE KEY `username` (`username`),
+  ADD KEY `idx_user_employee_id` (`employee_id`),
+  ADD KEY `idx_user_username` (`username`),
+  ADD KEY `idx_user_email` (`email`),
+  ADD KEY `idx_user_role` (`role`),
+  ADD KEY `idx_user_active` (`is_active`);
+
+--
+-- Indexes for table `user_sessions`
+--
+ALTER TABLE `user_sessions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_session_employee` (`employee_id`),
+  ADD KEY `idx_session_token` (`token_hash`),
+  ADD KEY `idx_session_expires` (`expires_at`),
+  ADD KEY `idx_session_active` (`is_active`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `attendance_records`
+--
+ALTER TABLE `attendance_records`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=180;
+
+--
+-- AUTO_INCREMENT for table `audit_log`
+--
+ALTER TABLE `audit_log`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `departments`
+--
+ALTER TABLE `departments`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT for table `employees`
+--
+ALTER TABLE `employees`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+
+--
+-- AUTO_INCREMENT for table `overtime_requests`
+--
+ALTER TABLE `overtime_requests`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `payroll_records`
+--
+ALTER TABLE `payroll_records`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `system_settings`
+--
+ALTER TABLE `system_settings`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=125;
+
+--
+-- AUTO_INCREMENT for table `user_accounts`
+--
+ALTER TABLE `user_accounts`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
+-- AUTO_INCREMENT for table `user_sessions`
+--
+ALTER TABLE `user_sessions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=95;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `attendance_records`
+--
+ALTER TABLE `attendance_records`
+  ADD CONSTRAINT `attendance_records_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`employee_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `employees`
+--
+ALTER TABLE `employees`
+  ADD CONSTRAINT `employees_ibfk_1` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `overtime_requests`
+--
+ALTER TABLE `overtime_requests`
+  ADD CONSTRAINT `overtime_requests_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`employee_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `payroll_records`
+--
+ALTER TABLE `payroll_records`
+  ADD CONSTRAINT `payroll_records_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`employee_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `user_accounts`
+--
+ALTER TABLE `user_accounts`
+  ADD CONSTRAINT `user_accounts_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`employee_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `user_sessions`
+--
+ALTER TABLE `user_sessions`
+  ADD CONSTRAINT `user_sessions_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`employee_id`) ON DELETE CASCADE;
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
