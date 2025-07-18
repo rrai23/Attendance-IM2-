@@ -818,15 +818,6 @@
             color: var(--text-secondary);
         }
 
-        .loading-spinner {
-            width: 32px;
-            height: 32px;
-            border: 3px solid var(--bg-tertiary);
-            border-top: 3px solid var(--accent-primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
@@ -1007,24 +998,45 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background-color: var(--overlay-color);
+            background-color: rgba(0, 0, 0, 0.5);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 9999;
         }
 
+        [data-theme="dark"] .loading-overlay {
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+
         .loading-content {
             background: var(--bg-primary);
-            padding: var(--spacing-2xl);
-            border-radius: var(--radius-xl);
+            padding: 2rem;
+            border-radius: 1rem;
             text-align: center;
-            box-shadow: var(--shadow-xl);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 200px;
+        }
+
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--bg-tertiary);
+            border-top: 3px solid var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
         }
 
         .loading-text {
-            margin-top: var(--spacing-lg);
+            margin-top: 1rem;
             color: var(--text-secondary);
+            font-size: 0.9rem;
         }
 
         /* Skip Navigation Links */
@@ -1728,13 +1740,13 @@
                         console.error('DashboardController not found');
                     }
                     
-                    // Hide loading overlay after a brief delay
+                    // Hide loading overlay immediately after initialization
                     setTimeout(() => {
                         const loadingOverlay = document.getElementById('loading-overlay');
                         if (loadingOverlay) {
                             loadingOverlay.style.display = 'none';
                         }
-                    }, 1000);
+                    }, 200);
                     
                 } catch (error) {
                     console.error('Error during initialization:', error);
@@ -1770,13 +1782,13 @@
                         `;
                     });
                     
-                    // Hide loading overlay
+                    // Hide loading overlay immediately
                     setTimeout(() => {
                         const loadingOverlay = document.getElementById('loading-overlay');
                         if (loadingOverlay) {
                             loadingOverlay.style.display = 'none';
                         }
-                    }, 500);
+                    }, 100);
                     
                 } catch (error) {
                     console.error('Error during fallback initialization:', error);

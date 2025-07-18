@@ -27,23 +27,34 @@ class PayrollController {
     /**
      * Initialize the payroll controller
      */
-    async init() {
+    async init(progressCallback = null) {
         try {
             console.log('[PAYROLL] Starting initialization...');
+            if (progressCallback) progressCallback('Loading employee data...');
             
             await this.loadInitialData();
             
             // Only setup DOM-dependent features if we're in a browser with DOM elements
             if (typeof document !== 'undefined') {
                 console.log('[PAYROLL] Setting up DOM event listeners...');
+                if (progressCallback) progressCallback('Setting up event listeners...');
                 this.setupEventListeners();
                 this.setupDataSyncListeners();
                 
                 console.log('[PAYROLL] Rendering UI components...');
+                if (progressCallback) progressCallback('Rendering payroll overview...');
                 this.renderPayrollOverview();
+                
+                if (progressCallback) progressCallback('Rendering employee wages...');
                 this.renderEmployeeWages();
+                
+                if (progressCallback) progressCallback('Rendering overtime requests...');
                 this.renderOvertimeRequests();
+                
+                if (progressCallback) progressCallback('Rendering payroll history...');
                 this.renderPayrollHistory();
+                
+                if (progressCallback) progressCallback('Finalizing interface...');
                 this.renderDepartmentCosts();
                 
                 // Listen for overtime request submissions from employee dashboard
@@ -92,6 +103,14 @@ class PayrollController {
             if (activeEmployeesResponse.success) {
                 this.employees = activeEmployeesResponse.data?.employees || [];
                 console.log('[PAYROLL] Loaded active employees for wages:', this.employees.length);
+                
+                // Ensure employees have wage information
+                this.employees = this.employees.map(emp => ({
+                    ...emp,
+                    wage: emp.wage || emp.hourly_rate || 0, // Use 0 if no wage set
+                    hourly_rate: emp.hourly_rate || emp.wage || 0 // Use 0 if no wage set
+                }));
+                
             } else {
                 console.error('[PAYROLL] Failed to load active employees:', activeEmployeesResponse.message);
                 this.employees = [];
@@ -119,15 +138,28 @@ class PayrollController {
                 this.payrollHistory = [];
             }
 
-            // Load system settings (use defaults for now)
-            this.settings = {
-                payPeriodType: 'weekly',
-                payDay: 'friday',
-                taxRate: 0.20,
-                overtimeMultiplier: 1.5,
-                standardWorkHours: 40
-            };
-            console.log('[PAYROLL] Settings loaded:', this.settings);
+            // Load system settings from DirectFlow (same as dashboard)
+            console.log('[PAYROLL] Loading settings from DirectFlow...');
+            try {
+                const directFlowSettings = await window.directFlow.getSettings();
+                this.settings = {
+                    payPeriodType: directFlowSettings?.payroll?.payPeriod || 'weekly', // Match dashboard default
+                    payDay: directFlowSettings?.payroll?.payday || 'friday',
+                    taxRate: directFlowSettings?.payroll?.taxRate || 0.20,
+                    overtimeMultiplier: directFlowSettings?.payroll?.overtimeMultiplier || 1.5,
+                    standardWorkHours: directFlowSettings?.payroll?.standardWorkHours || 40
+                };
+                console.log('[PAYROLL] Settings loaded from DirectFlow:', this.settings);
+            } catch (error) {
+                console.warn('[PAYROLL] Could not load settings from DirectFlow, using defaults:', error.message);
+                this.settings = {
+                    payPeriodType: 'weekly', // Match dashboard default
+                    payDay: 'friday',
+                    taxRate: 0.20,
+                    overtimeMultiplier: 1.5,
+                    standardWorkHours: 40
+                };
+            }
 
             // Initialize overtime requests as empty (load from backend if endpoint exists)
             this.overtimeRequests = [];
@@ -139,10 +171,9 @@ class PayrollController {
             await this.calculateCurrentPayrollData();
             console.log('[PAYROLL] Payroll calculations complete:', this.payrollData);
             
-            // If no employees were loaded, show a warning
+            // Show warning if no employees were loaded
             if (this.employees.length === 0) {
-                console.warn('[PAYROLL] No employees loaded for payroll calculation');
-                this.showError('No employees found. Please add employees to calculate payroll.');
+                console.warn('[PAYROLL] No employees loaded from backend');
             }
 
         } catch (error) {
@@ -282,15 +313,38 @@ class PayrollController {
      * Fallback payroll calculation method (when attendance data is unavailable)
      */
     calculatePayrollFallback(employee, payPeriodStart, payPeriodEnd) {
+        console.log('[PAYROLL] Using fallback calculation for employee:', employee.employee_id);
+        
         // Get hourly rate from employee data with proper column names
-        const hourlyRate = parseFloat(employee.wage || employee.hourly_rate || 15.00);
+        const hourlyRate = parseFloat(employee.wage || employee.hourly_rate || 0);
         
-        // For demonstration, calculate basic payroll based on standard hours
-        // In a real system, this would fetch attendance data and calculate actual hours
-        const standardHours = 80; // 2 weeks * 40 hours
-        const overtimeHours = 0; // Would be calculated from actual attendance
+        // If no wage is set, return zero values
+        if (hourlyRate === 0) {
+            const employeeName = employee.full_name || 
+                                `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || 
+                                'Unknown Employee';
+            
+            return {
+                employeeId: employee.employee_id,
+                employeeName: employeeName,
+                regularHours: 0,
+                overtimeHours: 0,
+                hourlyRate: 0,
+                regularPay: 0,
+                overtimePay: 0,
+                grossPay: 0,
+                taxes: 0,
+                netPay: 0,
+                payPeriodStart: payPeriodStart.toISOString().split('T')[0],
+                payPeriodEnd: payPeriodEnd.toISOString().split('T')[0]
+            };
+        }
         
-        const regularPay = standardHours * hourlyRate;
+        // When no attendance data is available, show zero hours (backend-only approach)
+        const regularHours = 0;
+        const overtimeHours = 0;
+        
+        const regularPay = regularHours * hourlyRate;
         const overtimePay = overtimeHours * hourlyRate * this.OVERTIME_MULTIPLIER;
         const grossPay = regularPay + overtimePay;
         const taxes = grossPay * this.TAX_RATE;
@@ -301,10 +355,10 @@ class PayrollController {
                             `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || 
                             'Unknown Employee';
         
-        return {
+        const result = {
             employeeId: employee.employee_id,
             employeeName: employeeName,
-            regularHours: standardHours,
+            regularHours: regularHours,
             overtimeHours: overtimeHours,
             hourlyRate: hourlyRate,
             regularPay: regularPay,
@@ -315,6 +369,9 @@ class PayrollController {
             payPeriodStart: payPeriodStart.toISOString().split('T')[0],
             payPeriodEnd: payPeriodEnd.toISOString().split('T')[0]
         };
+        
+        console.log('[PAYROLL] Fallback calculation result (no attendance data):', result);
+        return result;
     }
 
     /**
@@ -479,6 +536,13 @@ class PayrollController {
                         <div class="stat-label">Employees</div>
                     </div>
                 </div>
+                
+                ${this.payrollData.employees.length === 0 ? `
+                    <div class="no-data-message">
+                        <p>No employee data available for this pay period.</p>
+                        <p>Add employees and attendance records to see payroll calculations.</p>
+                    </div>
+                ` : ''}
             </div>
         `;
     }
@@ -489,6 +553,19 @@ class PayrollController {
     renderEmployeeWages() {
         const container = document.querySelector('.employee-wages-tile .tile-content');
         if (!container) return;
+
+        if (this.employees.length === 0) {
+            container.innerHTML = `
+                <div class="wages-header">
+                    <h3>Employee Wages</h3>
+                </div>
+                <div class="no-employees">
+                    <p>No employees found in the system.</p>
+                    <p>Please add employees to view wage information.</p>
+                </div>
+            `;
+            return;
+        }
 
         const wagesHTML = this.employees.map(employee => {
             const payrollData = this.payrollData?.employees.find(emp => emp.id === employee.id);
@@ -1365,36 +1442,57 @@ class PayrollController {
     calculateAverageWage() {
         if (this.employees.length === 0) return 0;
         
-        const totalWages = this.employees.reduce((sum, emp) => sum + emp.hourlyRate, 0);
+        const totalWages = this.employees.reduce((sum, emp) => 
+            sum + (parseFloat(emp.wage || emp.hourly_rate || 0)), 0);
         return totalWages / this.employees.length;
     }
 
     /**
-     * Get pay period start date (bi-weekly, starting on Monday)
+     * Get pay period start date based on settings (same logic as dashboard)
      */
     getPayPeriodStart(date) {
-        const d = new Date(date);
-        const day = d.getDay();
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
-        d.setDate(diff);
-        
-        // Find the bi-weekly period start
-        const epochStart = new Date('2024-01-01'); // Reference start date
-        const daysDiff = Math.floor((d - epochStart) / (1000 * 60 * 60 * 24));
-        const periodNumber = Math.floor(daysDiff / 14);
-        
-        const periodStart = new Date(epochStart);
-        periodStart.setDate(periodStart.getDate() + (periodNumber * 14));
-        
-        return periodStart;
+        const today = new Date(date);
+        const payPeriodType = this.settings?.payPeriodType || 'weekly'; // Match dashboard default
+
+        console.log('[PAYROLL] Calculating pay period start for:', { date: today.toISOString().split('T')[0], payPeriodType });
+
+        if (payPeriodType === 'weekly') {
+            // For weekly: show current week (Sunday to Saturday) - same as dashboard
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - today.getDay());
+            return startOfWeek;
+        } else if (payPeriodType === 'biweekly') {
+            // For bi-weekly: show 2-week period
+            const startOfPeriod = new Date(today);
+            const daysSinceEpoch = Math.floor(today.getTime() / (1000 * 60 * 60 * 24));
+            const biweekPeriod = Math.floor(daysSinceEpoch / 14);
+            const periodStart = new Date(biweekPeriod * 14 * 24 * 60 * 60 * 1000);
+            return periodStart;
+        } else {
+            // For monthly: show current month
+            const periodStart = new Date(today.getFullYear(), today.getMonth(), 1);
+            return periodStart;
+        }
     }
 
     /**
-     * Get pay period end date
+     * Get pay period end date based on settings (same logic as dashboard)
      */
     getPayPeriodEnd(startDate) {
+        const payPeriodType = this.settings?.payPeriodType || 'weekly'; // Match dashboard default
         const endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + 13); // 14 days total (0-13)
+
+        if (payPeriodType === 'weekly') {
+            // End of week (Saturday) - same as dashboard
+            endDate.setDate(startDate.getDate() + 6);
+        } else if (payPeriodType === 'biweekly') {
+            // End of bi-weekly period (13 days after start)
+            endDate.setDate(startDate.getDate() + 13);
+        } else {
+            // End of month
+            endDate.setMonth(startDate.getMonth() + 1, 0);
+        }
+
         return endDate;
     }
 
@@ -1530,13 +1628,6 @@ class PayrollController {
         console.log('[PAYROLL] DirectFlow sync - no event listeners needed (backend-only operation)');
         // Note: Consider implementing real-time updates via WebSocket or polling if needed
     }
-
-    /**
-     * Generate sample overtime requests for testing
-     */
-    /**
-     * Generate sample overtime requests for testing
-     */
     generateSampleOvertimeRequests() {
         if (!this.employees || this.employees.length === 0) {
             return [];

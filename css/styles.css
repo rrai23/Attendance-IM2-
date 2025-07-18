@@ -198,6 +198,61 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ===== SIMPLE LOADING MODAL ===== */
+.simple-loading-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+}
+
+[data-theme="dark"] .simple-loading-modal {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.simple-loading-modal.hidden {
+  display: none;
+}
+
+.simple-loading-content {
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-color);
+  text-align: center;
+  min-width: 200px;
+}
+
+.simple-loading-spinner {
+  width: 32px;
+  height: 32px;
+  margin: 0 auto var(--spacing-md);
+  border: 3px solid var(--bg-tertiary);
+  border-top: 3px solid var(--accent-primary);
+  border-radius: 50%;
+  animation: simple-spin 1s linear infinite;
+}
+
+@keyframes simple-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.simple-loading-text {
+  color: var(--text-primary);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  margin: 0;
+}
+
 /* ===== TYPOGRAPHY ===== */
 h1, h2, h3, h4, h5, h6 {
   font-weight: var(--font-weight-semibold);

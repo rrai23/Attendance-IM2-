@@ -161,6 +161,14 @@
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 </head>
 <body class="page-payroll loading">
+    <!-- Simple Loading Modal -->
+    <div id="simple-loading-modal" class="simple-loading-modal">
+        <div class="simple-loading-content">
+            <div class="simple-loading-spinner"></div>
+            <p class="simple-loading-text">Loading payroll data...</p>
+        </div>
+    </div>
+
     <!-- Skip Navigation Links -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
     <a href="#sidebar" class="skip-link">Skip to navigation</a>
@@ -677,6 +685,20 @@
 
     <!-- Unified Data Integration Script -->
     <script>
+        // Simple function to hide loading modal
+        function hideSimpleLoadingModal() {
+            const loadingModal = document.getElementById('simple-loading-modal');
+            if (loadingModal) {
+                loadingModal.classList.add('hidden');
+            }
+            document.body.classList.remove('loading');
+        }
+
+        // Failsafe: Hide loading modal after 10 seconds
+        setTimeout(() => {
+            hideSimpleLoadingModal();
+        }, 10000);
+
         // Initialize DirectFlow system for payroll (backend-only)
         document.addEventListener('DOMContentLoaded', async function() {
             try {
@@ -709,12 +731,19 @@
                     window.payrollController = new PayrollController();
                     await window.payrollController.init();
                     console.log('[PAYROLL] Payroll controller initialized with DirectFlow');
+                    
+                    // Hide loading modal immediately after initialization
+                    hideSimpleLoadingModal();
                 } else {
                     console.error('[PAYROLL] PayrollController not found');
+                    hideSimpleLoadingModal(); // Hide even on error
                 }
                 
             } catch (error) {
                 console.error('[PAYROLL] Error initializing DirectFlow payroll system:', error);
+                
+                // Hide loading modal on error
+                hideSimpleLoadingModal();
                 
                 // Show user-friendly error message
                 if (document.querySelector('.main-content')) {
