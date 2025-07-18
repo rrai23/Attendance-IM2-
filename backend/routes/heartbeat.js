@@ -15,7 +15,7 @@ router.get('/heartbeat', auth, async (req, res) => {
                 user: {
                     employee_id: req.user.employee_id,
                     username: req.user.username,
-                    full_name: req.user.full_name,
+                    full_name: req.user.first_name + ' ' + req.user.last_name,
                     role: req.user.role
                 },
                 timestamp: new Date().toISOString(),

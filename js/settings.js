@@ -2238,7 +2238,7 @@ class SettingsController {
                             ${employees.map(employee => `
                                 <tr>
                                     <td>${employee.employee_id || 'N/A'}</td>
-                                    <td>${employee.full_name || employee.first_name + ' ' + employee.last_name || 'N/A'}</td>
+                                    <td>${(employee.first_name && employee.last_name) ? employee.first_name + ' ' + employee.last_name : 'N/A'}</td>
                                     <td>${employee.email || 'N/A'}</td>
                                     <td>${employee.department || 'N/A'}</td>
                                     <td>${employee.position || 'N/A'}</td>
@@ -2682,8 +2682,6 @@ class SettingsController {
             return firstName;
         } else if (lastName) {
             return lastName;
-        } else if (employee.full_name) {
-            return employee.full_name;
         } else if (employee.name) {
             return employee.name;
         } else {

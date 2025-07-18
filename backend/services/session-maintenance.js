@@ -85,7 +85,7 @@ class SessionMaintenanceService {
             
             // 3. Create sessions for active employees without any
             const [usersWithoutSessions] = await connection.execute(`
-                SELECT e.employee_id, e.full_name, e.role, e.status
+                SELECT e.employee_id, CONCAT(e.first_name, ' ', e.last_name) as full_name, e.role, e.status
                 FROM employees e
                 LEFT JOIN user_sessions us ON e.employee_id = us.employee_id AND us.expires_at > NOW()
                 WHERE us.employee_id IS NULL AND e.status = 'active'

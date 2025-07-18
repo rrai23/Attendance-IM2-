@@ -360,7 +360,7 @@ router.post('/manual', auth, requireManagerOrAdmin, async (req, res) => {
         const newRecord = await db.execute(`
             SELECT 
                 ar.*,
-                e.full_name as employee_name,
+                CONCAT(e.first_name, ' ', e.last_name) as employee_name,
                 e.employee_id as employee_code,
                 e.department,
                 e.position
@@ -458,7 +458,7 @@ router.put('/:id', auth, requireManagerOrAdmin, async (req, res) => {
         const updatedRecord = await db.execute(`
             SELECT 
                 ar.*,
-                e.full_name as employee_name,
+                CONCAT(e.first_name, ' ', e.last_name) as employee_name,
                 e.employee_id as employee_code,
                 e.department,
                 e.position

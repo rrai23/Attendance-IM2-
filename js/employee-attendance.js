@@ -116,7 +116,7 @@ class EmployeeAttendanceManager {
             this.employees = employeesData.map(emp => ({
                 id: emp.id,
                 employeeId: emp.employee_id || emp.id,
-                name: emp.full_name || `${emp.first_name} ${emp.last_name}`,
+                name: `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
                 department: emp.department,
                 position: emp.position,
                 email: emp.email,

@@ -34,7 +34,6 @@ router.post('/sync', auth, async (req, res) => {
                     // Update existing employee in employees table
                     await db.execute(`
                         UPDATE employees SET
-                            full_name = ?,
                             first_name = ?,
                             last_name = ?,
                             email = ?,
@@ -45,7 +44,6 @@ router.post('/sync', auth, async (req, res) => {
                             updated_at = CURRENT_TIMESTAMP
                         WHERE employee_id = ?
                     `, [
-                        emp.name || emp.fullName,
                         emp.firstName || emp.name?.split(' ')[0] || '',
                         emp.lastName || emp.name?.split(' ').slice(1).join(' ') || '',
                         emp.email,
@@ -73,13 +71,12 @@ router.post('/sync', auth, async (req, res) => {
                     // Insert new employee in employees table
                     await db.execute(`
                         INSERT INTO employees (
-                            employee_id, full_name, first_name, last_name, 
+                            employee_id, first_name, last_name, 
                             email, department, position, hire_date, status, 
                             created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     `, [
                         emp.employeeId || emp.employeeCode || emp.id,
-                        emp.name || emp.fullName,
                         emp.firstName || emp.name?.split(' ')[0] || '',
                         emp.lastName || emp.name?.split(' ').slice(1).join(' ') || '',
                         emp.email,
@@ -200,8 +197,8 @@ router.get('/data', auth, async (req, res) => {
                 e.id,
                 ua.employee_id as employeeId,
                 ua.employee_id as employeeCode,
-                e.full_name as name,
-                e.full_name as fullName,
+                CONCAT(e.first_name, ' ', e.last_name) as name,
+                CONCAT(e.first_name, ' ', e.last_name) as fullName,
                 e.first_name as firstName,
                 e.last_name as lastName,
                 e.email,
@@ -217,7 +214,7 @@ router.get('/data', auth, async (req, res) => {
             FROM employees e
             JOIN user_accounts ua ON e.employee_id = ua.employee_id
             WHERE ua.is_active = 1 AND e.status = 'active'
-            ORDER BY e.full_name
+            ORDER BY e.first_name, e.last_name
         `);
 
         // MySQL2 returns [rows, fields] - we want the rows
@@ -305,7 +302,6 @@ router.post('/employees', auth, requireManagerOrAdmin, async (req, res) => {
                     username = ?,
                     password = COALESCE(?, password),
                     role = ?,
-                    full_name = ?,
                     first_name = ?,
                     last_name = ?,
                     email = ?,
@@ -324,7 +320,6 @@ router.post('/employees', auth, requireManagerOrAdmin, async (req, res) => {
                 employeeData.username,
                 hashedPassword,
                 employeeData.role || 'employee',
-                employeeData.name || employeeData.fullName,
                 firstName,
                 lastName,
                 employeeData.email,
@@ -342,16 +337,15 @@ router.post('/employees', auth, requireManagerOrAdmin, async (req, res) => {
             // Create new employee
             const [result] = await db.execute(`
                 INSERT INTO employees (
-                    employee_id, username, password, role, full_name,
+                    employee_id, username, password, role,
                     first_name, last_name, email, phone, department, position,
                     hire_date, status, wage, overtime_rate, avatar
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
                 employeeData.employeeId || employeeData.employeeCode,
                 employeeData.username,
                 hashedPassword,
                 employeeData.role || 'employee',
-                employeeData.name || employeeData.fullName,
                 firstName,
                 lastName,
                 employeeData.email,
@@ -456,7 +450,7 @@ router.delete('/employees/:id', auth, requireAdmin, async (req, res) => {
 
         // Get employee info before deletion
         const [employee] = await db.execute(
-            'SELECT employee_id, full_name FROM employees WHERE id = ?',
+            'SELECT employee_id, CONCAT(first_name, " ", last_name) as full_name FROM employees WHERE id = ?',
             [id]
         );
 

@@ -1440,13 +1440,19 @@ class EmployeesPageManager {
     }
 
     getEmployeeName(employee) {
-        // Check for full_name first (from backend)
+        // Check for full_name first (computed field from backend)
         if (employee.full_name) {
             return employee.full_name;
         }
         
+        // Fallback to fullName (legacy)
         if (employee.fullName) {
             return employee.fullName;
+        }
+        
+        // Construct from first_name and last_name
+        if (employee.first_name || employee.last_name) {
+            return `${employee.first_name || ''} ${employee.last_name || ''}`.trim();
         }
         
         // Check for snake_case fields (from backend)

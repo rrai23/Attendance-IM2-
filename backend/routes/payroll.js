@@ -701,7 +701,34 @@ router.post('/generate', auth, requireManagerOrAdmin, async (req, res) => {
 
         // Get employees to generate payroll for
         let employeeQuery = `
-            SELECT e.*, ua.role 
+            SELECT 
+                e.id,
+                e.employee_id,
+                e.first_name,
+                e.last_name,
+                CONCAT(e.first_name, ' ', e.last_name) as full_name,
+                e.email,
+                e.phone,
+                e.department_id,
+                e.department,
+                e.position,
+                e.manager_id,
+                e.hire_date,
+                e.status,
+                e.wage,
+                e.overtime_rate,
+                e.salary_type,
+                e.avatar,
+                e.address,
+                e.emergency_contact,
+                e.emergency_phone,
+                e.work_schedule,
+                e.permissions,
+                e.is_active,
+                e.last_login,
+                e.created_at,
+                e.updated_at,
+                ua.role 
             FROM employees e 
             LEFT JOIN user_accounts ua ON e.employee_id = ua.employee_id
             WHERE e.status = 'active'

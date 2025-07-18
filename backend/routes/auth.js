@@ -34,49 +34,54 @@ const calculateExpiryDate = (duration) => {
 // Login endpoint
 router.post('/login', async (req, res) => {
     try {
+        console.log('🔐 Step 1: Login request received');
         const { username, password, rememberMe = false } = req.body;
 
-        console.log('🔐 Login attempt - Username:', username, 'Password length:', password ? password.length : 'undefined');
+        console.log('🔐 Step 2: Login attempt - Username:', username, 'Password length:', password ? password.length : 'undefined');
 
         if (!username || !password) {
+            console.log('🔐 Step 3: Missing credentials');
             return res.status(400).json({
                 success: false,
                 message: 'Username and password are required'
             });
         }
 
+        console.log('🔐 Step 4: Executing database query');
         // Get user from user_accounts table joined with employees
-        const result = await db.execute(`
+        const users = await db.execute(`
             SELECT 
-                ua.*,
+                ua.id,
+                ua.employee_id,
+                ua.username,
+                ua.password_hash,
+                ua.role,
+                ua.is_active,
+                ua.last_login,
+                ua.failed_login_attempts,
+                ua.account_locked_until,
+                ua.password_reset_token,
+                ua.password_reset_expires,
+                ua.created_at,
+                ua.updated_at,
                 e.first_name,
                 e.last_name,
-                e.full_name,
-                e.email,
-                e.department,
-                e.position,
-                e.hire_date,
-                e.status as employee_status
+                CONCAT(e.first_name, ' ', e.last_name) as full_name,
+                COALESCE(e.email, ua.email) as email,
+                COALESCE(ua.phone, e.phone) as phone,
+                COALESCE(e.department, ua.department) as department,
+                COALESCE(e.position, ua.position) as position,
+                COALESCE(e.hire_date, ua.hire_date) as hire_date,
+                COALESCE(e.status, ua.employee_status) as employee_status
             FROM user_accounts ua
-            JOIN employees e ON ua.employee_id = e.employee_id
-            WHERE ua.username = ? AND ua.is_active = TRUE AND e.status = 'active'
+            LEFT JOIN employees e ON ua.employee_id = e.employee_id
+            WHERE ua.username = ? AND ua.is_active = TRUE
         `, [username]);
 
-        // The database returns data directly as an array
-        const users = result;
-
-        console.log('🔍 Debug info:');
-        console.log('Result type:', typeof result);
-        console.log('Result is array:', Array.isArray(result));
-        console.log('Result length:', result.length);
-        console.log('Users type:', typeof users);
-        console.log('Users is array:', Array.isArray(users));
-        console.log('Users length:', users.length);
-        if (users.length > 0) {
-            console.log('First user keys:', Object.keys(users[0]));
-        }
+        console.log('� Step 5: Database query completed, users found:', users.length);
 
         if (users.length === 0) {
+            console.log('🔐 Step 6: No user found');
             return res.status(401).json({
                 success: false,
                 message: 'Invalid username or password'
@@ -84,20 +89,21 @@ router.post('/login', async (req, res) => {
         }
 
         const user = users[0];
-
-        console.log('🔑 Password comparison - Username:', user.username, 'Password received:', password);
+        console.log('� Step 7: User found, verifying password');
 
         // Verify password
         const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-        console.log('🔑 Password validation result:', isPasswordValid);
+        console.log('� Step 8: Password validation result:', isPasswordValid);
         
         if (!isPasswordValid) {
+            console.log('🔐 Step 9: Password invalid');
             return res.status(401).json({
                 success: false,
                 message: 'Invalid username or password'
             });
         }
 
+        console.log('🔐 Step 10: Creating JWT token');
         // Create JWT token
         const tokenPayload = {
             employee_id: user.employee_id,
@@ -108,6 +114,7 @@ router.post('/login', async (req, res) => {
         const expiresIn = rememberMe ? '30d' : JWT_EXPIRES_IN;
         const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn });
 
+        console.log('🔐 Step 11: JWT token created, storing session');
         // Calculate expiry date
         const expiryDate = new Date();
         if (rememberMe) {
@@ -122,16 +129,19 @@ router.post('/login', async (req, res) => {
                 INSERT INTO user_sessions (employee_id, token_hash, expires_at, is_active, created_at)
                 VALUES (?, ?, ?, TRUE, NOW())
             `, [user.employee_id, token, expiryDate]);
+            console.log('🔐 Step 12: Session stored successfully');
         } catch (sessionError) {
-            console.warn('Could not store session:', sessionError.message);
+            console.warn('🔐 Step 12: Could not store session:', sessionError.message);
         }
 
+        console.log('🔐 Step 13: Updating last login');
         // Update last login in user_accounts table
         await db.execute(
             'UPDATE user_accounts SET last_login = NOW(), updated_at = NOW() WHERE id = ?',
             [user.id]
         );
 
+        console.log('🔐 Step 14: Preparing response data');
         // Prepare user data for response (exclude sensitive data)
         const userData = {
             employee_id: user.employee_id,
@@ -147,6 +157,7 @@ router.post('/login', async (req, res) => {
             last_login: new Date()
         };
 
+        console.log('🔐 Step 15: Sending successful response');
         res.json({
             success: true,
             message: 'Login successful',
@@ -158,7 +169,14 @@ router.post('/login', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Login error:', error);
+        console.error('🚨 Login error details:');
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+        console.error('Error code:', error.code);
+        console.error('Error errno:', error.errno);
+        console.error('Error sqlState:', error.sqlState);
+        console.error('Error sqlMessage:', error.sqlMessage);
+        
         res.status(500).json({
             success: false,
             message: 'Server error during login'

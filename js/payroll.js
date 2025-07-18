@@ -874,11 +874,11 @@ class PayrollController {
             const updatedEmployee = await window.directFlow.updateEmployee(employeeId, updateData);
             console.log('[PAYROLL] Employee wage updated via DirectFlow:', updatedEmployee);
             
-            // Update local employee data to reflect the change
-            const employeesResponse = await window.directFlow.getAllEmployeesForPayroll();
+            // Update local employee data to reflect the change (only active employees for wages card)
+            const employeesResponse = await window.directFlow.getEmployees();
             if (employeesResponse.success) {
                 this.employees = employeesResponse.data?.employees || [];
-                console.log('[PAYROLL] Refreshed all employees after wage update');
+                console.log('[PAYROLL] Refreshed active employees after wage update');
             }
             
             // Recalculate payroll with new wage

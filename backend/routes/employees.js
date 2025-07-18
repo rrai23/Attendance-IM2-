@@ -15,7 +15,7 @@ router.get('/', auth, async (req, res) => {
             search,
             page = 1,
             limit = 50,
-            sort = 'full_name',
+            sort = 'first_name',
             order = 'ASC'
         } = req.query;
 
@@ -149,7 +149,32 @@ router.get('/:employeeId', auth, async (req, res) => {
 
         const employees = await db.execute(`
             SELECT 
-                e.*,
+                e.id,
+                e.employee_id,
+                e.first_name,
+                e.last_name,
+                CONCAT(e.first_name, ' ', e.last_name) as full_name,
+                e.email,
+                e.phone,
+                e.department_id,
+                e.department,
+                e.position,
+                e.manager_id,
+                e.hire_date,
+                e.status,
+                e.wage,
+                e.overtime_rate,
+                e.salary_type,
+                e.avatar,
+                e.address,
+                e.emergency_contact,
+                e.emergency_phone,
+                e.work_schedule,
+                e.permissions,
+                e.is_active,
+                e.last_login,
+                e.created_at,
+                e.updated_at,
                 ua.username,
                 ua.role,
                 ua.is_active as account_active,
@@ -275,12 +300,12 @@ router.post('/', auth, requireManagerOrAdmin, async (req, res) => {
         queries.push({
             query: `
                 INSERT INTO employees (
-                    employee_id, first_name, last_name, full_name, email, phone, 
+                    employee_id, first_name, last_name, email, phone, 
                     department, position, hire_date, wage, overtime_rate, status, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW(), NOW())
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW(), NOW())
             `,
             params: [
-                employee_code, first_name, last_name, `${first_name} ${last_name}`, email, phone,
+                employee_code, first_name, last_name, email, phone,
                 department, position, hire_date, wage || 15.00, 1.50
             ]
         });
@@ -305,7 +330,32 @@ router.post('/', auth, requireManagerOrAdmin, async (req, res) => {
         // Get the created employee data
         const newEmployee = await db.execute(`
             SELECT 
-                e.*,
+                e.id,
+                e.employee_id,
+                e.first_name,
+                e.last_name,
+                CONCAT(e.first_name, ' ', e.last_name) as full_name,
+                e.email,
+                e.phone,
+                e.department_id,
+                e.department,
+                e.position,
+                e.manager_id,
+                e.hire_date,
+                e.status,
+                e.wage,
+                e.overtime_rate,
+                e.salary_type,
+                e.avatar,
+                e.address,
+                e.emergency_contact,
+                e.emergency_phone,
+                e.work_schedule,
+                e.permissions,
+                e.is_active,
+                e.last_login,
+                e.created_at,
+                e.updated_at,
                 ua.username,
                 ua.role,
                 ua.is_active as account_active
@@ -482,7 +532,32 @@ router.put('/:employeeId', auth, requireManagerOrAdmin, async (req, res) => {
         // Get updated employee data
         const updatedEmployee = await db.execute(`
             SELECT 
-                e.*,
+                e.id,
+                e.employee_id,
+                e.first_name,
+                e.last_name,
+                CONCAT(e.first_name, ' ', e.last_name) as full_name,
+                e.email,
+                e.phone,
+                e.department_id,
+                e.department,
+                e.position,
+                e.manager_id,
+                e.hire_date,
+                e.status,
+                e.wage,
+                e.overtime_rate,
+                e.salary_type,
+                e.avatar,
+                e.address,
+                e.emergency_contact,
+                e.emergency_phone,
+                e.work_schedule,
+                e.permissions,
+                e.is_active,
+                e.last_login,
+                e.created_at,
+                e.updated_at,
                 ua.username,
                 ua.role,
                 ua.is_active as account_active

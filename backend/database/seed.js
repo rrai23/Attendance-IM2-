@@ -27,16 +27,21 @@ const seedDatabase = async () => {
         console.log('👥 Inserting employees...');
         const employeeInsertQuery = `
             INSERT INTO employees (
-                id, employee_id, username, password, role, full_name, 
+                id, employee_id, username, password, role, first_name, last_name, 
                 email, department, position, hire_date, status, 
                 wage, overtime_rate, avatar
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         for (const employee of mockData.employees) {
             // Hash password if it exists
             const hashedPassword = employee.password ? 
                 await bcrypt.hash(employee.password, 12) : null;
+                
+            // Split fullName into first_name and last_name
+            const nameParts = employee.fullName ? employee.fullName.split(' ') : ['', ''];
+            const firstName = nameParts[0] || '';
+            const lastName = nameParts.slice(1).join(' ') || '';
 
             await db.execute(employeeInsertQuery, [
                 employee.id,
@@ -44,7 +49,8 @@ const seedDatabase = async () => {
                 employee.username,
                 hashedPassword,
                 employee.role,
-                employee.fullName,
+                firstName,
+                lastName,
                 employee.email,
                 employee.department,
                 employee.position,
