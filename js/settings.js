@@ -937,27 +937,28 @@ class SettingsController {
     }
 
     /**
-     * Collect form data from all sections (FLAT STRUCTURE)
+     * Collect form data from all sections (FLAT STRUCTURE - Direct mapping to database keys)
      */
     collectFormData() {
         const data = {};
         
-        // Collect all form inputs directly as flat key-value pairs
+        // Collect all form inputs - HTML forms now use camelCase names directly
         const allInputs = document.querySelectorAll('input, select, textarea');
         
         for (const input of allInputs) {
             if (input.name) {
-                // Remove section prefix and use direct key names
-                const key = input.name.replace(/^(general|payroll|attendance|notifications|security)\./, '');
+                // Form field names are now camelCase and match database keys directly
+                const fieldName = input.name;
                 
+                // Extract the value based on input type
                 if (input.type === 'checkbox') {
-                    data[key] = input.checked;
+                    data[fieldName] = input.checked;
                 } else if (input.type === 'radio') {
                     if (input.checked) {
-                        data[key] = input.value;
+                        data[fieldName] = input.value;
                     }
                 } else {
-                    data[key] = input.value;
+                    data[fieldName] = input.value;
                 }
             }
         }
@@ -1370,57 +1371,32 @@ class SettingsController {
         
         console.log(`Populating ${section} fields with:`, data);
         
-        // Handle nested data structure (e.g., if data.general exists within data)
-        const actualData = data[section] || data;
-        
-        Object.keys(actualData).forEach(key => {
-            const fieldName = `${section}.${key}`;
-            const field = document.querySelector(`[name="${fieldName}"]`);
+        // Iterate through the backend data and populate form fields
+        // Form field names now match backend keys directly (camelCase)
+        for (const [backendKey, value] of Object.entries(data)) {
+            // Form field names are now camelCase and match backend keys directly
+            let field = document.querySelector(`[name="${backendKey}"]`) ||
+                       document.getElementById(backendKey);
             
             if (field) {
-                console.log(`Setting field ${fieldName} to:`, actualData[key]);
+                console.log(`Setting field ${field.name || field.id} = ${value}`);
                 
                 if (field.type === 'checkbox') {
-                    field.checked = Boolean(actualData[key]);
+                    field.checked = Boolean(value);
                 } else if (field.type === 'radio') {
-                    const radioField = document.querySelector(`[name="${fieldName}"][value="${actualData[key]}"]`);
-                    if (radioField) radioField.checked = true;
-                } else if (field.tagName === 'SELECT') {
-                    // Handle select elements specially
-                    console.log(`Setting select ${fieldName} to value: ${actualData[key]}`);
-                    
-                    // First, clear any existing selection
-                    Array.from(field.options).forEach(option => option.selected = false);
-                    
-                    // Try to find and select the correct option
-                    const option = field.querySelector(`option[value="${actualData[key]}"]`);
-                    if (option) {
-                        field.value = actualData[key];
-                        option.selected = true;
-                        console.log(`✅ Successfully set select ${fieldName} to ${actualData[key]}`);
-                    } else {
-                        console.warn(`⚠️ Option not found for ${fieldName} with value: ${actualData[key]}`);
-                        console.log('Available options:', Array.from(field.options).map(opt => opt.value));
-                        
-                        // Create the missing option
-                        const newOption = document.createElement('option');
-                        newOption.value = actualData[key];
-                        newOption.textContent = actualData[key];
-                        newOption.selected = true;
-                        field.appendChild(newOption);
-                        field.value = actualData[key];
-                        console.log(`✅ Created and selected new option for ${fieldName}: ${actualData[key]}`);
+                    if (field.value === value) {
+                        field.checked = true;
                     }
                 } else {
-                    field.value = actualData[key] || '';
+                    field.value = value || '';
                 }
                 
                 // Trigger change event to update any dependent UI
                 field.dispatchEvent(new Event('change', { bubbles: true }));
             } else {
-                console.warn(`❌ Field not found: ${fieldName}`);
+                console.warn(`❌ Field not found for ${backendKey}`);
             }
-        });
+        }
     }
 
     /**

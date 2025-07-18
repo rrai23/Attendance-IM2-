@@ -151,24 +151,24 @@
                                     <form class="settings-form">
                                         <div class="form-group">
                                             <label for="company-name" class="form-label">Company Name</label>
-                                            <input type="text" id="company-name" name="general.company_name" class="form-input" required>
+                                            <input type="text" id="company-name" name="companyName" class="form-input" required>
                                             <div class="field-error" id="company-name-error"></div>
                                         </div>
                                         <div class="form-group">
                                             <label for="company-address" class="form-label">Address</label>
-                                            <textarea id="company-address" name="general.address" class="form-textarea" rows="3" placeholder="Enter company address"></textarea>
+                                            <textarea id="company-address" name="address" class="form-textarea" rows="3" placeholder="Enter company address"></textarea>
                                         </div>
                                         <div class="form-group">
                                             <label for="company-phone" class="form-label">Phone Number</label>
-                                            <input type="tel" id="company-phone" name="general.phone" class="form-input" placeholder="(555) 123-4567">
+                                            <input type="tel" id="company-phone" name="phone" class="form-input" placeholder="(555) 123-4567">
                                         </div>
                                         <div class="form-group">
                                             <label for="working-hours-start" class="form-label">Working Hours Start</label>
-                                            <input type="time" id="working-hours-start" name="general.working_hours_start" class="form-input" value="09:00">
+                                            <input type="time" id="working-hours-start" name="workingHoursStart" class="form-input" value="09:00">
                                         </div>
                                         <div class="form-group">
                                             <label for="working-hours-end" class="form-label">Working Hours End</label>
-                                            <input type="time" id="working-hours-end" name="general.working_hours_end" class="form-input" value="17:00">
+                                            <input type="time" id="working-hours-end" name="workingHoursEnd" class="form-input" value="17:00">
                                         </div>
                                     </form>
                                 </div>
@@ -187,7 +187,7 @@
                                     <form class="settings-form">
                                         <div class="form-group">
                                             <label for="timezone" class="form-label">Timezone</label>
-                                            <select id="timezone" name="general.timezone" class="form-select" required>
+                                            <select id="timezone" name="timezone" class="form-select" required>
                                                 <option value="">Select timezone...</option>
                                                 <option value="Asia/Manila">Asia/Manila (Philippine Time)</option>
                                                 <option value="America/New_York">Eastern Time (ET)</option>
@@ -203,7 +203,7 @@
                                         </div>
                                         <div class="form-group">
                                             <label for="date-format" class="form-label">Date Format</label>
-                                            <select id="date-format" name="general.date_format" class="form-select" required>
+                                            <select id="date-format" name="dateFormat" class="form-select" required>
                                                 <option value="">Select date format...</option>
                                                 <option value="MM/DD/YYYY">MM/DD/YYYY</option>
                                                 <option value="DD/MM/YYYY">DD/MM/YYYY</option>
@@ -212,7 +212,7 @@
                                         </div>
                                         <div class="form-group">
                                             <label for="time-format" class="form-label">Time Format</label>
-                                            <select id="time-format" name="general.time_format" class="form-select" required>
+                                            <select id="time-format" name="timeFormat" class="form-select" required>
                                                 <option value="">Select time format...</option>
                                                 <option value="12">12 Hour</option>
                                                 <option value="24">24 Hour</option>
@@ -220,7 +220,7 @@
                                         </div>
                                         <div class="form-group">
                                             <label for="currency" class="form-label">Currency</label>
-                                            <select id="currency" name="general.currency" class="form-select" required>
+                                            <select id="currency" name="currency" class="form-select" required>
                                                 <option value="">Select currency...</option>
                                                 <option value="PHP">PHP (₱)</option>
                                                 <option value="USD">USD ($)</option>
@@ -231,7 +231,7 @@
                                         </div>
                                         <div class="form-group">
                                             <label for="language" class="form-label">Language</label>
-                                            <select id="language" name="general.language" class="form-select">
+                                            <select id="language" name="language" class="form-select">
                                                 <option value="en">English</option>
                                                 <option value="es">Spanish</option>
                                                 <option value="fr">French</option>
@@ -266,7 +266,7 @@
                                     <form class="settings-form">
                                         <div class="form-group">
                                             <label for="pay-period" class="form-label">Pay Period</label>
-                                            <select id="pay-period" name="payroll.pay_period" class="form-select">
+                                            <select id="pay-period" name="payPeriod" class="form-select">
                                                 <option value="weekly">Weekly</option>
                                                 <option value="biweekly" selected>Bi-weekly</option>
                                                 <option value="monthly">Monthly</option>
@@ -274,7 +274,7 @@
                                         </div>
                                         <div class="form-group">
                                             <label for="payday" class="form-label">Payday</label>
-                                            <select id="payday" name="payroll.payday" class="form-select">
+                                            <select id="payday" name="payday" class="form-select">
                                                 <option value="monday">Monday</option>
                                                 <option value="tuesday">Tuesday</option>
                                                 <option value="wednesday">Wednesday</option>
@@ -284,7 +284,7 @@
                                         </div>
                                         <div class="form-group">
                                             <label for="pay-start-date" class="form-label">Pay Period Start Date</label>
-                                            <input type="date" id="pay-start-date" name="payroll.startDate" class="form-input">
+                                            <input type="date" id="pay-start-date" name="startDate" class="form-input">
                                             <small class="form-help">First day of the current pay period cycle</small>
                                         </div>
                                     </form>
@@ -303,19 +303,19 @@
                                     <form class="settings-form">
                                         <div class="form-group">
                                             <label for="overtime-rate" class="form-label">Overtime Rate Multiplier</label>
-                                            <input type="number" id="overtime-rate" name="payroll.overtime_rate" class="form-input" value="1.5" min="1" max="3" step="0.1" required>
+                                            <input type="number" id="overtime-rate" name="overtimeRate" class="form-input" value="1.5" min="1" max="3" step="0.1" required>
                                             <small class="form-help">Standard rate multiplier for overtime hours</small>
                                             <div class="field-error" id="overtime-rate-error"></div>
                                         </div>
                                         <div class="form-group">
                                             <label for="overtime-threshold" class="form-label">Overtime Threshold (hours/week)</label>
-                                            <input type="number" id="overtime-threshold" name="payroll.overtime_threshold" class="form-input" value="40" min="30" max="60" required>
+                                            <input type="number" id="overtime-threshold" name="overtimeThreshold" class="form-input" value="40" min="30" max="60" required>
                                             <small class="form-help">Hours per week before overtime applies</small>
                                             <div class="field-error" id="overtime-threshold-error"></div>
                                         </div>
                                         <div class="form-group">
                                             <label for="rounding-rules" class="form-label">Time Rounding Rules</label>
-                                            <select id="rounding-rules" name="payroll.rounding_rules" class="form-select">
+                                            <select id="rounding-rules" name="roundingRules" class="form-select">
                                                 <option value="none">No Rounding</option>
                                                 <option value="nearest_minute">Nearest Minute</option>
                                                 <option value="nearest_quarter" selected>Nearest 15 Minutes</option>
@@ -337,7 +337,7 @@
                                     <form class="settings-form">
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="auto-calculate" name="payroll.auto_calculate" checked>
+                                                <input type="checkbox" id="auto-calculate" name="autoCalculate" checked>
                                                 <span class="checkmark"></span>
                                                 Auto-calculate payroll
                                             </label>
@@ -345,7 +345,7 @@
                                         </div>
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="auto-approve-regular" name="payroll.auto_approve_regular">
+                                                <input type="checkbox" id="auto-approve-regular" name="autoApproveRegular">
                                                 <span class="checkmark"></span>
                                                 Auto-approve regular hours
                                             </label>
@@ -353,7 +353,7 @@
                                         </div>
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="require-overtime-approval" name="payroll.require_overtime_approval" checked>
+                                                <input type="checkbox" id="require-overtime-approval" name="requireOvertimeApproval" checked>
                                                 <span class="checkmark"></span>
                                                 Require overtime approval
                                             </label>
@@ -361,7 +361,7 @@
                                         </div>
                                         <div class="form-group">
                                             <label for="payroll-cutoff" class="form-label">Payroll Cutoff Time</label>
-                                            <input type="time" id="payroll-cutoff" name="payroll.cutoff_time" class="form-input" value="17:00">
+                                            <input type="time" id="payroll-cutoff" name="cutoffTime" class="form-input" value="17:00">
                                             <small class="form-help">Time entries after this time go to next pay period</small>
                                         </div>
                                     </form>
@@ -385,17 +385,17 @@
                                     <form class="settings-form">
                                         <div class="form-group">
                                             <label for="clock-in-grace" class="form-label">Clock In Grace Period (minutes)</label>
-                                            <input type="number" id="clock-in-grace" name="attendance.clock_in_grace" class="form-input" value="5" min="0" max="30">
+                                            <input type="number" id="clock-in-grace" name="clockInGrace" class="form-input" value="5" min="0" max="30">
                                             <small class="form-help">Minutes after scheduled start time before marked as tardy</small>
                                         </div>
                                         <div class="form-group">
                                             <label for="clock-out-grace" class="form-label">Clock Out Grace Period (minutes)</label>
-                                            <input type="number" id="clock-out-grace" name="attendance.clock_out_grace" class="form-input" value="5" min="0" max="30">
+                                            <input type="number" id="clock-out-grace" name="clockOutGrace" class="form-input" value="5" min="0" max="30">
                                             <small class="form-help">Minutes before scheduled end time allowed for early clock out</small>
                                         </div>
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="require-location" name="attendance.require_location">
+                                                <input type="checkbox" id="require-location" name="requireLocation">
                                                 <span class="checkmark"></span>
                                                 Require location verification
                                             </label>
@@ -418,15 +418,15 @@
                                     <form class="settings-form">
                                         <div class="form-group">
                                             <label for="lunch-break-duration" class="form-label">Default Lunch Break (minutes)</label>
-                                            <input type="number" id="lunch-break-duration" name="attendance.lunch_break_duration" class="form-input" value="30" min="15" max="120">
+                                            <input type="number" id="lunch-break-duration" name="lunchBreakDuration" class="form-input" value="30" min="15" max="120">
                                         </div>
                                         <div class="form-group">
                                             <label for="short-break-duration" class="form-label">Short Break Duration (minutes)</label>
-                                            <input type="number" id="short-break-duration" name="attendance.short_break_duration" class="form-input" value="15" min="5" max="30">
+                                            <input type="number" id="short-break-duration" name="shortBreakDuration" class="form-input" value="15" min="5" max="30">
                                         </div>
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="auto-deduct-lunch" name="attendance.auto_deduct_lunch" checked>
+                                                <input type="checkbox" id="auto-deduct-lunch" name="autoDeductLunch" checked>
                                                 <span class="checkmark"></span>
                                                 Auto-deduct lunch break
                                             </label>
@@ -447,7 +447,7 @@
                                     <form class="settings-form">
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="auto-clock-out" name="attendance.auto_clock_out">
+                                                <input type="checkbox" id="auto-clock-out" name="autoClockOut">
                                                 <span class="checkmark"></span>
                                                 Auto clock out employees
                                             </label>
@@ -455,11 +455,11 @@
                                         </div>
                                         <div class="form-group">
                                             <label for="auto-clock-out-time" class="form-label">Auto Clock Out Time</label>
-                                            <input type="time" id="auto-clock-out-time" name="attendance.auto_clock_out_time" class="form-input" value="18:00">
+                                            <input type="time" id="auto-clock-out-time" name="autoClockOutTime" class="form-input" value="18:00">
                                         </div>
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="require-notes" name="attendance.require_notes">
+                                                <input type="checkbox" id="require-notes" name="requireNotes">
                                                 <span class="checkmark"></span>
                                                 Require notes for manual time adjustments
                                             </label>
@@ -481,17 +481,17 @@
                                     <form class="settings-form">
                                         <div class="form-group">
                                             <label for="tardy-threshold" class="form-label">Tardiness Threshold (minutes)</label>
-                                            <input type="number" id="tardy-threshold" name="attendance.tardyThreshold" class="form-input" value="10" min="1" max="60">
+                                            <input type="number" id="tardy-threshold" name="tardyThreshold" class="form-input" value="10" min="1" max="60">
                                             <small class="form-help">Minutes late before marked as tardy</small>
                                         </div>
                                         <div class="form-group">
                                             <label for="absence-threshold" class="form-label">Absence Threshold (hours)</label>
-                                            <input type="number" id="absence-threshold" name="attendance.absenceThreshold" class="form-input" value="4" min="1" max="8">
+                                            <input type="number" id="absence-threshold" name="absenceThreshold" class="form-input" value="4" min="1" max="8">
                                             <small class="form-help">Hours without clocking in before marked as absent</small>
                                         </div>
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="send-tardy-alerts" name="attendance.sendTardyAlerts" checked>
+                                                <input type="checkbox" id="send-tardy-alerts" name="sendTardyAlerts" checked>
                                                 <span class="checkmark"></span>
                                                 Send tardiness alerts
                                             </label>
@@ -517,22 +517,22 @@
                                     <form class="settings-form">
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="email-notifications" name="notifications.email_notifications" checked>
+                                                <input type="checkbox" id="email-notifications" name="emailNotifications" checked>
                                                 <span class="checkmark"></span>
                                                 Enable email notifications
                                             </label>
                                         </div>
                                         <div class="form-group">
                                             <label for="smtp-server" class="form-label">SMTP Server</label>
-                                            <input type="text" id="smtp-server" name="notifications.smtpServer" class="form-input" placeholder="smtp.gmail.com">
+                                            <input type="text" id="smtp-server" name="smtpServer" class="form-input" placeholder="smtp.gmail.com">
                                         </div>
                                         <div class="form-group">
                                             <label for="smtp-port" class="form-label">SMTP Port</label>
-                                            <input type="number" id="smtp-port" name="notifications.smtpPort" class="form-input" value="587">
+                                            <input type="number" id="smtp-port" name="smtpPort" class="form-input" value="587">
                                         </div>
                                         <div class="form-group">
                                             <label for="email-from" class="form-label">From Email</label>
-                                            <input type="email" id="email-from" name="notifications.fromEmail" class="form-input" placeholder="noreply@company.com">
+                                            <input type="email" id="email-from" name="fromEmail" class="form-input" placeholder="noreply@company.com">
                                         </div>
                                         <div class="form-group">
                                             <button type="button" id="test-email-btn" class="btn btn-secondary">
@@ -559,7 +559,7 @@
                                     <form class="settings-form">
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="tardy-alerts" name="notifications.tardy_alerts" checked>
+                                                <input type="checkbox" id="tardy-alerts" name="tardyAlerts" checked>
                                                 <span class="checkmark"></span>
                                                 Tardiness alerts
                                             </label>
@@ -567,7 +567,7 @@
                                         </div>
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="overtime-alerts" name="notifications.overtime_alerts" checked>
+                                                <input type="checkbox" id="overtime-alerts" name="overtimeAlerts" checked>
                                                 <span class="checkmark"></span>
                                                 Overtime alerts
                                             </label>
@@ -575,7 +575,7 @@
                                         </div>
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="payroll-reminders" name="notifications.payroll_reminders" checked>
+                                                <input type="checkbox" id="payroll-reminders" name="payrollReminders" checked>
                                                 <span class="checkmark"></span>
                                                 Payroll reminders
                                             </label>
@@ -583,14 +583,14 @@
                                         </div>
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="system-updates" name="notifications.system_updates">
+                                                <input type="checkbox" id="system-updates" name="systemUpdates">
                                                 <span class="checkmark"></span>
                                                 System update notifications
                                             </label>
                                         </div>
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="absence-alerts" name="notifications.absence_alerts" checked>
+                                                <input type="checkbox" id="absence-alerts" name="absenceAlerts" checked>
                                                 <span class="checkmark"></span>
                                                 Absence alerts
                                             </label>
@@ -616,19 +616,19 @@
                                     <form class="settings-form">
                                         <div class="form-group">
                                             <label for="session-timeout" class="form-label">Session Timeout (minutes)</label>
-                                            <input type="number" id="session-timeout" name="security.session_timeout" class="form-input" value="480" min="30" max="1440">
+                                            <input type="number" id="session-timeout" name="sessionTimeout" class="form-input" value="480" min="30" max="1440">
                                             <small class="form-help">Automatically log out users after inactivity</small>
                                         </div>
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="remember-me" name="security.allowRememberMe" checked>
+                                                <input type="checkbox" id="remember-me" name="allowRememberMe" checked>
                                                 <span class="checkmark"></span>
                                                 Allow "Remember Me" option
                                             </label>
                                         </div>
                                         <div class="form-group">
                                             <label for="max-login-attempts" class="form-label">Max Login Attempts</label>
-                                            <input type="number" id="max-login-attempts" name="security.maxLoginAttempts" class="form-input" value="5" min="3" max="10">
+                                            <input type="number" id="max-login-attempts" name="maxLoginAttempts" class="form-input" value="5" min="3" max="10">
                                         </div>
                                     </form>
                                 </div>
@@ -647,39 +647,39 @@
                                     <form class="settings-form">
                                         <div class="form-group">
                                             <label for="password-min-length" class="form-label">Minimum Password Length</label>
-                                            <input type="number" id="password-min-length" name="security.password_min_length" class="form-input" value="6" min="4" max="20">
+                                            <input type="number" id="password-min-length" name="passwordMinLength" class="form-input" value="6" min="4" max="20">
                                         </div>
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="require-uppercase" name="security.require_uppercase">
+                                                <input type="checkbox" id="require-uppercase" name="requireUppercase">
                                                 <span class="checkmark"></span>
                                                 Require uppercase letters
                                             </label>
                                         </div>
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="require-numbers" name="security.require_numbers">
+                                                <input type="checkbox" id="require-numbers" name="requireNumbers">
                                                 <span class="checkmark"></span>
                                                 Require numbers
                                             </label>
                                         </div>
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="require-special" name="security.require_special_chars">
+                                                <input type="checkbox" id="require-special" name="requireSpecialChars">
                                                 <span class="checkmark"></span>
                                                 Require special characters
                                             </label>
                                         </div>
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="require-password-change" name="security.require_password_change">
+                                                <input type="checkbox" id="require-password-change" name="requirePasswordChange">
                                                 <span class="checkmark"></span>
                                                 Require periodic password changes
                                             </label>
                                         </div>
                                         <div class="form-group">
                                             <label for="password-change-interval" class="form-label">Password Change Interval (days)</label>
-                                            <input type="number" id="password-change-interval" name="security.password_change_interval" class="form-input" value="90" min="30" max="365">
+                                            <input type="number" id="password-change-interval" name="passwordChangeInterval" class="form-input" value="90" min="30" max="365">
                                         </div>
                                     </form>
                                 </div>
@@ -700,7 +700,7 @@
                                     <form class="settings-form">
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="two-factor-auth" name="security.two_factor_auth">
+                                                <input type="checkbox" id="two-factor-auth" name="twoFactorAuth">
                                                 <span class="checkmark"></span>
                                                 Enable two-factor authentication
                                             </label>
@@ -708,14 +708,14 @@
                                         </div>
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="require-2fa-admin" name="security.require2FAAdmin">
+                                                <input type="checkbox" id="require-2fa-admin" name="require2FAAdmin">
                                                 <span class="checkmark"></span>
                                                 Require 2FA for administrators
                                             </label>
                                         </div>
                                         <div class="form-group">
                                             <label for="2fa-method" class="form-label">2FA Method</label>
-                                            <select id="2fa-method" name="security.twoFactorMethod" class="form-select">
+                                            <select id="2fa-method" name="twoFactorMethod" class="form-select">
                                                 <option value="email">Email</option>
                                                 <option value="sms">SMS</option>
                                                 <option value="app">Authenticator App</option>
@@ -740,14 +740,14 @@
                                     <form class="settings-form">
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="auto-backup" name="security.autoBackup" checked>
+                                                <input type="checkbox" id="auto-backup" name="autoBackup" checked>
                                                 <span class="checkmark"></span>
                                                 Enable automatic backups
                                             </label>
                                         </div>
                                         <div class="form-group">
                                             <label for="backup-frequency" class="form-label">Backup Frequency</label>
-                                            <select id="backup-frequency" name="security.backupFrequency" class="form-select">
+                                            <select id="backup-frequency" name="backupFrequency" class="form-select">
                                                 <option value="daily" selected>Daily</option>
                                                 <option value="weekly">Weekly</option>
                                                 <option value="monthly">Monthly</option>
@@ -878,25 +878,25 @@
                                     <form class="settings-form">
                                         <div class="form-group">
                                             <label for="default-role" class="form-label">Default Role for New Users</label>
-                                            <select id="default-role" name="users.defaultRole" class="form-select">
+                                            <select id="default-role" name="defaultRole" class="form-select">
                                                 <option value="employee" selected>Employee</option>
                                                 <option value="admin">Administrator</option>
                                             </select>
                                         </div>
                                         <div class="form-group">
                                             <label for="default-hourly-rate" class="form-label">Default Hourly Rate ($)</label>
-                                            <input type="number" id="default-hourly-rate" name="users.defaultHourlyRate" class="form-input" min="0" step="0.01" required>
+                                            <input type="number" id="default-hourly-rate" name="defaultHourlyRate" class="form-input" min="0" step="0.01" required>
                                         </div>
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="require-email-verification" name="users.requireEmailVerification">
+                                                <input type="checkbox" id="require-email-verification" name="requireEmailVerification">
                                                 <span class="checkmark"></span>
                                                 Require email verification for new accounts
                                             </label>
                                         </div>
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="auto-generate-passwords" name="users.autoGeneratePasswords" checked>
+                                                <input type="checkbox" id="auto-generate-passwords" name="autoGeneratePasswords" checked>
                                                 <span class="checkmark"></span>
                                                 Auto-generate secure passwords
                                             </label>
@@ -920,22 +920,22 @@
                                     <form class="settings-form">
                                         <div class="form-group">
                                             <label for="account-lockout-attempts" class="form-label">Account Lockout After (failed attempts)</label>
-                                            <input type="number" id="account-lockout-attempts" name="users.lockoutAttempts" class="form-input" value="5" min="3" max="10">
+                                            <input type="number" id="account-lockout-attempts" name="lockoutAttempts" class="form-input" value="5" min="3" max="10">
                                         </div>
                                         <div class="form-group">
                                             <label for="account-lockout-duration" class="form-label">Lockout Duration (minutes)</label>
-                                            <input type="number" id="account-lockout-duration" name="users.lockoutDuration" class="form-input" value="30" min="5" max="1440">
+                                            <input type="number" id="account-lockout-duration" name="lockoutDuration" class="form-input" value="30" min="5" max="1440">
                                         </div>
                                         <div class="form-group">
                                             <label class="checkbox-label">
-                                                <input type="checkbox" id="auto-deactivate-inactive" name="users.autoDeactivateInactive">
+                                                <input type="checkbox" id="auto-deactivate-inactive" name="autoDeactivateInactive">
                                                 <span class="checkmark"></span>
                                                 Auto-deactivate inactive accounts
                                             </label>
                                         </div>
                                         <div class="form-group">
                                             <label for="inactive-threshold" class="form-label">Inactive Threshold (days)</label>
-                                            <input type="number" id="inactive-threshold" name="users.inactiveThreshold" class="form-input" value="90" min="30" max="365">
+                                            <input type="number" id="inactive-threshold" name="inactiveThreshold" class="form-input" value="90" min="30" max="365">
                                         </div>
                                     </form>
                                 </div>

@@ -6,7 +6,7 @@ const { auth, requireAdmin } = require('../middleware/auth');
 // Get all system settings
 router.get('/', auth, async (req, res) => {
     try {
-        const settings = await db.execute(
+        const [settings] = await db.execute(
             'SELECT setting_key, setting_value, setting_type FROM system_settings ORDER BY setting_key'
         );
 
@@ -58,7 +58,7 @@ router.get('/:key', auth, async (req, res) => {
     try {
         const { key } = req.params;
 
-        const settings = await db.execute(
+        const [settings] = await db.execute(
             'SELECT setting_key, setting_value, description FROM system_settings WHERE setting_key = ?',
             [key]
         );
@@ -135,7 +135,7 @@ router.put('/', auth, requireAdmin, async (req, res) => {
                 }
 
                 // Try to update existing setting first
-                const updateResult = await db.execute(
+                const [updateResult] = await db.execute(
                     'UPDATE system_settings SET setting_value = ?, setting_type = ?, updated_at = CURRENT_TIMESTAMP WHERE setting_key = ?',
                     [stringValue, settingType, key]
                 );
@@ -201,7 +201,7 @@ router.post('/', auth, requireAdmin, async (req, res) => {
         }
 
         // Check if setting already exists
-        const existing = await db.execute(
+        const [existing] = await db.execute(
             'SELECT id FROM system_settings WHERE setting_key = ?',
             [key]
         );
