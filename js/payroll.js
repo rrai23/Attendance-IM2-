@@ -55,7 +55,6 @@ class PayrollController {
                 this.renderPayrollHistory();
                 
                 if (progressCallback) progressCallback('Finalizing interface...');
-                this.renderDepartmentCosts();
                 
                 // Listen for overtime request submissions from employee dashboard
                 window.addEventListener('overtimeRequestSubmitted', () => {
@@ -502,24 +501,24 @@ class PayrollController {
         // Overtime request action buttons
         document.addEventListener('click', (e) => {
             if (e.target.matches('.approve-overtime-btn')) {
-                const requestId = e.target.getAttribute('data-request-id');
-                console.log('[PAYROLL] Approve button clicked, requestId:', requestId);
+                const requestId = parseInt(e.target.getAttribute('data-request-id'));
+                console.log('[PAYROLL] Approve button clicked, requestId:', requestId, 'type:', typeof requestId);
                 console.log('[PAYROLL] Button element:', e.target);
                 console.log('[PAYROLL] All data attributes:', e.target.dataset);
                 
-                if (!requestId) {
-                    console.error('[PAYROLL] No request ID found on approve button');
+                if (!requestId || isNaN(requestId)) {
+                    console.error('[PAYROLL] Invalid request ID found on approve button');
                     this.showError('Invalid request ID');
                     return;
                 }
                 
                 this.approveOvertimeRequest(requestId);
             } else if (e.target.matches('.deny-overtime-btn')) {
-                const requestId = e.target.getAttribute('data-request-id');
-                console.log('[PAYROLL] Deny button clicked, requestId:', requestId);
+                const requestId = parseInt(e.target.getAttribute('data-request-id'));
+                console.log('[PAYROLL] Deny button clicked, requestId:', requestId, 'type:', typeof requestId);
                 
-                if (!requestId) {
-                    console.error('[PAYROLL] No request ID found on deny button');
+                if (!requestId || isNaN(requestId)) {
+                    console.error('[PAYROLL] Invalid request ID found on deny button');
                     this.showError('Invalid request ID');
                     return;
                 }
@@ -741,33 +740,36 @@ class PayrollController {
             .filter(req => req.status !== 'pending')
             .slice(0, 5);
 
+        // Maintain the proper HTML structure with .overtime-content div for scrolling
         container.innerHTML = `
             <div class="overtime-header">
-                <h3>Overtime Requests</h3>
+                <h4>Overtime Requests</h4>
                 <div class="overtime-summary">
                     <span class="pending-count">${pendingRequests.length} pending</span>
                 </div>
             </div>
             
-            ${pendingRequests.length > 0 ? `
-                <div class="pending-requests">
-                    <h4>Pending Approval</h4>
-                    ${pendingRequests.map(request => this.renderOvertimeRequest(request, true)).join('')}
-                </div>
-            ` : ''}
-            
-            ${recentRequests.length > 0 ? `
-                <div class="recent-requests">
-                    <h4>Recent Requests</h4>
-                    ${recentRequests.map(request => this.renderOvertimeRequest(request, false)).join('')}
-                </div>
-            ` : ''}
-            
-            ${pendingRequests.length === 0 && recentRequests.length === 0 ? `
-                <div class="no-requests">
-                    <p>No overtime requests found</p>
-                </div>
-            ` : ''}
+            <div class="overtime-content">
+                ${pendingRequests.length > 0 ? `
+                    <div class="pending-requests">
+                        <h4>Pending Approval</h4>
+                        ${pendingRequests.map(request => this.renderOvertimeRequest(request, true)).join('')}
+                    </div>
+                ` : ''}
+                
+                ${recentRequests.length > 0 ? `
+                    <div class="recent-requests">
+                        <h4>Recent Requests</h4>
+                        ${recentRequests.map(request => this.renderOvertimeRequest(request, false)).join('')}
+                    </div>
+                ` : ''}
+                
+                ${pendingRequests.length === 0 && recentRequests.length === 0 ? `
+                    <div class="no-requests">
+                        <p>No overtime requests found</p>
+                    </div>
+                ` : ''}
+            </div>
         `;
     }
 
@@ -790,7 +792,8 @@ class PayrollController {
         const statusClass = {
             'pending': 'status-pending',
             'approved': 'status-approved',
-            'denied': 'status-denied'
+            'denied': 'status-denied',
+            'rejected': 'status-rejected'
         }[request.status] || '';
 
         // Handle different hour property names
@@ -1154,6 +1157,7 @@ class PayrollController {
         const request = this.overtimeRequests.find(req => req.id === requestId);
         if (!request) {
             console.warn('[PAYROLL] Overtime request not found:', requestId);
+            console.log('[PAYROLL] Available requests:', this.overtimeRequests.map(r => ({id: r.id, type: typeof r.id})));
             return;
         }
 
@@ -1581,7 +1585,6 @@ class PayrollController {
             this.renderEmployeeWages();
             this.renderOvertimeRequests();
             this.renderPayrollHistory();
-            this.renderDepartmentCosts();
             this.showSuccess('Payroll data refreshed');
         } catch (error) {
             console.error('Error refreshing payroll data:', error);
@@ -1602,7 +1605,6 @@ class PayrollController {
                 this.renderEmployeeWages();
                 this.renderOvertimeRequests();
                 this.renderPayrollHistory();
-                this.renderDepartmentCosts();
             });
         } catch (error) {
             console.error('Error refreshing payroll display:', error);
@@ -1801,39 +1803,6 @@ class PayrollController {
         console.log('[PAYROLL] DirectFlow sync - no event listeners needed (backend-only operation)');
         // Note: Consider implementing real-time updates via WebSocket or polling if needed
     }
-    generateSampleOvertimeRequests() {
-        if (!this.employees || this.employees.length === 0) {
-            return [];
-        }
-
-        const requests = [];
-        const currentDate = new Date();
-        
-        // Create 2-3 sample overtime requests
-        for (let i = 0; i < Math.min(3, this.employees.length); i++) {
-            const employee = this.employees[i];
-            const requestDate = new Date(currentDate);
-            requestDate.setDate(requestDate.getDate() - Math.floor(Math.random() * 7));
-            
-            requests.push({
-                id: Date.now() + i,
-                employeeId: employee.id,
-                employeeName: employee.name || employee.fullName || `Employee ${employee.id}`,
-                date: requestDate.toISOString().split('T')[0],
-                hours: Math.floor(Math.random() * 4) + 2, // 2-5 hours
-                reason: ['Project deadline', 'Emergency maintenance', 'Client meeting'][Math.floor(Math.random() * 3)],
-                status: ['pending', 'pending', 'approved'][Math.floor(Math.random() * 3)],
-                requestDate: requestDate.toISOString().split('T')[0],
-                approvedBy: null,
-                approvedDate: null
-            });
-        }
-        
-        // Note: Consider implementing backend overtime requests endpoint instead of local storage
-        console.log('[PAYROLL] Generated overtime requests - consider implementing backend storage');
-        
-        return requests;
-    }
 
     /**
      * Get default settings for payroll
@@ -1895,149 +1864,6 @@ class PayrollController {
         
         console.log('Department costs calculated:', departmentCosts);
         return departmentCosts;
-    }
-
-    /**
-     * Render department costs tile (sample)
-     */
-    renderDepartmentCosts() {
-        console.log('Rendering department costs...');
-        
-        const container = document.querySelector('.department-costs');
-        if (!container) {
-            console.warn('Department costs container not found (.department-costs)');
-            return;
-        }
-        
-        const costs = this.calculateDepartmentCosts();
-        const departments = Object.keys(costs);
-        
-        console.log('Department costs data:', { costs, departments });
-        
-        if (departments.length === 0) {
-            container.innerHTML = `
-                <div class="no-dept-costs">
-                    <p>No department cost data available.</p>
-                    <p style="font-size: 0.9em; color: #666;">
-                        Ensure employees have department information and payroll data exists.
-                    </p>
-                </div>
-            `;
-            return;
-        }
-        
-        // Calculate total for percentage calculation
-        const totalCosts = Object.values(costs).reduce((sum, cost) => sum + cost, 0);
-        
-        container.innerHTML = `
-            <div class="dept-costs-header">
-                <h3>Department Costs (Current Pay Period)</h3>
-                <p style="font-size: 0.9em; color: #666; margin: 5px 0 15px 0;">
-                    Total: ${this.formatCurrency(totalCosts)} across ${departments.length} departments
-                </p>
-            </div>
-            <div class="dept-costs-list">
-                ${departments.map(dept => {
-                    const cost = costs[dept];
-                    const percentage = totalCosts > 0 ? ((cost / totalCosts) * 100).toFixed(1) : 0;
-                    return `
-                        <div class="dept-cost-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee;">
-                            <span class="dept-name" style="font-weight: 500;">${dept}</span>
-                            <div style="text-align: right;">
-                                <span class="dept-cost" style="font-weight: bold; color: #28a745;">${this.formatCurrency(cost)}</span>
-                                <div style="font-size: 0.8em; color: #666;">${percentage}%</div>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        `;
-        
-        console.log('Department costs rendered successfully');
-    }
-
-    /**
-     * Generate sample department cost data for testing
-     */
-    generateSampleDepartmentCosts() {
-        // Use current employees and payrollData
-        if (!this.employees || this.employees.length === 0) return {};
-        // Simulate payrollData if not present
-        if (!this.payrollData || !this.payrollData.employees) {
-            this.payrollData = { employees: this.employees.map(emp => ({
-                ...emp,
-                payroll: {
-                    grossPay: Math.floor(Math.random() * 20000) + 10000
-                }
-            })) };
-        }
-        return this.calculateDepartmentCosts();
-    }
-
-    /**
-     * Initialize sample data for testing department costs
-     */
-    initializeSampleData() {
-        console.log('Initializing sample data for department costs...');
-        
-        // Generate sample employees if none exist
-        if (!this.employees || this.employees.length === 0) {
-            this.employees = [
-                { 
-                    id: 'EMP001', 
-                    name: 'John Smith', 
-                    department: 'Engineering',
-                    baseSalary: 75000
-                },
-                { 
-                    id: 'EMP002', 
-                    name: 'Sarah Johnson', 
-                    department: 'Marketing',
-                    baseSalary: 65000
-                },
-                { 
-                    id: 'EMP003', 
-                    name: 'Mike Davis', 
-                    department: 'Engineering',
-                    baseSalary: 80000
-                },
-                { 
-                    id: 'EMP004', 
-                    name: 'Lisa Wilson', 
-                    department: 'Sales',
-                    baseSalary: 70000
-                },
-                { 
-                    id: 'EMP005', 
-                    name: 'David Brown', 
-                    department: 'HR',
-                    baseSalary: 60000
-                },
-                { 
-                    id: 'EMP006', 
-                    name: 'Emily Taylor', 
-                    department: 'Marketing',
-                    baseSalary: 55000
-                }
-            ];
-        }
-
-        // Generate sample payroll data
-        this.payrollData = {
-            employees: this.employees.map(emp => ({
-                ...emp,
-                payroll: {
-                    grossPay: emp.baseSalary / 26, // Bi-weekly pay
-                    overtimePay: Math.floor(Math.random() * 500),
-                    totalPay: (emp.baseSalary / 26) + Math.floor(Math.random() * 500)
-                }
-            }))
-        };
-
-        console.log('Sample data initialized:', {
-            employeeCount: this.employees.length,
-            payrollDataCount: this.payrollData.employees.length
-        });
     }
 }
 

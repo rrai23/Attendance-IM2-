@@ -1335,6 +1335,10 @@
             border-left-color: var(--color-error, #ff3b30);
         }
 
+        .overtime-request.overtime-rejected {
+            border-left-color: var(--color-error, #ff3b30);
+        }
+
         /* Request Header Row */
         .request-header {
             display: flex;
@@ -1441,6 +1445,12 @@
         }
 
         .status-badge.status-denied {
+            background-color: rgba(255, 59, 48, 0.1);
+            color: var(--color-error, #ff3b30);
+            border: 1px solid var(--color-error, #ff3b30);
+        }
+
+        .status-badge.status-rejected {
             background-color: rgba(255, 59, 48, 0.1);
             color: var(--color-error, #ff3b30);
             border: 1px solid var(--color-error, #ff3b30);
@@ -3891,7 +3901,8 @@
                     const colors = {
                         pending: 'warning',
                         approved: 'success', 
-                        denied: 'error'
+                        denied: 'error',
+                        rejected: 'error'
                     };
                     return colors[status] || '';
                 };
@@ -3900,7 +3911,8 @@
                     const icons = {
                         pending: '⏳',
                         approved: '✅',
-                        denied: '❌'
+                        denied: '❌',
+                        rejected: '❌'
                     };
                     return icons[status] || '❓';
                 };
