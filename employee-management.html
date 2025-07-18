@@ -1983,7 +1983,7 @@
                     }
 
                     if (search) {
-                        const employee = this.employees.find(emp => (emp.id || emp.employee_id) == employeeIdValue);
+                        const employee = this.employees.find(emp => (emp.employee_id || emp.id) == employeeIdValue);
                         const employeeName = employeeNameValue || (employee ? this.getEmployeeName(employee) : `Employee ${employeeIdValue}`);
                         
                         if (!employeeName.toLowerCase().includes(search)) {
@@ -2094,7 +2094,7 @@
                 tbody.innerHTML = this.filteredData.map(record => {
                     // Handle both camelCase and snake_case field names
                     const employeeId = record.employee_id || record.employeeId;
-                    const employee = this.employees.find(emp => (emp.id || emp.employee_id) == employeeId);
+                    const employee = this.employees.find(emp => (emp.employee_id || emp.id) == employeeId);
                     const employeeName = record.employee_name || record.employeeName || (employee ? this.getEmployeeName(employee) : `Employee ${employeeId}`);
                     const employeeCode = record.employee_code || record.employeeCode || (employee ? (employee.employee_id || employee.code) : `emp_${String(employeeId).padStart(3, '0')}`);
                     const department = record.department || (employee ? employee.department : '');
@@ -2219,15 +2219,15 @@
                 const firstName = employee.first_name || employee.firstName || '';
                 const lastName = employee.last_name || employee.lastName || '';
                 
-                // Try full_name first, then constructed name, then fallbacks
-                if (employee.full_name) {
-                    return employee.full_name;
-                } else if (firstName && lastName) {
+                // Prioritize first_name + last_name combination
+                if (firstName && lastName) {
                     return `${firstName} ${lastName}`;
                 } else if (firstName) {
                     return firstName;
                 } else if (lastName) {
                     return lastName;
+                } else if (employee.full_name) {
+                    return employee.full_name;
                 } else if (employee.name) {
                     return employee.name;
                 } else {
@@ -2291,7 +2291,7 @@
                     
                     if (employeeDisplay) {
                         employeeDisplay.classList.remove('hidden');
-                        const employee = this.employees.find(emp => (emp.id || emp.employee_id) == employeeIdValue);
+                        const employee = this.employees.find(emp => (emp.employee_id || emp.id) == employeeIdValue);
                         const employeeName = employee ? this.getEmployeeName(employee) : `Employee ${employeeIdValue}`;
                         employeeDisplayText.textContent = employeeName;
                     }
@@ -2926,7 +2926,7 @@
             generateCSV() {
                 const headers = ['Employee Name', 'Employee Code', 'Date', 'Time In', 'Time Out', 'Hours', 'Status', 'Department', 'Notes'];
                 const rows = this.filteredData.map(record => {
-                    const employee = this.employees.find(emp => (emp.id || emp.employee_id) == record.employee_id);
+                    const employee = this.employees.find(emp => (emp.employee_id || emp.id) == record.employee_id);
                     const employeeName = record.employee_name || (employee ? this.getEmployeeName(employee) : `Employee ${record.employee_id}`);
                     const employeeCode = record.employee_code || (employee ? (employee.employee_id || employee.code) : `emp_${String(record.employee_id).padStart(3, '0')}`);
                     const department = record.department || (employee ? employee.department : '');
