@@ -2329,11 +2329,13 @@ class SettingsController {
      */
     async updateDeletedEmployeesCount() {
         try {
-            console.log('Updating deleted employees count...');
+            console.log('🔄 Updating deleted employees count...');
+            
+            // Force a fresh fetch of employees
             const deletedEmployees = await this.getDeletedEmployees();
             const count = deletedEmployees.length;
             
-            console.log(`Found ${count} deleted employees:`, deletedEmployees.map(emp => ({
+            console.log(`📊 Found ${count} deleted employees:`, deletedEmployees.map(emp => ({
                 id: emp.employee_id,
                 name: `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
                 status: emp.status,
@@ -2344,47 +2346,58 @@ class SettingsController {
             // Update count display
             const countElement = document.getElementById('deleted-employees-count');
             if (countElement) {
+                const oldCount = countElement.textContent;
                 countElement.textContent = count;
+                console.log(`📈 Updated count display from ${oldCount} to ${count}`);
+            } else {
+                console.warn('⚠️ deleted-employees-count element not found');
             }
             
             // Update button state
             const openModalBtn = document.getElementById('open-recovery-modal-btn');
             if (openModalBtn) {
                 openModalBtn.disabled = count === 0;
-                openModalBtn.textContent = count > 0 ? `View Deleted Employees (${count})` : 'No Deleted Employees';
+                const newText = count > 0 ? `View Deleted Employees (${count})` : 'No Deleted Employees';
+                openModalBtn.textContent = newText;
+                console.log(`🔘 Updated button text to: "${newText}"`);
+            } else {
+                console.warn('⚠️ open-recovery-modal-btn element not found');
             }
+            
+            console.log('✅ Deleted employees count update completed');
+            
         } catch (error) {
-            console.error('Failed to update deleted employees count:', error);
+            console.error('❌ Failed to update deleted employees count:', error);
         }
     }
 
     /**
      * Get deleted employees (those with inactive status)
+     * ALIGNED WITH USER STATS LOGIC for consistency
      */
     async getDeletedEmployees() {
         try {
             const employees = await this.getAllEmployees();
             
-            // Filter for employees with inactive status (representing deleted employees)
-            const deletedEmployees = employees.filter(emp => {
-                // Check multiple possible status field names and values
-                const status = emp.status || emp.employment_status || emp.employee_status || '';
-                const isActive = emp.is_active;
-                const accountActive = emp.account_active;
-                
-                // Consider deleted if:
-                // 1. Status is explicitly inactive/terminated/etc.
-                // 2. is_active flag is false/0
-                // 3. account_active flag is false/0
-                const inactiveStatuses = ['inactive', 'retired', 'terminated', 'disabled', 'former', 'ex', 'deleted'];
-                const hasInactiveStatus = inactiveStatuses.includes(status.toLowerCase());
-                const hasInactiveFlag = (isActive !== null && isActive !== undefined && !isActive) ||
-                                       (accountActive !== null && accountActive !== undefined && !accountActive);
-                
-                return hasInactiveStatus || hasInactiveFlag;
-            });
+            // Use the SAME logic as the user stats to ensure consistency
+            // This should match exactly with the "inactive employees" count in stats
+            const deletedEmployees = employees.filter(emp => emp.status === 'inactive');
             
-            console.log(`Found ${deletedEmployees.length} deleted/inactive employees out of ${employees.length} total employees`);
+            console.log(`🔍 Found ${deletedEmployees.length} deleted/inactive employees out of ${employees.length} total employees`);
+            console.log('📋 Deleted employees details:', deletedEmployees.map(emp => ({
+                id: emp.employee_id || emp.id,
+                name: `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
+                status: emp.status,
+                employment_status: emp.employment_status,
+                employee_status: emp.employee_status,
+                is_active: emp.is_active,
+                account_active: emp.account_active
+            })));
+            
+            // Also log what the user stats logic would show for comparison
+            const userStatsInactive = employees.filter(emp => emp.status === 'inactive').length;
+            console.log(`📊 User stats inactive count: ${userStatsInactive} (should match deleted count: ${deletedEmployees.length})`);
+            
             return deletedEmployees;
         } catch (error) {
             console.error('Failed to get deleted employees:', error);
@@ -2550,7 +2563,12 @@ class SettingsController {
      */
     async recoverEmployee(employeeId) {
         try {
-            if (!confirm('Are you sure you want to recover this employee? They will be restored to active status.')) {
+            const confirmed = await this.showRecoveryConfirmation(
+                'Recover Employee', 
+                'Are you sure you want to recover this employee? They will be restored to active status.'
+            );
+            
+            if (!confirmed) {
                 return;
             }
             
@@ -2563,12 +2581,25 @@ class SettingsController {
             
             await this.directFlow.updateEmployee(employeeId, updateData);
             
+            // Clear any cached employee data to ensure fresh data
+            if (this.directFlow.clearEmployeeCache) {
+                this.directFlow.clearEmployeeCache();
+            }
+            
             this.showSuccessMessage('Employee recovered successfully!');
             
-            // Refresh the modal and stats
+            // Add a small delay to ensure database update is propagated
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Refresh the modal and stats in the correct order
             await this.updateDeletedEmployeesCount();
-            await this.openDataRecoveryModal();
             await this.loadUserStats();
+            
+            // Re-open the modal with fresh data
+            const modal = document.getElementById('data-recovery-modal');
+            if (modal && !modal.classList.contains('hidden')) {
+                await this.openDataRecoveryModal();
+            }
             
         } catch (error) {
             console.error('Failed to recover employee:', error);
@@ -2617,7 +2648,12 @@ class SettingsController {
                 return;
             }
             
-            if (!confirm(`Are you sure you want to recover ${employeeIds.length} selected employees?`)) {
+            const confirmed = await this.showRecoveryConfirmation(
+                'Bulk Recover Employees',
+                `Are you sure you want to recover ${employeeIds.length} selected employee${employeeIds.length === 1 ? '' : 's'}? They will be restored to active status.`
+            );
+            
+            if (!confirmed) {
                 return;
             }
             
@@ -2631,17 +2667,103 @@ class SettingsController {
             const promises = employeeIds.map(id => this.directFlow.updateEmployee(id, updateData));
             await Promise.all(promises);
             
+            // Clear any cached employee data to ensure fresh data
+            if (this.directFlow.clearEmployeeCache) {
+                this.directFlow.clearEmployeeCache();
+            }
+            
             this.showSuccessMessage(`Successfully recovered ${employeeIds.length} employees!`);
             
-            // Refresh the modal and stats
+            // Add a small delay to ensure database updates are propagated
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Refresh the modal and stats in the correct order
             await this.updateDeletedEmployeesCount();
-            await this.openDataRecoveryModal();
             await this.loadUserStats();
+            
+            // Re-open the modal with fresh data
+            const modal = document.getElementById('data-recovery-modal');
+            if (modal && !modal.classList.contains('hidden')) {
+                await this.openDataRecoveryModal();
+            }
             
         } catch (error) {
             console.error('Failed to bulk recover employees:', error);
             this.showErrorMessage('Failed to recover employees: ' + error.message);
         }
+    }
+
+    /**
+     * Show recovery confirmation modal
+     */
+    showRecoveryConfirmation(title, message) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('recovery-confirmation-modal');
+            const titleElement = document.getElementById('confirmation-title');
+            const messageElement = document.getElementById('confirmation-message');
+            const confirmButton = document.getElementById('confirm-recovery');
+            const cancelButton = document.getElementById('cancel-confirmation');
+            const closeButton = document.getElementById('close-confirmation-modal');
+            
+            if (!modal || !titleElement || !messageElement || !confirmButton || !cancelButton) {
+                console.warn('Recovery confirmation modal elements not found, falling back to confirm dialog');
+                resolve(confirm(message));
+                return;
+            }
+            
+            // Set modal content
+            titleElement.textContent = title;
+            messageElement.textContent = message;
+            
+            // Show modal
+            modal.classList.remove('hidden');
+            
+            // Focus on confirm button for accessibility
+            setTimeout(() => confirmButton.focus(), 100);
+            
+            // Handle confirm
+            const handleConfirm = () => {
+                cleanup();
+                resolve(true);
+            };
+            
+            // Handle cancel/close
+            const handleCancel = () => {
+                cleanup();
+                resolve(false);
+            };
+            
+            // Handle escape key
+            const handleEscape = (e) => {
+                if (e.key === 'Escape') {
+                    handleCancel();
+                }
+            };
+            
+            // Cleanup function
+            const cleanup = () => {
+                modal.classList.add('hidden');
+                confirmButton.removeEventListener('click', handleConfirm);
+                cancelButton.removeEventListener('click', handleCancel);
+                closeButton.removeEventListener('click', handleCancel);
+                document.removeEventListener('keydown', handleEscape);
+                modal.removeEventListener('click', handleOverlayClick);
+            };
+            
+            // Handle clicking outside modal
+            const handleOverlayClick = (e) => {
+                if (e.target === modal) {
+                    handleCancel();
+                }
+            };
+            
+            // Add event listeners
+            confirmButton.addEventListener('click', handleConfirm);
+            cancelButton.addEventListener('click', handleCancel);
+            closeButton.addEventListener('click', handleCancel);
+            document.addEventListener('keydown', handleEscape);
+            modal.addEventListener('click', handleOverlayClick);
+        });
     }
 
     /**

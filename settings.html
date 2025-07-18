@@ -1123,6 +1123,51 @@
         </div>
     </div>
 
+    <!-- Employee Recovery Confirmation Modal -->
+    <div id="recovery-confirmation-modal" class="modal-overlay hidden">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirm Employee Recovery</h3>
+                <button class="modal-close" id="close-confirmation-modal" aria-label="Close modal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-content">
+                <div class="modal-body">
+                    <div class="confirmation-content">
+                        <div class="confirmation-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"></path>
+                                <path d="M8 5v4"></path>
+                                <path d="M16 5v4"></path>
+                                <path d="M3 9h18"></path>
+                                <path d="M12 16v-3"></path>
+                                <path d="M9 13h6"></path>
+                            </svg>
+                        </div>
+                        <h4 id="confirmation-title">Recover Employee</h4>
+                        <p id="confirmation-message">Are you sure you want to recover this employee? They will be restored to active status.</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancel-confirmation">Cancel</button>
+                    <button class="btn btn-primary" id="confirm-recovery">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"></path>
+                            <path d="M8 5v4"></path>
+                            <path d="M16 5v4"></path>
+                            <path d="M3 9h18"></path>
+                        </svg>
+                        Recover
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="js/mock-data.js"></script>
     <script src="js/utils/id-utility.js"></script>
@@ -1928,6 +1973,13 @@
         .modal-overlay.hidden {
             display: none;
         }
+        
+        /* Override main CSS to ensure our modal shows when hidden class is removed */
+        #data-recovery-modal:not(.hidden) {
+            display: flex !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
 
         .modal {
             background: var(--bg-primary);
@@ -2123,6 +2175,55 @@
         .btn-success:hover {
             background: var(--success-hover, #218838);
             border-color: var(--success-hover, #218838);
+        }
+
+        /* Confirmation Modal Styles */
+        .modal-sm {
+            max-width: 500px;
+            width: 90vw;
+        }
+
+        .confirmation-content {
+            text-align: center;
+            padding: var(--spacing-lg) 0;
+        }
+
+        .confirmation-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto var(--spacing-lg);
+            padding: var(--spacing-md);
+            border-radius: 50%;
+            background: rgba(0, 122, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .confirmation-icon svg {
+            width: 32px;
+            height: 32px;
+            color: var(--accent-primary);
+        }
+
+        #confirmation-title {
+            margin: 0 0 var(--spacing-md) 0;
+            font-size: var(--font-size-xl);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+        }
+
+        #confirmation-message {
+            margin: 0;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Override for confirmation modal to ensure visibility */
+        #recovery-confirmation-modal:not(.hidden) {
+            display: flex !important;
+            opacity: 1 !important;
+            visibility: visible !important;
         }
     </style>
 
@@ -2486,5 +2587,31 @@
 
     <!-- DirectFlow Data Manager -->
     <script src="js/directflow.js"></script>
+    
+    <!-- Debug Test Function -->
+    <script>
+        // Test function for debugging modal - can be removed in production
+        function testModalOpen() {
+            console.log('� Test button clicked!');
+            
+            if (window.settingsController && typeof window.settingsController.openDataRecoveryModal === 'function') {
+                console.log('🔧 Calling SettingsController method...');
+                try {
+                    window.settingsController.openDataRecoveryModal();
+                    console.log('✅ SettingsController method called successfully!');
+                } catch (error) {
+                    console.error('❌ SettingsController method failed:', error);
+                }
+            } else {
+                console.warn('⚠️ SettingsController not available');
+            }
+        }
+        
+        function closeTestModal() {
+            if (window.settingsController && typeof window.settingsController.closeDataRecoveryModal === 'function') {
+                window.settingsController.closeDataRecoveryModal();
+            }
+        }
+    </script>
 </body>
 </html>
