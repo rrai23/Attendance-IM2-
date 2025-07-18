@@ -23,7 +23,7 @@ const accountRoutes = require('./backend/routes/accounts');
 const unifiedRoutes = require('./backend/routes/unified');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 51250; // Using allowed port range 51250-51259
 
 // Trust proxy - no longer needed for rate limiting but kept for other middleware
 app.set('trust proxy', 1);
@@ -60,7 +60,7 @@ const limiter = rateLimit({
 // app.use(limiter);
 // app.use('/api', customRateLimit);
 
-// CORS configuration - More permissive for development
+// CORS configuration - Production ready
 app.use(cors({
     origin: function (origin, callback) {
         // Allow requests with no origin (like mobile apps or curl requests)
@@ -70,14 +70,21 @@ app.use(cors({
             process.env.FRONTEND_URL || 'http://localhost:5500',
             'http://localhost:3000',
             'http://127.0.0.1:5500',
-            'http://127.0.0.1:3000'
+            'http://127.0.0.1:3000',
+            'https://bricks.dcism.org', // Update with your actual domain
+            'http://bricks.dcism.org'   // Update with your actual domain
         ];
         
         if (allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
             console.warn('CORS origin not allowed:', origin);
-            callback(null, true); // Allow for development - change in production
+            // In production, be more strict
+            if (process.env.NODE_ENV === 'production') {
+                callback(new Error('Not allowed by CORS'));
+            } else {
+                callback(null, true); // Allow for development
+            }
         }
     },
     credentials: true,

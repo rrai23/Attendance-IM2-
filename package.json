@@ -14,7 +14,11 @@
     "update-schema": "node backend/database/update-schema.js",
     "setup-data": "node backend/database/insert-compatible-data.js",
     "seed": "node backend/database/seed.js",
-    "test": "jest"
+    "test": "jest",
+    "deploy": "node deploy.js",
+    "deploy:production": "NODE_ENV=production node server.js",
+    "logs": "tail -f logs/app.log",
+    "logs:error": "tail -f logs/error.log"
   },
   "dependencies": {
     "axios": "^1.10.0",
