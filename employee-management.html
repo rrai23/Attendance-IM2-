@@ -804,6 +804,28 @@
             gap: 4px;
             transition: all 0.3s ease;
         }
+        
+        .employee-status-indicator {
+            display: inline-block;
+            padding: 2px 8px;
+            margin-left: 8px;
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+            border-radius: 12px;
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            line-height: 1;
+            vertical-align: middle;
+        }
+        
+        body.dark-mode .employee-status-indicator {
+            background: #7f1d1d;
+            color: #fca5a5;
+            border-color: #991b1b;
+        }
 
         body.dark-mode .status-present {
             background: #2d5a3d;
@@ -1931,7 +1953,9 @@
                         const option = document.createElement('option');
                         // Use employee_id (the actual employee ID) instead of id (database primary key)
                         option.value = employee.employee_id || employee.id;
-                        option.textContent = this.getEmployeeName(employee);
+                        const baseName = this.getEmployeeName(employee, false);
+                        const displayName = this.isEmployeeInactive(employee) ? `${baseName} (RETIRED)` : baseName;
+                        option.textContent = displayName;
                         employeeFilter.appendChild(option);
                     });
                 }
@@ -1942,7 +1966,9 @@
                         const option = document.createElement('option');
                         // Use employee_id (the actual employee ID) instead of id (database primary key)
                         option.value = employee.employee_id || employee.id;
-                        option.textContent = this.getEmployeeName(employee);
+                        const baseName = this.getEmployeeName(employee, false);
+                        const displayName = this.isEmployeeInactive(employee) ? `${baseName} (RETIRED)` : baseName;
+                        option.textContent = displayName;
                         employeeSelect.appendChild(option);
                         
                         // Debug logging
@@ -1983,8 +2009,19 @@
                     }
 
                     if (search) {
-                        const employee = this.employees.find(emp => (emp.id || emp.employee_id) == employeeIdValue);
-                        const employeeName = employeeNameValue || (employee ? this.getEmployeeName(employee) : `Employee ${employeeIdValue}`);
+                        const employee = this.employees.find(emp => (emp.employee_id || emp.id) == employeeIdValue);
+                        let employeeName;
+                        
+                        if (employeeNameValue) {
+                            // Use stored employee name from the record if available
+                            employeeName = employeeNameValue;
+                        } else if (employee) {
+                            // Employee exists - use their current name
+                            employeeName = this.getEmployeeName(employee, false);
+                        } else {
+                            // Employee not found (deleted) - use just the ID for search
+                            employeeName = employeeIdValue;
+                        }
                         
                         if (!employeeName.toLowerCase().includes(search)) {
                             matches = false;
@@ -2094,8 +2131,52 @@
                 tbody.innerHTML = this.filteredData.map(record => {
                     // Handle both camelCase and snake_case field names
                     const employeeId = record.employee_id || record.employeeId;
-                    const employee = this.employees.find(emp => (emp.id || emp.employee_id) == employeeId);
-                    const employeeName = record.employee_name || record.employeeName || (employee ? this.getEmployeeName(employee) : `Employee ${employeeId}`);
+                    const employee = this.employees.find(emp => (emp.employee_id || emp.id) == employeeId);
+                    
+                    // Debug: Log the record structure to see what data is available
+                    if (!employee) {
+                        console.log('🔍 Deleted employee record structure:', {
+                            employeeId,
+                            recordKeys: Object.keys(record),
+                            hasEmployeeName: !!(record.employee_name || record.employeeName),
+                            hasFirstName: !!(record.first_name || record.firstName),
+                            hasLastName: !!(record.last_name || record.lastName),
+                            hasFullName: !!(record.full_name || record.fullName),
+                            record: record
+                        });
+                    }
+                    
+                    let employeeName;
+                    if (record.employee_name || record.employeeName) {
+                        // Use stored employee name from the record if available
+                        const storedName = record.employee_name || record.employeeName;
+                        employeeName = storedName;
+                    } else if (employee) {
+                        // Employee exists - use their current name with status indicator
+                        employeeName = this.getEmployeeName(employee, true);
+                    } else {
+                        // Employee not found (deleted) - show a better fallback
+                        // Try to construct a name from any available data
+                        const firstName = record.first_name || record.firstName || '';
+                        const lastName = record.last_name || record.lastName || '';
+                        const fullName = record.full_name || record.fullName || '';
+                        
+                        let baseName;
+                        if (firstName && lastName) {
+                            baseName = `${firstName} ${lastName}`;
+                        } else if (fullName) {
+                            baseName = fullName;
+                        } else if (firstName) {
+                            baseName = firstName;
+                        } else if (lastName) {
+                            baseName = lastName;
+                        } else {
+                            // Final fallback - use a more descriptive format
+                            baseName = `Former Employee (${employeeId})`;
+                        }
+                        
+                        employeeName = `${baseName} <span class="employee-status-indicator">RETIRED</span>`;
+                    }
                     const employeeCode = record.employee_code || record.employeeCode || (employee ? (employee.employee_id || employee.code) : `emp_${String(employeeId).padStart(3, '0')}`);
                     const department = record.department || (employee ? employee.department : '');
                     const timeIn = record.time_in || record.timeIn || record.clockIn;
@@ -2212,28 +2293,45 @@
             }
 
             // Helper method to get employee name with proper field mapping
-            getEmployeeName(employee) {
+            getEmployeeName(employee, includeStatusIndicator = false) {
                 if (!employee) return 'Unknown Employee';
                 
                 // Handle different field name variations
                 const firstName = employee.first_name || employee.firstName || '';
                 const lastName = employee.last_name || employee.lastName || '';
                 
-                // Try full_name first, then constructed name, then fallbacks
-                if (employee.full_name) {
-                    return employee.full_name;
-                } else if (firstName && lastName) {
-                    return `${firstName} ${lastName}`;
+                let name;
+                // Prioritize first_name + last_name combination, then fallback to employee_id
+                if (firstName && lastName) {
+                    name = `${firstName} ${lastName}`;
                 } else if (firstName) {
-                    return firstName;
+                    name = firstName;
                 } else if (lastName) {
-                    return lastName;
-                } else if (employee.name) {
-                    return employee.name;
+                    name = lastName;
                 } else {
-                    const empId = employee.id || employee.employee_id || 'Unknown';
-                    return `Employee ${empId}`;
+                    // Fallback directly to employee_id instead of going through full_name/name
+                    const empId = employee.employee_id || employee.id || 'Unknown';
+                    name = empId;
                 }
+                
+                // Add status indicator if requested and employee is inactive
+                if (includeStatusIndicator && this.isEmployeeInactive(employee)) {
+                    name += ' <span class="employee-status-indicator">RETIRED</span>';
+                }
+                
+                return name;
+            }
+            
+            // Helper method to check if employee is inactive/retired
+            isEmployeeInactive(employee) {
+                if (!employee) return false;
+                
+                // Check various possible status field names
+                const status = employee.status || employee.employment_status || employee.employee_status || '';
+                
+                // Consider inactive, retired, terminated, etc. as inactive
+                const inactiveStatuses = ['inactive', 'retired', 'terminated', 'disabled', 'former', 'ex'];
+                return inactiveStatuses.includes(status.toLowerCase());
             }
 
             openModal(record = null) {
@@ -2291,9 +2389,10 @@
                     
                     if (employeeDisplay) {
                         employeeDisplay.classList.remove('hidden');
-                        const employee = this.employees.find(emp => (emp.id || emp.employee_id) == employeeIdValue);
-                        const employeeName = employee ? this.getEmployeeName(employee) : `Employee ${employeeIdValue}`;
-                        employeeDisplayText.textContent = employeeName;
+                        const employee = this.employees.find(emp => (emp.employee_id || emp.id) == employeeIdValue);
+                        const employeeName = employee ? this.getEmployeeName(employee, false) : `Employee ${employeeIdValue}`;
+                        const displayName = employee && this.isEmployeeInactive(employee) ? `${employeeName} (RETIRED)` : employeeName;
+                        employeeDisplayText.textContent = displayName;
                     }
                     
                     this.populateForm(record);
@@ -2926,8 +3025,20 @@
             generateCSV() {
                 const headers = ['Employee Name', 'Employee Code', 'Date', 'Time In', 'Time Out', 'Hours', 'Status', 'Department', 'Notes'];
                 const rows = this.filteredData.map(record => {
-                    const employee = this.employees.find(emp => (emp.id || emp.employee_id) == record.employee_id);
-                    const employeeName = record.employee_name || (employee ? this.getEmployeeName(employee) : `Employee ${record.employee_id}`);
+                    const employee = this.employees.find(emp => (emp.employee_id || emp.id) == record.employee_id);
+                    
+                    let employeeName;
+                    if (record.employee_name) {
+                        // Use stored employee name from the record if available
+                        employeeName = record.employee_name;
+                    } else if (employee) {
+                        // Employee exists - check for inactive status
+                        const baseName = this.getEmployeeName(employee, false);
+                        employeeName = this.isEmployeeInactive(employee) ? `${baseName} (RETIRED)` : baseName;
+                    } else {
+                        // Employee not found (deleted)
+                        employeeName = `${record.employee_id} (RETIRED)`;
+                    }
                     const employeeCode = record.employee_code || (employee ? (employee.employee_id || employee.code) : `emp_${String(record.employee_id).padStart(3, '0')}`);
                     const department = record.department || (employee ? employee.department : '');
                     const hours = this.calculateHours(record.time_in, record.time_out);

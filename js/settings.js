@@ -114,20 +114,22 @@ class SettingsController {
     }
 
     /**
-     * Load all settings from DirectFlow
+     * Load all settings from DirectFlow (FLAT STRUCTURE)
      */
     async loadSettings() {
         try {
-            // Get settings from DirectFlow first
+            console.log('Loading settings from backend...');
+            
+            // Get settings from DirectFlow backend
             let savedSettings = {};
             
             try {
                 if (this.directFlow && this.directFlow.initialized) {
-                    // Try to load settings from backend via DirectFlow
+                    // Load settings from backend via DirectFlow
                     const result = await this.loadSettingsFromBackend();
                     if (result && Object.keys(result).length > 0) {
                         savedSettings = result;
-                        console.log('Settings loaded from DirectFlow backend:', savedSettings);
+                        console.log('Settings loaded from DirectFlow backend (flat structure):', savedSettings);
                     }
                 } else {
                     // Direct localStorage access as fallback
@@ -142,59 +144,11 @@ class SettingsController {
                 savedSettings = {};
             }
             
-            // Map database settings to organized categories
-            this.currentSettings = {
-                general: {
-                    companyName: savedSettings.companyName || savedSettings.company_name || 'Bricks Company',
-                    timezone: savedSettings.timezone || savedSettings.company_timezone || 'Asia/Manila',
-                    dateFormat: savedSettings.dateFormat || 'MM/DD/YYYY',
-                    timeFormat: savedSettings.timeFormat || '12',
-                    currency: savedSettings.currency || 'PHP',
-                    language: savedSettings.language || 'en'
-                },
-                payroll: {
-                    payPeriod: savedSettings.payPeriod || savedSettings.payroll_frequency || 'weekly',
-                    payday: savedSettings.payday || 'friday',
-                    overtimeRate: savedSettings.overtimeRate || savedSettings.overtime_rate_multiplier || 1.5,
-                    overtimeThreshold: savedSettings.overtimeThreshold || savedSettings.overtime_threshold_hours || 40,
-                    roundingRules: savedSettings.roundingRules || 'nearest_quarter',
-                    autoCalculate: savedSettings.autoCalculate !== undefined ? savedSettings.autoCalculate : true
-                },
-                attendance: {
-                    clockInGrace: savedSettings.clockInGrace || savedSettings.late_grace_period || 5,
-                    clockOutGrace: savedSettings.clockOutGrace || 5,
-                    lunchBreakDuration: savedSettings.lunchBreakDuration || 30,
-                    autoClockOut: savedSettings.autoClockOut !== undefined ? savedSettings.autoClockOut : false,
-                    autoClockOutTime: savedSettings.autoClockOutTime || savedSettings.work_end_time || '18:00',
-                    requireNotes: savedSettings.requireNotes !== undefined ? savedSettings.requireNotes : false
-                },
-                notifications: {
-                    emailNotifications: savedSettings.emailNotifications !== undefined ? savedSettings.emailNotifications : true,
-                    tardyAlerts: savedSettings.tardyAlerts !== undefined ? savedSettings.tardyAlerts : true,
-                    overtimeAlerts: savedSettings.overtimeAlerts !== undefined ? savedSettings.overtimeAlerts : true,
-                    payrollReminders: savedSettings.payrollReminders !== undefined ? savedSettings.payrollReminders : true,
-                    systemUpdates: savedSettings.systemUpdates !== undefined ? savedSettings.systemUpdates : true
-                },
-                security: {
-                    sessionTimeout: savedSettings.sessionTimeout || savedSettings.auto_logout_minutes || 480,
-                    passwordMinLength: savedSettings.passwordMinLength || 6,
-                    requirePasswordChange: savedSettings.requirePasswordChange !== undefined ? savedSettings.requirePasswordChange : false,
-                    passwordChangeInterval: savedSettings.passwordChangeInterval || 90,
-                    twoFactorAuth: savedSettings.twoFactorAuth !== undefined ? savedSettings.twoFactorAuth : false
-                },
-                users: {
-                    defaultRole: savedSettings.defaultRole || 'employee',
-                    defaultHourlyRate: savedSettings.defaultHourlyRate || 15.00,
-                    autoEnableAccounts: savedSettings.autoEnableAccounts !== undefined ? savedSettings.autoEnableAccounts : true,
-                    requireEmailVerification: savedSettings.requireEmailVerification !== undefined ? savedSettings.requireEmailVerification : false,
-                    lockoutAttempts: savedSettings.lockoutAttempts || 5,
-                    lockoutDuration: savedSettings.lockoutDuration || 30,
-                    autoInactivate: savedSettings.autoInactivate !== undefined ? savedSettings.autoInactivate : false,
-                    inactiveThreshold: savedSettings.inactiveThreshold || 90
-                },
-                // Keep all original settings for completeness
-                ...savedSettings
-            };
+            // Store settings in flat structure (matches backend and database)
+            this.currentSettings = savedSettings;
+            
+            console.log('Final settings loaded:', this.currentSettings);
+            
         } catch (error) {
             console.error('Failed to load settings:', error);
             throw error;
@@ -1164,23 +1118,17 @@ class SettingsController {
     }
 
     /**
-     * Populate existing form fields with settings data
+     * Populate existing form fields with settings data (FLAT STRUCTURE)
      */
     populateExistingForms() {
         try {
-            console.log('Populating form fields with settings data...');
+            console.log('Populating form fields with flat settings data...');
             
             // Set flag to prevent marking as dirty during population
             this.isPopulating = true;
             
-            // Populate general settings
-            this.populateFormFields('general', this.currentSettings.general);
-            
-            // Populate other sections
-            this.populateFormFields('payroll', this.currentSettings.payroll);
-            this.populateFormFields('attendance', this.currentSettings.attendance);
-            this.populateFormFields('notifications', this.currentSettings.notifications);
-            this.populateFormFields('security', this.currentSettings.security);
+            // Populate all form fields directly from flat settings structure
+            this.populateAllFormFields(this.currentSettings);
             
             // Ensure dropdowns work properly by refreshing them
             this.refreshDropdowns();
@@ -1395,6 +1343,47 @@ class SettingsController {
                 field.dispatchEvent(new Event('change', { bubbles: true }));
             } else {
                 console.warn(`❌ Field not found for ${backendKey}`);
+            }
+        }
+    }
+
+    /**
+     * Populate all form fields with flat settings data
+     */
+    populateAllFormFields(settings) {
+        if (!settings) {
+            console.warn('No settings data provided');
+            return;
+        }
+        
+        console.log('Populating all form fields with flat settings:', settings);
+        
+        // Iterate through all settings and populate form fields
+        for (const [key, value] of Object.entries(settings)) {
+            // Find the form field by name (camelCase)
+            let field = document.querySelector(`[name="${key}"]`) ||
+                       document.getElementById(key);
+            
+            if (field) {
+                console.log(`Setting field ${field.name || field.id} = ${value}`);
+                
+                if (field.type === 'checkbox') {
+                    field.checked = Boolean(value);
+                } else if (field.type === 'radio') {
+                    if (field.value === value) {
+                        field.checked = true;
+                    }
+                } else {
+                    field.value = value || '';
+                }
+                
+                // Trigger change event to update any dependent UI
+                field.dispatchEvent(new Event('change', { bubbles: true }));
+            } else {
+                // Only warn for known important fields, not debug/internal fields
+                if (key && !key.startsWith('_') && key !== 'id' && key !== 'created_at' && key !== 'updated_at') {
+                    console.warn(`❌ Field not found for setting: ${key}`);
+                }
             }
         }
     }
@@ -2188,6 +2177,7 @@ class SettingsController {
             
             if (result.success) {
                 this.showSuccessMessage(`Password reset for ${username}`);
+
                 await this.loadAccountSummary();
             } else {
                 this.showErrorMessage('Failed to reset password: ' + (result.message || 'Unknown error'));
