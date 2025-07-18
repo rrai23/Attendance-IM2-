@@ -452,7 +452,61 @@ class DashboardController {
             // Use DirectFlow for payday data
             if (window.directFlow && window.directFlow.initialized) {
                 console.log('Loading payday data from DirectFlow');
-                this.paydayData = await window.directFlow.getNextPayday();
+                
+                // Get settings first to know the configured pay period
+                const settings = await window.directFlow.getSettings();
+                const payPeriod = settings?.payroll?.payPeriod || 'monthly';
+                const payday = settings?.payroll?.payday || 'friday';
+                
+                console.log('📅 Pay period settings:', { payPeriod, payday });
+                
+                const backendPaydayData = await window.directFlow.getNextPayday();
+                
+                // Transform backend response to expected format
+                if (backendPaydayData && backendPaydayData.nextPayday) {
+                    const nextPayday = new Date(backendPaydayData.nextPayday);
+                    const today = new Date();
+                    
+                    // Calculate period string based on actual pay period setting
+                    let periodString;
+                    if (payPeriod === 'weekly') {
+                        // For weekly: show current week
+                        const startOfWeek = new Date(today);
+                        startOfWeek.setDate(today.getDate() - today.getDay());
+                        const endOfWeek = new Date(startOfWeek);
+                        endOfWeek.setDate(startOfWeek.getDate() + 6);
+                        periodString = `${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+                    } else if (payPeriod === 'biweekly') {
+                        // For bi-weekly: show 2-week period
+                        const startOfPeriod = new Date(today);
+                        startOfPeriod.setDate(today.getDate() - (today.getDate() % 14));
+                        const endOfPeriod = new Date(startOfPeriod);
+                        endOfPeriod.setDate(startOfPeriod.getDate() + 13);
+                        periodString = `${startOfPeriod.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endOfPeriod.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+                    } else {
+                        // For monthly: show current month
+                        const periodStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                        const periodEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                        periodString = `${periodStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${periodEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+                    }
+                    
+                    this.paydayData = {
+                        date: backendPaydayData.nextPayday,
+                        nextPayday: backendPaydayData.nextPayday, // Keep for backward compatibility
+                        daysRemaining: backendPaydayData.daysUntilPayday || 0,
+                        frequency: payPeriod, // Use actual setting instead of backend frequency
+                        period: periodString,
+                        hoursRemaining: (backendPaydayData.daysUntilPayday || 0) * 24,
+                        amount: 0, // Default amount
+                        lastPayday: null, // Will be filled from settings if available
+                        payday: payday // Store the configured payday for display
+                    };
+                    
+                    console.log('Transformed payday data with settings:', this.paydayData);
+                } else {
+                    console.warn('Invalid payday data from backend:', backendPaydayData);
+                    this.paydayData = this.getDefaultPaydayData();
+                }
             } else {
                 console.error('DirectFlow not available for loading payday data');
                 this.paydayData = this.getDefaultPaydayData();
@@ -498,19 +552,27 @@ class DashboardController {
      */
     getDefaultPaydayData() {
         const today = new Date();
-        // Set the next payday to 15 days from now
+        // Set the next payday to 7 days from now for default weekly
         const nextPayday = new Date(today);
-        nextPayday.setDate(today.getDate() + 15);
+        nextPayday.setDate(today.getDate() + 7);
+        
+        // Calculate period string for weekly (default assumption)
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay());
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        const periodString = `${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
         
         return {
-            date: nextPayday.toISOString().split('T')[0], // Fixed: use 'date' instead of 'nextPayday'
+            date: nextPayday.toISOString().split('T')[0],
             nextPayday: nextPayday.toISOString().split('T')[0], // Keep for backward compatibility
-            frequency: 'biweekly',
-            period: 'July 17 - July 31', // Added period
-            daysRemaining: 15,
-            hoursRemaining: 15 * 24,
+            frequency: 'weekly', // Default to weekly for better UX
+            period: periodString,
+            daysRemaining: 7,
+            hoursRemaining: 7 * 24,
             amount: 0, // Added amount to prevent template errors
-            lastPayday: new Date(today.setDate(today.getDate() - 15)).toISOString().split('T')[0]
+            lastPayday: new Date(today.setDate(today.getDate() - 7)).toISOString().split('T')[0],
+            payday: 'friday' // Default payday
         };
     }
 

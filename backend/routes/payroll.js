@@ -149,14 +149,38 @@ router.get('/', auth, async (req, res) => {
 // Get next payday information for dashboard
 router.get('/next-payday', auth, async (req, res) => {
     try {
+        // Get pay period settings first
+        const settingsQuery = await db.execute(`
+            SELECT setting_key, setting_value 
+            FROM system_settings 
+            WHERE setting_key IN ('payPeriod', 'payday')
+        `);
+        
+        let payPeriod = 'monthly'; // default
+        let payday = 'friday'; // default
+        
+        // Parse settings from database
+        if (settingsQuery && settingsQuery.length > 0) {
+            settingsQuery.forEach(setting => {
+                if (setting.setting_key === 'payPeriod') {
+                    payPeriod = setting.setting_value || 'monthly';
+                }
+                if (setting.setting_key === 'payday') {
+                    payday = setting.setting_value || 'friday';
+                }
+            });
+        }
+        
+        console.log('Using pay period settings:', { payPeriod, payday });
+        
         // Get the most recent payroll record to determine next payday
         const lastPayroll = await db.execute(`
             SELECT 
                 pay_period_end,
-                pay_date,
-                'monthly' as pay_frequency
+                pay_period_start,
+                '${payPeriod}' as pay_frequency
             FROM payroll_records
-            ORDER BY pay_date DESC
+            ORDER BY pay_period_end DESC
             LIMIT 1
         `);
 
@@ -164,16 +188,33 @@ router.get('/next-payday', auth, async (req, res) => {
         let daysUntilPayday = null;
 
         if (lastPayroll && lastPayroll.length > 0) {
-            const lastPayDate = new Date(lastPayroll[0].pay_date);
-            const frequency = lastPayroll[0].pay_frequency || 'monthly';
+            const lastPayDate = new Date(lastPayroll[0].pay_period_end);
+            const frequency = payPeriod; // Use settings instead of hardcoded
             
-            // Calculate next payday based on frequency
+            // Calculate next payday based on frequency from settings
             switch (frequency) {
                 case 'weekly':
-                    nextPayday = new Date(lastPayDate.getTime() + (7 * 24 * 60 * 60 * 1000));
+                    // Find next occurrence of the configured payday
+                    const daysOfWeek = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+                    const targetDay = daysOfWeek[payday.toLowerCase()] || 5; // default to Friday
+                    
+                    // Start from the last pay date and find the next occurrence of the target day
+                    let candidateDate = new Date(lastPayDate.getTime() + (24 * 60 * 60 * 1000)); // Day after last pay
+                    while (candidateDate.getDay() !== targetDay) {
+                        candidateDate = new Date(candidateDate.getTime() + (24 * 60 * 60 * 1000));
+                    }
+                    nextPayday = candidateDate;
                     break;
-                case 'bi-weekly':
-                    nextPayday = new Date(lastPayDate.getTime() + (14 * 24 * 60 * 60 * 1000));
+                case 'biweekly':
+                    // For biweekly, add 14 days to last pay date and adjust to correct day
+                    const daysOfWeekBi = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+                    const targetDayBi = daysOfWeekBi[payday.toLowerCase()] || 5;
+                    
+                    let candidateDateBi = new Date(lastPayDate.getTime() + (14 * 24 * 60 * 60 * 1000));
+                    while (candidateDateBi.getDay() !== targetDayBi) {
+                        candidateDateBi = new Date(candidateDateBi.getTime() + (24 * 60 * 60 * 1000));
+                    }
+                    nextPayday = candidateDateBi;
                     break;
                 case 'monthly':
                 default:
@@ -186,10 +227,56 @@ router.get('/next-payday', auth, async (req, res) => {
             const today = new Date();
             const timeDiff = nextPayday.getTime() - today.getTime();
             daysUntilPayday = Math.ceil(timeDiff / (1000 * 3600 * 24));
+            
+            // If the calculated payday is today or in the past, move to next pay period
+            if (daysUntilPayday <= 0) {
+                switch (frequency) {
+                    case 'weekly':
+                        nextPayday = new Date(nextPayday.getTime() + (7 * 24 * 60 * 60 * 1000));
+                        break;
+                    case 'biweekly':
+                        nextPayday = new Date(nextPayday.getTime() + (14 * 24 * 60 * 60 * 1000));
+                        break;
+                    case 'monthly':
+                        nextPayday.setMonth(nextPayday.getMonth() + 1);
+                        break;
+                }
+                const newTimeDiff = nextPayday.getTime() - today.getTime();
+                daysUntilPayday = Math.ceil(newTimeDiff / (1000 * 3600 * 24));
+            }
         } else {
-            // No payroll records found, use default monthly from end of month
+            // No payroll records found, calculate next payday based on settings
             const today = new Date();
-            nextPayday = new Date(today.getFullYear(), today.getMonth() + 1, 0); // Last day of next month
+            
+            switch (payPeriod) {
+                case 'weekly':
+                    // Find next occurrence of the configured payday
+                    const daysOfWeek = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+                    const targetDay = daysOfWeek[payday.toLowerCase()] || 5; // default to Friday
+                    const currentDay = today.getDay();
+                    const daysUntilTargetDay = (targetDay - currentDay + 7) % 7;
+                    nextPayday = new Date(today.getTime() + (daysUntilTargetDay * 24 * 60 * 60 * 1000));
+                    if (daysUntilTargetDay === 0) {
+                        // If today is payday, next payday is next week
+                        nextPayday = new Date(nextPayday.getTime() + (7 * 24 * 60 * 60 * 1000));
+                    }
+                    break;
+                case 'biweekly':
+                    // For biweekly, find next payday (2 weeks from a reference point)
+                    const daysOfWeekBi = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+                    const targetDayBi = daysOfWeekBi[payday.toLowerCase()] || 5;
+                    const currentDayBi = today.getDay();
+                    let daysUntilTargetDayBi = (targetDayBi - currentDayBi + 7) % 7;
+                    if (daysUntilTargetDayBi === 0) daysUntilTargetDayBi = 7; // Next week if today is payday
+                    nextPayday = new Date(today.getTime() + (daysUntilTargetDayBi * 24 * 60 * 60 * 1000));
+                    break;
+                case 'monthly':
+                default:
+                    // Use last day of next month for monthly
+                    nextPayday = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                    break;
+            }
+            
             const timeDiff = nextPayday.getTime() - today.getTime();
             daysUntilPayday = Math.ceil(timeDiff / (1000 * 3600 * 24));
         }
@@ -199,7 +286,8 @@ router.get('/next-payday', auth, async (req, res) => {
             data: {
                 nextPayday: nextPayday ? nextPayday.toISOString().split('T')[0] : null,
                 daysUntilPayday: daysUntilPayday,
-                frequency: lastPayroll && lastPayroll.length > 0 ? lastPayroll[0].pay_frequency : 'monthly'
+                frequency: payPeriod,
+                payday: payday
             }
         });
 
