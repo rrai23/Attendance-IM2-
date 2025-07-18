@@ -27,7 +27,7 @@ RATE_LIMIT_MAX_REQUESTS=100
 BCRYPT_ROUNDS=12
 
 # Frontend URL (update with your domain)
-FRONTEND_URL=https://yourdomain.com
+FRONTEND_URL=https://bricks.dcism.org
 
 # Session Configuration
 SESSION_SECRET=Br1cks_S3ss10n_S3cr3t_Pr0duct10n_2025!`;
