@@ -1,7 +1,9 @@
-# Force HTTPS (Security)
 RewriteEngine on
+
+# Force HTTPS (Security) - MUST COME FIRST
 RewriteCond %{REQUEST_SCHEME} !https
 RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
 
 # Node.js Application Proxy
 RewriteRule (.*) http://127.0.0.1:51250%{REQUEST_URI} [P,L]
+
