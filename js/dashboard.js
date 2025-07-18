@@ -12,10 +12,11 @@ class DashboardController {
         this.charts = new Map();
         this.currentStats = null;
         this.paydayData = null;
+        this.activeAnimations = new Set(); // Track active animations
         
         // Configuration
         this.config = {
-            refreshRate: 30000, // 30 seconds
+            refreshRate: 60000, // 60 seconds (increased from 30)
             countdownUpdateRate: 1000, // 1 second
             animationDuration: 300,
             chartUpdateDelay: 500
@@ -56,7 +57,7 @@ class DashboardController {
             await this.waitForDependencies();
             this.setupEventListeners();
             await this.loadInitialData();
-            this.renderTiles();
+            await this.renderTiles();
             this.initializeComponents();
             this.startAutoRefresh();
             this.isInitialized = true;
@@ -247,7 +248,7 @@ class DashboardController {
             
             // Update UI components
             this.updateQuickStats();
-            this.updateAttendanceCountTile();
+            await this.updateAttendanceCountTile();
             this.updateCharts();
             this.updatePaydayCountdown();
             
@@ -445,6 +446,192 @@ class DashboardController {
     }
 
     /**
+     * Get yesterday's attendance data for comparison
+     */
+    async getYesterdayComparison() {
+        try {
+            // Get yesterday's date
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+            
+            console.log('Loading yesterday\'s attendance data for comparison:', yesterdayStr);
+            
+            // Default comparison data
+            let comparisonData = {
+                present: 0,
+                late: 0,
+                absent: 0,
+                total: 0,
+                attendanceRate: 0,
+                hasData: false
+            };
+
+            if (window.directFlow && window.directFlow.initialized) {
+                // Get yesterday's attendance records
+                const yesterdayResponse = await window.directFlow.getAttendance(null, yesterdayStr);
+                
+                let yesterdayRecords = [];
+                if (Array.isArray(yesterdayResponse)) {
+                    yesterdayRecords = yesterdayResponse;
+                } else if (yesterdayResponse?.success && yesterdayResponse?.data) {
+                    yesterdayRecords = yesterdayResponse.data.records || yesterdayResponse.data || [];
+                }
+                
+                // Get employee count (should be same as today)
+                const stats = this.currentStats || this.getDefaultStats();
+                const totalEmployees = Number(stats.total) || Number(stats.totalEmployees) || 0;
+                
+                console.log('Yesterday comparison - employee count debug:', {
+                    statsTotal: stats.total,
+                    statsTotalEmployees: stats.totalEmployees,
+                    finalTotalEmployees: totalEmployees,
+                    yesterdayRecordsLength: yesterdayRecords.length
+                });
+                
+                if (yesterdayRecords.length > 0 && totalEmployees > 0) {
+                    // Process yesterday's data
+                    let present = 0, late = 0, absent = 0;
+                    
+                    yesterdayRecords.forEach(record => {
+                        switch(record.status) {
+                            case 'present':
+                                present++;
+                                break;
+                            case 'late':
+                            case 'tardy':
+                                late++;
+                                break;
+                            case 'absent':
+                                absent++;
+                                break;
+                            default:
+                                if (record.timeIn) {
+                                    present++;
+                                } else {
+                                    absent++;
+                                }
+                        }
+                    });
+                    
+                    // Account for employees without records
+                    if (yesterdayRecords.length < totalEmployees) {
+                        absent += (totalEmployees - yesterdayRecords.length);
+                    }
+                    
+                    // Sanity check: total present + late should not exceed total employees
+                    const totalAttended = present + late;
+                    if (totalAttended > totalEmployees) {
+                        console.warn('Yesterday data issue: attended count exceeds total employees', {
+                            present, late, totalAttended, totalEmployees
+                        });
+                        // Adjust if there's an issue with the data
+                        const ratio = totalEmployees / totalAttended;
+                        present = Math.floor(present * ratio);
+                        late = Math.floor(late * ratio);
+                    }
+                    
+                    const attendanceRate = totalEmployees > 0 ? ((present + late) / totalEmployees) * 100 : 0;
+                    
+                    console.log('Yesterday attendance rate calculation:', {
+                        present,
+                        late,
+                        totalPresent: present + late,
+                        totalEmployees,
+                        rawRate: ((present + late) / totalEmployees) * 100,
+                        roundedRate: Math.round(attendanceRate * 10) / 10
+                    });
+                    
+                    // Safety check: attendance rate should never exceed 100%
+                    const safeAttendanceRate = Math.min(100, Math.max(0, Math.round(attendanceRate * 10) / 10));
+                    
+                    comparisonData = {
+                        present,
+                        late,
+                        absent,
+                        total: totalEmployees,
+                        attendanceRate: safeAttendanceRate, // Safe bounded rate
+                        hasData: true
+                    };
+                    
+                    console.log('Yesterday\'s attendance processed:', comparisonData);
+                }
+            }
+            
+            // Generate comparison HTML
+            const todayStats = this.currentStats || this.getDefaultStats();
+            const todayPresent = Number(todayStats.present) || 0;
+            const todayLate = Number(todayStats.late) || 0;
+            const todayTotal = todayPresent + todayLate;
+            const yesterdayTotal = (comparisonData.present || 0) + (comparisonData.late || 0);
+            
+            console.log('Comparison calculation debug:', {
+                todayPresent,
+                todayLate,
+                todayTotal,
+                yesterdayPresent: comparisonData.present || 0,
+                yesterdayLate: comparisonData.late || 0,
+                yesterdayTotal,
+                hasYesterdayData: comparisonData.hasData,
+                comparisonData
+            });
+            
+            const difference = todayTotal - yesterdayTotal;
+            const diffText = difference > 0 ? `+${difference}` : `${difference}`;
+            const diffClass = difference > 0 ? 'positive' : difference < 0 ? 'negative' : 'neutral';
+            const diffIcon = difference > 0 ? '↗' : difference < 0 ? '↘' : '→';
+            
+            const html = comparisonData.hasData ? `
+                <div class="attendance-comparison">
+                    <div class="comparison-header">
+                        <span class="comparison-title">Yesterday vs Today</span>
+                        <span class="comparison-change ${diffClass}">
+                            ${diffIcon} ${diffText}
+                        </span>
+                    </div>
+                    <div class="comparison-metrics">
+                        <div class="comparison-item">
+                            <span class="comparison-label">Yesterday</span>
+                            <span class="comparison-value">${yesterdayTotal}/${comparisonData.total || 0}</span>
+                        </div>
+                        <div class="comparison-item">
+                            <span class="comparison-label">Yest. Rate</span>
+                            <span class="comparison-value">${comparisonData.attendanceRate || 0}%</span>
+                        </div>
+                    </div>
+                </div>
+            ` : `
+                <div class="attendance-comparison no-data">
+                    <div class="comparison-header">
+                        <span class="comparison-title">Yesterday vs Today</span>
+                    </div>
+                    <div class="no-data-message">
+                        <span>No yesterday data available</span>
+                    </div>
+                </div>
+            `;
+            
+            return { html, data: comparisonData };
+            
+        } catch (error) {
+            console.error('Error getting yesterday comparison:', error);
+            return {
+                html: `
+                    <div class="attendance-comparison error">
+                        <div class="comparison-header">
+                            <span class="comparison-title">Yesterday vs Today</span>
+                        </div>
+                        <div class="error-message">
+                            <span>Unable to load comparison</span>
+                        </div>
+                    </div>
+                `,
+                data: null
+            };
+        }
+    }
+
+    /**
      * Load payday data
      */
     async loadPaydayData() {
@@ -579,9 +766,9 @@ class DashboardController {
     /**
      * Render all dashboard tiles
      */
-    renderTiles() {
+    async renderTiles() {
         console.log('📱 Rendering all dashboard tiles...');
-        this.renderAttendanceCountTile();
+        await this.renderAttendanceCountTile();
         this.renderAttendanceChartTile();
         this.renderCalendarTile();
         this.renderPaydayCountdownTile();
@@ -591,7 +778,7 @@ class DashboardController {
     /**
      * Render attendance count tile
      */
-    renderAttendanceCountTile() {
+    async renderAttendanceCountTile() {
         const tile = document.getElementById(this.tiles.attendanceCount.id);
         if (!tile) return;
 
@@ -606,6 +793,9 @@ class DashboardController {
         const attendanceRate = Number(stats.attendanceRate) || 0;
         
         console.log('Rendering attendance count tile with values:', { present, late, absent, total, attendanceRate });
+        
+        // Get yesterday's data for comparison
+        const comparisonData = await this.getYesterdayComparison();
         
         tile.innerHTML = `
             <div class="tile-header">
@@ -626,15 +816,15 @@ class DashboardController {
                         <div class="stat-sublabel">out of ${total} employees</div>
                     </div>
                     <div class="attendance-rate">
-                        <div class="rate-circle" data-rate="${attendanceRate}">
+                        <div class="rate-circle" data-rate="${attendanceRate}" id="attendance-rate-circle">
                             <svg viewBox="0 0 36 36" class="circular-chart">
                                 <path class="circle-bg" d="M18 2.0845
                                     a 15.9155 15.9155 0 0 1 0 31.831
                                     a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                <path class="circle" stroke-dasharray="${attendanceRate}, 100" d="M18 2.0845
+                                <path class="circle" stroke-dasharray="0, 100" d="M18 2.0845
                                     a 15.9155 15.9155 0 0 1 0 31.831
                                     a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                <text x="18" y="20.35" class="percentage">${attendanceRate}%</text>
+                                <text x="18" y="20.35" class="percentage">0%</text>
                             </svg>
                         </div>
                     </div>
@@ -656,65 +846,134 @@ class DashboardController {
                         <span class="breakdown-value">${absent}</span>
                     </div>
                 </div>
+                ${comparisonData.html}
             </div>
         `;
 
         // Animate the circular progress
         setTimeout(() => {
             this.animateCircularProgress(tile.querySelector('.rate-circle'));
-        }, 100);
+        }, 200);
     }
 
     /**
      * Render attendance chart tile
      */
     renderAttendanceChartTile() {
-        console.log('📊 Rendering attendance chart tile...');
+        console.log('📊 Rendering attendance insights tile...');
         const tile = document.getElementById(this.tiles.attendanceChart.id);
         if (!tile) {
-            console.warn('📊 Attendance chart tile element not found');
+            console.warn('📊 Attendance insights tile element not found');
             return;
         }
 
+        // Get real attendance data from currentStats
+        const stats = this.currentStats || this.getDefaultStats();
+        const today = new Date().toLocaleDateString('en-US', { 
+            weekday: 'short', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+
+        // Calculate metrics from real data
+        const totalPresent = Number(stats.present) || 0;
+        const totalLate = Number(stats.late) || 0;
+        const totalAbsent = Number(stats.absent) || 0;
+        const totalEmployees = Number(stats.total) || 0;
+        
+        const tardinessRate = totalEmployees > 0 ? 
+            Math.round((totalLate / totalEmployees) * 100) : 0;
+        const onTimeRate = (totalPresent + totalLate) > 0 ? 
+            Math.round((totalPresent / (totalPresent + totalLate)) * 100) : 0;
+
+        // Determine data status
+        const isDataLoaded = stats.dataFullyLoaded || (totalEmployees > 0);
+        const statusClass = isDataLoaded ? 'success' : 'loading';
+        const statusText = isDataLoaded ? 
+            `Data updated • ${totalEmployees} employees` : 
+            'Loading attendance data...';
+
         tile.innerHTML = `
             <div class="tile-header">
-                <h3 class="tile-title">${this.tiles.attendanceChart.title}</h3>
-                <div class="tile-actions">
-                    <select class="chart-period-select" id="chart-period">
-                        <option value="week">This Week</option>
-                        <option value="month" selected>This Month</option>
-                        <option value="quarter">This Quarter</option>
-                    </select>
-                    <button class="tile-refresh-btn" title="Refresh chart">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="23,4 23,10 17,10"></polyline>
-                            <polyline points="1,20 1,14 7,14"></polyline>
-                            <path d="M20.49,9A9,9,0,0,0,5.64,5.64L1,10m22,4L18.36,18.36A9,9,0,0,1,3.51,15"></path>
-                        </svg>
-                    </button>
+                <div class="tile-title-group">
+                    <h3 class="tile-title">${this.tiles.attendanceChart.title}</h3>
+                    <p class="tile-subtitle">Real-time insights and actions</p>
                 </div>
+                <button class="tile-refresh-btn" title="Refresh insights">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23,4 23,10 17,10"></polyline>
+                        <polyline points="1,20 1,14 7,14"></polyline>
+                        <path d="M20.49,9A9,9,0,0,0,5.64,5.64L1,10m22,4L18.36,18.36A9,9,0,0,1,3.51,15"></path>
+                    </svg>
+                </button>
             </div>
             <div class="tile-content">
-                <div class="chart-container">
-                    <canvas id="attendance-stats-chart"></canvas>
-                </div>
-                <div class="chart-loading" style="display: none;">
-                    <div class="loading-spinner"></div>
-                    <span>Loading chart data...</span>
+                <div class="attendance-insights">
+                    <!-- Today's Summary -->
+                    <div class="insight-section">
+                        <div class="insight-header">
+                            <h4 class="insight-title">Today's Summary</h4>
+                            <span class="insight-date">${today}</span>
+                        </div>
+                        <div class="insight-metrics">
+                            <div class="metric-item">
+                                <div class="metric-icon present">✓</div>
+                                <div class="metric-details">
+                                    <span class="metric-value">${totalPresent}</span>
+                                    <span class="metric-label">Present</span>
+                                </div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-icon late">⏰</div>
+                                <div class="metric-details">
+                                    <span class="metric-value">${totalLate}</span>
+                                    <span class="metric-label">Late</span>
+                                </div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-icon absent">✗</div>
+                                <div class="metric-details">
+                                    <span class="metric-value">${totalAbsent}</span>
+                                    <span class="metric-label">Absent</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Performance Metrics -->
+                    <div class="insight-section">
+                        <div class="insight-header">
+                            <h4 class="insight-title">Performance</h4>
+                        </div>
+                        <div class="performance-grid">
+                            <div class="performance-item">
+                                <div class="performance-label">Tardiness Rate</div>
+                                <div class="performance-value warning">${tardinessRate}%</div>
+                            </div>
+                            <div class="performance-item">
+                                <div class="performance-label">On-Time Rate</div>
+                                <div class="performance-value success">${onTimeRate}%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data Status -->
+                    <div class="data-status">
+                        <span class="status-indicator ${statusClass}"></span>
+                        <span class="status-text">${statusText}</span>
+                    </div>
                 </div>
             </div>
         `;
 
-        // Setup chart period change handler
-        const periodSelect = tile.querySelector('#chart-period');
-        periodSelect.addEventListener('change', () => {
-            this.updateAttendanceChart(periodSelect.value);
+        console.log('📊 Attendance insights rendered with real data:', {
+            totalPresent,
+            totalLate,
+            totalAbsent,
+            tardinessRate,
+            onTimeRate,
+            isDataLoaded
         });
-
-        // Initialize chart with a short delay to ensure DOM is ready
-        setTimeout(() => {
-            this.initializeAttendanceChart();
-        }, 300); // Reduced delay since data is already loaded
     }
 
     /**
@@ -1062,54 +1321,75 @@ class DashboardController {
     /**
      * Update attendance count tile
      */
-    updateAttendanceCountTile() {
+    async updateAttendanceCountTile() {
         try {
-            if (!this.currentStats) return;
-
             const tile = document.getElementById('attendance-count-tile');
-            if (!tile) return;
+            if (!tile) {
+                // If tile doesn't exist, render it completely
+                await this.renderAttendanceCountTile();
+                return;
+            }
 
-            const content = tile.querySelector('.tile-content');
-            if (!content) return;
+            // Check if tile has content - if not, render completely
+            const existingContent = tile.querySelector('.tile-content');
+            if (!existingContent) {
+                await this.renderAttendanceCountTile();
+                return;
+            }
 
-            // Use .today stats if available, otherwise fallback to main stats
-            const stats = this.currentStats.today || this.currentStats;
-            
-            // Ensure all values are numbers, not objects
+            // If tile exists and has content, just update the values without rebuilding HTML
+            const stats = this.currentStats || this.getDefaultStats();
             const present = Number(stats.present) || 0;
             const late = Number(stats.late) || 0;
             const absent = Number(stats.absent) || 0;
-            const overtime = Number(stats.overtime) || 0;
-            const presentPercentage = Number(stats.presentPercentage || stats.attendanceRate) || 0;
-            
-            console.log('Updating attendance count tile with values:', { present, late, absent, overtime, presentPercentage });
+            const total = Number(stats.total) || Number(stats.totalEmployees) || 0;
+            const attendanceRate = Number(stats.attendanceRate) || 0;
 
-            content.innerHTML = `
-                <div class="attendance-summary">
-                    <div class="stat-item">
-                        <span class="stat-number">${present}</span>
-                        <span class="stat-label">Present</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-number">${late}</span>
-                        <span class="stat-label">Late</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-number">${absent}</span>
-                        <span class="stat-label">Absent</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-number">${overtime}</span>
-                        <span class="stat-label">Overtime</span>
-                    </div>
-                </div>
-                <div class="attendance-percentage">
-                    <span class="percentage-text">${presentPercentage}%</span>
-                    <span class="percentage-label">Present Today</span>
-                </div>
-            `;
+            // Update the main stat number
+            const statNumber = tile.querySelector('.stat-number');
+            if (statNumber) statNumber.textContent = present + late;
+
+            const statSublabel = tile.querySelector('.stat-sublabel');
+            if (statSublabel) statSublabel.textContent = `out of ${total} employees`;
+
+            // Update breakdown values
+            const presentValue = tile.querySelector('.breakdown-item.present .breakdown-value');
+            if (presentValue) presentValue.textContent = present;
+
+            const lateValue = tile.querySelector('.breakdown-item.late .breakdown-value');
+            if (lateValue) lateValue.textContent = late;
+
+            const absentValue = tile.querySelector('.breakdown-item.absent .breakdown-value');
+            if (absentValue) absentValue.textContent = absent;
+
+            // Update the circle rate data attribute and animate if rate changed
+            const rateCircle = tile.querySelector('.rate-circle');
+            const currentRate = parseFloat(rateCircle?.dataset.rate) || 0;
+            
+            if (rateCircle && Math.abs(currentRate - attendanceRate) > 0.1) {
+                rateCircle.dataset.rate = attendanceRate;
+                // Only animate if there's a significant change
+                setTimeout(() => {
+                    this.animateCircularProgress(rateCircle);
+                }, 100);
+            }
+
+            // Update comparison data
+            const comparisonData = await this.getYesterdayComparison();
+            const comparisonContainer = tile.querySelector('.attendance-comparison');
+            if (comparisonContainer && comparisonData.html) {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = comparisonData.html;
+                const newComparison = tempDiv.firstElementChild;
+                if (newComparison) {
+                    comparisonContainer.replaceWith(newComparison);
+                }
+            }
+
+            console.log('Updated attendance count tile values without full re-render');
         } catch (error) {
-            console.error('Error updating attendance count tile:', error);
+            console.error('Error updating attendance count tile, falling back to full render:', error);
+            await this.renderAttendanceCountTile();
         }
     }
 
@@ -1614,31 +1894,57 @@ class DashboardController {
     animateCircularProgress(element) {
         if (!element) return;
 
+        // Check if animation is already running for this element
+        const elementId = element.id || element.className;
+        if (this.activeAnimations.has(elementId)) {
+            console.log('Animation already running for', elementId);
+            return;
+        }
+
         const rate = parseFloat(element.dataset.rate) || 0;
         const circle = element.querySelector('.circle');
         const percentage = element.querySelector('.percentage');
         
-        if (circle && percentage) {
-            // Animate from 0 to target rate
-            let current = 0;
-            const increment = rate / 30; // 30 frames for smooth animation
+        if (!circle || !percentage) return;
+
+        // Mark animation as active
+        this.activeAnimations.add(elementId);
+
+        // Ensure clean initial state by forcing a reflow
+        circle.style.strokeDasharray = '0, 100';
+        percentage.textContent = '0%';
+        
+        // Force reflow to ensure the initial state is applied
+        element.offsetHeight;
+        
+        // Use a more consistent animation approach
+        const duration = 1200; // Slightly longer for smoother feel
+        const startTime = performance.now();
+        
+        const animate = (currentTime) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
             
-            const animate = () => {
-                current += increment;
-                if (current >= rate) {
-                    current = rate;
-                }
-                
-                circle.style.strokeDasharray = `${current}, 100`;
-                percentage.textContent = `${Math.round(current)}%`;
-                
-                if (current < rate) {
-                    requestAnimationFrame(animate);
-                }
-            };
+            // Use easeOutQuart for even smoother animation
+            const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+            const currentRate = rate * easeOutQuart;
             
-            requestAnimationFrame(animate);
-        }
+            // Update circle stroke
+            circle.style.strokeDasharray = `${currentRate}, 100`;
+            
+            // Update percentage text
+            percentage.textContent = `${Math.round(currentRate)}%`;
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                // Animation complete, remove from active set
+                this.activeAnimations.delete(elementId);
+            }
+        };
+        
+        // Start animation immediately
+        requestAnimationFrame(animate);
     }
 
     /**
@@ -1793,7 +2099,7 @@ class DashboardController {
                 case 'attendance-count-tile':
                     await this.loadAttendanceStats();
                     this.updateQuickStats();
-                    this.renderAttendanceCountTile();
+                    await this.renderAttendanceCountTile();
                     break;
                     
                 case 'attendance-chart-tile':
@@ -1997,7 +2303,7 @@ class DashboardController {
             
             // Update all components
             this.updateQuickStats();
-            this.updateAttendanceCountTile();
+            await this.updateAttendanceCountTile();
             this.updateCharts();
             this.updatePaydayCountdown();
             

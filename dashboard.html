@@ -380,12 +380,81 @@
                             </div>
                         </div>
                         <div class="tile-content">
-                            <div class="chart-container">
-                                <canvas id="attendance-stats-chart" aria-label="Attendance statistics chart"></canvas>
-                            </div>
-                            <div class="chart-loading" id="chart-loading" style="display: none;">
-                                <div class="loading-spinner"></div>
-                                <span>Loading chart data...</span>
+                            <div class="attendance-insights">
+                                <!-- Today's Summary -->
+                                <div class="insight-section">
+                                    <div class="insight-header">
+                                        <h4 class="insight-title">Today's Summary</h4>
+                                        <span class="insight-date" id="today-date">--</span>
+                                    </div>
+                                    <div class="insight-metrics">
+                                        <div class="metric-item">
+                                            <div class="metric-icon present">✓</div>
+                                            <div class="metric-details">
+                                                <span class="metric-value" id="insights-present">--</span>
+                                                <span class="metric-label">Present</span>
+                                            </div>
+                                        </div>
+                                        <div class="metric-item">
+                                            <div class="metric-icon late">⏰</div>
+                                            <div class="metric-details">
+                                                <span class="metric-value" id="insights-late">--</span>
+                                                <span class="metric-label">Late</span>
+                                            </div>
+                                        </div>
+                                        <div class="metric-item">
+                                            <div class="metric-icon absent">✗</div>
+                                            <div class="metric-details">
+                                                <span class="metric-value" id="insights-absent">--</span>
+                                                <span class="metric-label">Absent</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Attendance Rate & Trends -->
+                                <div class="insight-section">
+                                    <div class="insight-header">
+                                        <h4 class="insight-title">Performance</h4>
+                                    </div>
+                                    <div class="performance-grid">
+                                        <div class="performance-item">
+                                            <div class="performance-label">Attendance Rate</div>
+                                            <div class="performance-value primary" id="insights-rate">--%</div>
+                                        </div>
+                                        <div class="performance-item">
+                                            <div class="performance-label">On-Time Rate</div>
+                                            <div class="performance-value success" id="insights-ontime-rate">--%</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Quick Actions -->
+                                <div class="insight-section">
+                                    <div class="insight-header">
+                                        <h4 class="insight-title">Quick Actions</h4>
+                                    </div>
+                                    <div class="quick-actions-grid">
+                                        <button class="quick-action-item" id="view-all-attendance">
+                                            <span class="action-icon">👥</span>
+                                            <span class="action-text">View All Attendance</span>
+                                        </button>
+                                        <button class="quick-action-item" id="export-today">
+                                            <span class="action-icon">📊</span>
+                                            <span class="action-text">Export Today's Data</span>
+                                        </button>
+                                        <button class="quick-action-item" id="mark-absent">
+                                            <span class="action-icon">✗</span>
+                                            <span class="action-text">Mark Absences</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Data Status -->
+                                <div class="data-status" id="insights-data-status">
+                                    <span class="status-indicator loading"></span>
+                                    <span class="status-text">Loading attendance data...</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -733,7 +802,6 @@
             stroke: var(--accent-primary);
             stroke-width: 2.8;
             stroke-linecap: round;
-            transition: stroke-dasharray 0.6s ease-in-out;
         }
 
         .percentage {
@@ -749,6 +817,7 @@
             display: flex;
             justify-content: space-between;
             gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
         }
 
         .breakdown-item {
@@ -793,6 +862,299 @@
         .breakdown-value {
             font-weight: var(--font-weight-semibold);
             color: var(--text-primary);
+        }
+
+        /* Attendance Comparison Styles */
+        .attendance-comparison {
+            margin-top: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-sm);
+        }
+
+        .comparison-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .comparison-title {
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            font-size: var(--font-size-xs);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .comparison-change {
+            font-weight: var(--font-weight-bold);
+            font-size: var(--font-size-sm);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .comparison-change.positive {
+            color: var(--accent-analytics);
+        }
+
+        .comparison-change.negative {
+            color: #ff3b30;
+        }
+
+        .comparison-change.neutral {
+            color: var(--text-secondary);
+        }
+
+        .comparison-metrics {
+            display: flex;
+            justify-content: space-between;
+            gap: var(--spacing-sm);
+        }
+
+        .comparison-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+
+        .comparison-label {
+            font-size: var(--font-size-xs);
+            color: var(--text-tertiary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .comparison-value {
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            font-size: var(--font-size-sm);
+        }
+
+        .attendance-comparison.no-data,
+        .attendance-comparison.error {
+            opacity: 0.7;
+        }
+
+        .no-data-message,
+        .error-message {
+            text-align: center;
+            font-size: var(--font-size-xs);
+            color: var(--text-tertiary);
+            font-style: italic;
+        }
+
+        /* Attendance Insights Styles */
+        .attendance-insights {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-lg);
+            height: 100%;
+        }
+
+        .insight-section {
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .insight-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .insight-title {
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .insight-date {
+            font-size: var(--font-size-xs);
+            color: var(--text-tertiary);
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+        }
+
+        .insight-metrics {
+            display: flex;
+            justify-content: space-between;
+            gap: var(--spacing-sm);
+        }
+
+        .metric-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            flex: 1;
+            padding: var(--spacing-sm);
+            background: var(--bg-primary);
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
+        }
+
+        .metric-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .metric-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-bold);
+            color: white;
+        }
+
+        .metric-icon.present {
+            background: var(--accent-analytics);
+        }
+
+        .metric-icon.late {
+            background: var(--accent-settings);
+        }
+
+        .metric-icon.absent {
+            background: #ff3b30;
+        }
+
+        .metric-details {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+
+        .metric-value {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            line-height: 1;
+        }
+
+        .metric-label {
+            font-size: var(--font-size-xs);
+            color: var(--text-secondary);
+            margin-top: var(--spacing-xs);
+        }
+
+        .performance-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+        }
+
+        .performance-item {
+            text-align: center;
+            padding: var(--spacing-md);
+            background: var(--bg-primary);
+            border-radius: var(--radius-sm);
+        }
+
+        .performance-label {
+            font-size: var(--font-size-xs);
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-xs);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .performance-value {
+            font-size: var(--font-size-xl);
+            font-weight: var(--font-weight-bold);
+            line-height: 1;
+        }
+
+        .performance-value.primary {
+            color: var(--accent-primary);
+        }
+
+        .performance-value.success {
+            color: var(--accent-analytics);
+        }
+
+        .quick-actions-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: var(--spacing-sm);
+        }
+
+        .quick-action-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            font-size: var(--font-size-sm);
+            color: var(--text-primary);
+        }
+
+        .quick-action-item:hover {
+            background: var(--accent-light);
+            border-color: var(--accent-primary);
+            transform: translateX(4px);
+        }
+
+        .action-icon {
+            font-size: var(--font-size-sm);
+            opacity: 0.8;
+        }
+
+        .action-text {
+            flex: 1;
+            text-align: left;
+        }
+
+        .data-status {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            color: var(--text-secondary);
+            margin-top: auto;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-indicator.loading {
+            background: var(--accent-settings);
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.success {
+            background: var(--accent-analytics);
+        }
+
+        .status-indicator.error {
+            background: #ff3b30;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
         /* Chart Styles */
