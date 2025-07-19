@@ -913,15 +913,38 @@ class EmployeeController {
      */
     renderMonthlyEarnings() {
         const container = this.elements.monthlyEarnings;
-        if (!container) return;
+        if (!container) {
+            console.warn('⚠️ Monthly earnings container not found');
+            return;
+        }
+
+        console.log('📊 Rendering monthly earnings...');
+
+        // Ensure we have personal stats or provide defaults
+        if (!this.personalStats || !this.personalStats.hours) {
+            console.warn('⚠️ Personal stats not available, calculating from attendance data...');
+            if (this.attendanceData && this.attendanceData.length > 0) {
+                this.personalStats = this.calculatePersonalStats(this.attendanceData);
+            } else {
+                // Provide default stats structure
+                this.personalStats = {
+                    hours: {
+                        totalRegularHours: 0,
+                        totalOvertimeHours: 0,
+                        totalHours: 0,
+                        avgDailyHours: 0
+                    }
+                };
+            }
+        }
 
         const stats = this.personalStats.hours;
-        const hourlyRate = this.currentUser.employee?.hourlyRate || 15;
+        const hourlyRate = this.currentUser?.employee?.hourlyRate || 15;
         const overtimeRate = hourlyRate * 1.5;
 
-        // Calculate earnings
-        const regularPay = stats.totalRegularHours * hourlyRate;
-        const overtimePay = stats.totalOvertimeHours * overtimeRate;
+        // Calculate earnings with safe defaults
+        const regularPay = (stats.totalRegularHours || 0) * hourlyRate;
+        const overtimePay = (stats.totalOvertimeHours || 0) * overtimeRate;
         const totalEarnings = regularPay + overtimePay;
 
         container.innerHTML = `
@@ -938,12 +961,14 @@ class EmployeeController {
                         <div class="breakdown-label">Overtime Pay</div>
                     </div>
                     <div class="breakdown-item">
-                        <div class="breakdown-value">${stats.totalHours}h</div>
+                        <div class="breakdown-value">${(stats.totalHours || 0).toFixed(1)}h</div>
                         <div class="breakdown-label">Total Hours</div>
                     </div>
                 </div>
             </div>
         `;
+        
+        console.log('✅ Monthly earnings rendered successfully');
     }
 
     /**
@@ -951,10 +976,32 @@ class EmployeeController {
      */
     renderHoursBreakdown() {
         const container = this.elements.hoursBreakdown;
-        if (!container) return;
+        if (!container) {
+            console.warn('⚠️ Hours breakdown container not found');
+            return;
+        }
+
+        console.log('📊 Rendering hours breakdown...');
+
+        // Ensure we have personal stats or provide defaults
+        if (!this.personalStats || !this.personalStats.hours) {
+            console.warn('⚠️ Personal stats not available for hours breakdown, using defaults...');
+            if (this.attendanceData && this.attendanceData.length > 0) {
+                this.personalStats = this.calculatePersonalStats(this.attendanceData);
+            } else {
+                this.personalStats = {
+                    hours: {
+                        totalRegularHours: 0,
+                        totalOvertimeHours: 0,
+                        totalHours: 0,
+                        avgDailyHours: 0
+                    }
+                };
+            }
+        }
 
         const stats = this.personalStats.hours;
-        const hourlyRate = this.currentUser.employee?.hourlyRate || 15;
+        const hourlyRate = this.currentUser?.employee?.hourlyRate || 15;
         const overtimeRate = hourlyRate * 1.5;
 
         container.innerHTML = `
@@ -962,23 +1009,25 @@ class EmployeeController {
                 <div class="pay-row regular">
                     <div class="pay-description">
                         <div class="pay-type">Regular Hours</div>
-                        <div class="pay-details">${stats.totalRegularHours}h @ $${hourlyRate.toFixed(2)}/hr</div>
+                        <div class="pay-details">${(stats.totalRegularHours || 0).toFixed(1)}h @ $${hourlyRate.toFixed(2)}/hr</div>
                     </div>
-                    <div class="pay-amount">$${(stats.totalRegularHours * hourlyRate).toFixed(2)}</div>
+                    <div class="pay-amount">$${((stats.totalRegularHours || 0) * hourlyRate).toFixed(2)}</div>
                 </div>
                 <div class="pay-row overtime">
                     <div class="pay-description">
                         <div class="pay-type">Overtime Hours</div>
-                        <div class="pay-details">${stats.totalOvertimeHours}h @ $${overtimeRate.toFixed(2)}/hr</div>
+                        <div class="pay-details">${(stats.totalOvertimeHours || 0).toFixed(1)}h @ $${overtimeRate.toFixed(2)}/hr</div>
                     </div>
-                    <div class="pay-amount">$${(stats.totalOvertimeHours * overtimeRate).toFixed(2)}</div>
+                    <div class="pay-amount">$${((stats.totalOvertimeHours || 0) * overtimeRate).toFixed(2)}</div>
                 </div>
                 <div class="breakdown-item">
-                    <div class="breakdown-value">${stats.avgDailyHours}h</div>
+                    <div class="breakdown-value">${(stats.avgDailyHours || 0).toFixed(1)}h</div>
                     <div class="breakdown-label">Avg Daily Hours</div>
                 </div>
             </div>
         `;
+        
+        console.log('✅ Hours breakdown rendered successfully');
     }
 
     /**
@@ -986,14 +1035,46 @@ class EmployeeController {
      */
     renderPayrollSummary() {
         const container = this.elements.payrollSummary;
-        if (!container) return;
+        if (!container) {
+            console.warn('⚠️ Payroll summary container not found');
+            return;
+        }
+
+        console.log('📊 Rendering payroll summary...');
+
+        // Ensure we have personal stats or provide defaults
+        if (!this.personalStats || !this.personalStats.hours || !this.personalStats.currentMonth) {
+            console.warn('⚠️ Personal stats not available for payroll summary, using defaults...');
+            if (this.attendanceData && this.attendanceData.length > 0) {
+                this.personalStats = this.calculatePersonalStats(this.attendanceData);
+            } else {
+                this.personalStats = {
+                    hours: {
+                        totalRegularHours: 0,
+                        totalOvertimeHours: 0,
+                        totalHours: 0,
+                        avgDailyHours: 0
+                    },
+                    currentMonth: {
+                        totalDays: 0,
+                        presentDays: 0,
+                        lateDays: 0,
+                        absentDays: 0,
+                        attendanceRate: 0,
+                        punctualityRate: 0
+                    }
+                };
+            }
+        }
 
         const stats = this.personalStats;
-        const hourlyRate = this.currentUser.employee?.hourlyRate || 15;
+        const hourlyRate = this.currentUser?.employee?.hourlyRate || 15;
         
         // Calculate monthly projection (assuming 22 working days)
         const workingDaysInMonth = 22;
-        const avgDailyEarnings = (stats.hours.totalHours * hourlyRate) / stats.currentMonth.totalDays || 0;
+        const totalDays = stats.currentMonth.totalDays || 1; // Avoid division by zero
+        const totalHours = stats.hours.totalHours || 0;
+        const avgDailyEarnings = totalDays > 0 ? (totalHours * hourlyRate) / totalDays : 0;
         const monthlyProjection = avgDailyEarnings * workingDaysInMonth;
 
         container.innerHTML = `

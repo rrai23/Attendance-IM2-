@@ -615,7 +615,8 @@ class EmployeesPageManager {
             // Show employee code field for editing (but keep it readonly)
             if (employeeCodeGroup) {
                 employeeCodeGroup.style.display = 'block';
-                employeeCodeField.value = employee.employeeCode || employee.id;
+                // Use employee_id from backend or fall back to other identifiers
+                employeeCodeField.value = employee.employee_id || employee.employeeCode || employee.id;
                 employeeCodeField.readOnly = true;
             }
         } else {
@@ -651,24 +652,40 @@ class EmployeesPageManager {
     }
 
     populateForm(employee) {
-        const fields = [
-            'employeeId', 'firstName', 'lastName', 'email', 'phone',
-            'employeeCode', 'department', 'position', 'manager',
-            'hireDate', 'hourlyRate', 'salaryType', 'salary', 'role', 'status'
-        ];
+        console.log('Populating form for employee:', employee);
+        
+        // Map form field IDs to employee data properties (handles both camelCase and snake_case)
+        const fieldMapping = {
+            'employeeId': employee.id,
+            'firstName': employee.first_name || employee.firstName || '',
+            'lastName': employee.last_name || employee.lastName || '',
+            'email': employee.email || '',
+            'phone': employee.phone || '',
+            'employeeCode': employee.employee_id || employee.employeeCode || employee.id || '',
+            'department': employee.department || '',
+            'position': employee.position || employee.role || '',
+            'manager': employee.manager || '',
+            'hireDate': this.formatDateForInput(employee.hire_date || employee.hireDate),
+            'hourlyRate': employee.hourly_rate || employee.hourlyRate || 15.00,
+            'salaryType': employee.salary_type || employee.salaryType || 'hourly',
+            'salary': employee.salary || '',
+            'role': employee.role || 'employee',
+            'status': employee.status || 'active'
+        };
 
-        fields.forEach(field => {
-            const element = document.getElementById(field);
+        // Populate each form field
+        Object.keys(fieldMapping).forEach(fieldId => {
+            const element = document.getElementById(fieldId);
             if (element) {
-                if (field === 'employeeId') {
-                    element.value = employee.id;
-                } else {
-                    element.value = employee[field] || '';
-                }
+                const value = fieldMapping[fieldId];
+                element.value = value || '';
+                console.log(`Set ${fieldId} = "${value}"`);
+            } else {
+                console.warn(`Form field not found: ${fieldId}`);
             }
         });
 
-        // Populate schedule
+        // Populate schedule if available
         if (employee.schedule) {
             Object.keys(employee.schedule).forEach(day => {
                 const daySchedule = employee.schedule[day];
@@ -680,6 +697,21 @@ class EmployeesPageManager {
                 if (startEl) startEl.value = daySchedule.start;
                 if (endEl) endEl.value = daySchedule.end;
             });
+        }
+    }
+
+    formatDateForInput(dateValue) {
+        if (!dateValue) return '';
+        
+        try {
+            const date = new Date(dateValue);
+            if (isNaN(date.getTime())) return '';
+            
+            // Format as YYYY-MM-DD for HTML date input
+            return date.toISOString().split('T')[0];
+        } catch (error) {
+            console.warn('Error formatting date:', dateValue, error);
+            return '';
         }
     }
 
