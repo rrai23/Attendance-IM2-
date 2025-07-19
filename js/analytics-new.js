@@ -200,32 +200,12 @@ class AnalyticsController {
                 method: 'GET'
             });
             
-            console.log('Raw employees response:', employeesResponse);
-            
             if (employeesResponse.success) {
-                // Handle different response structures
-                let employees = employeesResponse.data;
-                
-                // Check if data is paginated
-                if (employees && employees.employees) {
-                    employees = employees.employees;
-                } else if (employees && employees.records) {
-                    employees = employees.records;
-                } else if (!Array.isArray(employees)) {
-                    console.error('Unexpected employees data structure:', employees);
-                    employees = [];
-                }
-                
-                console.log('Processed employees:', employees);
-                this.populateEmployeeDropdown(employees);
+                this.populateEmployeeDropdown(employeesResponse.data);
                 
                 // Extract departments for filter
-                const departments = [...new Set(employees.map(emp => emp.department).filter(dept => dept))];
-                console.log('Available departments:', departments);
+                const departments = [...new Set(employeesResponse.data.map(emp => emp.department).filter(dept => dept))];
                 this.populateDepartmentFilter(departments);
-            } else {
-                console.error('Failed to load employees:', employeesResponse);
-                this.showError('Failed to load employee data');
             }
             
         } catch (error) {
@@ -238,8 +218,7 @@ class AnalyticsController {
      * Populate employee selection dropdown
      */
     populateEmployeeDropdown(employees) {
-        console.log('Analytics: populateEmployeeDropdown called with', employees?.length || 0, 'employees');
-        console.log('Analytics: Employee data sample:', employees?.[0]);
+        console.log('Analytics: populateEmployeeDropdown called with', employees.length, 'employees');
         
         const employeeSelect = document.getElementById('employeeSelect');
         if (!employeeSelect) return;
@@ -252,13 +231,6 @@ class AnalyticsController {
         allOption.value = '';
         allOption.textContent = 'All Employees';
         employeeSelect.appendChild(allOption);
-
-        // Ensure employees is an array
-        if (!Array.isArray(employees)) {
-            console.warn('Analytics: employees is not an array:', typeof employees);
-            this.updateEmployeeCount(0);
-            return;
-        }
 
         // Add individual employees
         employees.forEach(employee => {
@@ -277,12 +249,8 @@ class AnalyticsController {
      * Populate department filter dropdown
      */
     populateDepartmentFilter(departments) {
-        console.log('Populating department filter with:', departments);
         const departmentFilter = document.getElementById('departmentFilter');
-        if (!departmentFilter) {
-            console.warn('Department filter element not found!');
-            return;
-        }
+        if (!departmentFilter) return;
 
         // Clear existing options
         departmentFilter.innerHTML = '';
@@ -299,10 +267,7 @@ class AnalyticsController {
             option.value = dept;
             option.textContent = dept;
             departmentFilter.appendChild(option);
-            console.log('Added department option:', dept);
         });
-        
-        console.log('Department filter populated with', departments.length, 'departments');
     }
 
     /**
@@ -338,15 +303,10 @@ class AnalyticsController {
      */
     async handleEmployeeChange(employeeId) {
         try {
-            console.log('Employee filter changed to:', employeeId);
             this.showLoading(true);
             
             this.currentEmployee = employeeId ? employeeId : null;
             this.filters.employeeId = this.currentEmployee;
-            console.log('Updated filters:', this.filters);
-            
-            // Update filter display
-            this.updateFilterDisplay();
             
             // Update analytics data and charts
             await this.loadAnalyticsData();
@@ -369,15 +329,11 @@ class AnalyticsController {
      */
     async handleDateRangeChange(range) {
         try {
-            console.log('Date range filter changed to:', range);
             this.showLoading(true);
             
             this.selectedDateRange = range;
             this.setDateRange(range);
             this.toggleCustomDateInputs();
-            
-            // Update filter display
-            this.updateFilterDisplay();
             
             // Reload data with new date range
             await this.loadAnalyticsData();
@@ -425,14 +381,9 @@ class AnalyticsController {
      */
     async handleDepartmentFilter(departmentId) {
         try {
-            console.log('Department filter changed to:', departmentId);
             this.showLoading(true);
             
             this.filters.department = departmentId || null;
-            console.log('Updated filters:', this.filters);
-            
-            // Update filter display
-            this.updateFilterDisplay();
             
             // Filter employees dropdown by department if needed
             await this.filterEmployeesByDepartment(departmentId);
@@ -460,24 +411,11 @@ class AnalyticsController {
             });
             
             if (employeesResponse.success) {
-                // Handle different response structures
-                let employees = employeesResponse.data;
-                
-                // Check if data is paginated
-                if (employees && employees.employees) {
-                    employees = employees.employees;
-                } else if (employees && employees.records) {
-                    employees = employees.records;
-                } else if (!Array.isArray(employees)) {
-                    console.error('Unexpected employees data structure:', employees);
-                    employees = [];
-                }
-                
-                this.populateEmployeeDropdown(employees);
+                this.populateEmployeeDropdown(employeesResponse.data);
                 
                 // Reset employee selection if current employee is not in filtered list
-                if (this.currentEmployee && departmentId && Array.isArray(employees)) {
-                    const currentEmployeeInList = employees.find(
+                if (this.currentEmployee && departmentId) {
+                    const currentEmployeeInList = employeesResponse.data.find(
                         emp => (emp.employee_id || emp.id) === this.currentEmployee
                     );
                     if (!currentEmployeeInList) {
@@ -574,7 +512,6 @@ class AnalyticsController {
     async loadAnalyticsData() {
         try {
             console.log('Loading analytics data from backend...');
-            console.log('Current filters:', this.filters);
             
             // Build query parameters
             const params = new URLSearchParams();
@@ -590,8 +527,6 @@ class AnalyticsController {
             if (this.filters.department) {
                 params.append('department', this.filters.department);
             }
-            
-            console.log('API query parameters:', params.toString());
 
             // Load attendance records
             const attendanceResponse = await this.apiRequest(`attendance?${params.toString()}`, {
@@ -606,27 +541,12 @@ class AnalyticsController {
             let attendanceRecords = [];
             let attendanceStats = {};
 
-            console.log('Raw attendance response:', attendanceResponse);
-            console.log('Raw stats response:', statsResponse);
-
             if (attendanceResponse.success) {
-                let records = attendanceResponse.data;
-                
-                // Handle different response structures
-                if (records && records.records) {
-                    attendanceRecords = records.records;
-                } else if (records && records.data) {
-                    attendanceRecords = records.data;
-                } else if (Array.isArray(records)) {
-                    attendanceRecords = records;
-                } else {
-                    console.warn('Unexpected attendance data structure:', records);
-                    attendanceRecords = [];
-                }
+                attendanceRecords = attendanceResponse.data.records || attendanceResponse.data;
             }
 
             if (statsResponse.success) {
-                attendanceStats = statsResponse.data || {};
+                attendanceStats = statsResponse.data;
             }
 
             console.log('Analytics: Loaded data:', {

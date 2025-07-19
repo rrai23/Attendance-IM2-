@@ -691,18 +691,17 @@
                             </div>
                         </div>
                     </div>
-
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
-                        <button type="submit" class="btn btn-primary" id="saveBtn">
-                            <span class="btn-text">Save Employee</span>
-                            <span class="btn-loading hidden">
-                                <span class="loading-spinner"></span>
-                                Saving...
-                            </span>
-                        </button>
-                    </div>
                 </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="saveBtn" form="employeeForm">
+                    <span class="btn-text">Save Employee</span>
+                    <span class="btn-loading hidden">
+                        <span class="loading-spinner"></span>
+                        Saving...
+                    </span>
+                </button>
             </div>
         </div>
     </div>
@@ -1375,6 +1374,16 @@
             padding: 1.5rem;
             flex: 1;
             overflow-y: auto;
+        }
+
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border-color, #e5e7eb);
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+            background: var(--bg-secondary, #f9fafb);
+            flex-shrink: 0;
         }
 
         .modal-actions {
