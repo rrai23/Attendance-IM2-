@@ -1589,7 +1589,8 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Countdown Styles */
+        /* Countdown Styles - DISABLED (using external CSS instead) */
+        /*
         .countdown-container {
             text-align: center;
         }
@@ -1660,6 +1661,7 @@
             color: var(--accent-primary);
             font-weight: var(--font-weight-semibold);
         }
+        */
 
         /* Recent Activity */
         .recent-activity-section {
@@ -1718,6 +1720,15 @@
         .activity-time {
             font-size: var(--font-size-sm);
             color: var(--text-tertiary);
+        }
+
+        .activity-high-priority {
+            background-color: rgba(255, 193, 7, 0.1);
+            border-left: 3px solid var(--warning-color, #ffc107);
+        }
+
+        .activity-high-priority .activity-icon {
+            opacity: 1;
         }
 
         /* Tile Actions */

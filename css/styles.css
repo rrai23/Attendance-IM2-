@@ -64,8 +64,17 @@
   --accent-employee: #5ac8fa;
   --accent-login: #007aff;
 
+  /* RGB values for accent colors (for rgba usage) */
+  --accent-dashboard-rgb: 0, 122, 255;
+  --accent-analytics-rgb: 52, 199, 89;
+  --accent-payroll-rgb: 175, 82, 222;
+  --accent-settings-rgb: 255, 149, 0;
+  --accent-employee-rgb: 90, 200, 250;
+  --accent-login-rgb: 0, 122, 255;
+
   /* Current Page Accent (default to dashboard) */
   --accent-primary: var(--accent-dashboard);
+  --accent-primary-rgb: var(--accent-dashboard-rgb);
   --accent-light: rgba(0, 122, 255, 0.1);
   --accent-hover: rgba(0, 122, 255, 0.8);
 
@@ -3143,51 +3152,240 @@ html.page-employees .modal-logout-loading .modal {
     max-width: 400px !important;
 }
 
-/* ===== PAYDAY TRACKER TILE STYLES (NEW MODERN DESIGN) ===== */
+/* ===== APPLE-STYLE PAYDAY COUNTDOWN STYLES (COMPACT) ===== */
 
-.payday-tracker-container {
-    padding: 24px;
-    min-height: 300px;
+/* Main countdown container with tighter spacing */
+.countdown-container {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) 0;
 }
 
-.payday-tracker-container .tracker-main {
+/* Hero countdown display with reduced padding */
+.countdown-main {
     text-align: center;
-    margin-bottom: 8px;
+    padding: var(--spacing-md) 0;
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    position: relative;
+    overflow: hidden;
 }
 
-.payday-tracker-container .tracker-number {
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: var(--primary-color);
+.countdown-main::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+}
+
+.countdown-number {
+    font-size: 3rem;
+    font-weight: var(--font-weight-bold);
     line-height: 1;
-    margin-bottom: 8px;
+    margin-bottom: var(--spacing-xs);
+    background: linear-gradient(135deg, var(--accent-primary), #5AC8FA);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    letter-spacing: -0.02em;
 }
 
-.payday-tracker-container .tracker-label {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-dark);
-    margin-bottom: 4px;
+.countdown-label {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0;
 }
 
-.payday-tracker-container .tracker-sublabel {
-    font-size: 0.85rem;
-    color: var(--text-medium);
-    font-weight: 400;
+/* Compact details section */
+.countdown-details {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    border: 1px solid var(--border-color);
 }
 
-.payday-tracker-container .tracker-summary-box {
-    background: var(--background-light);
-    border: 1px solid var(--border-light);
-    border-radius: 8px;
-    padding: 16px;
+.countdown-details > div {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin: 8px 0;
+    padding: var(--spacing-xs) 0;
+    border-bottom: 1px solid var(--border-color);
+    transition: all var(--transition-fast);
+}
+
+.countdown-details > div:last-child {
+    border-bottom: none;
+}
+
+.countdown-details > div:hover {
+    background: rgba(var(--accent-primary-rgb, 0, 122, 255), 0.05);
+    border-radius: var(--radius-sm);
+    margin: 0 calc(-1 * var(--spacing-xs));
+    padding: var(--spacing-xs);
+}
+
+.detail-label {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.detail-value {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+}
+
+/* Compact progress section */
+.countdown-progress {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
+}
+
+.progress-bar {
+    position: relative;
+    width: 100%;
+    height: 6px;
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-primary), #5AC8FA);
+    border-radius: 3px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    box-shadow: 0 1px 3px rgba(0, 122, 255, 0.3);
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.progress-text {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: var(--spacing-xs);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+}
+
+.progress-text span {
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--accent-primary);
+    letter-spacing: 1px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Hide the payday-tracker-container to prevent duplicate display */
+.payday-tracker-container {
+    display: none !important;
+}
+
+/* Apple-style hover effects and micro-interactions */
+.countdown-main {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.countdown-main:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.countdown-number {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.countdown-main:hover .countdown-number {
+    transform: scale(1.02);
+}
+
+/* Dark mode compatibility */
+@media (prefers-color-scheme: dark) {
+    .countdown-main {
+        background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+        border-color: rgba(255,255,255,0.1);
+    }
+    
+    .countdown-main::before {
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    }
+    
+    .progress-bar {
+        background: rgba(255,255,255,0.05);
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+    
+    .progress-text {
+        background: rgba(255,255,255,0.05);
+        border-color: rgba(255,255,255,0.1);
+    }
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+    .countdown-number {
+        font-size: 2.5rem;
+    }
+    
+    .countdown-details > div:hover {
+        margin: 0;
+        padding: var(--spacing-xs) 0;
+        background: transparent;
+    }
+}
+
+.payday-tracker-container .tracker-summary-box {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: var(--spacing-sm) 0;
+    transition: all var(--transition-fast);
+}
+
+.payday-tracker-container .tracker-summary-box:hover {
+    background: var(--bg-tertiary);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .payday-tracker-container .summary-content {
@@ -3195,17 +3393,17 @@ html.page-employees .modal-logout-loading .modal {
 }
 
 .payday-tracker-container .summary-number {
-    font-size: 1.8rem;
-    font-weight: 700;
-    color: var(--primary-color);
+    font-size: 2rem;
+    font-weight: var(--font-weight-bold);
+    color: var(--accent-primary);
     line-height: 1;
-    margin-bottom: 4px;
+    margin-bottom: var(--spacing-xs);
 }
 
 .payday-tracker-container .summary-label {
-    font-size: 0.85rem;
-    color: var(--text-medium);
-    font-weight: 500;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    font-weight: var(--font-weight-medium);
 }
 
 .payday-tracker-container .summary-date {
@@ -3213,66 +3411,75 @@ html.page-employees .modal-logout-loading .modal {
 }
 
 .payday-tracker-container .date-value {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--text-dark);
-    margin-bottom: 4px;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
 }
 
 .payday-tracker-container .date-label {
-    font-size: 0.8rem;
-    color: var(--text-medium);
-    font-weight: 500;
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    font-weight: var(--font-weight-medium);
 }
 
 .payday-tracker-container .payday-details {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    margin: 16px 0;
+    gap: var(--spacing-md);
+    margin: var(--spacing-lg) 0;
 }
 
 .payday-tracker-container .detail-row {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 8px 0;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) 0;
+    transition: all var(--transition-fast);
+}
+
+.payday-tracker-container .detail-row:hover {
+    background: rgba(var(--accent-primary-rgb, 0, 122, 255), 0.05);
+    border-radius: var(--radius-sm);
+    margin: 0 calc(-1 * var(--spacing-sm));
+    padding: var(--spacing-sm);
 }
 
 .payday-tracker-container .detail-dot {
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
     flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .payday-tracker-container .detail-dot.schedule {
-    background-color: var(--primary-color);
+    background: linear-gradient(135deg, var(--accent-primary), #5AC8FA);
 }
 
 .payday-tracker-container .detail-dot.frequency {
-    background-color: var(--accent-color);
+    background: linear-gradient(135deg, #34C759, #30D158);
 }
 
 .payday-tracker-container .detail-dot.amount {
-    background-color: var(--success-color);
+    background: linear-gradient(135deg, #FF9500, #FFAA00);
 }
 
 .payday-tracker-container .detail-dot.timer {
-    background-color: #ff6b6b;
+    background: linear-gradient(135deg, #FF3B30, #FF6961);
 }
 
 .payday-tracker-container .detail-label {
     flex: 1;
-    font-size: 0.9rem;
-    color: var(--text-medium);
-    font-weight: 500;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    font-weight: var(--font-weight-medium);
 }
 
 .payday-tracker-container .detail-value {
-    font-size: 0.9rem;
-    color: var(--text-dark);
-    font-weight: 600;
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    font-weight: var(--font-weight-semibold);
 }
 
 .payday-tracker-container .progress-section {
@@ -3283,45 +3490,59 @@ html.page-employees .modal-logout-loading .modal {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: var(--spacing-sm);
 }
 
 .payday-tracker-container .progress-title {
-    font-size: 0.9rem;
-    color: var(--text-medium);
-    font-weight: 600;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    font-weight: var(--font-weight-semibold);
 }
 
 .payday-tracker-container .progress-percentage {
-    font-size: 0.9rem;
-    color: var(--primary-color);
-    font-weight: 700;
+    font-size: var(--font-size-sm);
+    color: var(--accent-primary);
+    font-weight: var(--font-weight-bold);
 }
 
 .payday-tracker-container .progress-track {
     width: 100%;
-    height: 10px;
-    background-color: var(--background-light);
-    border-radius: 5px;
+    height: 8px;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
     overflow: hidden;
-    border: 1px solid var(--border-light);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
 }
 
 .payday-tracker-container .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
-    border-radius: 5px;
-    transition: width 0.4s ease;
+    background: linear-gradient(90deg, var(--accent-primary), #5AC8FA);
+    border-radius: 4px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
     width: 0%;
+    position: relative;
+    box-shadow: 0 1px 3px rgba(0, 122, 255, 0.3);
+}
+
+.payday-tracker-container .progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shimmer 2s infinite;
 }
 
 .payday-tracker-container .data-status {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding-top: 12px;
-    border-top: 1px solid var(--border-light);
-    margin-top: 12px;
+    gap: var(--spacing-sm);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--border-color);
+    margin-top: var(--spacing-md);
 }
 
 .payday-tracker-container .status-indicator {
@@ -3329,14 +3550,78 @@ html.page-employees .modal-logout-loading .modal {
     height: 8px;
     border-radius: 50%;
     flex-shrink: 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .payday-tracker-container .status-indicator.success {
-    background-color: var(--success-color);
+    background: linear-gradient(135deg, #34C759, #30D158);
 }
 
 .payday-tracker-container .status-text {
-    font-size: 0.8rem;
-    color: var(--text-light);
-    font-weight: 400;
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    font-weight: var(--font-weight-normal);
+}
+
+/* Apple-style hover effects and micro-interactions */
+.countdown-main {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.countdown-main:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.countdown-number {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.countdown-main:hover .countdown-number {
+    transform: scale(1.05);
+}
+
+/* Dark mode compatibility */
+@media (prefers-color-scheme: dark) {
+    .countdown-main {
+        background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+        border-color: rgba(255,255,255,0.1);
+    }
+    
+    .countdown-main::before {
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    }
+    
+    .progress-bar {
+        background: rgba(255,255,255,0.05);
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+    
+    .progress-text {
+        background: rgba(255,255,255,0.05);
+        border-color: rgba(255,255,255,0.1);
+    }
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+    .countdown-number {
+        font-size: 3rem;
+    }
+    
+    .payday-tracker-container .tracker-number {
+        font-size: 2.5rem;
+    }
+    
+    .countdown-details > div:hover {
+        margin: 0;
+        padding: var(--spacing-sm) 0;
+        background: transparent;
+    }
+    
+    .payday-tracker-container .detail-row:hover {
+        margin: 0;
+        padding: var(--spacing-sm) 0;
+        background: transparent;
+    }
 }

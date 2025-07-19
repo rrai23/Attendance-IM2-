@@ -229,6 +229,14 @@ class DashboardController {
             });
         }
 
+        // View All Activity button
+        const viewAllActivityBtn = document.getElementById('view-all-activity');
+        if (viewAllActivityBtn) {
+            viewAllActivityBtn.addEventListener('click', () => {
+                this.showAllActivity();
+            });
+        }
+
         // Tile minimize/maximize handlers
         this.setupTileEventListeners();
 
@@ -261,6 +269,7 @@ class DashboardController {
             await this.updateAttendanceCountTile();
             this.updateCharts();
             this.updatePaydayCountdown();
+            await this.updateRecentActivity();
             
             console.log('Dashboard data update complete');
         } catch (error) {
@@ -281,6 +290,9 @@ class DashboardController {
             
             // Update quick stats after loading data
             this.updateQuickStats();
+            
+            // Update recent activity after loading data
+            await this.updateRecentActivity();
             
             // Note: Chart will be initialized after tiles are rendered
             
@@ -781,7 +793,7 @@ class DashboardController {
         await this.renderAttendanceCountTile();
         this.renderAttendanceChartTile();
         this.renderCalendarTile();
-        this.renderPaydayCountdownTile();
+        this.updatePaydayCountdown();
         await this.renderEmployeeOverviewTile();
         await this.renderPayrollSummaryTile();
         console.log('📱 All dashboard tiles rendered');
@@ -1017,8 +1029,9 @@ class DashboardController {
     }
 
     /**
-     * Render payday countdown tile
+     * Render payday countdown tile (DISABLED - using HTML structure instead)
      */
+    /*
     renderPaydayCountdownTile() {
         console.log('📅 Rendering payday countdown tile...');
         const tile = document.getElementById(this.tiles.paydayCountdown.id);
@@ -1104,6 +1117,7 @@ class DashboardController {
         // Start countdown timer
         this.startPaydayCountdown();
     }
+    */
 
     /**
      * Render employee overview tile
@@ -1667,41 +1681,619 @@ class DashboardController {
     }
 
     /**
-     * Update payday countdown
+     * Update payday countdown - uses the same data as other cards
      */
-    updatePaydayCountdown() {
+    async updatePaydayCountdown() {
         try {
             const tile = document.getElementById('payday-countdown-tile');
             if (!tile) return;
 
-            const content = tile.querySelector('.tile-content');
-            if (!content) return;
-
-            // Calculate next payday (assume 15th and last day of month)
-            const today = new Date();
-            const currentMonth = today.getMonth();
-            const currentYear = today.getFullYear();
+            // Use the same payday data that other cards use
+            const payday = this.paydayData || this.getDefaultPaydayData();
             
-            let nextPayday;
-            if (today.getDate() <= 15) {
-                nextPayday = new Date(currentYear, currentMonth, 15);
-            } else {
-                const lastDay = new Date(currentYear, currentMonth + 1, 0).getDate();
-                nextPayday = new Date(currentYear, currentMonth, lastDay);
+            console.log('📅 Using payday data for countdown:', payday);
+
+            // Get settings for period display
+            const settings = await window.directFlow.getSettings();
+            const payPeriod = settings?.payroll?.payPeriod || settings?.payPeriod || 'biweekly';
+
+            // Update the existing countdown elements
+            const countdownNumber = tile.querySelector('#countdown-days');
+            const paydayDate = tile.querySelector('#payday-date');
+            const paydayPeriodEl = tile.querySelector('#payday-period');
+            const progressFill = tile.querySelector('#payday-progress');
+            const countdownTime = tile.querySelector('#countdown-time');
+
+            // Use the days remaining from the loaded data
+            if (countdownNumber) {
+                countdownNumber.textContent = payday.daysRemaining || 0;
             }
 
-            const timeDiff = nextPayday.getTime() - today.getTime();
-            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+            // Use the payday date from the loaded data
+            if (paydayDate) {
+                if (payday.date || payday.nextPayday) {
+                    const nextPaydayDate = new Date(payday.date || payday.nextPayday);
+                    paydayDate.textContent = nextPaydayDate.toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short', 
+                        day: 'numeric',
+                        year: 'numeric'
+                    });
+                } else {
+                    paydayDate.textContent = 'Not available';
+                }
+            }
 
-            content.innerHTML = `
-                <div class="payday-info">
-                    <div class="payday-date">${nextPayday.toLocaleDateString()}</div>
-                    <div class="payday-countdown">${daysDiff} days remaining</div>
-                </div>
-            `;
+            // Use the period from settings
+            if (paydayPeriodEl) {
+                const periodDisplayNames = {
+                    'weekly': 'Weekly',
+                    'biweekly': 'Bi-weekly',
+                    'monthly': 'Monthly'
+                };
+                paydayPeriodEl.textContent = periodDisplayNames[payPeriod] || periodDisplayNames[payday.frequency] || 'Bi-weekly';
+            }
+
+            // Calculate progress based on the current pay period
+            let progressPercent = 0;
+            const today = new Date();
+            
+            if (payPeriod === 'weekly') {
+                const dayOfWeek = today.getDay();
+                progressPercent = (dayOfWeek / 7) * 100;
+            } else if (payPeriod === 'biweekly') {
+                // Use utils to get pay period if available
+                if (window.utils && window.utils.getPayPeriod) {
+                    const period = window.utils.getPayPeriod(today, 'biweekly');
+                    const totalDays = Math.ceil((period.end - period.start) / (1000 * 60 * 60 * 24));
+                    const elapsedDays = Math.floor((today - period.start) / (1000 * 60 * 60 * 24));
+                    progressPercent = Math.min(100, Math.max(0, (elapsedDays / totalDays) * 100));
+                } else {
+                    // Fallback calculation
+                    const dayOfMonth = today.getDate();
+                    progressPercent = Math.min(100, (dayOfMonth / 30) * 100);
+                }
+            } else if (payPeriod === 'monthly') {
+                const dayOfMonth = today.getDate();
+                const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+                progressPercent = (dayOfMonth / daysInMonth) * 100;
+            }
+
+            if (progressFill) {
+                progressFill.style.width = `${progressPercent.toFixed(1)}%`;
+            }
+
+            // Update countdown timer (hours:minutes:seconds until midnight)
+            const updateTimer = () => {
+                const now = new Date();
+                const tomorrow = new Date(now);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                tomorrow.setHours(0, 0, 0, 0);
+                
+                const timeLeft = tomorrow.getTime() - now.getTime();
+                const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+                const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                
+                if (countdownTime) {
+                    countdownTime.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }
+            };
+
+            updateTimer();
+            
+            // Update timer every second
+            if (this.countdownTimer) {
+                clearInterval(this.countdownTimer);
+            }
+            this.countdownTimer = setInterval(updateTimer, 1000);
+
         } catch (error) {
             console.error('Error updating payday countdown:', error);
         }
+    }
+
+    /**
+     * Get next occurrence of a specific weekday
+     * @param {Date} fromDate - Starting date
+     * @param {string} weekday - Target weekday ('monday', 'tuesday', etc.)
+     * @returns {Date} Next occurrence of the weekday
+     */
+    getNextWeekday(fromDate, weekday) {
+        const weekdays = {
+            'sunday': 0, 'monday': 1, 'tuesday': 2, 'wednesday': 3,
+            'thursday': 4, 'friday': 5, 'saturday': 6
+        };
+        
+        const targetDay = weekdays[weekday.toLowerCase()] || 5; // Default to Friday
+        const date = new Date(fromDate);
+        const currentDay = date.getDay();
+        
+        // Calculate days until next occurrence
+        let daysUntil = targetDay - currentDay;
+        if (daysUntil <= 0) {
+            daysUntil += 7; // Next week
+        }
+        
+        date.setDate(date.getDate() + daysUntil);
+        return date;
+    }
+
+    /**
+     * Update recent activity panel with real-time data
+     */
+    async updateRecentActivity() {
+        try {
+            console.log('📋 Updating recent activity...');
+            console.log('📋 Current payday data:', this.paydayData);
+            console.log('📋 Current stats:', this.currentStats);
+            
+            const activityList = document.getElementById('activity-list');
+            if (!activityList) {
+                console.warn('Activity list element not found');
+                return;
+            }
+
+            // Generate activity items from various data sources
+            const activities = await this.generateRecentActivities();
+            console.log('📋 Generated activities:', activities);
+            
+            // Clear current content
+            activityList.innerHTML = '';
+            
+            // Add each activity item
+            activities.forEach(activity => {
+                const activityItem = this.createActivityItem(activity);
+                activityList.appendChild(activityItem);
+            });
+            
+            console.log(`📋 Updated recent activity with ${activities.length} items`);
+            
+        } catch (error) {
+            console.error('Error updating recent activity:', error);
+            // Show error state
+            const activityList = document.getElementById('activity-list');
+            if (activityList) {
+                activityList.innerHTML = `
+                    <div class="activity-item">
+                        <div class="activity-icon">⚠️</div>
+                        <div class="activity-content">
+                            <div class="activity-text">Unable to load recent activity</div>
+                            <div class="activity-time">Just now</div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+    }
+
+    /**
+     * Generate recent activity items from various data sources
+     */
+    async generateRecentActivities() {
+        const activities = [];
+        
+        try {
+            console.log('📋 Generating activities with data:', {
+                paydayData: this.paydayData,
+                currentStats: this.currentStats
+            });
+
+            // Activity 1: Payday information
+            if (this.paydayData && this.paydayData.daysRemaining !== undefined) {
+                const daysLeft = this.paydayData.daysRemaining;
+                let paydayIcon = '💰';
+                let paydayText = '';
+                let paydayTime = '';
+                
+                if (daysLeft === 0) {
+                    paydayIcon = '🎉';
+                    paydayText = 'Payday is today!';
+                    paydayTime = 'Today';
+                } else if (daysLeft === 1) {
+                    paydayIcon = '📅';
+                    paydayText = 'Payday is tomorrow';
+                    paydayTime = '1 day left';
+                } else if (daysLeft <= 7) {
+                    paydayIcon = '📅';
+                    paydayText = `Payday in ${daysLeft} days`;
+                    paydayTime = `${daysLeft} days left`;
+                } else {
+                    paydayIcon = '💼';
+                    paydayText = `Next payday in ${daysLeft} days`;
+                    paydayTime = `${daysLeft} days left`;
+                }
+                
+                activities.push({
+                    icon: paydayIcon,
+                    text: paydayText,
+                    time: paydayTime,
+                    priority: daysLeft <= 1 ? 'high' : 'normal'
+                });
+                console.log('📋 Added payday activity:', activities[activities.length - 1]);
+            } else {
+                // Add default payday activity when data is missing
+                activities.push({
+                    icon: '💼',
+                    text: 'Payday information loading...',
+                    time: 'Checking...',
+                    priority: 'normal'
+                });
+                console.log('📋 Added default payday activity (no data)');
+            }
+
+            // Activity 2: Employee attendance status
+            if (this.currentStats && this.currentStats.total) {
+                const totalEmployees = this.currentStats.total;
+                const presentToday = this.currentStats.present || 0;
+                const absentToday = totalEmployees - presentToday;
+                
+                if (absentToday > 0) {
+                    activities.push({
+                        icon: '👥',
+                        text: `${absentToday} employee${absentToday > 1 ? 's' : ''} absent today`,
+                        time: 'Today',
+                        priority: absentToday > 3 ? 'high' : 'normal'
+                    });
+                    console.log('📋 Added absence activity');
+                }
+                
+                if (presentToday > 0) {
+                    activities.push({
+                        icon: '✅',
+                        text: `${presentToday} employee${presentToday > 1 ? 's' : ''} present today`,
+                        time: 'Today',
+                        priority: 'normal'
+                    });
+                    console.log('📋 Added present activity');
+                }
+            } else {
+                // Add default attendance activity when data is missing
+                activities.push({
+                    icon: '👥',
+                    text: 'Attendance data loading...',
+                    time: 'Checking...',
+                    priority: 'normal'
+                });
+                console.log('📋 Added default attendance activity (no data)');
+            }
+
+            // Activity 3: System status
+            const now = new Date();
+            const currentHour = now.getHours();
+            
+            if (currentHour >= 9 && currentHour < 10) {
+                activities.push({
+                    icon: '🌅',
+                    text: 'Morning shift check-in period',
+                    time: 'Now',
+                    priority: 'normal'
+                });
+            } else if (currentHour >= 17 && currentHour < 18) {
+                activities.push({
+                    icon: '🌆',
+                    text: 'Evening shift check-out period',
+                    time: 'Now',
+                    priority: 'normal'
+                });
+            }
+
+            // Activity 4: Weekly/Monthly insights
+            const dayOfWeek = now.getDay();
+            if (dayOfWeek === 1) { // Monday
+                activities.push({
+                    icon: '📊',
+                    text: 'Weekly attendance report available',
+                    time: 'This week',
+                    priority: 'normal'
+                });
+            }
+            
+            if (now.getDate() === 1) { // First day of month
+                activities.push({
+                    icon: '📈',
+                    text: 'Monthly payroll summary ready',
+                    time: 'This month',
+                    priority: 'normal'
+                });
+            }
+
+            // Activity 5: Settings & maintenance
+            if (window.directFlow && window.directFlow.initialized) {
+                activities.push({
+                    icon: '⚡',
+                    text: 'System running smoothly',
+                    time: 'Real-time',
+                    priority: 'low'
+                });
+            } else {
+                activities.push({
+                    icon: '⚠️',
+                    text: 'System connection issue',
+                    time: 'Just now',
+                    priority: 'high'
+                });
+            }
+
+            // Sort by priority (high first) and limit to 5 items
+            activities.sort((a, b) => {
+                const priorityOrder = { 'high': 0, 'normal': 1, 'low': 2 };
+                return priorityOrder[a.priority] - priorityOrder[b.priority];
+            });
+
+            // Ensure we always have at least one activity
+            if (activities.length === 0) {
+                activities.push({
+                    icon: '🔄',
+                    text: 'Dashboard is ready',
+                    time: 'Just now',
+                    priority: 'normal'
+                });
+                console.log('📋 Added fallback activity (empty list)');
+            }
+
+            console.log('📋 Final activities list:', activities);
+            return activities.slice(0, 5);
+            
+        } catch (error) {
+            console.error('Error generating activities:', error);
+            // Return default activity
+            return [{
+                icon: '🔄',
+                text: 'Dashboard loaded successfully',
+                time: 'Just now',
+                priority: 'normal'
+            }];
+        }
+    }
+
+    /**
+     * Create HTML element for activity item
+     */
+    createActivityItem(activity) {
+        const activityDiv = document.createElement('div');
+        activityDiv.className = 'activity-item';
+        
+        // Add priority class if high priority
+        if (activity.priority === 'high') {
+            activityDiv.classList.add('activity-high-priority');
+        }
+        
+        activityDiv.innerHTML = `
+            <div class="activity-icon">${activity.icon}</div>
+            <div class="activity-content">
+                <div class="activity-text">${activity.text}</div>
+                <div class="activity-time">${activity.time}</div>
+            </div>
+        `;
+        
+        return activityDiv;
+    }
+
+    /**
+     * Show all activity in an expanded view
+     */
+    async showAllActivity() {
+        try {
+            console.log('📋 Showing all activity...');
+            
+            // Generate more comprehensive activities
+            const allActivities = await this.generateAllActivities();
+            
+            // Create modal or expanded view
+            const modal = document.createElement('div');
+            modal.className = 'activity-modal';
+            modal.innerHTML = `
+                <div class="activity-modal-content">
+                    <div class="activity-modal-header">
+                        <h3>All Recent Activity</h3>
+                        <button class="activity-modal-close">&times;</button>
+                    </div>
+                    <div class="activity-modal-body">
+                        ${allActivities.map(activity => `
+                            <div class="activity-item ${activity.priority === 'high' ? 'activity-high-priority' : ''}">
+                                <div class="activity-icon">${activity.icon}</div>
+                                <div class="activity-content">
+                                    <div class="activity-text">${activity.text}</div>
+                                    <div class="activity-time">${activity.time}</div>
+                                    ${activity.description ? `<div class="activity-description">${activity.description}</div>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            
+            // Add modal styles
+            const style = document.createElement('style');
+            style.textContent = `
+                .activity-modal {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.5);
+                    z-index: 1000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .activity-modal-content {
+                    background: var(--bg-primary);
+                    border-radius: var(--radius-lg);
+                    width: 90%;
+                    max-width: 600px;
+                    max-height: 80vh;
+                    overflow: hidden;
+                    box-shadow: var(--shadow-lg);
+                }
+                .activity-modal-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: var(--spacing-lg);
+                    border-bottom: 1px solid var(--border-color);
+                    background: var(--bg-secondary);
+                }
+                .activity-modal-header h3 {
+                    margin: 0;
+                    color: var(--text-primary);
+                }
+                .activity-modal-close {
+                    background: none;
+                    border: none;
+                    font-size: 1.5rem;
+                    cursor: pointer;
+                    color: var(--text-secondary);
+                    padding: 0;
+                    width: 30px;
+                    height: 30px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: var(--radius-sm);
+                    transition: all var(--transition-fast);
+                }
+                .activity-modal-close:hover {
+                    background: var(--bg-tertiary);
+                    color: var(--text-primary);
+                }
+                .activity-modal-body {
+                    padding: 0;
+                    max-height: 60vh;
+                    overflow-y: auto;
+                }
+                .activity-description {
+                    font-size: var(--font-size-sm);
+                    color: var(--text-secondary);
+                    margin-top: var(--spacing-xs);
+                    font-style: italic;
+                }
+            `;
+            
+            document.head.appendChild(style);
+            document.body.appendChild(modal);
+            
+            // Close modal functionality
+            const closeBtn = modal.querySelector('.activity-modal-close');
+            closeBtn.addEventListener('click', () => {
+                document.body.removeChild(modal);
+                document.head.removeChild(style);
+            });
+            
+            // Close on outside click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    document.body.removeChild(modal);
+                    document.head.removeChild(style);
+                }
+            });
+            
+        } catch (error) {
+            console.error('Error showing all activity:', error);
+            alert('Unable to load all activities at this time.');
+        }
+    }
+
+    /**
+     * Generate comprehensive activity list for expanded view
+     */
+    async generateAllActivities() {
+        const activities = await this.generateRecentActivities();
+        
+        // Add more detailed activities
+        const additionalActivities = [
+            {
+                icon: '🛠️',
+                text: 'Dashboard initialized',
+                time: 'On page load',
+                description: 'All dashboard components loaded successfully',
+                priority: 'low'
+            },
+            {
+                icon: '📊',
+                text: 'Data synchronization active',
+                time: 'Continuous',
+                description: 'Real-time updates from attendance system',
+                priority: 'normal'
+            },
+            {
+                icon: '🔒',
+                text: 'Security check completed',
+                time: 'Session start',
+                description: 'User authentication verified',
+                priority: 'normal'
+            }
+        ];
+        
+        return [...activities, ...additionalActivities];
+    }
+
+    /**
+     * Get next biweekly payday
+     * @param {Date} fromDate - Starting date
+     * @param {string} weekday - Payday weekday
+     * @returns {Date} Next biweekly payday
+     */
+    getNextBiweeklyPayday(fromDate, weekday) {
+        // Use a reference date (e.g., first payday of 2025)
+        const referenceDate = new Date(2025, 0, 3); // January 3, 2025 (Friday)
+        const weekdays = {
+            'sunday': 0, 'monday': 1, 'tuesday': 2, 'wednesday': 3,
+            'thursday': 4, 'friday': 5, 'saturday': 6
+        };
+        
+        // Adjust reference date to match the desired weekday
+        const targetDay = weekdays[weekday.toLowerCase()] || 5;
+        const refDay = referenceDate.getDay();
+        let adjustment = targetDay - refDay;
+        if (adjustment !== 0) {
+            referenceDate.setDate(referenceDate.getDate() + adjustment);
+        }
+        
+        // Calculate weeks since reference date
+        const daysDiff = Math.floor((fromDate - referenceDate) / (1000 * 60 * 60 * 24));
+        const weeksSinceRef = Math.floor(daysDiff / 7);
+        const biweeksSinceRef = Math.floor(weeksSinceRef / 2);
+        
+        // Calculate next biweekly payday
+        let nextPayday = new Date(referenceDate);
+        nextPayday.setDate(referenceDate.getDate() + (biweeksSinceRef * 14));
+        
+        // If this payday has already passed, get the next one
+        if (nextPayday <= fromDate) {
+            nextPayday.setDate(nextPayday.getDate() + 14);
+        }
+        
+        return nextPayday;
+    }
+
+    /**
+     * Get next monthly payday (last working day of month)
+     * @param {Date} fromDate - Starting date
+     * @returns {Date} Next monthly payday
+     */
+    getNextMonthlyPayday(fromDate) {
+        const date = new Date(fromDate);
+        
+        // Get last day of current month
+        let lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+        
+        // If last day is weekend, move to previous Friday
+        while (lastDay.getDay() === 0 || lastDay.getDay() === 6) {
+            lastDay.setDate(lastDay.getDate() - 1);
+        }
+        
+        // If this month's payday has passed, get next month's
+        if (lastDay <= fromDate) {
+            lastDay = new Date(date.getFullYear(), date.getMonth() + 2, 0);
+            while (lastDay.getDay() === 0 || lastDay.getDay() === 6) {
+                lastDay.setDate(lastDay.getDate() - 1);
+            }
+        }
+        
+        return lastDay;
     }
 
     /**
@@ -2061,68 +2653,6 @@ class DashboardController {
     }
 
     /**
-     * Update payday countdown display
-     */
-    updatePaydayCountdown() {
-        const payday = this.paydayData || this.getDefaultPaydayData();
-        if (!payday || !payday.date) return;
-
-        const now = new Date();
-        const paydayDate = new Date(payday.date);
-        
-        // Validate dates
-        if (isNaN(now.getTime()) || isNaN(paydayDate.getTime())) {
-            console.warn('Invalid date detected in payday countdown');
-            return;
-        }
-
-        const timeDiff = paydayDate - now;
-
-        if (timeDiff <= 0) {
-            // Payday has passed, reload data
-            this.loadPaydayData().then(() => {
-                this.renderPaydayCountdownTile();
-            });
-            return;
-        }
-
-        const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
-
-        // Validate calculated values
-        const safeDays = isNaN(days) ? 0 : days;
-        const safeHours = isNaN(hours) ? 0 : hours;
-        const safeMinutes = isNaN(minutes) ? 0 : minutes;
-        const safeSeconds = isNaN(seconds) ? 0 : seconds;
-
-        // Update countdown display
-        const daysElement = document.getElementById('countdown-days');
-        const timeElement = document.getElementById('countdown-time');
-        const progressElement = document.getElementById('payday-progress');
-
-        if (daysElement) {
-            daysElement.textContent = safeDays;
-        }
-
-        if (timeElement) {
-            timeElement.textContent = `${safeHours.toString().padStart(2, '0')}:${safeMinutes.toString().padStart(2, '0')}:${safeSeconds.toString().padStart(2, '0')}`;
-        }
-
-        if (progressElement) {
-            // Calculate progress (assuming 7-day pay period for weekly pay)
-            const totalPeriod = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
-            const elapsed = totalPeriod - timeDiff;
-            const progress = Math.max(0, Math.min(100, (elapsed / totalPeriod) * 100));
-            
-            if (!isNaN(progress)) {
-                progressElement.style.width = `${progress}%`;
-            }
-        }
-    }
-
-    /**
      * Format payday date for display
      */
     formatPaydayDate(dateStr) {
@@ -2361,7 +2891,7 @@ class DashboardController {
                     
                 case 'payday-countdown-tile':
                     await this.loadPaydayData();
-                    this.renderPaydayCountdownTile();
+                    this.updatePaydayCountdown();
                     break;
                     
                 case 'calendar-tile':

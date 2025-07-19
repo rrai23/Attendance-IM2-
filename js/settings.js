@@ -82,6 +82,8 @@ class SettingsController {
         const defaultSettings = {
             general: {},
             payroll: {
+                payPeriod: 'biweekly',
+                payday: 'friday',
                 overtimeRate: 1.5,
                 overtimeThreshold: 40
             },
