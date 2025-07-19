@@ -107,7 +107,8 @@ router.get('/', requireAdmin, async (req, res) => {
             }
         }
 
-        const [{ total }] = await db.execute(countQuery, countParams);
+        const countResult = await db.execute(countQuery, countParams);
+        const total = countResult[0].total;
 
         // Remove password hashes from response
         const sanitizedAccounts = accounts.map(account => {
@@ -549,19 +550,19 @@ router.put('/:employeeId/password', auth, async (req, res) => {
                 });
             }
 
-            const [user] = await db.execute(
+            const userResult = await db.execute(
                 'SELECT password_hash FROM user_accounts WHERE employee_id = ?',
                 [employeeId]
             );
 
-            if (user.length === 0) {
+            if (!userResult || userResult.length === 0) {
                 return res.status(404).json({
                     success: false,
                     message: 'User account not found'
                 });
             }
 
-            const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user[0].password_hash);
+            const isCurrentPasswordValid = await bcrypt.compare(currentPassword, userResult[0].password_hash);
             if (!isCurrentPasswordValid) {
                 return res.status(400).json({
                     success: false,

@@ -19,8 +19,9 @@ class DirectFlowAuth {
     init() {
         this.checkTokenValidity();
         this.startTokenRefreshInterval();
+        this.setupAuthSync();
         this.initialized = true;
-        console.log('✅ DirectFlowAuth initialized');
+        console.log('✅ DirectFlowAuth initialized with sync');
     }
 
     // Check if current token is valid
@@ -276,6 +277,100 @@ class DirectFlowAuth {
                 }
             }
         }, 30 * 60 * 1000); // Check every 30 minutes
+        
+        // Also set up auth sync
+        this.setupAuthSync();
+    }
+
+    /**
+     * Attempt automatic login with session restoration
+     */
+    async attemptAutoLogin() {
+        // Only attempt auto-login if we're not on login page
+        if (window.location.pathname.includes('login.html')) {
+            console.log('🔐 On login page, skipping auto-login');
+            return;
+        }
+        
+        try {
+            console.log('🔄 Attempting auto-login with DirectFlow Auth...');
+            
+            // Check if we have valid session data
+            const isAuthenticated = this.isAuthenticated();
+            if (isAuthenticated) {
+                console.log('✅ Auto-login successful via session restoration');
+                return true;
+            }
+            
+            console.log('⚠️ Auto-login failed - user needs to log in manually');
+            
+            // If auto-login fails and we're not on login page, redirect
+            if (!window.location.pathname.includes('login.html')) {
+                console.log('🔄 Redirecting to login page...');
+                window.location.href = '/login.html';
+            }
+            
+            return false;
+            
+        } catch (error) {
+            console.error('❌ Auto-login error:', error);
+            
+            // If auto-login fails and we're not on login page, redirect
+            if (!window.location.pathname.includes('login.html')) {
+                console.log('🔄 Redirecting to login page due to error...');
+                window.location.href = '/login.html';
+            }
+            
+            return false;
+        }
+    }
+
+    /**
+     * Sync authentication status and tokens
+     */
+    syncAuthStatus() {
+        // Check if user is authenticated
+        const isAuthenticated = this.isAuthenticated();
+        console.log('User authenticated:', isAuthenticated);
+        
+        if (isAuthenticated) {
+            // Get the auth token
+            const token = this.getToken();
+            console.log('Auth token from DirectFlowAuth:', token ? 'Present' : 'Missing');
+            
+            if (!token) {
+                console.log('⚠️ DirectFlowAuth says authenticated but no token found');
+                this.attemptAutoLogin();
+            }
+        } else {
+            console.log('❌ User not authenticated - attempting auto-login');
+            this.attemptAutoLogin();
+        }
+    }
+
+    /**
+     * Set up periodic authentication synchronization
+     */
+    setupAuthSync() {
+        // Sync immediately
+        this.syncAuthStatus();
+        
+        // Sync every 10 seconds for active monitoring
+        setInterval(() => this.syncAuthStatus(), 10000);
+        
+        // Sync on visibility change (when user returns to tab)
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                this.syncAuthStatus();
+            }
+        });
+        
+        // Sync on storage change (when auth data changes in another tab)
+        window.addEventListener('storage', (e) => {
+            if (e.key === this.tokenKey || e.key === this.userKey || e.key === this.expiryKey) {
+                this.syncAuthStatus();
+            }
+        });
     }
 
     /**

@@ -336,6 +336,23 @@ class EmployeeController {
         if (passwordForm) {
             passwordForm.addEventListener('submit', (e) => this.handlePasswordChange(e));
         }
+        
+        // Additional click handler for password change button to prevent any unwanted behavior
+        const passwordChangeBtn = document.getElementById('password-change-btn');
+        if (passwordChangeBtn) {
+            passwordChangeBtn.addEventListener('click', (e) => {
+                console.log('🔧 Password change button clicked - preventing any unwanted popups');
+                // Ensure no browser autofill or autocomplete interference
+                const currentUser = window.directFlowAuth?.getCurrentUser?.();
+                if (!currentUser) {
+                    console.warn('❌ No current user found when clicking password change button');
+                    e.preventDefault();
+                    alert('You must be logged in to change your password');
+                    return;
+                }
+                console.log('✅ Current user confirmed for password change:', currentUser.employee_id);
+            });
+        }
     }
 
     /**
@@ -1889,42 +1906,6 @@ class EmployeeController {
     }
 
     /**
-     * Show button loading state
-     */
-    showButtonLoading(buttonId, show) {
-        const button = document.getElementById(buttonId);
-        if (!button) return;
-
-        if (show) {
-            button.disabled = true;
-            button.classList.add('loading');
-            button.dataset.originalText = button.textContent;
-            button.textContent = 'Loading...';
-        } else {
-            button.disabled = false;
-            button.classList.remove('loading');
-            if (button.dataset.originalText) {
-                button.textContent = button.dataset.originalText;
-                delete button.dataset.originalText;
-            }
-        }
-    }
-
-    /**
-     * Show success message
-     */
-    showSuccess(message) {
-        this.showNotification(message, 'success');
-    }
-
-    /**
-     * Show error message
-     */
-    showError(message) {
-        this.showNotification(message, 'error');
-    }
-
-    /**
      * Show notification
      */
     showNotification(message, type = 'info') {
@@ -2156,6 +2137,64 @@ class EmployeeController {
     }
 
     /**
+     * Show success state on a card
+     */
+    showCardSuccess(formId, message, duration = 3000) {
+        const form = document.getElementById(formId);
+        if (!form) return;
+
+        // Find the parent tile/card element
+        const card = form.closest('.tile');
+        if (!card) return;
+
+        // Store original state
+        const originalClassName = card.className;
+        const originalBorder = card.style.border;
+        const originalBackground = card.style.background;
+        const originalPosition = card.style.position;
+
+        // Make card relative positioned for overlay
+        card.style.position = 'relative';
+
+        // Add success styling
+        card.style.border = '2px solid #28a745';
+        card.style.background = 'linear-gradient(135deg, #d4edda 0%, #f8f9fa 100%)';
+        card.classList.add('success-state');
+
+        // Create overlay success indicator
+        let successOverlay = card.querySelector('.success-overlay');
+        if (!successOverlay) {
+            successOverlay = document.createElement('div');
+            successOverlay.className = 'success-overlay';
+            successOverlay.innerHTML = `
+                <div class="success-message">
+                    <span style="font-size: 20px;">✅</span>
+                    <span>${message}</span>
+                </div>
+            `;
+            card.appendChild(successOverlay);
+        } else {
+            successOverlay.innerHTML = `
+                <div class="success-message">
+                    <span style="font-size: 20px;">✅</span>
+                    <span>${message}</span>
+                </div>
+            `;
+        }
+
+        // Remove success state after duration
+        setTimeout(() => {
+            card.className = originalClassName;
+            card.style.border = originalBorder;
+            card.style.background = originalBackground;
+            card.style.position = originalPosition;
+            if (successOverlay) {
+                successOverlay.remove();
+            }
+        }, duration);
+    }
+
+    /**
      * Get status CSS class
      */
     getStatusClass(status) {
@@ -2323,12 +2362,17 @@ class EmployeeController {
                 return;
             }
             
+            if (confirmPassword.length < 6) {
+                this.showError('Password confirmation appears to be too short');
+                return;
+            }
+            
             if (!this.currentUser || !this.currentUser.employee_id) {
                 this.showError('User information not available');
                 return;
             }
             
-            this.showButtonLoading('username-form', true);
+            this.showButtonLoading('username-change-btn', true);
             
             // Make API request to change username
             const response = await this.apiRequest(`accounts/${this.currentUser.employee_id}`, {
@@ -2342,8 +2386,13 @@ class EmployeeController {
                 })
             });
             
+            console.log('Username change API response:', response);
+            
             if (response.success) {
                 this.showSuccess('Username updated successfully!');
+                
+                // Show visual success feedback on the card
+                this.showCardSuccess('username-form', 'Username updated successfully!');
                 
                 // Update current user data
                 if (this.currentUser) {
@@ -2359,14 +2408,29 @@ class EmployeeController {
                 }, 100);
                 
             } else {
-                this.showError(response.message || 'Failed to update username');
+                // Handle specific error cases
+                if (response.message && response.message.toLowerCase().includes('password')) {
+                    this.showError('Incorrect current password. Please try again.');
+                } else if (response.message && response.message.toLowerCase().includes('unauthorized')) {
+                    this.showError('Authentication failed. Please check your current password.');
+                } else {
+                    this.showError(response.message || 'Failed to update username. Please verify your current password.');
+                }
             }
             
         } catch (error) {
             console.error('Username change error:', error);
-            this.showError('Failed to update username. Please try again.');
+            
+            // Handle specific error types
+            if (error.message && error.message.includes('401')) {
+                this.showError('Authentication failed. Please check your current password.');
+            } else if (error.message && error.message.includes('403')) {
+                this.showError('Access denied. Please verify your current password.');
+            } else {
+                this.showError('Failed to update username. Please check your internet connection and try again.');
+            }
         } finally {
-            this.showButtonLoading('username-form', false);
+            this.showButtonLoading('username-change-btn', false);
         }
     }
     
@@ -2374,7 +2438,9 @@ class EmployeeController {
      * Handle password change form submission
      */
     async handlePasswordChange(event) {
+        console.log('🔧 Password change form submitted');
         event.preventDefault();
+        event.stopPropagation();
         
         try {
             const formData = new FormData(event.target);
@@ -2382,28 +2448,42 @@ class EmployeeController {
             const newPassword = formData.get('new-password');
             const confirmPassword = formData.get('confirm-password');
             
+            console.log('🔧 Form data extracted:', {
+                currentPasswordLength: currentPassword ? currentPassword.length : 0,
+                newPasswordLength: newPassword ? newPassword.length : 0,
+                confirmPasswordLength: confirmPassword ? confirmPassword.length : 0
+            });
+            
             // Validation
             if (!currentPassword) {
+                console.log('❌ Current password missing');
                 this.showError('Please enter your current password');
                 return;
             }
             
             if (!newPassword || newPassword.length < 6) {
+                console.log('❌ New password validation failed');
                 this.showError('New password must be at least 6 characters long');
                 return;
             }
             
             if (newPassword !== confirmPassword) {
+                console.log('❌ Password confirmation mismatch');
                 this.showError('New passwords do not match');
                 return;
             }
             
             if (!this.currentUser || !this.currentUser.employee_id) {
+                console.log('❌ User information not available');
+                console.log('🔧 Current user object:', this.currentUser);
+                console.log('🔧 Available properties:', this.currentUser ? Object.keys(this.currentUser) : 'null');
                 this.showError('User information not available');
                 return;
             }
             
-            this.showButtonLoading('password-form', true);
+            console.log('✅ Validation passed, making API request...');
+            console.log('🔧 Using employee ID:', this.currentUser.employee_id);
+            this.showButtonLoading('password-change-btn', true);
             
             // Make API request to change password
             const response = await this.apiRequest(`accounts/${this.currentUser.employee_id}/password`, {
@@ -2417,8 +2497,14 @@ class EmployeeController {
                 })
             });
             
+            console.log('🔧 API Response:', response);
+            
             if (response.success) {
+                console.log('✅ Password change successful');
                 this.showSuccess('Password updated successfully! You will need to log in again.');
+                
+                // Show visual success feedback on the card
+                this.showCardSuccess('password-form', 'Password updated successfully!');
                 
                 // Clear form
                 event.target.reset();
@@ -2433,14 +2519,25 @@ class EmployeeController {
                 }, 2000);
                 
             } else {
+                console.log('❌ Password change failed:', response.message);
                 this.showError(response.message || 'Failed to update password');
             }
             
         } catch (error) {
             console.error('Password change error:', error);
-            this.showError('Failed to update password. Please try again.');
+            
+            // Handle specific error types
+            if (error.message && error.message.includes('401')) {
+                this.showError('Authentication failed. Please check your current password.');
+            } else if (error.message && error.message.includes('403')) {
+                this.showError('Access denied. Please verify your current password.');
+            } else if (error.message && error.message.includes('400')) {
+                this.showError('Current password is incorrect. Please try again.');
+            } else {
+                this.showError('Failed to update password. Please check your internet connection and try again.');
+            }
         } finally {
-            this.showButtonLoading('password-form', false);
+            this.showButtonLoading('password-change-btn', false);
         }
     }
     
@@ -2471,14 +2568,30 @@ class EmployeeController {
             });
             
             if (!response.ok) {
+                // Try to get error message from response body
+                let errorMessage = `API request failed: ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    if (errorData.message) {
+                        errorMessage = errorData.message;
+                    }
+                } catch (parseError) {
+                    // If JSON parsing fails, use default message
+                }
+                
                 if (response.status === 401) {
                     // Token expired or invalid
                     if (authService.logout) {
                         authService.logout();
                     }
-                    throw new Error('Authentication failed');
+                    throw new Error('Authentication failed - please log in again');
+                } else if (response.status === 403) {
+                    throw new Error(errorMessage || 'Access denied - incorrect password');
+                } else if (response.status === 400) {
+                    throw new Error(errorMessage || 'Invalid request - please check your input');
                 }
-                throw new Error(`API request failed: ${response.status}`);
+                
+                throw new Error(errorMessage);
             }
             
             return await response.json();
