@@ -59,10 +59,6 @@
     <link rel="preload" href="js/theme.js" as="script">
 </head>
 <body>
-    <!-- Skip Navigation Links -->
-    <a href="#main-content" class="skip-link">Skip to main content</a>
-    <a href="#sidebar" class="skip-link">Skip to navigation</a>
-
     <!-- Mobile Hamburger Menu Button -->
     <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -70,22 +66,7 @@
             <line x1="3" y1="12" x2="21" y2="12"></line>
             <line x1="3" y1="18" x2="21" y2="18"></line>
         </svg>
-    </button>
-
-    <!-- Theme Toggle -->
-    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
-        <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="5"></circle>
-            <line x1="12" y1="1" x2="12" y2="3"></line>
-            <line x1="12" y1="21" x2="12" y2="23"></line>
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-            <line x1="1" y1="12" x2="3" y2="12"></line>
-            <line x1="21" y1="12" x2="23" y2="12"></line>
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-        </svg>
-    </button>
+    </button>    
 
     <!-- App Container -->
     <div class="app-container">
@@ -721,6 +702,13 @@
     <script src="js/directflow-auth.js"></script>
     <script src="js/global-system-sync.js"></script>
     <script src="js/theme.js"></script>
+    <script>
+        // Immediately apply theme to prevent FOUC
+        if (window.themeManager) {
+            // Force immediate theme application
+            themeManager.init();
+        }
+    </script>
     <script src="js/charts.js"></script>
     <script src="js/sidebar.js"></script>
     <script src="js/modals.js"></script>
@@ -825,59 +813,216 @@
 
         .actions-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: var(--spacing-md);
             margin-bottom: var(--spacing-lg);
+            align-items: stretch;
         }
 
+        /* FOUC Prevention Styles - Apply immediate stable colors */
+        .action-btn {
+            /* Default stable colors before theme loads */
+            --default-primary: #2563eb;
+            --default-light: rgba(37, 99, 235, 0.1);
+            --default-border: rgba(37, 99, 235, 0.2);
+        }
+        
+        /* Use stable colors initially, then switch to theme variables after load */
         .action-btn {
             display: flex;
             flex-direction: column;
             align-items: center;
             padding: var(--spacing-lg);
-            background-color: var(--bg-secondary);
-            border: 2px solid var(--border-color);
-            border-radius: var(--radius-lg);
+            background-color: var(--bg-secondary, #ffffff);
+            border: 2px solid var(--default-border);
+            border-radius: var(--radius-lg, 12px);
             cursor: pointer;
-            transition: all var(--transition-fast);
+            transition: all var(--transition-fast, 0.2s ease);
             text-align: center;
-            min-height: 100px;
+            min-height: 120px;
             justify-content: center;
-            gap: var(--spacing-sm);
+            gap: var(--spacing-sm, 8px);
+            position: relative;
+            overflow: hidden;
+            font-family: inherit;
+        }
+
+        /* After theme loads, use proper theme variables */
+        body.theme-loaded .action-btn {
+            border-color: var(--border-color);
         }
 
         .action-btn:hover {
+            border-color: var(--default-primary);
+            background-color: var(--default-light);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        /* After theme loads, use proper theme variables for hover */
+        body.theme-loaded .action-btn:hover {
             border-color: var(--accent-primary);
             background-color: var(--accent-light);
-            transform: translateY(-2px);
+        }
+
+        /* Ensure all buttons have the same height */
+        .actions-grid .action-btn {
+            height: 120px;
+            min-height: 120px;
+            max-height: 120px;
+        }
+
+        .action-btn:active {
+            transform: translateY(-1px);
+            transition: transform 0.1s ease;
+        }
+
+        .action-btn:focus {
+            outline: 2px solid var(--default-primary);
+            outline-offset: 2px;
+            border-color: var(--default-primary);
+        }
+
+        /* After theme loads, use proper theme variables for focus */
+        body.theme-loaded .action-btn:focus {
+            outline-color: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .action-btn:focus:not(:focus-visible) {
+            outline: none;
         }
 
         .action-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
             transform: none;
+            border-color: var(--default-border);
+            background-color: var(--bg-secondary, #ffffff);
+        }
+
+        /* After theme loads, use proper theme variables for disabled */
+        body.theme-loaded .action-btn:disabled {
+            border-color: var(--border-color);
+        }
+
+        .action-btn:disabled:hover {
+            transform: none;
+            box-shadow: none;
         }
 
         .action-btn.completed {
+            border-color: var(--color-success, #34c759);
+            background-color: rgba(52, 199, 89, 0.1);
+            color: var(--color-success, #34c759);
+        }
+
+        .action-btn.completed .action-icon {
+            color: var(--color-success, #34c759);
+        }
+
+        /* Loading state styles - prevent flashing */
+        .action-btn.loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        /* Specific button state styles */
+        .action-btn.action-clock-in {
+            border-color: var(--color-success, #34c759);
+            background-color: rgba(52, 199, 89, 0.05);
+        }
+
+        .action-btn.action-clock-in:hover {
+            border-color: var(--color-success, #34c759);
+            background-color: rgba(52, 199, 89, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .action-btn.action-clock-out {
+            border-color: var(--color-error, #ff3b30);
+            background-color: rgba(255, 59, 48, 0.05);
+        }
+
+        .action-btn.action-clock-out:hover {
+            border-color: var(--color-error, #ff3b30);
+            background-color: rgba(255, 59, 48, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .action-btn.action-lunch-start {
+            border-color: var(--color-warning, #ff9500);
+            background-color: rgba(255, 149, 0, 0.05);
+        }
+
+        .action-btn.action-lunch-start:hover {
+            border-color: var(--color-warning, #ff9500);
+            background-color: rgba(255, 149, 0, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .action-btn.action-lunch-end {
             border-color: var(--accent-primary);
             background-color: var(--accent-light);
-            color: var(--accent-primary);
+        }
+
+        .action-btn.action-lunch-end:hover {
+            border-color: var(--accent-primary);
+            background-color: var(--accent-light);
+            transform: translateY(-2px);
+        }
+
+        /* Loading state for buttons */
+        .action-btn.loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .action-btn.loading .action-icon {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
         .action-icon {
-            font-size: var(--font-size-2xl);
+            font-size: 2rem;
             margin-bottom: var(--spacing-sm);
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
         }
 
         .action-text {
             font-weight: var(--font-weight-semibold);
             color: var(--text-primary);
+            font-size: var(--font-size-base);
+            line-height: 1.2;
+            text-align: center;
+            transition: color var(--transition-fast);
         }
 
         .action-time {
             font-size: var(--font-size-sm);
             color: var(--text-secondary);
             font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+            font-weight: var(--font-weight-medium);
+            margin-top: 2px;
+            line-height: 1;
+            transition: color var(--transition-fast);
+        }
+
+        /* Ensure consistent spacing */
+        .action-btn .action-icon + .action-text {
+            margin-top: 0;
+        }
+
+        .action-btn .action-text + .action-time {
+            margin-top: 4px;
         }
 
         .current-status {
@@ -1651,26 +1796,6 @@
             background-color: var(--accent-primary);
         }
 
-        /* Skip Navigation Links */
-        .skip-link {
-            position: absolute;
-            top: -40px;
-            left: 6px;
-            background: var(--accent-primary);
-            color: var(--color-white);
-            padding: 8px;
-            text-decoration: none;
-            border-radius: var(--radius-sm);
-            z-index: 10000;
-            font-size: var(--font-size-sm);
-            font-weight: var(--font-weight-medium);
-            transition: top var(--transition-fast);
-        }
-
-        .skip-link:focus {
-            top: 6px;
-        }
-
         /* Enhanced Modal Styles - Fix Modal Display Issues */
         .modal-overlay {
             position: fixed !important;
@@ -2039,6 +2164,29 @@
 
             .actions-grid {
                 grid-template-columns: repeat(2, 1fr);
+                gap: var(--spacing-sm);
+            }
+
+            .actions-grid .action-btn {
+                min-height: 100px;
+                height: 100px;
+                max-height: 100px;
+                padding: var(--spacing-md);
+                gap: var(--spacing-xs);
+            }
+
+            .action-icon {
+                font-size: 1.5rem;
+                margin-bottom: 4px;
+            }
+
+            .action-text {
+                font-size: var(--font-size-sm);
+                line-height: 1.1;
+            }
+
+            .action-time {
+                font-size: var(--font-size-xs);
             }
 
             .current-status {
@@ -2150,12 +2298,7 @@
                 font-size: 0.75rem;
                 text-align: center;
             }
-
-            /* Adjust theme toggle for mobile */
-            .theme-toggle {
-                top: var(--spacing-md);
-                right: 60px; /* Make room for mobile menu toggle */
-            }
+            
 
             /* Show mobile FAB when sidebar is collapsed */
             .mobile-fab-container {
@@ -2166,6 +2309,30 @@
         @media (max-width: 480px) {
             .actions-grid {
                 grid-template-columns: 1fr;
+                gap: var(--spacing-sm);
+            }
+
+            .actions-grid .action-btn {
+                min-height: 90px;
+                height: 90px;
+                max-height: 90px;
+                padding: var(--spacing-sm);
+                gap: 4px;
+            }
+
+            .action-icon {
+                font-size: 1.3rem;
+                margin-bottom: 2px;
+            }
+
+            .action-text {
+                font-size: var(--font-size-sm);
+                line-height: 1;
+            }
+
+            .action-time {
+                font-size: var(--font-size-xs);
+                margin-top: 2px;
             }
 
             .summary-grid {

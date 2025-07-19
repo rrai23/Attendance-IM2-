@@ -17,9 +17,6 @@
     <link rel="preload" href="/js/theme.js" as="script">
 </head>
 <body>
-    <!-- Skip Navigation Links -->
-    <a href="#main-content" class="skip-link">Skip to main content</a>
-    <a href="#sidebar" class="skip-link">Skip to navigation</a>
 
     <!-- Mobile Hamburger Menu Button -->
     <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
@@ -27,21 +24,6 @@
             <line x1="3" y1="6" x2="21" y2="6"></line>
             <line x1="3" y1="12" x2="21" y2="12"></line>
             <line x1="3" y1="18" x2="21" y2="18"></line>
-        </svg>
-    </button>
-
-    <!-- Theme Toggle -->
-    <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
-        <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="5"></circle>
-            <line x1="12" y1="1" x2="12" y2="3"></line>
-            <line x1="12" y1="21" x2="12" y2="23"></line>
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-            <line x1="1" y1="12" x2="3" y2="12"></line>
-            <line x1="21" y1="12" x2="23" y2="12"></line>
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
         </svg>
     </button>
 
@@ -131,6 +113,13 @@
                             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                         </svg>
                         Users
+                    </button>
+                    <button class="settings-tab" data-tab="link">
+                        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"></path>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"></path>
+                        </svg>
+                        Link
                     </button>
                 </nav>
 
@@ -978,6 +967,271 @@
                     </div>
                 </div>
 
+                <!-- Link Settings -->
+                <div class="settings-content" id="link-settings">
+                    <div class="tiles-grid grid-2">
+                        <div class="tile">
+                            <div class="tile-header">
+                                <h3 class="tile-title">Biometric Device Integration</h3>
+                                <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                                    <line x1="12" y1="19" x2="12" y2="22"></line>
+                                    <line x1="8" y1="22" x2="16" y2="22"></line>
+                                </svg>
+                            </div>
+                            <div class="tile-content">
+                                <form class="settings-form">
+                                    <div class="form-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="biometric-enabled" name="biometricEnabled">
+                                            <span class="checkmark"></span>
+                                            Enable Biometric Device Integration
+                                        </label>
+                                    </div>
+                                    
+                                    <div class="form-group" id="biometric-settings" style="display: none;">
+                                        <label for="biometric-device-type" class="form-label">Device Type</label>
+                                        <select id="biometric-device-type" name="biometricDeviceType" class="form-select">
+                                            <option value="">Select Device Type</option>
+                                            <option value="fingerprint">Fingerprint Scanner</option>
+                                            <option value="face-recognition">Face Recognition</option>
+                                            <option value="card-reader">RFID/Card Reader</option>
+                                            <option value="qr-scanner">QR Code Scanner</option>
+                                            <option value="generic">Generic Biometric Device</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group" id="connection-settings" style="display: none;">
+                                        <label for="device-connection" class="form-label">Connection Method</label>
+                                        <select id="device-connection" name="deviceConnection" class="form-select">
+                                            <option value="">Select Connection</option>
+                                            <option value="usb">USB Connection</option>
+                                            <option value="network">Network/IP Connection</option>
+                                            <option value="serial">Serial Port</option>
+                                            <option value="bluetooth">Bluetooth</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group" id="network-settings" style="display: none;">
+                                        <label for="device-ip" class="form-label">Device IP Address</label>
+                                        <input type="text" id="device-ip" name="deviceIp" class="form-input" placeholder="192.168.1.100">
+                                        
+                                        <label for="device-port" class="form-label">Port Number</label>
+                                        <input type="number" id="device-port" name="devicePort" class="form-input" placeholder="4370" min="1" max="65535">
+                                    </div>
+                                    
+                                    <div class="form-group" id="serial-settings" style="display: none;">
+                                        <label for="serial-port" class="form-label">Serial Port</label>
+                                        <select id="serial-port" name="serialPort" class="form-select">
+                                            <option value="">Select Port</option>
+                                            <option value="COM1">COM1</option>
+                                            <option value="COM2">COM2</option>
+                                            <option value="COM3">COM3</option>
+                                            <option value="COM4">COM4</option>
+                                        </select>
+                                        
+                                        <label for="baud-rate" class="form-label">Baud Rate</label>
+                                        <select id="baud-rate" name="baudRate" class="form-select">
+                                            <option value="9600">9600</option>
+                                            <option value="19200">19200</option>
+                                            <option value="38400">38400</option>
+                                            <option value="57600">57600</option>
+                                            <option value="115200" selected>115200</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <button type="button" class="btn btn-outline" id="test-connection-btn" disabled>
+                                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <polyline points="23,4 23,10 17,10"></polyline>
+                                                <polyline points="1,20 1,14 7,14"></polyline>
+                                                <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path>
+                                            </svg>
+                                            Test Connection
+                                        </button>
+                                        <span id="connection-status" class="text-sm text-secondary ml-2"></span>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="tile">
+                            <div class="tile-header">
+                                <h3 class="tile-title">Automatic CSV Import</h3>
+                                <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14,2 14,8 20,8"></polyline>
+                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                    <polyline points="10,9 9,9 8,9"></polyline>
+                                </svg>
+                            </div>
+                            <div class="tile-content">
+                                <form class="settings-form">
+                                    <div class="form-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="csv-import-enabled" name="csvImportEnabled">
+                                            <span class="checkmark"></span>
+                                            Enable Automatic CSV Import
+                                        </label>
+                                    </div>
+                                    
+                                    <div class="form-group" id="csv-import-settings" style="display: none;">
+                                        <label for="import-frequency" class="form-label">Import Frequency</label>
+                                        <select id="import-frequency" name="importFrequency" class="form-select">
+                                            <option value="manual">Manual Only</option>
+                                            <option value="hourly">Every Hour</option>
+                                            <option value="daily">Daily</option>
+                                            <option value="weekly">Weekly</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group" id="import-time-settings" style="display: none;">
+                                        <label for="import-time" class="form-label">Import Time (for Daily/Weekly)</label>
+                                        <input type="time" id="import-time" name="importTime" class="form-input" value="00:00">
+                                    </div>
+                                    
+                                    <div class="form-group" id="folder-settings" style="display: none;">
+                                        <label for="watch-folder" class="form-label">Watch Folder Path</label>
+                                        <div class="input-group">
+                                            <input type="text" id="watch-folder" name="watchFolder" class="form-input" placeholder="C:\AttendanceData\Import" readonly>
+                                            <button type="button" class="btn btn-outline" id="browse-folder-btn">
+                                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                                                </svg>
+                                                Browse
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-group" id="csv-format-settings" style="display: none;">
+                                        <label for="csv-format" class="form-label">CSV Format</label>
+                                        <select id="csv-format" name="csvFormat" class="form-select">
+                                            <option value="standard">Standard Format</option>
+                                            <option value="zkteco">ZKTeco Format</option>
+                                            <option value="hikvision">Hikvision Format</option>
+                                            <option value="custom">Custom Format</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group" id="csv-mapping-settings" style="display: none;">
+                                        <label class="form-label">Column Mapping</label>
+                                        <div class="csv-mapping-container">
+                                            <div class="mapping-row">
+                                                <label for="employee-id-column" class="form-label-sm">Employee ID Column:</label>
+                                                <input type="text" id="employee-id-column" name="employeeIdColumn" class="form-input-sm" placeholder="A or 1">
+                                            </div>
+                                            <div class="mapping-row">
+                                                <label for="timestamp-column" class="form-label-sm">Timestamp Column:</label>
+                                                <input type="text" id="timestamp-column" name="timestampColumn" class="form-input-sm" placeholder="B or 2">
+                                            </div>
+                                            <div class="mapping-row">
+                                                <label for="action-column" class="form-label-sm">Action Column:</label>
+                                                <input type="text" id="action-column" name="actionColumn" class="form-input-sm" placeholder="C or 3">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="move-processed-files" name="moveProcessedFiles">
+                                            <span class="checkmark"></span>
+                                            Move processed files to archive folder
+                                        </label>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <button type="button" class="btn btn-outline" id="test-import-btn" disabled>
+                                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                <polyline points="17,8 12,3 7,8"></polyline>
+                                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                                            </svg>
+                                            Test Import
+                                        </button>
+                                        <button type="button" class="btn btn-primary" id="manual-import-btn" disabled>
+                                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                <polyline points="14,2 14,8 20,8"></polyline>
+                                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                            </svg>
+                                            Manual Import Now
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tiles-grid grid-1">
+                        <div class="tile">
+                            <div class="tile-header">
+                                <h3 class="tile-title">Integration Status & Logs</h3>
+                                <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14,2 14,8 20,8"></polyline>
+                                    <line x1="9" y1="9" x2="15" y2="9"></line>
+                                    <line x1="9" y1="13" x2="15" y2="13"></line>
+                                    <line x1="9" y1="17" x2="13" y2="17"></line>
+                                </svg>
+                            </div>
+                            <div class="tile-content">
+                                <div class="integration-status">
+                                    <div class="status-grid">
+                                        <div class="status-item">
+                                            <div class="status-icon" id="biometric-status-icon">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <circle cx="12" cy="12" r="10"></circle>
+                                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                                </svg>
+                                            </div>
+                                            <div class="status-content">
+                                                <h4>Biometric Device</h4>
+                                                <p id="biometric-status-text">Not configured</p>
+                                                <small id="biometric-last-sync">Last sync: Never</small>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="status-item">
+                                            <div class="status-icon" id="csv-status-icon">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <circle cx="12" cy="12" r="10"></circle>
+                                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                                </svg>
+                                            </div>
+                                            <div class="status-content">
+                                                <h4>CSV Import</h4>
+                                                <p id="csv-status-text">Not configured</p>
+                                                <small id="csv-last-import">Last import: Never</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="logs-section">
+                                    <div class="logs-header">
+                                        <h4>Recent Activity</h4>
+                                        <button type="button" class="btn btn-sm btn-outline" id="clear-logs-btn">
+                                            Clear Logs
+                                        </button>
+                                    </div>
+                                    <div class="logs-container" id="integration-logs">
+                                        <div class="log-entry">
+                                            <span class="log-time">2025-01-19 14:30:00</span>
+                                            <span class="log-level info">INFO</span>
+                                            <span class="log-message">Integration module initialized</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Settings Footer -->
                 <footer class="settings-footer">
                     <div class="settings-actions">
@@ -1337,26 +1591,6 @@
             flex-shrink: 0;
         }
 
-        /* Skip Navigation Links */
-        .skip-link {
-            position: absolute;
-            top: -40px;
-            left: 6px;
-            background: var(--accent-primary);
-            color: var(--color-white);
-            padding: 8px;
-            text-decoration: none;
-            border-radius: var(--radius-sm);
-            z-index: 10000;
-            font-size: var(--font-size-sm);
-            font-weight: var(--font-weight-medium);
-            transition: top var(--transition-fast);
-        }
-
-        .skip-link:focus {
-            top: 6px;
-        }
-
         /* Mobile Floating Action Button */
         .mobile-fab-container {
             position: fixed;
@@ -1462,13 +1696,7 @@
             .settings-tabs {
                 flex-wrap: wrap;
             }
-
-            /* Adjust theme toggle for mobile */
-            .theme-toggle {
-                top: var(--spacing-md);
-                right: 60px; /* Make room for mobile menu toggle */
-            }
-
+            
             /* Show mobile FAB when sidebar is collapsed */
             .mobile-fab-container {
                 display: block;
@@ -1753,26 +1981,6 @@
             border-color: #ff3b30;
         }
 
-        /* Skip Navigation Links */
-        .skip-link {
-            position: absolute;
-            top: -40px;
-            left: 6px;
-            background: var(--accent-primary);
-            color: var(--color-white);
-            padding: 8px;
-            text-decoration: none;
-            border-radius: var(--radius-sm);
-            z-index: 10000;
-            font-size: var(--font-size-sm);
-            font-weight: var(--font-weight-medium);
-            transition: top var(--transition-fast);
-        }
-
-        .skip-link:focus {
-            top: 6px;
-        }
-
         /* Mobile Floating Action Button */
         .mobile-fab-container {
             position: fixed;
@@ -1895,12 +2103,6 @@
                 flex-direction: column;
                 gap: var(--spacing-md);
                 align-items: stretch;
-            }
-
-            /* Adjust theme toggle for mobile */
-            .theme-toggle {
-                top: var(--spacing-md);
-                right: 60px; /* Make room for mobile menu toggle */
             }
 
             /* Show mobile FAB when sidebar is collapsed */
@@ -2220,6 +2422,256 @@
             display: flex !important;
             opacity: 1 !important;
             visibility: visible !important;
+        }
+
+        /* Link Settings Specific Styles */
+        .input-group {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .input-group .form-input {
+            flex: 1;
+        }
+
+        .form-input-sm,
+        .form-label-sm {
+            font-size: var(--font-size-sm);
+        }
+
+        .form-input-sm {
+            padding: var(--spacing-sm);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .form-label-sm {
+            display: block;
+            margin-bottom: var(--spacing-xs);
+            font-weight: var(--font-weight-medium);
+            color: var(--text-secondary);
+        }
+
+        .csv-mapping-container {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+        }
+
+        .mapping-row {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .mapping-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .mapping-row .form-label-sm {
+            min-width: 140px;
+            margin-bottom: 0;
+        }
+
+        .mapping-row .form-input-sm {
+            max-width: 100px;
+        }
+
+        .integration-status {
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--spacing-lg);
+        }
+
+        .status-item {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--spacing-md);
+            padding: var(--spacing-lg);
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+        }
+
+        .status-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all var(--transition-fast);
+        }
+
+        .status-icon.success {
+            background-color: rgba(52, 199, 89, 0.1);
+            color: #34c759;
+        }
+
+        .status-icon.warning {
+            background-color: rgba(255, 149, 0, 0.1);
+            color: #ff9500;
+        }
+
+        .status-icon.error {
+            background-color: rgba(255, 59, 48, 0.1);
+            color: #ff3b30;
+        }
+
+        .status-icon.inactive {
+            background-color: var(--bg-tertiary);
+            color: var(--text-tertiary);
+        }
+
+        .status-icon svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .status-content h4 {
+            margin: 0 0 var(--spacing-xs) 0;
+            font-size: var(--font-size-base);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+        }
+
+        .status-content p {
+            margin: 0 0 var(--spacing-xs) 0;
+            color: var(--text-secondary);
+        }
+
+        .status-content small {
+            color: var(--text-tertiary);
+            font-size: var(--font-size-xs);
+        }
+
+        .logs-section {
+            border-top: 1px solid var(--border-color);
+            padding-top: var(--spacing-lg);
+        }
+
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .logs-header h4 {
+            margin: 0;
+            font-size: var(--font-size-base);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+        }
+
+        .logs-container {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: var(--font-mono);
+        }
+
+        .log-entry {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            padding: var(--spacing-xs) 0;
+            border-bottom: 1px solid var(--border-color);
+            font-size: var(--font-size-sm);
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-time {
+            color: var(--text-tertiary);
+            min-width: 130px;
+            font-size: var(--font-size-xs);
+        }
+
+        .log-level {
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            font-weight: var(--font-weight-medium);
+            font-size: var(--font-size-xs);
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .log-level.info {
+            background-color: rgba(0, 122, 255, 0.1);
+            color: #007aff;
+        }
+
+        .log-level.success {
+            background-color: rgba(52, 199, 89, 0.1);
+            color: #34c759;
+        }
+
+        .log-level.warning {
+            background-color: rgba(255, 149, 0, 0.1);
+            color: #ff9500;
+        }
+
+        .log-level.error {
+            background-color: rgba(255, 59, 48, 0.1);
+            color: #ff3b30;
+        }
+
+        .log-message {
+            color: var(--text-primary);
+            flex: 1;
+        }
+
+        /* Responsive adjustments for Link settings */
+        @media (max-width: 768px) {
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .mapping-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .mapping-row .form-label-sm {
+                min-width: auto;
+            }
+
+            .input-group {
+                flex-direction: column;
+            }
+
+            .logs-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--spacing-sm);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .log-entry {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--spacing-xs);
+            }
+
+            .log-time {
+                min-width: auto;
+            }
         }
     </style>
 

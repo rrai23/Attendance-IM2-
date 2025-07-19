@@ -83,6 +83,11 @@ class EmployeeController {
             // Initialize payroll data cards
             this.initializePayrollCards();
 
+            // Force refresh payroll data after a short delay to ensure all data is loaded
+            setTimeout(() => {
+                this.refreshPayrollData();
+            }, 1000);
+
             console.log('Employee controller initialized successfully');
         } catch (error) {
             console.error('Error initializing employee controller:', error);
@@ -558,34 +563,77 @@ class EmployeeController {
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
         
+        console.log('📊 Calculating personal stats from', attendanceData.length, 'records');
+        console.log('📊 Sample attendance record:', attendanceData[0]);
+        
         // Filter current month data
         const currentMonthData = attendanceData.filter(record => {
-            const recordDate = new Date(record.date);
+            const recordDate = new Date(record.date || record.attendance_date || record.work_date);
             return recordDate.getMonth() === currentMonth && recordDate.getFullYear() === currentYear;
         });
 
+        console.log('📊 Current month data:', currentMonthData.length, 'records');
+
         // Calculate basic stats
         const totalDays = currentMonthData.length;
-        const presentDays = currentMonthData.filter(r => r.status === 'present' || r.status === 'late').length;
-        const lateDays = currentMonthData.filter(r => r.status === 'late').length;
-        const absentDays = currentMonthData.filter(r => r.status === 'absent').length;
+        const presentDays = currentMonthData.filter(r => 
+            r.status === 'present' || r.status === 'late' || 
+            r.attendance_status === 'present' || r.attendance_status === 'late' ||
+            (r.clock_in && r.clock_out) || (r.time_in && r.time_out)
+        ).length;
+        const lateDays = currentMonthData.filter(r => 
+            r.status === 'late' || r.attendance_status === 'late'
+        ).length;
+        const absentDays = currentMonthData.filter(r => 
+            r.status === 'absent' || r.attendance_status === 'absent' ||
+            (!r.clock_in && !r.time_in)
+        ).length;
         
         const attendanceRate = totalDays > 0 ? (presentDays / totalDays) * 100 : 0;
         const punctualityRate = presentDays > 0 ? ((presentDays - lateDays) / presentDays) * 100 : 0;
         
-        // Calculate hours
-        const totalRegularHours = currentMonthData.reduce((sum, r) => sum + (parseFloat(r.regular_hours) || parseFloat(r.regularHours) || 0), 0);
-        const totalOvertimeHours = currentMonthData.reduce((sum, r) => sum + (parseFloat(r.overtime_hours) || parseFloat(r.overtimeHours) || 0), 0);
+        // Enhanced hours calculation with multiple field name support
+        let totalRegularHours = 0;
+        let totalOvertimeHours = 0;
+        
+        currentMonthData.forEach(record => {
+            // Try different field names for regular hours
+            const regularHours = parseFloat(
+                record.regular_hours || 
+                record.regularHours || 
+                record.hours_worked ||
+                record.hoursWorked ||
+                record.work_hours ||
+                record.total_hours ||
+                this.calculateHoursFromTimes(record) ||
+                0
+            );
+            
+            // Try different field names for overtime hours
+            const overtimeHours = parseFloat(
+                record.overtime_hours || 
+                record.overtimeHours || 
+                record.ot_hours ||
+                record.overtime ||
+                0
+            );
+            
+            totalRegularHours += regularHours;
+            totalOvertimeHours += overtimeHours;
+        });
+        
         const totalHours = totalRegularHours + totalOvertimeHours;
         
-        // Calculate average times
+        console.log('📊 Calculated hours - Regular:', totalRegularHours, 'Overtime:', totalOvertimeHours, 'Total:', totalHours);
+        
+        // Calculate average times with enhanced field name support
         const checkinTimes = currentMonthData
-            .filter(r => r.clock_in || r.timeIn)
-            .map(r => this.timeToMinutes(r.clock_in || r.timeIn));
+            .filter(r => r.clock_in || r.timeIn || r.time_in || r.check_in)
+            .map(r => this.timeToMinutes(r.clock_in || r.timeIn || r.time_in || r.check_in));
         
         const checkoutTimes = currentMonthData
-            .filter(r => r.clock_out || r.timeOut)
-            .map(r => this.timeToMinutes(r.clock_out || r.timeOut));
+            .filter(r => r.clock_out || r.timeOut || r.time_out || r.check_out)
+            .map(r => this.timeToMinutes(r.clock_out || r.timeOut || r.time_out || r.check_out));
         
         const avgCheckinTime = checkinTimes.length > 0 
             ? this.minutesToTime(checkinTimes.reduce((a, b) => a + b, 0) / checkinTimes.length)
@@ -595,7 +643,7 @@ class EmployeeController {
             ? this.minutesToTime(checkoutTimes.reduce((a, b) => a + b, 0) / checkoutTimes.length)
             : '--:--';
 
-        return {
+        const stats = {
             currentMonth: {
                 totalDays,
                 presentDays,
@@ -624,6 +672,70 @@ class EmployeeController {
                 reliability: (attendanceRate + punctualityRate) / 2
             }
         };
+
+        console.log('📊 Final calculated stats:', stats);
+        return stats;
+    }
+
+    /**
+     * Calculate hours worked from clock in/out times when hours not directly provided
+     */
+    calculateHoursFromTimes(record) {
+        try {
+            const clockIn = record.clock_in || record.timeIn || record.time_in || record.check_in;
+            const clockOut = record.clock_out || record.timeOut || record.time_out || record.check_out;
+            
+            if (!clockIn || !clockOut) {
+                return 0;
+            }
+            
+            const inMinutes = this.timeToMinutes(clockIn);
+            const outMinutes = this.timeToMinutes(clockOut);
+            
+            if (inMinutes === null || outMinutes === null) {
+                return 0;
+            }
+            
+            // Handle overnight shifts
+            let totalMinutes = outMinutes - inMinutes;
+            if (totalMinutes < 0) {
+                totalMinutes += 24 * 60; // Add 24 hours
+            }
+            
+            // Convert to hours and subtract lunch break (assuming 1 hour)
+            const totalHours = (totalMinutes / 60);
+            return totalHours > 8 ? totalHours - 1 : totalHours; // Subtract lunch if more than 8 hours
+        } catch (error) {
+            console.warn('Error calculating hours from times:', error);
+            return 0;
+        }
+    }
+
+    /**
+     * Get employee hourly rate with multiple field name support
+     */
+    getEmployeeHourlyRate() {
+        try {
+            // Try different field names for hourly rate
+            const rate = parseFloat(
+                this.currentUser?.employee?.hourlyRate ||
+                this.currentUser?.employee?.hourly_rate ||
+                this.currentUser?.employee?.rate ||
+                this.currentUser?.employee?.payRate ||
+                this.currentUser?.employee?.pay_rate ||
+                this.currentUser?.employee?.wage ||
+                this.currentUser?.hourlyRate ||
+                this.currentUser?.hourly_rate ||
+                this.currentUser?.rate ||
+                15 // Default fallback
+            );
+            
+            console.log('💰 Employee hourly rate:', rate);
+            return rate > 0 ? rate : 15; // Ensure positive rate
+        } catch (error) {
+            console.warn('Error getting hourly rate, using default:', error);
+            return 15;
+        }
     }
 
     /**
@@ -727,9 +839,34 @@ class EmployeeController {
             const statusClass = this.getStatusClass(entry.status);
             const statusIcon = this.getStatusIcon(entry.status);
             
-            // Handle different field naming conventions
-            const clockIn = entry.clockIn || entry.timeIn || entry.clock_in || '--:--';
-            const clockOut = entry.clockOut || entry.timeOut || entry.clock_out || '--:--';
+            // Debug: Log the entry structure to identify field names
+            console.log('📋 Entry data structure:', {
+                date: entry.date,
+                status: entry.status,
+                fields: Object.keys(entry),
+                clockIn_variants: {
+                    clockIn: entry.clockIn,
+                    timeIn: entry.timeIn,
+                    clock_in: entry.clock_in,
+                    time_in: entry.time_in,
+                    check_in: entry.check_in
+                },
+                clockOut_variants: {
+                    clockOut: entry.clockOut,
+                    timeOut: entry.timeOut,
+                    clock_out: entry.clock_out,
+                    time_out: entry.time_out,
+                    check_out: entry.check_out
+                }
+            });
+            
+            // Handle different field naming conventions with comprehensive fallbacks
+            const clockIn = entry.clockIn || entry.timeIn || entry.clock_in || entry.time_in || entry.check_in;
+            const clockOut = entry.clockOut || entry.timeOut || entry.clock_out || entry.time_out || entry.check_out;
+            
+            // Format time values properly
+            const formattedClockIn = this.formatTimeValue(clockIn);
+            const formattedClockOut = this.formatTimeValue(clockOut);
             const regularHours = entry.hours || entry.hoursWorked || entry.regularHours || '0';
             const overtimeHours = entry.overtimeHours || entry.overtime_hours || '0';
             
@@ -749,11 +886,11 @@ class EmployeeController {
                         <div class="entry-times">
                             <div class="time-item">
                                 <span class="time-label">In:</span>
-                                <span class="time-value">${clockIn}</span>
+                                <span class="time-value">${formattedClockIn}</span>
                             </div>
                             <div class="time-item">
                                 <span class="time-label">Out:</span>
-                                <span class="time-value">${clockOut}</span>
+                                <span class="time-value">${formattedClockOut}</span>
                             </div>
                         </div>
                         
@@ -946,6 +1083,31 @@ class EmployeeController {
     }
 
     /**
+     * Refresh payroll data cards with latest information
+     */
+    async refreshPayrollData() {
+        try {
+            console.log('🔄 Refreshing payroll data...');
+            
+            // Reload attendance data to get latest information
+            await this.loadAttendanceData();
+            
+            // Recalculate personal stats
+            if (this.attendanceData && this.attendanceData.length > 0) {
+                this.personalStats = this.calculatePersonalStats(this.attendanceData);
+                console.log('📊 Updated personal stats:', this.personalStats);
+            }
+            
+            // Re-render all payroll cards
+            this.initializePayrollCards();
+            
+            console.log('✅ Payroll data refreshed successfully');
+        } catch (error) {
+            console.error('❌ Error refreshing payroll data:', error);
+        }
+    }
+
+    /**
      * Render monthly earnings card
      */
     renderMonthlyEarnings() {
@@ -956,6 +1118,8 @@ class EmployeeController {
         }
 
         console.log('📊 Rendering monthly earnings...');
+        console.log('📊 Current attendance data:', this.attendanceData?.length || 0, 'records');
+        console.log('📊 Current user data:', this.currentUser?.employee);
 
         // Ensure we have personal stats or provide defaults
         if (!this.personalStats || !this.personalStats.hours) {
@@ -976,13 +1140,24 @@ class EmployeeController {
         }
 
         const stats = this.personalStats.hours;
-        const hourlyRate = this.currentUser?.employee?.hourlyRate || 15;
+        
+        // Enhanced hourly rate retrieval with multiple field support
+        const hourlyRate = this.getEmployeeHourlyRate();
         const overtimeRate = hourlyRate * 1.5;
 
         // Calculate earnings with safe defaults
         const regularPay = (stats.totalRegularHours || 0) * hourlyRate;
         const overtimePay = (stats.totalOvertimeHours || 0) * overtimeRate;
         const totalEarnings = regularPay + overtimePay;
+
+        console.log('📊 Earnings calculation:', { 
+            regularHours: stats.totalRegularHours,
+            overtimeHours: stats.totalOvertimeHours,
+            hourlyRate,
+            regularPay,
+            overtimePay,
+            totalEarnings
+        });
 
         container.innerHTML = `
             <div class="earnings-card">
@@ -1038,7 +1213,9 @@ class EmployeeController {
         }
 
         const stats = this.personalStats.hours;
-        const hourlyRate = this.currentUser?.employee?.hourlyRate || 15;
+        
+        // Enhanced hourly rate retrieval
+        const hourlyRate = this.getEmployeeHourlyRate();
         const overtimeRate = hourlyRate * 1.5;
 
         container.innerHTML = `
@@ -1105,7 +1282,9 @@ class EmployeeController {
         }
 
         const stats = this.personalStats;
-        const hourlyRate = this.currentUser?.employee?.hourlyRate || 15;
+        
+        // Enhanced hourly rate retrieval
+        const hourlyRate = this.getEmployeeHourlyRate();
         
         // Calculate monthly projection (assuming 22 working days)
         const workingDaysInMonth = 22;
@@ -2116,6 +2295,30 @@ class EmployeeController {
             default:
                 return date.toLocaleDateString('en-CA'); // YYYY-MM-DD format
         }
+    }
+
+    /**
+     * Format time value for display
+     */
+    formatTimeValue(timeValue) {
+        if (!timeValue || timeValue === '' || timeValue === null || timeValue === undefined) {
+            return '--:--';
+        }
+        
+        // If it's already in HH:MM format, return as is
+        if (typeof timeValue === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(timeValue)) {
+            // Convert HH:MM:SS to HH:MM if needed
+            return timeValue.split(':').slice(0, 2).join(':');
+        }
+        
+        // If it's a Date object or timestamp
+        if (timeValue instanceof Date || (!isNaN(Date.parse(timeValue)))) {
+            const date = new Date(timeValue);
+            return date.toTimeString().slice(0, 5); // HH:MM format
+        }
+        
+        // Return as is if we can't format it
+        return String(timeValue);
     }
 
     /**

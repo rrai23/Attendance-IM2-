@@ -199,6 +199,9 @@ class ThemeManager {
             root.style.setProperty('--accent-light', colors.light);
             root.style.setProperty('--accent-hover', colors.hover);
             console.log(`🎨 Applied accent colors for "${this.currentPage}":`, colors.primary);
+            
+            // Mark theme as loaded to prevent FOUC
+            document.body.classList.add('theme-loaded');
         } else {
             console.warn(`🎨 No accent colors found for page: "${this.currentPage}"`);
         }

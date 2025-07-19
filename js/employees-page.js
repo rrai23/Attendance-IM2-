@@ -177,19 +177,53 @@ class EmployeesPageManager {
         }
 
         // Populate manager dropdown in modal
+        this.populateManagerDropdown();
+    }
+
+    /**
+     * Populate the manager dropdown with current manager/admin employees
+     */
+    populateManagerDropdown() {
         const managerSelect = document.getElementById('manager');
-        if (managerSelect) {
-            // Clear existing options except the first one (Select Manager)
-            const firstOption = managerSelect.firstElementChild;
-            managerSelect.innerHTML = '';
-            if (firstOption) managerSelect.appendChild(firstOption);
-            
-            const managers = this.employees.filter(emp => emp.role === 'manager' || emp.role === 'admin');
-            managers.forEach(manager => {
-                const option = new Option(`${manager.firstName} ${manager.lastName}`, `${manager.firstName} ${manager.lastName}`);
-                managerSelect.appendChild(option);
-            });
+        if (!managerSelect) {
+            console.warn('Manager dropdown element not found');
+            return;
         }
+
+        // Clear existing options except the first one (Select Manager)
+        const firstOption = managerSelect.firstElementChild;
+        managerSelect.innerHTML = '';
+        if (firstOption) managerSelect.appendChild(firstOption);
+
+        if (!Array.isArray(this.employees) || this.employees.length === 0) {
+            console.warn('No employees data available for manager dropdown');
+            return;
+        }
+
+        const managers = this.employees.filter(emp => emp.role === 'manager' || emp.role === 'admin');
+
+        if (managers.length === 0) {
+            console.warn('No managers or admins found in employee data');
+            // Add a message option
+            const noManagersOption = new Option('No managers available', '');
+            noManagersOption.disabled = true;
+            managerSelect.appendChild(noManagersOption);
+            return;
+        }
+
+        managers.forEach(manager => {
+            const managerName = this.getEmployeeName(manager);
+            const managerId = manager.employee_id || manager.id || manager.employeeCode;
+            
+            if (managerName && managerName !== 'Unknown Employee') {
+                const option = new Option(managerName, managerId);
+                managerSelect.appendChild(option);
+            } else {
+                console.warn('Skipping manager with invalid name:', manager);
+            }
+        });
+
+        console.log(`Manager dropdown populated with ${managers.length} managers`);
     }
 
     setupEventListeners() {
@@ -610,6 +644,10 @@ class EmployeesPageManager {
 
         if (employee) {
             title.textContent = 'Edit Employee';
+            
+            // Refresh the manager dropdown with current employee data
+            this.populateManagerDropdown();
+            
             this.populateForm(employee);
             
             // Show employee code field for editing (but keep it readonly)
@@ -623,6 +661,9 @@ class EmployeesPageManager {
             title.textContent = 'Add Employee';
             form.reset();
             document.getElementById('employeeId').value = '';
+            
+            // Refresh the manager dropdown AFTER form reset
+            this.populateManagerDropdown();
             
             // Hide employee code field for new employees (will be auto-generated)
             if (employeeCodeGroup) {

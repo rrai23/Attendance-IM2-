@@ -21,9 +21,6 @@
     <link rel="preload" href="/js/theme.js" as="script">
 </head>
 <body>
-    <!-- Skip Navigation Links -->
-    <a href="#main-content" class="skip-link">Skip to main content</a>
-    <a href="#sidebar" class="skip-link">Skip to navigation</a>
 
     <!-- Mobile Hamburger Menu Button -->
     <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
@@ -1400,26 +1397,6 @@
             margin-top: 1rem;
             color: var(--text-secondary);
             font-size: 0.9rem;
-        }
-
-        /* Skip Navigation Links */
-        .skip-link {
-            position: absolute;
-            top: -40px;
-            left: 6px;
-            background: var(--accent-primary);
-            color: var(--color-white);
-            padding: 8px;
-            text-decoration: none;
-            border-radius: var(--radius-sm);
-            z-index: 10000;
-            font-size: var(--font-size-sm);
-            font-weight: var(--font-weight-medium);
-            transition: top var(--transition-fast);
-        }
-
-        .skip-link:focus {
-            top: 6px;
         }
 
         /* Mobile Floating Action Button */
