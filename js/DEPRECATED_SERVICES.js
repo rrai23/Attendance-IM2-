@@ -10,11 +10,13 @@
 console.warn(`
 🚨 DEPRECATION NOTICE 🚨
 
-The following services have been deprecated and replaced by DirectFlow:
+The following services have been REMOVED and replaced by DirectFlow:
 
-❌ DEPRECATED:
-- unified-data-service.js
-- unified-employee-manager.js  
+❌ REMOVED (moved to js/DEPRECATED/):
+- unified-data-service.js → js/DEPRECATED/
+- unified-employee-manager.js → js/DEPRECATED/
+- unified-employee-manager-auth-only.js → js/DEPRECATED/
+- unified-account-manager.js → js/DEPRECATED/
 - backend-api-service.js
 - data-manager.js
 - All localStorage-based services
@@ -22,19 +24,22 @@ The following services have been deprecated and replaced by DirectFlow:
 
 ✅ REPLACEMENT:
 - js/directflow.js (Main service)
-- js/directflow-compatibility.js (Backward compatibility)
+- js/directflow-auth.js (Authentication)
+- js/employee.js (Employee controller with DirectFlow)
 
 🔄 MIGRATION GUIDE:
 
-OLD WAY:
+OLD WAY (NO LONGER AVAILABLE):
 window.dataService.getEmployees()
 window.unifiedEmployeeManager.getAttendanceRecords()
+window.unifiedAccountManager.authenticate()
 window.backendApiService.syncToBackend()
 
 NEW WAY:
-window.directFlow.getEmployees()
-window.directFlow.getAttendanceRecords()
-window.directFlow.syncData()
+window.directFlowAuth.apiRequest('/api/employees')
+window.employeeController.loadAttendanceData()
+window.directFlowAuth.authenticate()
+DirectFlow backend API endpoints
 
 📋 BENEFITS OF DIRECTFLOW:
 - Pure backend communication (no localStorage)

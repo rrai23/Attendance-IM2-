@@ -1754,16 +1754,17 @@ if (typeof module !== 'undefined' && module.exports) {
 
 // Wait for dependencies to be ready before initializing
 function initializeWhenReady() {
-    // 🎯 CRITICAL FIX: Check for unifiedEmployeeManager instead of UnifiedDataService
-    if (typeof window.unifiedEmployeeManager !== 'undefined' && window.unifiedEmployeeManager.initialized) {
+    // DEPRECATED: UnifiedEmployeeManager removed - use DirectFlow authentication
+    console.warn('Analytics: UnifiedEmployeeManager has been deprecated - use DirectFlow authentication instead');
+    
+    // Check for DirectFlow authentication instead
+    if (typeof window.directFlowAuth !== 'undefined' && window.directFlowAuth.isAuthenticated()) {
         if (!analyticsController.isInitialized) {
-            console.log('Analytics: UnifiedEmployeeManager detected, initializing...');
+            console.log('Analytics: DirectFlow authentication detected, initializing...');
             analyticsController.init().catch(console.error);
         }
     } else {
-        console.log('Analytics waiting for dependencies... unifiedEmployeeManager:', 
-                   typeof window.unifiedEmployeeManager, 
-                   'initialized:', window.unifiedEmployeeManager?.initialized);
+        console.log('Analytics waiting for DirectFlow authentication...');
         setTimeout(initializeWhenReady, 100);
     }
 }

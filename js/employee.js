@@ -316,6 +316,26 @@ class EmployeeController {
 
         // Theme events
         document.addEventListener('themechange', (e) => this.handleThemeChange(e.detail));
+        
+        // Security form event listeners
+        this.setupSecurityEventListeners();
+    }
+    
+    /**
+     * Setup security-related event listeners
+     */
+    setupSecurityEventListeners() {
+        // Username change form
+        const usernameForm = document.getElementById('username-form');
+        if (usernameForm) {
+            usernameForm.addEventListener('submit', (e) => this.handleUsernameChange(e));
+        }
+        
+        // Password change form
+        const passwordForm = document.getElementById('password-form');
+        if (passwordForm) {
+            passwordForm.addEventListener('submit', (e) => this.handlePasswordChange(e));
+        }
     }
 
     /**
@@ -2229,6 +2249,301 @@ class EmployeeController {
         // Update payroll cards if theme changes
         this.initializePayrollCards();
     }
+    
+    // === SECURITY METHODS ===
+    
+    /**
+     * Load security information for current user
+     */
+    async loadSecurityInfo() {
+        try {
+            console.log('Loading security information...');
+            
+            // Update current username field
+            const currentUsernameInput = document.getElementById('current-username');
+            if (currentUsernameInput && this.currentUser) {
+                currentUsernameInput.value = this.currentUser.username || this.currentUser.employee_id || '';
+            }
+            
+            // Load account information from backend
+            if (this.currentUser && this.currentUser.employee_id) {
+                const response = await this.apiRequest(`accounts/${this.currentUser.employee_id}`);
+                
+                if (response.success && response.data && response.data.account) {
+                    const account = response.data.account;
+                    
+                    // Update account created date
+                    const accountCreatedElement = document.getElementById('account-created');
+                    if (accountCreatedElement && account.created_at) {
+                        accountCreatedElement.textContent = new Date(account.created_at).toLocaleDateString();
+                    }
+                    
+                    // Update last login info if available
+                    const lastLoginElement = document.getElementById('last-login');
+                    if (lastLoginElement && account.last_login) {
+                        lastLoginElement.textContent = new Date(account.last_login).toLocaleDateString();
+                    }
+                }
+            }
+            
+            console.log('Security information loaded successfully');
+            
+        } catch (error) {
+            console.error('Failed to load security info:', error);
+        }
+    }
+    
+    /**
+     * Handle username change form submission
+     */
+    async handleUsernameChange(event) {
+        event.preventDefault();
+        
+        try {
+            const formData = new FormData(event.target);
+            const newUsername = formData.get('new-username');
+            const confirmPassword = formData.get('confirm-password-username');
+            
+            // Debug logging
+            console.log('🔧 Username change debug:');
+            console.log('- Raw newUsername:', newUsername);
+            console.log('- Trimmed newUsername:', newUsername ? newUsername.trim() : 'null');
+            console.log('- Trimmed length:', newUsername ? newUsername.trim().length : 0);
+            console.log('- Has confirmPassword:', !!confirmPassword);
+            
+            // Validation
+            if (!newUsername || newUsername.trim().length < 3) {
+                console.error('❌ Username validation failed - length:', newUsername ? newUsername.trim().length : 0);
+                this.showError('Username must be at least 3 characters long');
+                return;
+            }
+            
+            if (!confirmPassword) {
+                this.showError('Please enter your current password to confirm');
+                return;
+            }
+            
+            if (!this.currentUser || !this.currentUser.employee_id) {
+                this.showError('User information not available');
+                return;
+            }
+            
+            this.showButtonLoading('username-form', true);
+            
+            // Make API request to change username
+            const response = await this.apiRequest(`accounts/${this.currentUser.employee_id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: newUsername.trim(),
+                    currentPassword: confirmPassword
+                })
+            });
+            
+            if (response.success) {
+                this.showSuccess('Username updated successfully!');
+                
+                // Update current user data
+                if (this.currentUser) {
+                    this.currentUser.username = newUsername.trim();
+                }
+                
+                // Clear form
+                event.target.reset();
+                
+                // Refresh security info with a small delay to ensure DOM is ready
+                setTimeout(async () => {
+                    await this.loadSecurityInfo();
+                }, 100);
+                
+            } else {
+                this.showError(response.message || 'Failed to update username');
+            }
+            
+        } catch (error) {
+            console.error('Username change error:', error);
+            this.showError('Failed to update username. Please try again.');
+        } finally {
+            this.showButtonLoading('username-form', false);
+        }
+    }
+    
+    /**
+     * Handle password change form submission
+     */
+    async handlePasswordChange(event) {
+        event.preventDefault();
+        
+        try {
+            const formData = new FormData(event.target);
+            const currentPassword = formData.get('current-password');
+            const newPassword = formData.get('new-password');
+            const confirmPassword = formData.get('confirm-password');
+            
+            // Validation
+            if (!currentPassword) {
+                this.showError('Please enter your current password');
+                return;
+            }
+            
+            if (!newPassword || newPassword.length < 6) {
+                this.showError('New password must be at least 6 characters long');
+                return;
+            }
+            
+            if (newPassword !== confirmPassword) {
+                this.showError('New passwords do not match');
+                return;
+            }
+            
+            if (!this.currentUser || !this.currentUser.employee_id) {
+                this.showError('User information not available');
+                return;
+            }
+            
+            this.showButtonLoading('password-form', true);
+            
+            // Make API request to change password
+            const response = await this.apiRequest(`accounts/${this.currentUser.employee_id}/password`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    currentPassword,
+                    newPassword
+                })
+            });
+            
+            if (response.success) {
+                this.showSuccess('Password updated successfully! You will need to log in again.');
+                
+                // Clear form
+                event.target.reset();
+                
+                // Show logout message and redirect after a delay
+                setTimeout(() => {
+                    if (window.directFlowAuth && typeof window.directFlowAuth.logout === 'function') {
+                        window.directFlowAuth.logout();
+                    } else {
+                        window.location.href = '/login.html';
+                    }
+                }, 2000);
+                
+            } else {
+                this.showError(response.message || 'Failed to update password');
+            }
+            
+        } catch (error) {
+            console.error('Password change error:', error);
+            this.showError('Failed to update password. Please try again.');
+        } finally {
+            this.showButtonLoading('password-form', false);
+        }
+    }
+    
+    /**
+     * Make authenticated API request
+     */
+    async apiRequest(endpoint, options = {}) {
+        try {
+            const authService = this.getAuthService();
+            if (!authService || !authService.isAuthenticated()) {
+                throw new Error('Not authenticated');
+            }
+            
+            const token = authService.getToken();
+            if (!token) {
+                throw new Error('No authentication token available');
+            }
+            
+            const url = endpoint.startsWith('/') ? endpoint : `/api/${endpoint}`;
+            
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    ...options.headers
+                }
+            });
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                    // Token expired or invalid
+                    if (authService.logout) {
+                        authService.logout();
+                    }
+                    throw new Error('Authentication failed');
+                }
+                throw new Error(`API request failed: ${response.status}`);
+            }
+            
+            return await response.json();
+            
+        } catch (error) {
+            console.error('API request error:', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Navigate to a specific section (called from sidebar)
+     */
+    navigateToSection(section) {
+        if (section === 'security') {
+            // Hide main content sections
+            const pageHeader = document.querySelector('.page-header');
+            const quickActions = document.querySelector('.quick-actions');
+            const tilesGrids = document.querySelectorAll('.tiles-grid');
+            const chartsSection = document.querySelector('.charts-section');
+            const securitySection = document.getElementById('security-section');
+            
+            // Hide main sections
+            if (pageHeader) pageHeader.style.display = 'none';
+            if (quickActions) quickActions.style.display = 'none';
+            
+            tilesGrids.forEach(grid => {
+                if (grid && !grid.closest('#security-section')) {
+                    grid.style.display = 'none';
+                }
+            });
+            
+            if (chartsSection) chartsSection.style.display = 'none';
+            
+            // Show security section
+            if (securitySection) {
+                securitySection.style.display = 'block';
+                this.loadSecurityInfo();
+            }
+            
+        } else {
+            // Show main sections for default view
+            const pageHeader = document.querySelector('.page-header');
+            const quickActions = document.querySelector('.quick-actions');
+            const tilesGrids = document.querySelectorAll('.tiles-grid');
+            const chartsSection = document.querySelector('.charts-section');
+            const securitySection = document.getElementById('security-section');
+            
+            if (pageHeader) pageHeader.style.display = 'block';
+            if (quickActions) quickActions.style.display = 'block';
+            
+            tilesGrids.forEach(grid => {
+                if (grid && !grid.closest('#security-section')) {
+                    grid.style.display = 'block';
+                }
+            });
+            
+            if (chartsSection) chartsSection.style.display = 'block';
+            
+            // Hide security section
+            if (securitySection) {
+                securitySection.style.display = 'none';
+            }
+        }
+    }
 
     /**
      * Cleanup resources
@@ -2260,6 +2575,8 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = employeeController;
 } else if (typeof window !== 'undefined') {
     window.employeeController = employeeController;
+    // Also create employeePage object for navigation compatibility
+    window.employeePage = employeeController;
 }
 
 // Auto-initialize when DOM is ready

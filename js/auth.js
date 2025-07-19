@@ -134,19 +134,8 @@ class AuthService {
                 console.log('Backend authentication failed, trying fallback:', backendError.message);
             }
 
-            // Second, try unified account manager if available
-            if (window.unifiedAccountManager && window.unifiedAccountManager.initialized) {
-                console.log('Using unified account manager for authentication');
-                const result = await window.unifiedAccountManager.authenticate(username, password);
-                if (result.success) {
-                    return {
-                        success: true,
-                        user: result.user,
-                        token: result.token
-                    };
-                }
-                console.log('Unified account manager authentication failed, trying fallback');
-            }
+            // Unified managers removed - now using DirectFlow authentication exclusively
+            console.log('Authentication relies on DirectFlow backend API only');
 
             // Third, fallback: Check default credentials
             for (const [key, creds] of Object.entries(this.defaultCredentials)) {
@@ -243,17 +232,8 @@ class AuthService {
             this.triggerAuthEvent('login', user);
             console.log('AuthService: Triggered login event');
 
-            // Retry UnifiedEmployeeManager initialization after successful authentication
-            if (window.unifiedEmployeeManager && !window.unifiedEmployeeManager.initialized) {
-                console.log('AuthService: Retrying UnifiedEmployeeManager initialization after login...');
-                setTimeout(async () => {
-                    try {
-                        await window.unifiedEmployeeManager.retryInitialization();
-                    } catch (error) {
-                        console.warn('AuthService: UnifiedEmployeeManager retry failed:', error.message);
-                    }
-                }, 100);
-            }
+            // UnifiedEmployeeManager removed - no longer needed with DirectFlow
+            console.log('AuthService: Using DirectFlow authentication - no unified manager initialization required');
 
             const redirectUrl = this.getRedirectUrl(user.role);
             console.log('AuthService: Redirect URL:', redirectUrl);
@@ -642,7 +622,7 @@ class AuthService {
         }
     }
 
-    // Change password (enhanced with unified account manager support)
+    // Change password (using DirectFlow backend API)
     async changePassword(currentPassword, newPassword) {
         if (!this.isAuthenticated()) {
             throw new Error('Not authenticated');
@@ -651,22 +631,9 @@ class AuthService {
         try {
             const user = this.getCurrentUser();
             
-            // Try unified account manager first
-            if (window.unifiedAccountManager && window.unifiedAccountManager.initialized) {
-                console.log('Using unified account manager for password change');
-                const result = await window.unifiedAccountManager.changePassword(
-                    user.username, 
-                    currentPassword, 
-                    newPassword
-                );
-                
-                if (result.success) {
-                    // Trigger password change event
-                    this.triggerAuthEvent('password_changed', { username: user.username });
-                    return result;
-                }
-            }
-
+            // UnifiedAccountManager removed - use DirectFlow backend API for password changes
+            console.log('Password change requests now handled by DirectFlow backend API');
+            
             // Fallback for demo mode
             if (typeof dataService !== 'undefined') {
                 // Mock implementation - in production this would be a secure API call
@@ -688,24 +655,8 @@ class AuthService {
         }
 
         try {
-            // Use unified account manager if available
-            if (window.unifiedAccountManager && window.unifiedAccountManager.initialized) {
-                console.log('Using unified account manager for password reset');
-                const result = await window.unifiedAccountManager.resetPassword(
-                    username, 
-                    newPassword, 
-                    forceChange
-                );
-                
-                if (result.success) {
-                    // Trigger password reset event
-                    this.triggerAuthEvent('password_reset', { 
-                        username: username,
-                        resetBy: this.getCurrentUser().username
-                    });
-                    return result;
-                }
-            }
+            // UnifiedAccountManager removed - use DirectFlow backend API for password reset
+            console.log('Password reset requests now handled by DirectFlow backend API');
 
             return { success: false, message: 'Password reset not available' };
         } catch (error) {
@@ -714,9 +665,10 @@ class AuthService {
         }
     }
 
-    // Get account manager instance (for admin interfaces)
+    // Get account manager instance - DEPRECATED (unified managers removed)
     getAccountManager() {
-        return window.unifiedAccountManager;
+        console.warn('getAccountManager() deprecated - unified managers removed');
+        return null;
     }
 
     // Check if password change is required
@@ -724,41 +676,22 @@ class AuthService {
         const user = this.getCurrentUser();
         if (!user) return false;
 
-        // Check unified account manager
-        if (window.unifiedAccountManager && window.unifiedAccountManager.initialized) {
-            const account = window.unifiedAccountManager.getAccount(user.username);
-            return account ? account.mustChangePassword : false;
-        }
-
+        // Unified account manager removed - implement via DirectFlow backend API if needed
+        console.log('Password change requirements now handled by DirectFlow backend API');
         return false;
     }
 
-    // Create account for new employee (admin function)
+    // Create account for new employee (admin function) - DEPRECATED
     async createEmployeeAccount(employee, password = null) {
         if (!this.isAuthenticated() || !this.isAdmin()) {
             throw new Error('Not authorized to create accounts');
         }
 
         try {
-            // Use unified account manager
-            if (window.unifiedAccountManager && window.unifiedAccountManager.initialized) {
-                console.log('Creating account for new employee:', employee.id);
-                
-                // If specific password provided, update it after account creation
-                const account = await window.unifiedAccountManager.createAccountForEmployee(employee);
-                
-                if (password && account) {
-                    await window.unifiedAccountManager.resetPassword(account.username, password, false);
-                }
-                
-                return {
-                    success: true,
-                    account: account,
-                    message: 'Employee account created successfully'
-                };
-            }
-
-            return { success: false, message: 'Account creation not available' };
+            // UnifiedAccountManager removed - use DirectFlow backend API for account creation
+            console.log('Employee account creation now handled by DirectFlow backend API');
+            
+            return { success: false, message: 'Account creation not available - use DirectFlow backend API' };
         } catch (error) {
             console.error('Error creating employee account:', error);
             throw error;

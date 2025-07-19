@@ -53,30 +53,24 @@ class GlobalSystemSync {
         
         while (waited < maxWait) {
             try {
-                // Check if DirectFlow exists (try both window.DirectFlow and window.directFlow)
-                const directFlow = window.DirectFlow || window.directFlow;
+                // Check if DirectFlowAuth exists and is initialized
+                const directFlowAuth = window.directFlowAuth;
                 
-                if (directFlow && directFlow.initialized) {
-                    console.log('✅ DirectFlow is initialized');
-                    this.directFlow = directFlow;
+                if (directFlowAuth && directFlowAuth.initialized) {
+                    console.log('✅ DirectFlowAuth is initialized');
+                    this.directFlow = directFlowAuth;
                     return;
                 }
                 
-                // If DirectFlow exists but not initialized, try to reinitialize
-                if (directFlow && typeof directFlow.reinitialize === 'function') {
-                    console.log('🔄 DirectFlow found but not initialized, attempting reinitialize...');
-                    const success = await directFlow.reinitialize();
-                    if (success) {
-                        console.log('✅ DirectFlow reinitialize successful');
-                        this.directFlow = directFlow;
-                        return;
-                    }
+                // If DirectFlowAuth exists but not initialized, wait for it
+                if (directFlowAuth) {
+                    console.log('🔄 DirectFlowAuth found but not initialized, waiting...');
+                } else {
+                    console.log(`⏳ DirectFlowAuth not ready, waited ${waited/1000}s/${maxWait/1000}s`);
                 }
                 
-                console.log(`⏳ DirectFlow not ready, waited ${waited/1000}s/${maxWait/1000}s`);
-                
             } catch (error) {
-                console.error(`❌ Error checking DirectFlow (${waited/1000}s):`, error);
+                console.error(`❌ Error checking DirectFlowAuth (${waited/1000}s):`, error);
             }
             
             await new Promise(resolve => setTimeout(resolve, interval));
@@ -89,20 +83,22 @@ class GlobalSystemSync {
         const isPublicPage = publicPages.some(page => currentPage.endsWith(page)) || currentPage === '/';
         
         if (isPublicPage) {
-            console.log('Global System Sync: DirectFlow not initialized on public page - continuing with limited functionality');
+            console.log('Global System Sync: DirectFlowAuth not initialized on public page - continuing with limited functionality');
             return;
         }
         
-        console.error('❌ DirectFlow initialization timeout after 30 seconds');
-        throw new Error('DirectFlow initialization timeout - max attempts reached, services not available');
+        console.error('❌ DirectFlowAuth initialization timeout after 30 seconds');
+        throw new Error('DirectFlowAuth initialization timeout - max attempts reached, services not available');
     }
 
     /**
      * Set up global event listeners for system-wide events
      */
     setupGlobalEventListeners() {
-        // Only set up DirectFlow events if DirectFlow is available
-        if (this.directFlow) {
+        // Only set up DirectFlow events if DirectFlow is available and has event support
+        if (this.directFlow && typeof this.directFlow.addEventListener === 'function') {
+            console.log('Setting up DirectFlow event listeners...');
+            
             // Listen to DirectFlow events
             this.directFlow.addEventListener('employeeDeleted', (data) => {
                 this.broadcastToAllComponents('employeeDeleted', data);
@@ -127,6 +123,8 @@ class GlobalSystemSync {
             this.directFlow.addEventListener('dataSync', (data) => {
                 this.broadcastToAllComponents('dataSync', data);
             });
+        } else {
+            console.log('DirectFlow event listeners not available - using alternative sync methods');
         }
 
         // Listen to system-wide DOM events

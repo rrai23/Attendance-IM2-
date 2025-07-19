@@ -47,6 +47,11 @@ class ThemeManager {
                 light: 'rgba(102, 126, 234, 0.1)',
                 hover: 'rgba(102, 126, 234, 0.8)'
             },
+            security: {
+                primary: '#ff3b30',
+                light: 'rgba(255, 59, 48, 0.1)',
+                hover: 'rgba(255, 59, 48, 0.8)'
+            },
             login: {
                 primary: '#007aff',
                 light: 'rgba(0, 122, 255, 0.1)',

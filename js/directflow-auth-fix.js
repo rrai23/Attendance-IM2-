@@ -5,13 +5,8 @@ console.log('🔧 DirectFlow Authentication Fix initializing...');
 
 // Function to sync DirectFlow with auth service
 function syncDirectFlowAuth() {
-    if (typeof window.directFlow === 'undefined') {
-        console.warn('DirectFlow not available');
-        return;
-    }
-    
     if (typeof window.directFlowAuth === 'undefined') {
-        console.warn('DirectFlow Auth service not available');
+        console.log('DirectFlowAuth service not yet available');
         return;
     }
     
@@ -22,17 +17,10 @@ function syncDirectFlowAuth() {
     if (isAuthenticated) {
         // Get the auth token from DirectFlow Auth
         const token = window.directFlowAuth.getToken();
-        console.log('Auth token from DirectFlow Auth:', token ? 'Present' : 'Missing');
+        console.log('Auth token from DirectFlowAuth:', token ? 'Present' : 'Missing');
         
-        if (token && !window.directFlow.initialized) {
-            console.log('✅ DirectFlow Auth has token, trying to initialize DirectFlow');
-            
-            // Retry initialization if DirectFlow wasn't initialized
-            if (typeof window.directFlow.reinitialize === 'function') {
-                window.directFlow.reinitialize();
-            }
-        } else if (!token) {
-            console.log('⚠️ DirectFlow Auth says authenticated but no token found');
+        if (!token) {
+            console.log('⚠️ DirectFlowAuth says authenticated but no token found');
             attemptAutoLogin();
         }
     } else {
@@ -120,18 +108,23 @@ function initializeAuthSync() {
     function checkAndInit() {
         attempts++;
         
-        if (typeof window.directFlow !== 'undefined' && typeof window.directFlowAuth !== 'undefined') {
-            console.log('✅ Both DirectFlow services available - setting up auth sync');
+        // Only check for directFlowAuth since we don't use directFlow anymore
+        if (typeof window.directFlowAuth !== 'undefined' && window.directFlowAuth.initialized) {
+            console.log('✅ DirectFlowAuth service available and initialized');
             setupAuthSync();
             return;
         }
         
         if (attempts >= maxAttempts) {
-            console.warn('❌ Max attempts reached - DirectFlow services not available');
-            // Don't block the page, just log the warning
+            console.log('ℹ️ DirectFlowAuth not fully ready yet - continuing with available services');
+            // Still set up sync for what's available
+            if (typeof window.directFlowAuth !== 'undefined') {
+                setupAuthSync();
+            }
             return;
         }
         
+        console.log(`⏳ Waiting for DirectFlowAuth initialization (${attempts}/${maxAttempts})`);
         setTimeout(checkAndInit, 100);
     }
     

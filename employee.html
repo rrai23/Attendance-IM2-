@@ -2963,8 +2963,8 @@
                     });
                 });
 
-                // Security form handlers
-                this.setupSecurityForms();
+                // Security form handlers are now handled by EmployeeController
+                // this.setupSecurityForms(); // Commented out - handled by employee.js
 
                 // Setup mobile menu and UI interactions
                 this.setupMobileInteractions();
@@ -4457,9 +4457,11 @@
                 }
             }
 
-            /**
-             * Setup security form handlers
+            /*
+             * OLD Security form setup - DISABLED
+             * Security forms are now handled by EmployeeController in employee.js
              */
+            /*
             setupSecurityForms() {
                 // Username form
                 const usernameForm = document.getElementById('username-form');
@@ -4473,68 +4475,24 @@
                     passwordForm.addEventListener('submit', (e) => this.handlePasswordChange(e));
                 }
             }
+            */
 
             /**
              * Load current security information
              */
             async loadSecurityInfo() {
-                try {
-                    // Get current user info from multiple sources
-                    let currentUser = this.currentUser;
-                    
-                    // Fallback to auth service if currentUser is not available
-                    if (!currentUser && window.authService && window.authService.isAuthenticated()) {
-                        currentUser = window.authService.getCurrentUser();
-                    }
-                    
-                    // Fallback to localStorage
-                    if (!currentUser) {
-                        const authKey = localStorage.getItem('bricks_auth_user') ? 'bricks_auth_user' : 'currentUser';
-                        const userData = localStorage.getItem(authKey);
-                        if (userData) {
-                            try {
-                                currentUser = JSON.parse(userData);
-                            } catch (error) {
-                                console.warn('Failed to parse user data from localStorage:', error);
-                            }
-                        }
-                    }
-                    
-                    // Update current username field
-                    const currentUsernameInput = document.getElementById('current-username');
-                    if (currentUsernameInput && currentUser && currentUser.username) {
-                        currentUsernameInput.value = currentUser.username;
-                        console.log('Loaded current username:', currentUser.username);
-                    } else {
-                        console.warn('Could not load current username - user data not available');
-                    }
-
-                    // Update security info if account manager is available
-                    if (window.unifiedAccountManager && window.unifiedAccountManager.initialized && currentUser && currentUser.username) {
-                        const account = window.unifiedAccountManager.getAccount(currentUser.username);
-                        if (account) {
-                            const lastPasswordElement = document.getElementById('last-password-change');
-                            const accountCreatedElement = document.getElementById('account-created');
-                            
-                            if (lastPasswordElement) {
-                                lastPasswordElement.textContent = 
-                                    account.passwordChangedAt ? new Date(account.passwordChangedAt).toLocaleDateString() : 'Never';
-                            }
-                            
-                            if (accountCreatedElement) {
-                                accountCreatedElement.textContent = 
-                                    new Date(account.createdAt).toLocaleDateString();
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.error('Failed to load security info:', error);
+                // Delegate to the EmployeeController from employee.js
+                if (window.employeeController && typeof window.employeeController.loadSecurityInfo === 'function') {
+                    await window.employeeController.loadSecurityInfo();
+                } else {
+                    console.warn('EmployeeController not available for security info loading');
                 }
             }
 
             /**
-             * Handle username change
+             * Handle username change - DISABLED (now handled by EmployeeController)
              */
+            /* DISABLED - Security handled by employee.js EmployeeController
             async handleUsernameChange(e) {
                 e.preventDefault();
                 
@@ -4632,10 +4590,12 @@
                     this.showError('Failed to update username: ' + error.message);
                 }
             }
+            */ // End of DISABLED handleUsernameChange method
 
             /**
-             * Handle password change
+             * Handle password change - DISABLED (now handled by EmployeeController)
              */
+            /* DISABLED - Security handled by employee.js EmployeeController  
             async handlePasswordChange(e) {
                 e.preventDefault();
                 
@@ -4691,6 +4651,7 @@
                     this.showError('Failed to update password: ' + error.message);
                 }
             }
+            */ // End of DISABLED handlePasswordChange method
 
             /**
              * Update attendance summary display
@@ -4746,18 +4707,13 @@
                     console.error('❌ EmployeeController not found. Make sure employee.js is loaded.');
                 }
                 
-                // Try to initialize unified account manager
+                // Try to initialize DirectFlow authentication only
                 try {
-                    if (typeof UnifiedAccountManager !== 'undefined') {
-                        // UnifiedAccountManager auto-initializes, just check if it's available
-                        console.log('UnifiedAccountManager is available');
-                        // Note: The account manager will auto-initialize when employee manager is ready
-                    } else {
-                        console.warn('UnifiedAccountManager not available - Security features may be limited');
-                    }
-                } catch (accountError) {
-                    console.error('Failed to access Account Manager:', accountError);
-                    console.log('Continuing without account manager - Security features will be limited');
+                    console.log('DirectFlow authentication system initialized');
+                    // Security features are now handled by EmployeeController in employee.js
+                } catch (authError) {
+                    console.error('Failed to access DirectFlow authentication:', authError);
+                    console.log('Continuing with limited functionality');
                 }
                 
                 // Update current time immediately and then every second
