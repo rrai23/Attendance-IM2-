@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Attendance - Bricks Attendance System</title>
+    <title>Personal</title>
     <meta name="description" content="Employee self-service portal for viewing personal attendance data, time entries, and overtime requests">
     <meta name="robots" content="noindex, nofollow">
     
@@ -266,13 +266,53 @@
                                 <span id="employee-avatar-initial">E</span>
                             </div>
                             <div class="employee-details">
-                                <div class="employee-name" id="employee-name">Employee Name</div>
+                                <div class="employee-name" id="employee-name">Loading...</div>
                                 <div class="employee-meta">
-                                    <span class="employee-id" id="employee-id">ID: emp_001</span>
-                                    <span class="employee-department" id="employee-department">Department</span>
+                                    <span class="employee-id" id="employee-id">ID: ...</span>
+                                    <span class="employee-department" id="employee-department">...</span>
                                 </div>
                             </div>
                         </div>
+                        
+                        <!-- Immediate user info update script -->
+                        <script>
+                        (function() {
+                            // Immediately try to update user info from localStorage
+                            try {
+                                const user = JSON.parse(localStorage.getItem('directflow_user') || '{}');
+                                if (user.firstName || user.lastName || user.username) {
+                                    const firstName = user.firstName || '';
+                                    const lastName = user.lastName || '';
+                                    
+                                    // Only use username as fallback if BOTH firstName and lastName are missing
+                                    let name = '';
+                                    if (firstName || lastName) {
+                                        name = `${firstName} ${lastName}`.trim();
+                                    } else {
+                                        name = user.username || 'Employee';
+                                    }
+                                    
+                                    const department = user.department || 'General';
+                                    const employeeId = user.employee_id || user.id || user.username || 'emp_001';
+                                    
+                                    // Update elements immediately
+                                    const nameEl = document.getElementById('employee-name');
+                                    const deptEl = document.getElementById('employee-department');
+                                    const idEl = document.getElementById('employee-id');
+                                    const avatarEl = document.getElementById('employee-avatar-initial');
+                                    
+                                    if (nameEl) nameEl.textContent = name;
+                                    if (deptEl) deptEl.textContent = department;
+                                    if (idEl) idEl.textContent = `ID: ${employeeId}`;
+                                    if (avatarEl) avatarEl.textContent = name.charAt(0).toUpperCase();
+                                    
+                                    console.log('🚀 Immediate user info updated:', name);
+                                }
+                            } catch (error) {
+                                console.log('Could not immediately update user info:', error);
+                            }
+                        })();
+                        </script>
                         <div class="header-controls">
                             <select class="form-select" id="date-range-select">
                                 <option value="current-month">Current Month</option>
@@ -2748,12 +2788,18 @@
             console.log('DOM loaded, initializing employee page...');
             
             try {
+                // Create EmployeePageController instance if it doesn't exist
+                if (!window.employeeController) {
+                    window.employeeController = new EmployeePageController();
+                    console.log('✅ Created new EmployeePageController instance');
+                }
+                
                 // Use EmployeeController from employee.js instead of inline class
                 if (typeof EmployeeController !== 'undefined' && window.employeeController) {
                     window.employeePage = window.employeeController; // Compatibility reference
-                    console.log('✅ Employee page initialized with EmployeeController from employee.js');
+                    console.log('✅ Employee page initialized with EmployeeController');
                 } else {
-                    console.error('❌ EmployeeController not found. Make sure employee.js is loaded.');
+                    console.error('❌ EmployeeController not found. Using inline EmployeePageController.');
                 }
                 
                 // Handle hash navigation on page load (immediate, no delay)
@@ -3084,7 +3130,8 @@
                     this.currentUser = {
                         id: 'jane.doe',
                         username: 'jane.doe',
-                        name: 'Jane Doe',
+                        firstName: 'Jane',
+                        lastName: 'Doe',
                         email: 'jane.doe@company.com',
                         role: 'employee',
                         department: 'Engineering',
@@ -3106,7 +3153,10 @@
                     
                     // Generate fallback employee ID if none exists
                     if (!this.employeeId) {
-                        this.employeeId = 'emp_' + (this.currentUser.name || 'user').replace(/\s+/g, '').toLowerCase();
+                        const firstName = this.currentUser.firstName || '';
+                        const lastName = this.currentUser.lastName || '';
+                        const nameForId = `${firstName}${lastName}`.replace(/\s+/g, '').toLowerCase() || this.currentUser.username || 'user';
+                        this.employeeId = 'emp_' + nameForId;
                         console.warn('No employee ID found, using generated ID:', this.employeeId);
                     }
 
@@ -3122,7 +3172,8 @@
                     this.currentUser = {
                         id: 'demo.user',
                         username: 'demo.user',
-                        name: 'Demo User',
+                        firstName: 'Demo',
+                        lastName: 'User',
                         email: 'demo@company.com',
                         role: 'employee',
                         department: 'General',
@@ -3200,7 +3251,10 @@
                 const employeeAvatarInitialEl = document.getElementById('employee-avatar-initial');
 
                 if (this.currentUser) {
-                    const name = this.currentUser.name || this.currentUser.fullName || 'Employee';
+                    // Construct full name from firstName and lastName
+                    const firstName = this.currentUser.firstName || '';
+                    const lastName = this.currentUser.lastName || '';
+                    const name = `${firstName} ${lastName}`.trim() || this.currentUser.username || 'Employee';
                     const role = this.currentUser.role || 'Employee';
                     const department = this.currentUser.department || 'General';
                     
@@ -5021,12 +5075,18 @@
             console.log('DOM loaded, initializing employee page...');
             
             try {
+                // Create EmployeePageController instance if it doesn't exist
+                if (!window.employeeController) {
+                    window.employeeController = new EmployeePageController();
+                    console.log('✅ Created new EmployeePageController instance');
+                }
+                
                 // Use EmployeeController from employee.js instead of inline class
                 if (typeof EmployeeController !== 'undefined' && window.employeeController) {
                     window.employeePage = window.employeeController; // Compatibility reference
-                    console.log('✅ Employee page initialized with EmployeeController from employee.js');
+                    console.log('✅ Employee page initialized with EmployeeController');
                 } else {
-                    console.error('❌ EmployeeController not found. Make sure employee.js is loaded.');
+                    console.error('❌ EmployeeController not found. Using inline EmployeePageController.');
                 }
                 
                 // Try to initialize DirectFlow authentication only
@@ -5045,6 +5105,14 @@
                         window.employeePage.updateCurrentTime();
                     }
                 }, 1000);
+
+                // Force user display update to ensure header shows correct name
+                if (window.employeePage && window.employeePage.updateUserDisplay) {
+                    setTimeout(() => {
+                        window.employeePage.updateUserDisplay();
+                        console.log('🔄 Forced user display update');
+                    }, 100);
+                }
 
                 console.log('Employee page initialization completed');
             } catch (error) {
