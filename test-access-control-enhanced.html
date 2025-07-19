@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Control Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .test-link {
+            display: inline-block;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            margin: 10px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        .test-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        .test-link.admin {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+        }
+        .test-link.admin:hover {
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+        }
+        .test-link.manager {
+            background: linear-gradient(135deg, #feca57, #ff9ff3);
+            box-shadow: 0 4px 15px rgba(254, 202, 87, 0.3);
+        }
+        .test-link.manager:hover {
+            box-shadow: 0 6px 20px rgba(254, 202, 87, 0.4);
+        }
+        .info {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border-left: 5px solid #2196f3;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        h2 {
+            color: #666;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        p {
+            line-height: 1.6;
+            color: #666;
+        }
+        .status-indicator {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status-success {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+        .status-warning {
+            background: #fff8e1;
+            color: #f57c00;
+        }
+        .expected-results {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .expected-results h4 {
+            margin-top: 0;
+            color: #495057;
+        }
+        .expected-results ul {
+            margin-bottom: 0;
+        }
+        .expected-results li {
+            margin: 8px 0;
+            color: #6c757d;
+        }
+        .role-section {
+            background: #fff;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        .role-section h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        .note {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔐 Access Control System Test</h1>
+        
+        <div class="info">
+            <strong>Purpose:</strong> Test the enhanced role-based access control system with the new blurred background modal for unauthorized access attempts.
+        </div>
+
+        <div class="note">
+            <strong>⚠️ Important:</strong> This test will show you different access levels. If you're not an admin/manager, you'll see the new access denied modal with blurred background.
+        </div>
+
+        <h2>Test Links by Access Level</h2>
+
+        <div class="role-section">
+            <h3>🔴 Admin Only Pages</h3>
+            <p>These pages require admin privileges:</p>
+            <a href="dashboard.html" class="test-link admin">🏠 Dashboard</a>
+            <a href="payroll.html" class="test-link admin">💰 Payroll</a>
+            <a href="settings.html" class="test-link admin">⚙️ Settings</a>
+        </div>
+
+        <div class="role-section">
+            <h3>🟡 Manager+ Pages</h3>
+            <p>These pages require manager or admin privileges:</p>
+            <a href="employees.html" class="test-link manager">👥 Employees</a>
+            <a href="employee-management.html" class="test-link manager">📋 Employee Management</a>
+            <a href="analytics.html" class="test-link manager">📊 Analytics</a>
+        </div>
+
+        <div class="role-section">
+            <h3>🟢 Employee+ Pages</h3>
+            <p>These pages are accessible to all authenticated users:</p>
+            <a href="employee.html" class="test-link">👤 My Attendance</a>
+            <a href="employee.html#security" class="test-link">🔐 Security Settings</a>
+        </div>
+
+        <h2>Expected Results</h2>
+        <div class="expected-results">
+            <h4>✅ If you have proper access:</h4>
+            <ul>
+                <li><span class="status-success">✅ Normal Navigation</span> - Page loads normally</li>
+                <li><span class="status-success">✅ Content Visible</span> - All page content is accessible</li>
+                <li><span class="status-success">✅ No Redirects</span> - Stays on the requested page</li>
+            </ul>
+        </div>
+
+        <div class="expected-results">
+            <h4>❌ If you DON'T have proper access:</h4>
+            <ul>
+                <li><span class="status-warning">🚫 Blurred Background</span> - Page content becomes blurred</li>
+                <li><span class="status-warning">🚫 Access Denied Modal</span> - Beautiful modal with progress bar appears</li>
+                <li><span class="status-warning">🚫 Automatic Redirect</span> - After 2 seconds, redirects to employee dashboard</li>
+                <li><span class="status-warning">🚫 Disabled Interaction</span> - Cannot interact with blurred content</li>
+            </ul>
+        </div>
+
+        <h2>New Modal Features</h2>
+        <div class="expected-results">
+            <h4>🎨 Enhanced Access Denied Modal:</h4>
+            <ul>
+                <li><strong>Blurred Background:</strong> Page content is blurred and interaction is disabled</li>
+                <li><strong>Modern Design:</strong> Clean, centered modal with animations</li>
+                <li><strong>Progress Bar:</strong> Visual countdown showing redirect timer</li>
+                <li><strong>Accessibility:</strong> Proper contrast and focus management</li>
+                <li><strong>Responsive:</strong> Works on all screen sizes</li>
+                <li><strong>Dark Mode Support:</strong> Automatically adapts to system theme</li>
+            </ul>
+        </div>
+
+        <h2>Test Instructions</h2>
+        <ol>
+            <li><strong>Login as different user types</strong> to test various access levels</li>
+            <li><strong>Try accessing admin pages</strong> when logged in as an employee</li>
+            <li><strong>Observe the new modal</strong> with blurred background</li>
+            <li><strong>Wait for automatic redirect</strong> or test the progress bar</li>
+            <li><strong>Test responsive behavior</strong> on different screen sizes</li>
+            <li><strong>Test dark mode</strong> if your system supports it</li>
+        </ol>
+
+        <div class="info">
+            <strong>Note:</strong> The access control system now provides a much better user experience with the enhanced modal design and smooth background blur effect.
+        </div>
+    </div>
+</body>
+</html>

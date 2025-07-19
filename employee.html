@@ -2695,10 +2695,52 @@
                 transform: scale(1.02);
             }
         }
+        
+        /* Prevent flash of content when loading with hash */
+        body:has(#security-section) .page-header,
+        body:has(#security-section) .quick-actions,
+        body:has(#security-section) .tiles-grid:not(#security-section *),
+        body:has(#security-section) .charts-section {
+            opacity: 1;
+            transition: opacity 0.1s ease-in-out;
+        }
+        
+        /* Hide main content immediately when security hash is present */
+        body.loading-security .page-header,
+        body.loading-security .quick-actions,
+        body.loading-security .tiles-grid:not(#security-section *),
+        body.loading-security .charts-section {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        body.loading-security #security-section {
+            opacity: 1;
+            display: block !important;
+        }
     </style>
 
     <!-- Employee Page Initialization Script -->
     <script>
+        // Immediate hash handling to prevent flash
+        (function() {
+            const hash = window.location.hash.replace('#', '');
+            if (hash === 'security') {
+                document.body.classList.add('loading-security');
+                console.log('🔐 Pre-loading security mode to prevent flash');
+                
+                // Store the target page for theme manager when it loads
+                window.targetPage = 'security';
+                window.targetAccentColor = '#ff3b30'; // Red for security
+                
+                // Apply security theme immediately using CSS custom properties
+                document.documentElement.style.setProperty('--accent-primary', '#ff3b30');
+                document.documentElement.style.setProperty('--accent-light', 'rgba(255, 59, 48, 0.1)');
+                document.documentElement.style.setProperty('--accent-hover', 'rgba(255, 59, 48, 0.8)');
+                console.log('🎨 Applied security accent color immediately');
+            }
+        })();
+        
         console.log('Employee page script loaded - will use EmployeeController from employee.js');
         
         // Initialize employee page when DOM is ready
@@ -2713,6 +2755,204 @@
                 } else {
                     console.error('❌ EmployeeController not found. Make sure employee.js is loaded.');
                 }
+                
+                // Handle hash navigation on page load (immediate, no delay)
+                const hash = window.location.hash.replace('#', '');
+                console.log('🔗 Checking URL hash on load:', hash);
+                
+                if (hash === 'security' && window.employeePage && window.employeePage.navigateToSection) {
+                    console.log('🔐 Navigating to security section from hash (immediate)');
+                    window.employeePage.navigateToSection('security');
+                    
+                    // Update sidebar active state immediately with retry mechanism
+                    const updateSidebarState = () => {
+                        if (window.sidebar && window.sidebar.setActivePage) {
+                            console.log('🎯 Setting sidebar active page to: security');
+                            window.sidebar.setActivePage('security');
+                            
+                            // Also update theme if available, with multiple retry attempts
+                            const updateTheme = () => {
+                                if (typeof themeManager !== 'undefined' && themeManager.setPage) {
+                                    console.log('🎨 Setting theme page to: security');
+                                    themeManager.setPage('security');
+                                } else if (window.themeManager && window.themeManager.setPage) {
+                                    console.log('🎨 Setting theme page to: security (via window.themeManager)');
+                                    window.themeManager.setPage('security');
+                                } else {
+                                    // Silent retry for theme
+                                    setTimeout(updateTheme, 50);
+                                }
+                            };
+                            updateTheme();
+                        } else {
+                            // Reduce retries to max 10 attempts (1 second total)
+                            updateSidebarState.retries = (updateSidebarState.retries || 0) + 1;
+                            if (updateSidebarState.retries < 10) {
+                                setTimeout(updateSidebarState, 100);
+                            } else {
+                                console.warn('⚠️ Sidebar initialization timeout after 1 second');
+                            }
+                        }
+                    };
+                    updateSidebarState();
+                    
+                    // Remove loading class
+                    document.body.classList.remove('loading-security');
+                } else if (hash && window.employeePage && window.employeePage.navigateToSection) {
+                    console.log(`📍 Navigating to section: ${hash} (immediate)`);
+                    window.employeePage.navigateToSection(hash);
+                    
+                    // Update sidebar active state immediately with retry mechanism
+                    const updateSidebarState = () => {
+                        if (window.sidebar && window.sidebar.setActivePage) {
+                            console.log(`🎯 Setting sidebar active page to: ${hash}`);
+                            window.sidebar.setActivePage(hash);
+                            
+                            // Also update theme with immediate CSS and retry mechanism
+                            const updateTheme = () => {
+                                // Apply appropriate CSS immediately based on section
+                                if (hash === 'employee' || !hash) {
+                                    // Blue for employee/attendance
+                                    document.documentElement.style.setProperty('--accent-primary', '#5ac8fa');
+                                    document.documentElement.style.setProperty('--accent-light', 'rgba(90, 200, 250, 0.1)');
+                                    document.documentElement.style.setProperty('--accent-hover', 'rgba(90, 200, 250, 0.8)');
+                                }
+                                
+                                // Update theme manager if available
+                                if (typeof themeManager !== 'undefined' && themeManager.setPage) {
+                                    console.log(`🎨 Setting theme page to: ${hash}`);
+                                    themeManager.setPage(hash);
+                                } else if (window.themeManager && window.themeManager.setPage) {
+                                    console.log(`🎨 Setting theme page to: ${hash} (via window.themeManager)`);
+                                    window.themeManager.setPage(hash);
+                                } else {
+                                    // Silent retry for theme
+                                    setTimeout(updateTheme, 50);
+                                }
+                            };
+                            updateTheme();
+                        } else {
+                            // Reduce retries to max 10 attempts (1 second total)
+                            updateSidebarState.retries = (updateSidebarState.retries || 0) + 1;
+                            if (updateSidebarState.retries < 10) {
+                                setTimeout(updateSidebarState, 100);
+                            } else {
+                                console.warn('⚠️ Sidebar initialization timeout after 1 second');
+                            }
+                        }
+                    };
+                    updateSidebarState();
+                    
+                    // Remove loading class
+                    document.body.classList.remove('loading-security');
+                } else {
+                    // For normal attendance view, set correct active state
+                    const updateSidebarState = () => {
+                        if (window.sidebar && window.sidebar.setActivePage) {
+                            console.log('🎯 Setting sidebar active page to: employee (attendance)');
+                            window.sidebar.setActivePage('employee');
+                            
+                            // Ensure employee theme is applied immediately
+                            document.documentElement.style.setProperty('--accent-primary', '#5ac8fa');
+                            document.documentElement.style.setProperty('--accent-light', 'rgba(90, 200, 250, 0.1)');
+                            document.documentElement.style.setProperty('--accent-hover', 'rgba(90, 200, 250, 0.8)');
+                            
+                            // Also update theme if available
+                            const updateTheme = () => {
+                                if (typeof themeManager !== 'undefined' && themeManager.setPage) {
+                                    themeManager.setPage('employee');
+                                    console.log('🎨 Theme set to employee');
+                                } else if (window.themeManager && window.themeManager.setPage) {
+                                    window.themeManager.setPage('employee');
+                                    console.log('🎨 Theme set to employee (via window.themeManager)');
+                                } else {
+                                    // Silent retry for theme
+                                    setTimeout(updateTheme, 50);
+                                }
+                            };
+                            updateTheme();
+                        } else {
+                            // Reduce retries to max 10 attempts (1 second total)
+                            updateSidebarState.retries = (updateSidebarState.retries || 0) + 1;
+                            if (updateSidebarState.retries < 10) {
+                                setTimeout(updateSidebarState, 100);
+                            }
+                            // No warning message for the default case
+                        }
+                    };
+                    updateSidebarState();
+                    
+                    // Remove loading class
+                    document.body.classList.remove('loading-security');
+                }
+                
+                // Listen for hash changes
+                window.addEventListener('hashchange', function() {
+                    const hash = window.location.hash.replace('#', '');
+                    console.log('🔗 Hash changed:', hash);
+                    
+                    if (window.employeePage && window.employeePage.navigateToSection) {
+                        if (hash === 'security') {
+                            console.log('🔐 Navigating to security section from hash change');
+                            window.employeePage.navigateToSection('security');
+                            
+                            // Update sidebar active state with immediate feedback
+                            if (window.sidebar && window.sidebar.setActivePage) {
+                                console.log('🎯 Setting sidebar active page to: security (hash change)');
+                                window.sidebar.setActivePage('security');
+                                
+                                // Also update theme with priority handling
+                                const updateTheme = () => {
+                                    // Apply CSS immediately
+                                    document.documentElement.style.setProperty('--accent-primary', '#ff3b30');
+                                    document.documentElement.style.setProperty('--accent-light', 'rgba(255, 59, 48, 0.1)');
+                                    document.documentElement.style.setProperty('--accent-hover', 'rgba(255, 59, 48, 0.8)');
+                                    
+                                    // Update theme manager if available
+                                    if (typeof themeManager !== 'undefined' && themeManager.setPage) {
+                                        themeManager.setPage('security');
+                                        console.log('🎨 Theme updated via themeManager');
+                                    } else if (window.themeManager && window.themeManager.setPage) {
+                                        window.themeManager.setPage('security');
+                                        console.log('🎨 Theme updated via window.themeManager');
+                                    }
+                                };
+                                updateTheme();
+                            }
+                        } else {
+                            console.log(`📍 Navigating to section: ${hash || 'attendance'}`);
+                            window.employeePage.navigateToSection(hash || 'attendance');
+                            
+                            // Update sidebar active state with immediate feedback
+                            if (window.sidebar && window.sidebar.setActivePage) {
+                                const targetPage = hash || 'employee';
+                                console.log(`🎯 Setting sidebar active page to: ${targetPage} (hash change)`);
+                                window.sidebar.setActivePage(targetPage);
+                                
+                                // Also update theme with immediate CSS application
+                                const updateTheme = () => {
+                                    // Apply appropriate CSS immediately based on page
+                                    if (targetPage === 'employee' || !hash) {
+                                        // Blue for employee/attendance
+                                        document.documentElement.style.setProperty('--accent-primary', '#5ac8fa');
+                                        document.documentElement.style.setProperty('--accent-light', 'rgba(90, 200, 250, 0.1)');
+                                        document.documentElement.style.setProperty('--accent-hover', 'rgba(90, 200, 250, 0.8)');
+                                    }
+                                    
+                                    // Update theme manager if available
+                                    if (typeof themeManager !== 'undefined' && themeManager.setPage) {
+                                        themeManager.setPage(targetPage);
+                                        console.log(`🎨 Theme updated via themeManager to: ${targetPage}`);
+                                    } else if (window.themeManager && window.themeManager.setPage) {
+                                        window.themeManager.setPage(targetPage);
+                                        console.log(`🎨 Theme updated via window.themeManager to: ${targetPage}`);
+                                    }
+                                };
+                                updateTheme();
+                            }
+                        }
+                    }
+                });
                 
                 // Update current time immediately and then every second  
                 if (window.employeePage && window.employeePage.updateCurrentTime) {

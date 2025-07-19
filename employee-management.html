@@ -1652,6 +1652,21 @@
                     // Check if authentication is available using DirectFlowAuth
                     if (window.directFlowAuth && window.directFlowAuth.isAuthenticated()) {
                         console.log('✅ User is authenticated, proceeding with initialization');
+                        
+                        // Initialize Access Control for admin/manager access
+                        console.log('🔐 Initializing access control for manager level...');
+                        if (typeof AccessControl !== 'undefined') {
+                            const accessControl = new AccessControl();
+                            const hasAccess = await accessControl.init('manager', true);
+                            if (!hasAccess) {
+                                console.log('❌ Access denied, access control will handle redirect');
+                                return; // Exit early, access control will redirect
+                            }
+                            console.log('✅ Manager access granted');
+                        } else {
+                            console.warn('⚠️ Access control not available, continuing without role checks');
+                        }
+                        
                         await this.init();
                     } else {
                         console.log('❌ User is not authenticated, attempting auto-login...');

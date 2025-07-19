@@ -55,6 +55,26 @@ class SidebarManager {
                     icon: '⚙️',
                     url: '/settings.html',
                     description: 'System configuration'
+                },
+                // Employee pages for admin access
+                {
+                    id: 'divider-1',
+                    type: 'divider',
+                    label: 'Personal'
+                },
+                {
+                    id: 'employee',
+                    label: 'My Attendance',
+                    icon: '👤',
+                    url: '/employee.html',
+                    description: 'View personal attendance data'
+                },
+                {
+                    id: 'security',
+                    label: 'Security',
+                    icon: '🔐',
+                    url: '/employee.html#security',
+                    description: 'Change username and password'
                 }
             ],
             employee: [
@@ -99,8 +119,17 @@ class SidebarManager {
      */
     detectCurrentPage() {
         const path = window.location.pathname;
+        const hash = window.location.hash.replace('#', '');
         const filename = path.split('/').pop().replace('.html', '');
-        this.currentPage = filename || 'dashboard';
+        
+        // Handle employee page sections
+        if (filename === 'employee' && hash) {
+            this.currentPage = hash; // 'security' or other sections
+            console.log(`🔍 Detected employee page section: "${hash}"`);
+        } else {
+            this.currentPage = filename || 'dashboard';
+            console.log(`🔍 Detected page: "${this.currentPage}"`);
+        }
     }
 
     /**
@@ -207,49 +236,13 @@ class SidebarManager {
                 </ul>
             </nav>
 
-            <!-- System Status Section -->
-            <div class="sidebar-status compact">
-                <div class="status-header compact">
-                    <h4>Status</h4>
-                    <button class="status-refresh-btn compact" title="Refresh status" aria-label="Refresh system status">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="23,4 23,10 17,10"></polyline>
-                            <polyline points="1,20 1,14 7,14"></polyline>
-                            <path d="M20.49,9A9,9,0,0,0,5.64,5.64L1,10m22,4L18.36,18.36A9,9,0,0,1,3.51,15"></path>
-                        </svg>
-                    </button>
-                </div>
-                <div class="status-indicators compact">
-                    <div class="status-item compact" title="Server connection status">
-                        <span class="status-indicator status-online"></span>
-                        <span class="status-text">Server</span>
-                        <span class="status-detail">Online</span>
-                    </div>
-                    <div class="status-item compact" title="Database connection status">
-                        <span class="status-indicator status-online"></span>
-                        <span class="status-text">Database</span>
-                        <span class="status-detail">Connected</span>
-                    </div>
-                    <div class="status-item compact" title="Data synchronization status">
-                        <span class="status-indicator status-online"></span>
-                        <span class="status-text">Sync</span>
-                        <span class="status-detail">Active</span>
-                    </div>
-                    <div class="status-item compact" title="System uptime">
-                        <span class="status-indicator status-info"></span>
-                        <span class="status-text">Uptime</span>
-                        <span class="status-detail">99.8%</span>
-                    </div>
-                </div>
-            </div>
-
             <div class="sidebar-footer compact">
                 <button class="logout-btn compact" title="Logout" id="sidebar-logout-btn">
                     <span class="logout-icon">🚪</span>
                     <span class="logout-text">Logout</span>
                 </button>
                 <div class="sidebar-version compact">
-                    <small>v1.0.1 pre-release, no backend</small>
+                    <small>v1.2.5 release | node.js (express)</small>
                 </div>
             </div>
         `;
@@ -262,6 +255,17 @@ class SidebarManager {
         const items = this.menuItems[this.userRole] || this.menuItems.admin;
         
         return items.map(item => {
+            // Handle divider items
+            if (item.type === 'divider') {
+                return `
+                    <li class="nav-divider compact">
+                        <span class="divider-label">${item.label}</span>
+                        <hr class="divider-line">
+                    </li>
+                `;
+            }
+            
+            // Handle regular menu items
             const isActive = this.currentPage === item.id;
             const activeClass = isActive ? 'active' : '';
             
@@ -317,12 +321,6 @@ class SidebarManager {
                 });
             } else {
                 console.warn('Sidebar: Logout button not found in DOM');
-            }
-
-            // Status refresh button
-            const statusRefreshBtn = document.querySelector('.status-refresh-btn');
-            if (statusRefreshBtn) {
-                statusRefreshBtn.addEventListener('click', () => this.updateSystemStatus(true));
             }
 
             // Listen for auth events - defer to ensure DirectFlowAuth is available
@@ -410,10 +408,6 @@ class SidebarManager {
 
         // Theme selector buttons - retry setup if needed
         this.setupThemeSelector();
-
-        // Update system status periodically (without notifications)
-        this.updateSystemStatus(false);
-        setInterval(() => this.updateSystemStatus(false), 30000); // Update every 30 seconds
     }
 
     /**
@@ -459,24 +453,39 @@ class SidebarManager {
     handleNavigation(event) {
         const link = event.currentTarget;
         const page = link.dataset.page;
+        const href = link.getAttribute('href');
         
-        // Check if there's a page-specific navigation handler
-        if (window.employeePage && typeof window.employeePage.navigateToSection === 'function') {
+        console.log('🧭 Sidebar navigation clicked:', page, href);
+        
+        // Check if this is same-page navigation (employee page sections)
+        const currentPage = window.location.pathname.toLowerCase();
+        const isEmployeePage = currentPage.includes('employee.html');
+        const isEmployeeSection = ['attendance', 'security'].includes(page);
+        
+        if (isEmployeePage && isEmployeeSection && window.employeePage && typeof window.employeePage.navigateToSection === 'function') {
+            // Same-page navigation for employee sections
             event.preventDefault();
+            console.log('📍 Using same-page navigation for section:', page);
             window.employeePage.navigateToSection(page);
+        } else if (href && href !== '#') {
+            // Cross-page navigation - allow it to proceed normally
+            console.log('🔗 Allowing cross-page navigation to:', href);
+            // Don't prevent default - let the browser handle navigation
+            // Just update UI state
+            this.addClickAnimation(link);
+        } else {
+            // Unknown navigation, prevent default to avoid broken links
+            event.preventDefault();
+            console.warn('⚠️ Unknown navigation target:', page, href);
         }
         
-        // Don't prevent default for actual navigation to other pages
-        // Just update active state and trigger page change
+        // Update active state and theme (but don't prevent navigation)
         this.setActivePage(page);
         
         // Update theme page if theme manager is available
         if (typeof themeManager !== 'undefined') {
             themeManager.setPage(page);
         }
-
-        // Add click animation
-        this.addClickAnimation(link);
     }
 
     /**
@@ -597,11 +606,14 @@ class SidebarManager {
      * Set active page and update UI
      */
     setActivePage(page) {
+        console.log(`🎯 Sidebar setActivePage called with: "${page}"`);
         this.currentPage = page;
         this.updateActiveState();
         
         // Update page title if needed
         this.updatePageTitle(page);
+        
+        console.log(`✅ Sidebar active page set to: "${page}"`);
     }
 
     /**
@@ -609,17 +621,29 @@ class SidebarManager {
      */
     updateActiveState() {
         const navLinks = document.querySelectorAll('.nav-link');
+        console.log(`🔄 Updating active state for ${navLinks.length} nav links, target page: "${this.currentPage}"`);
         
         navLinks.forEach(link => {
             const page = link.dataset.page;
+            const wasActive = link.classList.contains('active');
+            
             if (page === this.currentPage) {
                 link.classList.add('active');
                 link.setAttribute('aria-current', 'page');
+                if (!wasActive) {
+                    console.log(`✅ Activated nav link: "${page}"`);
+                }
             } else {
                 link.classList.remove('active');
                 link.removeAttribute('aria-current');
+                if (wasActive) {
+                    console.log(`❌ Deactivated nav link: "${page}"`);
+                }
             }
         });
+        
+        // Force a visual update by triggering a reflow
+        document.querySelector('.sidebar')?.offsetHeight;
     }
 
     /**
@@ -1056,138 +1080,6 @@ class SidebarManager {
             
         } catch (error) {
             console.error('Error changing theme manually:', error);
-        }
-    }
-
-    /**
-     * Update system status indicators
-     */
-    /**
-     * Update system status indicators with enhanced information
-     */
-    updateSystemStatus(showNotification = false) {
-        // Add loading state
-        const refreshBtn = document.querySelector('.status-refresh-btn');
-        if (refreshBtn) {
-            refreshBtn.classList.add('refreshing');
-            refreshBtn.style.pointerEvents = 'none';
-        }
-
-        // Simulate async status check
-        setTimeout(() => {
-            const statusItems = document.querySelectorAll('.status-item');
-            
-            statusItems.forEach((item, index) => {
-                const indicator = item.querySelector('.status-indicator');
-                const detail = item.querySelector('.status-detail');
-                
-                if (!indicator || !detail) return;
-
-                // Simulate different status checks based on item index
-                let status, detailText, statusClass;
-                
-                switch (index) {
-                    case 0: // Server
-                        status = Math.random() > 0.05; // 95% uptime
-                        detailText = status ? 'Online' : 'Offline';
-                        statusClass = status ? 'status-online' : 'status-error';
-                        break;
-                    case 1: // Database
-                        status = Math.random() > 0.02; // 98% uptime
-                        detailText = status ? 'Connected' : 'Disconnected';
-                        statusClass = status ? 'status-online' : 'status-error';
-                        break;
-                    case 2: // Sync
-                        status = Math.random() > 0.1; // 90% active
-                        detailText = status ? 'Active' : 'Inactive';
-                        statusClass = status ? 'status-online' : 'status-warning';
-                        break;
-                    case 3: // Uptime
-                        const uptime = (Math.random() * 5 + 95).toFixed(1); // 95-100%
-                        detailText = `${uptime}%`;
-                        statusClass = uptime > 98 ? 'status-online' : uptime > 95 ? 'status-warning' : 'status-error';
-                        break;
-                    default:
-                        status = true;
-                        detailText = 'OK';
-                        statusClass = 'status-online';
-                }
-                
-                // Update indicator and detail text
-                indicator.className = `status-indicator ${statusClass}`;
-                detail.textContent = detailText;
-                
-                // Add animation
-                item.style.transform = 'scale(0.95)';
-                setTimeout(() => {
-                    item.style.transform = 'scale(1)';
-                }, 100);
-            });
-            
-            // Remove loading state
-            if (refreshBtn) {
-                refreshBtn.classList.remove('refreshing');
-                refreshBtn.style.pointerEvents = 'auto';
-            }
-            
-            // Only show notification when explicitly requested (manual refresh)
-            if (showNotification) {
-                this.showNotification('System status updated', 'success', 2000);
-            }
-            
-        }, 800); // Simulate network delay
-    }
-
-    /**
-     * Show a notification message
-     */
-    showNotification(message, type = 'info', duration = 3000) {
-        // Remove any existing notifications
-        const existingNotification = document.querySelector('.sidebar-notification');
-        if (existingNotification) {
-            existingNotification.remove();
-        }
-        
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = `sidebar-notification notification-${type}`;
-        notification.innerHTML = `
-            <div class="notification-content">
-                <span class="notification-icon">${this.getNotificationIcon(type)}</span>
-                <span class="notification-message">${message}</span>
-                <button class="notification-close" aria-label="Close notification">×</button>
-            </div>
-        `;
-        
-        // Add to sidebar
-        const sidebar = document.querySelector('.sidebar');
-        if (sidebar) {
-            sidebar.appendChild(notification);
-            
-            // Add event listener for close button
-            const closeBtn = notification.querySelector('.notification-close');
-            closeBtn.addEventListener('click', () => notification.remove());
-            
-            // Auto-remove after duration
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.classList.add('fade-out');
-                    setTimeout(() => notification.remove(), 300);
-                }
-            }, duration);
-        }
-    }
-
-    /**
-     * Get icon for notification type
-     */
-    getNotificationIcon(type) {
-        switch (type) {
-            case 'success': return '✅';
-            case 'error': return '❌';
-            case 'warning': return '⚠️';
-            case 'info':
-            default: return 'ℹ️';
         }
     }
 

@@ -2505,6 +2505,20 @@
                 
                 console.log('✅ User is authenticated');
                 
+                // Initialize Access Control for admin-only access
+                console.log('🔐 Initializing access control for admin level...');
+                if (typeof AccessControl !== 'undefined') {
+                    const accessControl = new AccessControl();
+                    const hasAccess = await accessControl.init('admin', true);
+                    if (!hasAccess) {
+                        console.log('❌ Access denied, access control will handle redirect');
+                        return; // Exit early, access control will redirect
+                    }
+                    console.log('✅ Admin access granted');
+                } else {
+                    console.warn('⚠️ Access control not available, continuing without role checks');
+                }
+                
                 // Wait for DirectFlow to be ready
                 console.log('Waiting for DirectFlow to initialize...');
                 await waitForDirectFlow();

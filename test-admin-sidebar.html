@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Sidebar Test</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-header {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--accent-primary);
+        }
+        .preview-container {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .sidebar-preview {
+            width: 280px;
+            height: 600px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .description {
+            flex: 1;
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+        .feature-list li::before {
+            content: '✅ ';
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🔧 Admin Sidebar Update Test</h1>
+            <p>Testing the updated admin sidebar with employee pages included</p>
+        </div>
+
+        <div class="preview-container">
+            <div class="sidebar-preview">
+                <!-- Sidebar will be rendered here -->
+                <aside class="sidebar" id="sidebar">
+                    <div class="sidebar-header">
+                    </div>
+                    <div class="sidebar-user">
+                    </div>
+                    <nav class="sidebar-nav">
+                    </nav>
+                    <div class="sidebar-status">
+                    </div>
+                    <div class="sidebar-footer">
+                    </div>
+                </aside>
+            </div>
+
+            <div class="description">
+                <h2>🎯 What's New</h2>
+                <p>Admins now have access to both admin and employee functionality in the sidebar:</p>
+                
+                <h3>📋 Admin Pages</h3>
+                <ul class="feature-list">
+                    <li>Dashboard - System overview</li>
+                    <li>Employees - Employee management</li>
+                    <li>Attendance - Manage attendance</li>
+                    <li>Analytics - Detailed reports</li>
+                    <li>Payroll - Payroll management</li>
+                    <li>Settings - System configuration</li>
+                </ul>
+
+                <h3>👤 Personal Pages</h3>
+                <ul class="feature-list">
+                    <li>My Attendance - View personal attendance</li>
+                    <li>Security - Change username/password</li>
+                </ul>
+
+                <h3>🎨 Design Features</h3>
+                <ul class="feature-list">
+                    <li>Section divider with "Personal" label</li>
+                    <li>Consistent icon design</li>
+                    <li>Proper hover states</li>
+                    <li>Responsive layout</li>
+                </ul>
+
+                <h3>🔒 Access Control</h3>
+                <ul class="feature-list">
+                    <li>Admins see all menu items</li>
+                    <li>Employees see only personal items</li>
+                    <li>Proper role-based navigation</li>
+                    <li>Secure page redirects</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load required scripts -->
+    <script src="js/directflow-auth.js"></script>
+    <script src="js/access-control.js"></script>
+    <script src="js/theme.js"></script>
+    <script src="js/sidebar.js"></script>
+
+    <script>
+        // Mock admin user for testing
+        window.directFlowAuth = {
+            isAuthenticated: () => true,
+            getCurrentUser: () => ({
+                username: 'admin',
+                firstName: 'Admin',
+                role: 'admin'
+            })
+        };
+
+        // Initialize sidebar with admin role
+        document.addEventListener('DOMContentLoaded', function() {
+            // Wait for sidebar manager to be available
+            setTimeout(() => {
+                if (window.sidebarManager) {
+                    window.sidebarManager.userRole = 'admin';
+                    window.sidebarManager.init();
+                    
+                    console.log('✅ Admin sidebar initialized');
+                    console.log('📋 Menu items:', window.sidebarManager.menuItems.admin);
+                } else {
+                    console.error('❌ Sidebar manager not available');
+                }
+            }, 100);
+        });
+    </script>
+</body>
+</html>

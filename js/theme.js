@@ -71,6 +71,7 @@ class ThemeManager {
         this.applyTheme();
         this.setupThemeToggle();
         this.setupSystemThemeListener();
+        this.setupHashChangeListener();
         this.addTransitionClass();
     }
 
@@ -118,10 +119,20 @@ class ThemeManager {
     detectCurrentPage() {
         // Try to get page from URL
         const path = window.location.pathname;
+        const hash = window.location.hash.replace('#', '');
         const filename = path.split('/').pop().replace('.html', '');
         
+        // Handle hash-based navigation (like employee.html#security)
+        if (filename === 'employee' && hash && this.accentColors[hash]) {
+            this.currentPage = hash;
+            console.log(`🎨 Theme manager detected page from hash: ${hash}`);
+            return hash;
+        }
+        
+        // Check if the filename has defined accent colors
         if (this.accentColors[filename]) {
             this.currentPage = filename;
+            console.log(`🎨 Theme manager detected page from filename: ${filename}`);
             return filename;
         }
 
@@ -132,6 +143,7 @@ class ThemeManager {
                 const pageName = className.replace('page-', '');
                 if (this.accentColors[pageName]) {
                     this.currentPage = pageName;
+                    console.log(`🎨 Theme manager detected page from body class: ${pageName}`);
                     return pageName;
                 }
             }
@@ -139,6 +151,7 @@ class ThemeManager {
 
         // Default to dashboard
         this.currentPage = 'dashboard';
+        console.log('🎨 Theme manager defaulting to: dashboard');
         return 'dashboard';
     }
 
@@ -185,6 +198,9 @@ class ThemeManager {
             root.style.setProperty('--accent-primary', colors.primary);
             root.style.setProperty('--accent-light', colors.light);
             root.style.setProperty('--accent-hover', colors.hover);
+            console.log(`🎨 Applied accent colors for "${this.currentPage}":`, colors.primary);
+        } else {
+            console.warn(`🎨 No accent colors found for page: "${this.currentPage}"`);
         }
     }
 
@@ -222,13 +238,15 @@ class ThemeManager {
      */
     setPage(page) {
         if (!this.accentColors[page]) {
-            console.warn('Invalid page:', page);
+            console.warn(`🎨 Theme manager: Invalid page "${page}", available pages:`, Object.keys(this.accentColors));
             return;
         }
 
+        console.log(`🎨 Theme manager: Setting page to "${page}"`);
         this.currentPage = page;
         this.applyTheme();
         this.saveThemePreferences();
+        console.log(`✅ Theme manager: Successfully applied theme for "${page}"`);
     }
 
     /**
@@ -369,6 +387,17 @@ class ThemeManager {
                 }
             });
         }
+    }
+
+    /**
+     * Setup hash change listener for employee page sections
+     */
+    setupHashChangeListener() {
+        window.addEventListener('hashchange', () => {
+            const newPage = this.detectCurrentPage();
+            console.log(`🎨 Hash changed, theme manager updating to: ${newPage}`);
+            this.applyTheme();
+        });
     }
 
     /**

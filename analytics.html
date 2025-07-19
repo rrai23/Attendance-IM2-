@@ -876,7 +876,30 @@
     <!-- Analytics Page Initialization Script -->
     <script>
         // Initialize analytics page when DOM is ready
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // Initialize Access Control for admin/manager access
+                console.log('🔐 Initializing access control for manager level...');
+                if (typeof AccessControl !== 'undefined') {
+                    const accessControl = new AccessControl();
+                    const hasAccess = await accessControl.init('manager', true);
+                    if (!hasAccess) {
+                        console.log('❌ Access denied, access control will handle redirect');
+                        return; // Exit early, access control will redirect
+                    }
+                    console.log('✅ Manager access granted for analytics');
+                } else {
+                    console.warn('⚠️ Access control not available, continuing without role checks');
+                }
+                
+                // Continue with normal initialization
+                initializeAnalyticsPage();
+            } catch (error) {
+                console.error('Failed to initialize analytics page:', error);
+            }
+        });
+        
+        function initializeAnalyticsPage() {
             // Handle mobile hamburger menu
             const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
             if (mobileMenuToggle) {
@@ -998,7 +1021,7 @@
             });
 
             console.log('Analytics page initialized');
-        });
+        }
     </script>
 
     <!-- DirectFlow Data Manager -->

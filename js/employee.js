@@ -2606,6 +2606,8 @@ class EmployeeController {
      * Navigate to a specific section (called from sidebar)
      */
     navigateToSection(section) {
+        console.log('🧭 Navigating to section:', section);
+        
         if (section === 'security') {
             // Hide main content sections
             const pageHeader = document.querySelector('.page-header');
@@ -2614,7 +2616,7 @@ class EmployeeController {
             const chartsSection = document.querySelector('.charts-section');
             const securitySection = document.getElementById('security-section');
             
-            // Hide main sections
+            // Hide main sections immediately
             if (pageHeader) pageHeader.style.display = 'none';
             if (quickActions) quickActions.style.display = 'none';
             
@@ -2631,6 +2633,8 @@ class EmployeeController {
                 securitySection.style.display = 'block';
                 this.loadSecurityInfo();
             }
+            
+            console.log('✅ Security section activated');
             
         } else {
             // Show main sections for default view
@@ -2655,6 +2659,15 @@ class EmployeeController {
             if (securitySection) {
                 securitySection.style.display = 'none';
             }
+            
+            console.log('✅ Attendance section activated');
+        }
+        
+        // Update URL hash without triggering navigation
+        if (section === 'security') {
+            history.replaceState(null, null, '#security');
+        } else {
+            history.replaceState(null, null, '#');
         }
     }
 

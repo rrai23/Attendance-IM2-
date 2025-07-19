@@ -900,6 +900,21 @@
                 }
                 
                 console.log('User is authenticated, initializing EmployeesPageManager...');
+                
+                // Initialize Access Control for admin/manager access
+                console.log('🔐 Initializing access control for manager level...');
+                if (typeof AccessControl !== 'undefined') {
+                    const accessControl = new AccessControl();
+                    const hasAccess = await accessControl.init('manager', true);
+                    if (!hasAccess) {
+                        console.log('❌ Access denied, access control will handle redirect');
+                        return; // Exit early, access control will redirect
+                    }
+                    console.log('✅ Manager access granted');
+                } else {
+                    console.warn('⚠️ Access control not available, continuing without role checks');
+                }
+                
                 window.employeesManager = new EmployeesPageManager();
                 await window.employeesManager.init();
                 console.log('EmployeesPageManager initialized successfully');

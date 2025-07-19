@@ -23,16 +23,18 @@ class AccessControl {
      */
     async init(requiredLevel = 'employee', autoRedirect = true) {
         try {
+            console.log(`🔐 Access control init: ${requiredLevel} level required`);
+            
             // Check if DirectFlow auth is available
             if (!window.directFlowAuth) {
-                console.error('DirectFlow auth not available');
+                console.error('❌ DirectFlow auth not available');
                 if (autoRedirect) this.redirectToLogin();
                 return false;
             }
 
             // Check authentication first
             if (!window.directFlowAuth.isAuthenticated()) {
-                console.log('User not authenticated, redirecting to login');
+                console.log('❌ User not authenticated, redirecting to login');
                 if (autoRedirect) this.redirectToLogin();
                 return false;
             }
@@ -40,52 +42,57 @@ class AccessControl {
             // Get user information
             this.userInfo = await this.getUserInfo();
             if (!this.userInfo) {
-                console.error('Failed to get user information');
+                console.error('❌ Failed to get user information');
                 if (autoRedirect) this.redirectToLogin();
                 return false;
             }
 
+            console.log(`👤 User: ${this.userInfo.username} (${this.userInfo.role})`);
+
             // Check role-based access
             const hasAccess = this.checkRoleAccess(requiredLevel);
             if (!hasAccess && autoRedirect) {
+                console.warn(`❌ Access denied: ${this.userInfo.role} cannot access ${requiredLevel} level`);
                 this.redirectUnauthorized();
                 return false;
             }
 
             this.initialized = true;
-            console.log(`Access granted for ${this.userInfo.role} to ${requiredLevel} level`);
+            console.log(`✅ Access granted for ${this.userInfo.role} to ${requiredLevel} level`);
             return hasAccess;
 
         } catch (error) {
-            console.error('Access control initialization failed:', error);
+            console.error('❌ Access control initialization failed:', error);
             if (autoRedirect) this.redirectToLogin();
             return false;
         }
     }
 
     /**
-     * Get user information from the API
+     * Get user information from DirectFlow auth system
      * @returns {Promise<Object|null>} User information
      */
     async getUserInfo() {
         try {
-            const response = await fetch('/api/auth/me', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                credentials: 'include'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            // Check if DirectFlow auth is available
+            if (!window.directFlowAuth) {
+                console.error('DirectFlow auth not available');
+                return null;
             }
 
-            const data = await response.json();
-            return data.user || null;
+            // Get user from DirectFlow's localStorage cache
+            const user = window.directFlowAuth.getCurrentUser();
+            
+            if (user) {
+                console.log('✅ Got user info from DirectFlow:', user.username, user.role);
+                return user;
+            } else {
+                console.warn('⚠️ No user info available from DirectFlow');
+                return null;
+            }
 
         } catch (error) {
-            console.error('Failed to get user info:', error);
+            console.error('Failed to get user info from DirectFlow:', error);
             return null;
         }
     }
@@ -137,46 +144,198 @@ class AccessControl {
     }
 
     /**
-     * Show access denied message
+     * Show access denied message with blurred background
      */
     showAccessDeniedMessage() {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.id = 'access-denied-notification';
-        notification.innerHTML = `
-            <div style="
-                position: fixed;
-                top: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: #ff3b30;
-                color: white;
-                padding: 16px 24px;
-                border-radius: 8px;
-                box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3);
-                z-index: 10000;
-                font-weight: 600;
-                text-align: center;
-                animation: slideDown 0.3s ease-out;
-            ">
-                🚫 Access Denied: You don't have permission to view this page<br>
-                <small style="font-weight: 400; opacity: 0.9;">Redirecting to your dashboard...</small>
-            </div>
-            <style>
-                @keyframes slideDown {
-                    from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
-                    to { opacity: 1; transform: translateX(-50%) translateY(0); }
-                }
-            </style>
+        // First, remove any existing access denied modals to prevent duplicates
+        const existingOverlay = document.getElementById('access-denied-overlay');
+        if (existingOverlay) {
+            existingOverlay.remove();
+        }
+        
+        // Also remove any existing page blur wrappers
+        const existingBlurWrapper = document.getElementById('page-content-blur');
+        if (existingBlurWrapper) {
+            // Move content back to body first
+            while (existingBlurWrapper.firstChild) {
+                document.body.appendChild(existingBlurWrapper.firstChild);
+            }
+            existingBlurWrapper.remove();
+        }
+        
+        // Create wrapper element for page content blur
+        const pageContent = document.createElement('div');
+        pageContent.id = 'page-content-blur';
+        
+        // Move all existing body content into the wrapper
+        while (document.body.firstChild) {
+            pageContent.appendChild(document.body.firstChild);
+        }
+        
+        // Apply blur and interaction blocking to wrapper only
+        pageContent.style.filter = 'blur(4px)';
+        pageContent.style.pointerEvents = 'none';
+        pageContent.style.userSelect = 'none';
+        pageContent.style.transition = 'filter 0.3s ease-out';
+        
+        // Add wrapper back to body
+        document.body.appendChild(pageContent);
+        
+        // Create modal overlay (not blurred)
+        const overlay = document.createElement('div');
+        overlay.id = 'access-denied-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            animation: fadeIn 0.3s ease-out;
         `;
+        
+        // Create modal content
+        const modalContent = document.createElement('div');
+        modalContent.style.cssText = `
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+            text-align: center;
+            max-width: 400px;
+            width: 90vw;
+            animation: slideUp 0.4s ease-out;
+            border: 1px solid rgba(255, 59, 48, 0.2);
+            position: relative;
+            z-index: 10001;
+        `;
+        
+        modalContent.innerHTML = `
+            <div style="
+                width: 64px;
+                height: 64px;
+                background: #ff3b30;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 24px;
+                font-size: 32px;
+                animation: bounce 0.6s ease-out;
+            ">
+                🚫
+            </div>
+            <h2 style="
+                margin: 0 0 16px;
+                color: #1a1a1a;
+                font-size: 24px;
+                font-weight: 700;
+                font-family: system-ui, -apple-system, sans-serif;
+            ">
+                Access Denied
+            </h2>
+            <p style="
+                margin: 0 0 24px;
+                color: #666;
+                font-size: 16px;
+                line-height: 1.5;
+                font-family: system-ui, -apple-system, sans-serif;
+            ">
+                You don't have permission to view this page.<br>
+                Redirecting to your dashboard...
+            </p>
+            <div style="
+                width: 200px;
+                height: 4px;
+                background: #f0f0f0;
+                border-radius: 2px;
+                margin: 0 auto;
+                overflow: hidden;
+            ">
+                <div style="
+                    width: 0%;
+                    height: 100%;
+                    background: linear-gradient(90deg, #ff3b30, #ff6b6b);
+                    border-radius: 2px;
+                    animation: progressBar 2s linear forwards;
+                "></div>
+            </div>
+        `;
+        
+        overlay.appendChild(modalContent);
 
-        document.body.appendChild(notification);
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.id = 'access-denied-styles';
+        style.textContent = `
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            @keyframes slideUp {
+                from { opacity: 0; transform: translateY(20px) scale(0.95); }
+                to { opacity: 1; transform: translateY(0) scale(1); }
+            }
+            @keyframes bounce {
+                0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+                40% { transform: translateY(-10px); }
+                60% { transform: translateY(-5px); }
+            }
+            @keyframes progressBar {
+                from { width: 0%; }
+                to { width: 100%; }
+            }
+            
+            /* Dark mode support */
+            @media (prefers-color-scheme: dark) {
+                #access-denied-overlay .modal-content {
+                    background: #2a2a2a !important;
+                    border: 1px solid rgba(255, 59, 48, 0.3) !important;
+                }
+                #access-denied-overlay h2 {
+                    color: #ffffff !important;
+                }
+                #access-denied-overlay p {
+                    color: #cccccc !important;
+                }
+            }
+        `;
+        
+        // Remove any existing styles first
+        const existingStyles = document.getElementById('access-denied-styles');
+        if (existingStyles) {
+            existingStyles.remove();
+        }
+        
+        document.head.appendChild(style);
+        modalContent.className = 'modal-content';
+        document.body.appendChild(overlay);
 
-        // Remove notification after redirect
+        // Remove notification and blur after redirect
         setTimeout(() => {
-            const element = document.getElementById('access-denied-notification');
-            if (element) {
-                element.remove();
+            const overlayElement = document.getElementById('access-denied-overlay');
+            if (overlayElement) {
+                overlayElement.remove();
+            }
+            
+            // Restore original body structure
+            const blurWrapper = document.getElementById('page-content-blur');
+            if (blurWrapper) {
+                // Move content back to body
+                while (blurWrapper.firstChild) {
+                    document.body.appendChild(blurWrapper.firstChild);
+                }
+                blurWrapper.remove();
+            }
+            
+            // Remove the style element
+            const styleElement = document.getElementById('access-denied-styles');
+            if (styleElement && styleElement.parentNode) {
+                styleElement.parentNode.removeChild(styleElement);
             }
         }, 2500);
     }
@@ -254,17 +413,56 @@ window.accessControl = new AccessControl();
 
 // Auto-initialize based on current page
 document.addEventListener('DOMContentLoaded', async function() {
+    console.log('� Access control system starting...');
+    
+    // Wait for DirectFlow to be ready
+    let retries = 0;
+    const maxRetries = 10;
+    
+    const waitForDirectFlow = () => {
+        return new Promise((resolve) => {
+            const checkDirectFlow = () => {
+                if (window.directFlowAuth && window.directFlowAuth.initialized) {
+                    console.log('✅ DirectFlow ready for access control');
+                    resolve();
+                } else if (retries < maxRetries) {
+                    retries++;
+                    console.log(`⏳ Waiting for DirectFlow... (${retries}/${maxRetries})`);
+                    setTimeout(checkDirectFlow, 100);
+                } else {
+                    console.error('❌ DirectFlow not available after waiting');
+                    resolve(); // Continue anyway
+                }
+            };
+            checkDirectFlow();
+        });
+    };
+    
+    await waitForDirectFlow();
+    
     const currentPage = window.location.pathname.toLowerCase();
+    console.log('🔍 Access control checking page:', currentPage);
     
     // Determine required access level based on current page
     let requiredLevel = 'employee'; // Default
     
     if (window.accessControl.isAdminPage()) {
         requiredLevel = 'admin';
+        console.log('🔒 Admin page detected, requiring admin access');
     } else if (window.accessControl.isManagerPage()) {
         requiredLevel = 'manager';
+        console.log('👔 Manager page detected, requiring manager access');
+    } else {
+        console.log('👤 Employee page detected, requiring employee access');
     }
     
     // Initialize access control
-    await window.accessControl.init(requiredLevel);
+    console.log(`🚀 Initializing access control for ${requiredLevel} level...`);
+    const hasAccess = await window.accessControl.init(requiredLevel);
+    
+    if (hasAccess) {
+        console.log('✅ Access control initialized successfully');
+    } else {
+        console.warn('⚠️ Access control failed - user may be redirected');
+    }
 });
