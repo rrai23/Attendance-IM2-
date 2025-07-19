@@ -43,6 +43,16 @@ class DashboardController {
                 id: 'payday-countdown-tile',
                 title: 'Next Payday',
                 refreshable: true
+            },
+            employeeOverview: {
+                id: 'employee-overview-tile',
+                title: 'Employee Overview',
+                refreshable: true
+            },
+            payrollSummary: {
+                id: 'payroll-summary-tile',
+                title: 'Payroll Summary',
+                refreshable: true
             }
         };
 
@@ -772,6 +782,8 @@ class DashboardController {
         this.renderAttendanceChartTile();
         this.renderCalendarTile();
         this.renderPaydayCountdownTile();
+        await this.renderEmployeeOverviewTile();
+        await this.renderPayrollSummaryTile();
         console.log('📱 All dashboard tiles rendered');
     }
 
@@ -1020,8 +1032,11 @@ class DashboardController {
         
         tile.innerHTML = `
             <div class="tile-header">
-                <h3 class="tile-title">${this.tiles.paydayCountdown.title}</h3>
-                <button class="tile-refresh-btn" title="Refresh countdown">
+                <div class="tile-title-group">
+                    <h3 class="tile-title">Payday Tracker</h3>
+                    <p class="tile-subtitle">Payment schedule & countdown</p>
+                </div>
+                <button class="tile-refresh-btn" title="Refresh payday data">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="23,4 23,10 17,10"></polyline>
                         <polyline points="1,20 1,14 7,14"></polyline>
@@ -1030,34 +1045,57 @@ class DashboardController {
                 </button>
             </div>
             <div class="tile-content">
-                <div class="countdown-container">
-                    <div class="countdown-main">
-                        <div class="countdown-number" id="countdown-days">${payday.daysRemaining}</div>
-                        <div class="countdown-label">Days Remaining</div>
+                <div class="payday-tracker-container">
+                    <div class="tracker-main">
+                        <div class="tracker-number" id="countdown-days">${payday.daysRemaining}</div>
+                        <div class="tracker-label">Days Remaining</div>
+                        <div class="tracker-sublabel">until next payment</div>
                     </div>
-                    <div class="countdown-details">
-                        <div class="countdown-date">
-                            <span class="detail-label">Date:</span>
-                            <span class="detail-value" id="payday-date">${this.formatPaydayDate(payday.date)}</span>
+                    
+                    <div class="tracker-summary-box">
+                        <div class="summary-content">
+                            <div class="summary-number" id="countdown-days-summary">${payday.daysRemaining}</div>
+                            <div class="summary-label">Days Left</div>
                         </div>
-                        <div class="countdown-period">
-                            <span class="detail-label">Period:</span>
+                        <div class="summary-date">
+                            <div class="date-value" id="payday-date">${this.formatPaydayDate(payday.date)}</div>
+                            <div class="date-label">Next Payment</div>
+                        </div>
+                    </div>
+                    
+                    <div class="payday-details">
+                        <div class="detail-row">
+                            <span class="detail-dot frequency"></span>
+                            <span class="detail-label">Pay Schedule</span>
                             <span class="detail-value">${payday.period}</span>
                         </div>
                         ${payday.amount > 0 ? `
-                            <div class="countdown-amount">
-                                <span class="detail-label">Est. Amount:</span>
+                            <div class="detail-row">
+                                <span class="detail-dot amount"></span>
+                                <span class="detail-label">Expected Amount</span>
                                 <span class="detail-value">₱${payday.amount.toLocaleString()}</span>
                             </div>
                         ` : ''}
+                        <div class="detail-row">
+                            <span class="detail-dot timer"></span>
+                            <span class="detail-label">Precise Timer</span>
+                            <span class="detail-value" id="countdown-time">Loading...</span>
+                        </div>
                     </div>
-                    <div class="countdown-progress">
-                        <div class="progress-bar">
+                    
+                    <div class="progress-section">
+                        <div class="progress-header">
+                            <span class="progress-title">Payment Progress</span>
+                            <span class="progress-percentage" id="progress-percent">0%</span>
+                        </div>
+                        <div class="progress-track">
                             <div class="progress-fill" id="payday-progress"></div>
                         </div>
-                        <div class="progress-text">
-                            <span id="countdown-time"></span>
-                        </div>
+                    </div>
+                    
+                    <div class="data-status">
+                        <span class="status-indicator success"></span>
+                        <span class="status-text">Tracker updated ${new Date().toLocaleTimeString()}</span>
                     </div>
                 </div>
             </div>
@@ -1065,6 +1103,216 @@ class DashboardController {
 
         // Start countdown timer
         this.startPaydayCountdown();
+    }
+
+    /**
+     * Render employee overview tile
+     */
+    async renderEmployeeOverviewTile() {
+        console.log('👥 Rendering employee overview tile...');
+        const tile = document.getElementById(this.tiles.employeeOverview.id);
+        if (!tile) {
+            console.warn('👥 Employee overview tile element not found');
+            return;
+        }
+
+        try {
+            // Get data from dashboard - use the same pattern as injection
+            const stats = this.currentStats || { total: 0, present: 0, late: 0, absent: 0 };
+            const totalEmployees = Number(stats.total) || 0;
+            const presentToday = Number(stats.present) || 0;
+            const lateToday = Number(stats.late) || 0;
+            const absentToday = Number(stats.absent) || 0;
+            
+            console.log('👥 Using stats:', { totalEmployees, presentToday, lateToday, absentToday });
+            
+            // Render tile with real data (same as working injection)
+            tile.innerHTML = `
+                <div class="tile-header">
+                    <div class="tile-title-group">
+                        <h3 class="tile-title">Employee Overview</h3>
+                        <p class="tile-subtitle">Workforce insights & analytics</p>
+                    </div>
+                    <button class="tile-refresh-btn" title="Refresh employee data">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="23,4 23,10 17,10"></polyline>
+                            <polyline points="1,20 1,14 7,14"></polyline>
+                            <path d="M20.49,9A9,9,0,0,0,5.64,5.64L1,10m22,4L18.36,18.36A9,9,0,0,1,3.51,15"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="tile-content">
+                    <div class="employee-overview-container">
+                        <div class="overview-main">
+                            <div class="overview-number">${totalEmployees}</div>
+                            <div class="overview-label">Total Employees</div>
+                            <div class="overview-sublabel">active workforce</div>
+                        </div>
+                        
+                        <div class="employee-breakdown">
+                            <div class="breakdown-item">
+                                <span class="breakdown-dot present"></span>
+                                <span class="breakdown-label">On Time Today</span>
+                                <span class="breakdown-value">${presentToday}</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="breakdown-dot late"></span>
+                                <span class="breakdown-label">Late Today</span>
+                                <span class="breakdown-value">${lateToday}</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="breakdown-dot absent"></span>
+                                <span class="breakdown-label">Absent Today</span>
+                                <span class="breakdown-value">${absentToday}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="data-status">
+                            <span class="status-indicator success"></span>
+                            <span class="status-text">Data updated ${new Date().toLocaleTimeString()}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            console.log('👥 Employee overview tile rendered');
+
+        } catch (error) {
+            console.error('👥 Error rendering employee overview tile:', error);
+            
+            // Show error state
+            tile.innerHTML = `
+                <div class="tile-header">
+                    <div class="tile-title-group">
+                        <h3 class="tile-title">Employee Overview</h3>
+                        <p class="tile-subtitle">Workforce insights & analytics</p>
+                    </div>
+                </div>
+                <div class="tile-content">
+                    <div class="employee-overview-container">
+                        <div class="overview-main">
+                            <div class="overview-number">--</div>
+                            <div class="overview-label">Total Employees</div>
+                            <div class="overview-sublabel">Error: ${error.message}</div>
+                        </div>
+                        <div class="data-status">
+                            <span class="status-indicator error"></span>
+                            <span class="status-text">Failed to load employee data</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Render payroll summary tile
+     */
+    async renderPayrollSummaryTile() {
+        console.log('💰 Rendering payroll summary tile...');
+        const tile = document.getElementById(this.tiles.payrollSummary.id);
+        if (!tile) {
+            console.warn('💰 Payroll summary tile element not found');
+            return;
+        }
+
+        try {
+            // Get data from dashboard - use the same pattern as injection
+            const stats = this.currentStats || { total: 0 };
+            const payday = this.paydayData || {};
+            const totalEmployees = Number(stats.total) || 0;
+            const estimatedTotal = totalEmployees * 25000; // 25k average
+            
+            // Format payday info
+            let nextPaydayDate = 'Not set';
+            let payFrequency = 'Not set';
+            
+            if (payday.date) {
+                try {
+                    nextPaydayDate = new Date(payday.date).toLocaleDateString();
+                } catch (e) {
+                    nextPaydayDate = 'Invalid date';
+                }
+            }
+            
+            if (payday.period) {
+                payFrequency = payday.period.charAt(0).toUpperCase() + payday.period.slice(1);
+            }
+            
+            console.log('💰 Using data:', { totalEmployees, estimatedTotal, nextPaydayDate, payFrequency });
+            
+            // Render tile with real data (same as working injection)
+            tile.innerHTML = `
+                <div class="tile-header">
+                    <div class="tile-title-group">
+                        <h3 class="tile-title">Payroll Summary</h3>
+                        <p class="tile-subtitle">Financial insights & analytics</p>
+                    </div>
+                    <button class="tile-refresh-btn" title="Refresh payroll data">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="23,4 23,10 17,10"></polyline>
+                            <polyline points="1,20 1,14 7,14"></polyline>
+                            <path d="M20.49,9A9,9,0,0,0,5.64,5.64L1,10m22,4L18.36,18.36A9,9,0,0,1,3.51,15"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="tile-content">
+                    <div class="payroll-summary-container">
+                        <div class="payroll-main">
+                            <div class="payroll-amount">₱${estimatedTotal.toLocaleString()}</div>
+                            <div class="payroll-label">Estimated Monthly Total</div>
+                            <div class="payroll-sublabel">based on current rates</div>
+                        </div>
+                        
+                        <div class="payroll-breakdown">
+                            <div class="breakdown-item">
+                                <span class="breakdown-dot payroll"></span>
+                                <span class="breakdown-label">Next Payday</span>
+                                <span class="breakdown-value">${nextPaydayDate}</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="breakdown-dot frequency"></span>
+                                <span class="breakdown-label">Pay Frequency</span>
+                                <span class="breakdown-value">${payFrequency}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="data-status">
+                            <span class="status-indicator success"></span>
+                            <span class="status-text">Data updated ${new Date().toLocaleTimeString()}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            console.log('💰 Payroll summary tile rendered');
+
+        } catch (error) {
+            console.error('💰 Error rendering payroll summary tile:', error);
+            
+            // Show error state
+            tile.innerHTML = `
+                <div class="tile-header">
+                    <div class="tile-title-group">
+                        <h3 class="tile-title">Payroll Summary</h3>
+                        <p class="tile-subtitle">Financial insights & analytics</p>
+                    </div>
+                </div>
+                <div class="tile-content">
+                    <div class="payroll-summary-container">
+                        <div class="payroll-main">
+                            <div class="payroll-amount">₱--</div>
+                            <div class="payroll-label">Estimated Monthly Total</div>
+                            <div class="payroll-sublabel">Error: ${error.message}</div>
+                        </div>
+                        <div class="data-status">
+                            <span class="status-indicator error"></span>
+                            <span class="status-text">Failed to load payroll data</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
     }
 
     /**

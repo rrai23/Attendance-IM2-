@@ -297,7 +297,7 @@
                 </div>
 
                 <!-- Main Dashboard Tiles -->
-                <div class="tiles-grid grid-2">
+                <div class="tiles-grid grid-3">
                     <!-- Attendance Count Tile -->
                     <div class="tile tile-accent dashboard-tile" id="attendance-count-tile">
                         <div class="tile-header">
@@ -563,6 +563,124 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Employee Overview Tile -->
+                    <div class="tile dashboard-tile" id="employee-overview-tile">
+                        <div class="tile-header">
+                            <div class="tile-title-group">
+                                <h3 class="tile-title">Employee Overview</h3>
+                                <p class="tile-subtitle">Department breakdown & insights</p>
+                            </div>
+                            <button class="tile-refresh-btn" title="Refresh employee data" aria-label="Refresh employee data">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23,4 23,10 17,10"></polyline>
+                                    <polyline points="1,20 1,14 7,14"></polyline>
+                                    <path d="M20.49,9A9,9,0,0,0,5.64,5.64L1,10m22,4L18.36,18.36A9,9,0,0,1,3.51,15"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="tile-content">
+                            <div class="employee-overview-container">
+                                <div class="overview-main">
+                                    <div class="overview-number" id="total-active-employees">--</div>
+                                    <div class="overview-label">Active Employees</div>
+                                    <div class="overview-sublabel">across all departments</div>
+                                </div>
+                                
+                                <div class="department-breakdown">
+                                    <h4 class="breakdown-title">By Department</h4>
+                                    <div class="department-list" id="department-breakdown-list">
+                                        <div class="department-item loading">
+                                            <span class="department-name">Loading...</span>
+                                            <span class="department-count">--</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="employee-insights">
+                                    <div class="insight-item">
+                                        <div class="insight-icon">👥</div>
+                                        <div class="insight-details">
+                                            <span class="insight-value" id="recent-hires">--</span>
+                                            <span class="insight-label">Recent Hires (30 days)</span>
+                                        </div>
+                                    </div>
+                                    <div class="insight-item">
+                                        <div class="insight-icon">📊</div>
+                                        <div class="insight-details">
+                                            <span class="insight-value" id="total-departments">--</span>
+                                            <span class="insight-label">Total Departments</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="data-status" id="employee-data-status">
+                                    <span class="status-indicator loading"></span>
+                                    <span class="status-text">Loading employee data...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payroll Summary Tile -->
+                    <div class="tile dashboard-tile" id="payroll-summary-tile">
+                        <div class="tile-header">
+                            <div class="tile-title-group">
+                                <h3 class="tile-title">Payroll Summary</h3>
+                                <p class="tile-subtitle">Financial insights & analytics</p>
+                            </div>
+                            <button class="tile-refresh-btn" title="Refresh payroll data" aria-label="Refresh payroll data">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23,4 23,10 17,10"></polyline>
+                                    <polyline points="1,20 1,14 7,14"></polyline>
+                                    <path d="M20.49,9A9,9,0,0,0,5.64,5.64L1,10m22,4L18.36,18.36A9,9,0,0,1,3.51,15"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="tile-content">
+                            <div class="payroll-summary-container">
+                                <div class="payroll-main">
+                                    <div class="payroll-amount" id="estimated-total-payroll">₱--</div>
+                                    <div class="payroll-label">Estimated Monthly Total</div>
+                                    <div class="payroll-sublabel">based on current rates</div>
+                                </div>
+                                
+                                <div class="payroll-breakdown">
+                                    <div class="breakdown-item">
+                                        <span class="breakdown-dot payroll"></span>
+                                        <span class="breakdown-label">Next Payday</span>
+                                        <span class="breakdown-value" id="next-payday-date">--</span>
+                                    </div>
+                                    <div class="breakdown-item">
+                                        <span class="breakdown-dot frequency"></span>
+                                        <span class="breakdown-label">Pay Frequency</span>
+                                        <span class="breakdown-value" id="pay-frequency">--</span>
+                                    </div>
+                                    <div class="breakdown-item">
+                                        <span class="breakdown-dot processed"></span>
+                                        <span class="breakdown-label">Last Processed</span>
+                                        <span class="breakdown-value" id="last-payroll-date">--</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="payroll-actions">
+                                    <button class="payroll-action-btn" id="view-payroll-reports">
+                                        <span class="action-icon">📊</span>
+                                        <span class="action-text">View Reports</span>
+                                    </button>
+                                    <button class="payroll-action-btn" id="generate-payroll">
+                                        <span class="action-icon">💰</span>
+                                        <span class="action-text">Generate Payroll</span>
+                                    </button>
+                                </div>
+                                
+                                <div class="data-status" id="payroll-data-status">
+                                    <span class="status-indicator loading"></span>
+                                    <span class="status-text">Loading payroll data...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Recent Activity Section -->
@@ -665,6 +783,294 @@
             margin-bottom: var(--spacing-xl);
             padding-bottom: var(--spacing-lg);
             border-bottom: 1px solid var(--border-color);
+        }
+
+        /* Grid layout adjustments for 3 tiles */
+        .tiles-grid.grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        @media (max-width: 1200px) {
+            .tiles-grid.grid-3 {
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .tiles-grid.grid-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Employee Overview Tile Styles */
+        .employee-overview-container {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-lg);
+            height: 100%;
+        }
+
+        .overview-main {
+            text-align: center;
+            padding: var(--spacing-md) 0;
+        }
+
+        .overview-number {
+            font-size: 3rem;
+            font-weight: var(--font-weight-bold);
+            color: var(--accent-primary);
+            line-height: 1;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .overview-label {
+            font-size: var(--font-size-lg);
+            color: var(--text-primary);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .overview-sublabel {
+            font-size: var(--font-size-sm);
+            color: var(--text-tertiary);
+            margin-top: var(--spacing-xs);
+        }
+
+        .department-breakdown {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+        }
+
+        .breakdown-title {
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            margin: 0 0 var(--spacing-md) 0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .department-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .department-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
+        }
+
+        .department-item:hover {
+            background: var(--accent-light);
+            border-color: var(--accent-primary);
+            transform: translateX(4px);
+        }
+
+        .department-item.loading {
+            opacity: 0.7;
+            animation: pulse 2s infinite;
+        }
+
+        .department-name {
+            font-size: var(--font-size-sm);
+            color: var(--text-primary);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .department-count {
+            font-size: var(--font-size-sm);
+            color: var(--accent-primary);
+            font-weight: var(--font-weight-bold);
+            background: var(--accent-light);
+            padding: 2px 8px;
+            border-radius: var(--radius-sm);
+        }
+
+        .employee-insights {
+            display: flex;
+            justify-content: space-between;
+            gap: var(--spacing-md);
+        }
+
+        .insight-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            flex: 1;
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            transition: all var(--transition-fast);
+        }
+
+        .insight-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .insight-icon {
+            font-size: 1.5rem;
+            opacity: 0.8;
+        }
+
+        .insight-details {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+
+        .insight-value {
+            font-size: var(--font-size-xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--accent-primary);
+            line-height: 1;
+        }
+
+        .insight-label {
+            font-size: var(--font-size-xs);
+            color: var(--text-secondary);
+            margin-top: var(--spacing-xs);
+            text-align: center;
+        }
+
+        /* Payroll Summary Tile Styles */
+        .payroll-summary-container {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-lg);
+            height: 100%;
+        }
+
+        .payroll-main {
+            text-align: center;
+            padding: var(--spacing-md) 0;
+            background: linear-gradient(135deg, var(--accent-light) 0%, var(--bg-secondary) 100%);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .payroll-amount {
+            font-size: 2.5rem;
+            font-weight: var(--font-weight-bold);
+            color: var(--accent-primary);
+            line-height: 1;
+            margin-bottom: var(--spacing-xs);
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+        }
+
+        .payroll-label {
+            font-size: var(--font-size-md);
+            color: var(--text-primary);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .payroll-sublabel {
+            font-size: var(--font-size-sm);
+            color: var(--text-tertiary);
+            margin-top: var(--spacing-xs);
+        }
+
+        .payroll-breakdown {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .payroll-breakdown .breakdown-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            transition: background-color var(--transition-fast);
+        }
+
+        .payroll-breakdown .breakdown-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .payroll-breakdown .breakdown-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .payroll-breakdown .breakdown-dot.payroll {
+            background-color: var(--accent-primary);
+        }
+
+        .payroll-breakdown .breakdown-dot.frequency {
+            background-color: var(--accent-analytics);
+        }
+
+        .payroll-breakdown .breakdown-dot.processed {
+            background-color: var(--accent-settings);
+        }
+
+        .payroll-breakdown .breakdown-label {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            flex: 1;
+        }
+
+        .payroll-breakdown .breakdown-value {
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            font-size: var(--font-size-sm);
+        }
+
+        .payroll-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .payroll-action-btn {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            flex: 1;
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            font-size: var(--font-size-sm);
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .payroll-action-btn:hover {
+            background: var(--accent-light);
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .payroll-action-btn .action-icon {
+            font-size: var(--font-size-sm);
+            opacity: 0.8;
+        }
+
+        .payroll-action-btn .action-text {
+            font-weight: var(--font-weight-medium);
         }
 
         .header-content {

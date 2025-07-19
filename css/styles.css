@@ -3142,3 +3142,201 @@ html.page-employees .modal-logout-loading .modal {
     width: 350px !important;
     max-width: 400px !important;
 }
+
+/* ===== PAYDAY TRACKER TILE STYLES (NEW MODERN DESIGN) ===== */
+
+.payday-tracker-container {
+    padding: 24px;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.payday-tracker-container .tracker-main {
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.payday-tracker-container .tracker-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    line-height: 1;
+    margin-bottom: 8px;
+}
+
+.payday-tracker-container .tracker-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 4px;
+}
+
+.payday-tracker-container .tracker-sublabel {
+    font-size: 0.85rem;
+    color: var(--text-medium);
+    font-weight: 400;
+}
+
+.payday-tracker-container .tracker-summary-box {
+    background: var(--background-light);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 8px 0;
+}
+
+.payday-tracker-container .summary-content {
+    text-align: left;
+}
+
+.payday-tracker-container .summary-number {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.payday-tracker-container .summary-label {
+    font-size: 0.85rem;
+    color: var(--text-medium);
+    font-weight: 500;
+}
+
+.payday-tracker-container .summary-date {
+    text-align: right;
+}
+
+.payday-tracker-container .date-value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 4px;
+}
+
+.payday-tracker-container .date-label {
+    font-size: 0.8rem;
+    color: var(--text-medium);
+    font-weight: 500;
+}
+
+.payday-tracker-container .payday-details {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 16px 0;
+}
+
+.payday-tracker-container .detail-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+}
+
+.payday-tracker-container .detail-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.payday-tracker-container .detail-dot.schedule {
+    background-color: var(--primary-color);
+}
+
+.payday-tracker-container .detail-dot.frequency {
+    background-color: var(--accent-color);
+}
+
+.payday-tracker-container .detail-dot.amount {
+    background-color: var(--success-color);
+}
+
+.payday-tracker-container .detail-dot.timer {
+    background-color: #ff6b6b;
+}
+
+.payday-tracker-container .detail-label {
+    flex: 1;
+    font-size: 0.9rem;
+    color: var(--text-medium);
+    font-weight: 500;
+}
+
+.payday-tracker-container .detail-value {
+    font-size: 0.9rem;
+    color: var(--text-dark);
+    font-weight: 600;
+}
+
+.payday-tracker-container .progress-section {
+    margin-top: auto;
+}
+
+.payday-tracker-container .progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.payday-tracker-container .progress-title {
+    font-size: 0.9rem;
+    color: var(--text-medium);
+    font-weight: 600;
+}
+
+.payday-tracker-container .progress-percentage {
+    font-size: 0.9rem;
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+.payday-tracker-container .progress-track {
+    width: 100%;
+    height: 10px;
+    background-color: var(--background-light);
+    border-radius: 5px;
+    overflow: hidden;
+    border: 1px solid var(--border-light);
+}
+
+.payday-tracker-container .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+    border-radius: 5px;
+    transition: width 0.4s ease;
+    width: 0%;
+}
+
+.payday-tracker-container .data-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-light);
+    margin-top: 12px;
+}
+
+.payday-tracker-container .status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.payday-tracker-container .status-indicator.success {
+    background-color: var(--success-color);
+}
+
+.payday-tracker-container .status-text {
+    font-size: 0.8rem;
+    color: var(--text-light);
+    font-weight: 400;
+}
