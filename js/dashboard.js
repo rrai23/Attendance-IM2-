@@ -1941,7 +1941,7 @@ class DashboardController {
                 if (presentToday > 0) {
                     activities.push({
                         icon: '✅',
-                        text: `${presentToday} employee${presentToday > 1 ? 's' : ''} present today`,
+                        text: `${presentToday} employee${presentToday > 1 ? 's' : ''} on time today`,
                         time: 'Today',
                         priority: 'normal'
                     });

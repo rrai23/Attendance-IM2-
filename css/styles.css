@@ -204,6 +204,7 @@ body {
   background-color: var(--bg-primary);
   transition: background-color var(--transition-normal), color var(--transition-normal);
   -webkit-font-smoothing: antialiased;
+  /* stylelint-disable-next-line property-no-unknown */
   -moz-osx-font-smoothing: grayscale;
 }
 
@@ -1586,8 +1587,11 @@ a:hover {
 }
 
 /* Specific webkit overrides for selects */
-select.form-select::-ms-expand {
-  display: none !important;
+/* Hide IE/Edge dropdown arrow */
+@supports (-ms-ime-align: auto) {
+  select.form-select::-ms-expand {
+    display: none !important;
+  }
 }
 
 select.form-select {
