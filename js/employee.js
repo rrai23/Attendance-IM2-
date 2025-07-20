@@ -1161,15 +1161,15 @@ class EmployeeController {
 
         container.innerHTML = `
             <div class="earnings-card">
-                <div class="earnings-total">$${totalEarnings.toFixed(2)}</div>
+                <div class="earnings-total">₱${totalEarnings.toFixed(2)}</div>
                 <div class="earnings-label">Monthly Earnings</div>
                 <div class="earnings-breakdown">
                     <div class="breakdown-item">
-                        <div class="breakdown-value">$${regularPay.toFixed(2)}</div>
+                        <div class="breakdown-value">₱${regularPay.toFixed(2)}</div>
                         <div class="breakdown-label">Regular Pay</div>
                     </div>
                     <div class="breakdown-item">
-                        <div class="breakdown-value">$${overtimePay.toFixed(2)}</div>
+                        <div class="breakdown-value">₱${overtimePay.toFixed(2)}</div>
                         <div class="breakdown-label">Overtime Pay</div>
                     </div>
                     <div class="breakdown-item">
@@ -1223,16 +1223,16 @@ class EmployeeController {
                 <div class="pay-row regular">
                     <div class="pay-description">
                         <div class="pay-type">Regular Hours</div>
-                        <div class="pay-details">${(stats.totalRegularHours || 0).toFixed(1)}h @ $${hourlyRate.toFixed(2)}/hr</div>
+                        <div class="pay-details">${(stats.totalRegularHours || 0).toFixed(1)}h @ ₱${hourlyRate.toFixed(2)}/hr</div>
                     </div>
-                    <div class="pay-amount">$${((stats.totalRegularHours || 0) * hourlyRate).toFixed(2)}</div>
+                    <div class="pay-amount">₱${((stats.totalRegularHours || 0) * hourlyRate).toFixed(2)}</div>
                 </div>
                 <div class="pay-row overtime">
                     <div class="pay-description">
                         <div class="pay-type">Overtime Hours</div>
-                        <div class="pay-details">${(stats.totalOvertimeHours || 0).toFixed(1)}h @ $${overtimeRate.toFixed(2)}/hr</div>
+                        <div class="pay-details">${(stats.totalOvertimeHours || 0).toFixed(1)}h @ ₱${overtimeRate.toFixed(2)}/hr</div>
                     </div>
-                    <div class="pay-amount">$${((stats.totalOvertimeHours || 0) * overtimeRate).toFixed(2)}</div>
+                    <div class="pay-amount">₱${((stats.totalOvertimeHours || 0) * overtimeRate).toFixed(2)}</div>
                 </div>
                 <div class="breakdown-item">
                     <div class="breakdown-value">${(stats.avgDailyHours || 0).toFixed(1)}h</div>
@@ -1300,7 +1300,7 @@ class EmployeeController {
                     <div class="stat-description">Days Worked</div>
                 </div>
                 <div class="summary-stat">
-                    <div class="stat-number">$${hourlyRate.toFixed(2)}</div>
+                    <div class="stat-number">₱${hourlyRate.toFixed(2)}</div>
                     <div class="stat-description">Hourly Rate</div>
                 </div>
                 <div class="summary-stat">
@@ -1308,7 +1308,7 @@ class EmployeeController {
                     <div class="stat-description">Attendance Rate</div>
                 </div>
                 <div class="summary-stat">
-                    <div class="stat-number">$${monthlyProjection.toFixed(0)}</div>
+                    <div class="stat-number">₱${monthlyProjection.toFixed(0)}</div>
                     <div class="stat-description">Monthly Projection</div>
                 </div>
             </div>
