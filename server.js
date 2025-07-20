@@ -5,7 +5,22 @@ const morgan = require('morgan');
 const compression = require('compression');
 // const rateLimit = require('express-rate-limit'); // Rate limiting disabled
 const path = require('path');
-require('dotenv').config();
+
+// Load environment variables FIRST - prioritize .env.production in production
+if (process.env.NODE_ENV === 'production') {
+    require('dotenv').config({ path: '.env.production' });
+    console.log('🔧 Loading .env.production file...');
+} else {
+    require('dotenv').config();
+    console.log('🔧 Loading default .env file...');
+}
+
+// Debug environment loading
+console.log('🔍 Server.js Environment Check:');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('DB_USER:', process.env.DB_USER || 'NOT SET');
+console.log('DB_HOST:', process.env.DB_HOST || 'NOT SET');
+console.log('DB_NAME:', process.env.DB_NAME || 'NOT SET');
 
 // Import database connection
 const db = require('./backend/database/connection');
@@ -24,7 +39,17 @@ const unifiedRoutes = require('./backend/routes/unified');
 const overtimeRoutes = require('./backend/routes/overtime');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+
+// Auto-configure port based on environment
+let PORT;
+if (process.env.NODE_ENV === 'production') {
+    PORT = 51250; // Production port for hosting server
+} else {
+    PORT = process.env.PORT || 3000; // Development port
+}
+
+console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`🌐 Using port: ${PORT}`);
 
 // Trust proxy - no longer needed for rate limiting but kept for other middleware
 app.set('trust proxy', 1);
@@ -61,14 +86,16 @@ const limiter = rateLimit({
 // app.use(limiter);
 // app.use('/api', customRateLimit);
 
-// CORS configuration - More permissive for development
+// CORS configuration - Production ready
 app.use(cors({
     origin: function (origin, callback) {
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
         
         const allowedOrigins = [
-            process.env.FRONTEND_URL || 'http://localhost:5500',
+            process.env.FRONTEND_URL || 'https://bricks.dcism.org',
+            'https://bricks.dcism.org',
+            'http://localhost:5500', // Keep for local development
             'http://localhost:3000',
             'http://127.0.0.1:5500',
             'http://127.0.0.1:3000'
@@ -78,7 +105,12 @@ app.use(cors({
             callback(null, true);
         } else {
             console.warn('CORS origin not allowed:', origin);
-            callback(null, true); // Allow for development - change in production
+            // In production, reject unauthorized origins
+            if (process.env.NODE_ENV === 'production') {
+                callback(new Error('Not allowed by CORS'));
+            } else {
+                callback(null, true); // Allow for development
+            }
         }
     },
     credentials: true,
@@ -235,6 +267,14 @@ process.on('SIGINT', async () => {
 // Start server
 const startServer = async () => {
     try {
+        // Debug environment variables before database connection
+        console.log('🔧 DEBUGGING DATABASE CONNECTION:');
+        console.log('NODE_ENV:', process.env.NODE_ENV);
+        console.log('DB_HOST:', process.env.DB_HOST);
+        console.log('DB_USER:', process.env.DB_USER);
+        console.log('DB_NAME:', process.env.DB_NAME);
+        console.log('DB_PASSWORD:', process.env.DB_PASSWORD ? '*'.repeat(process.env.DB_PASSWORD.length) : 'NOT SET');
+        
         // Test database connection
         await db.execute('SELECT 1');
         console.log('✅ Database connection established');
@@ -254,6 +294,10 @@ const startServer = async () => {
         
     } catch (error) {
         console.error('❌ Failed to start server:', error);
+        console.error('🔍 Database connection attempted with:');
+        console.error('Host:', process.env.DB_HOST || 'localhost');
+        console.error('User:', process.env.DB_USER || 'FALLBACK_TO_ROOT');
+        console.error('Database:', process.env.DB_NAME || 'FALLBACK_DATABASE');
         process.exit(1);
     }
 };

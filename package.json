@@ -5,10 +5,12 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "start:prod": "NODE_ENV=production node server.js",
     "dev": "nodemon server.js",
     "close": "node close-servers.js",
     "setup-db": "node setup-database.js",
     "setup-db-simple": "node setup-database-simple.js",
+    "setup-prod": "node backend/database/setup-production.js",
     "test-db": "node test-db-connection.js",
     "migrate": "node backend/database/migrate-updated.js",
     "update-schema": "node backend/database/update-schema.js",

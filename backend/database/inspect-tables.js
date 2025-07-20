@@ -8,8 +8,8 @@ const inspectTableColumns = async () => {
         const [tables] = await db.execute(`
             SELECT table_name 
             FROM information_schema.tables 
-            WHERE table_schema = 'bricks_attendance'
-        `);
+            WHERE table_schema = ?
+        `, [process.env.DB_NAME || 's24100604_bricksdb']);
         
         console.log('Tables found:', tables);
         
@@ -26,10 +26,10 @@ const inspectTableColumns = async () => {
                 const [columns] = await db.execute(`
                     SELECT column_name, data_type, is_nullable, column_default, column_key
                     FROM information_schema.columns 
-                    WHERE table_schema = 'bricks_attendance' 
+                    WHERE table_schema = ? 
                     AND table_name = ?
                     ORDER BY ordinal_position
-                `, [tableName]);
+                `, [process.env.DB_NAME || 's24100604_bricksdb', tableName]);
                 
                 if (columns && columns.length > 0) {
                     columns.forEach(col => {

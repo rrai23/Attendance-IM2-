@@ -6,10 +6,10 @@ const directCheck = async () => {
         
         // Direct connection
         const connection = await mysql.createConnection({
-            host: 'localhost',
-            user: 'root',
-            password: '',
-            database: 'bricks_attendance'
+            host: process.env.DB_HOST || 'localhost',
+            user: process.env.DB_USER || 's24100604_bricksdb',
+            password: process.env.DB_PASSWORD || 'bricksdatabase',
+            database: process.env.DB_NAME || 's24100604_bricksdb'
         });
         
         console.log('✅ Connected directly to database');

@@ -1,17 +1,57 @@
 const mysql = require('mysql2/promise');
-require('dotenv').config();
+
+// Load environment variables - prioritize .env.production in production
+if (process.env.NODE_ENV === 'production') {
+    require('dotenv').config({ path: '.env.production' });
+} else {
+    require('dotenv').config();
+}
+
+// Debug: Log what environment variables we have
+console.log('🔧 Connection.js Environment Check:');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('DB_USER:', process.env.DB_USER || 'NOT SET');
+console.log('DB_HOST:', process.env.DB_HOST || 'NOT SET');
+console.log('DB_NAME:', process.env.DB_NAME || 'NOT SET');
 
 // Database connection configuration (for individual connections)
-const connectionConfig = {
-    host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 3306,
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'bricks_attendance',
-    multipleStatements: true,
-    timezone: '+00:00', // Store everything in UTC
-    charset: 'utf8mb4'
-};
+let connectionConfig;
+
+if (process.env.NODE_ENV === 'production') {
+    // HARDCODED PRODUCTION VALUES - guaranteed to work
+    connectionConfig = {
+        host: 'localhost',
+        port: 3306,
+        user: 's24100604_bricksdb',
+        password: 'bricksdatabase',
+        database: 's24100604_bricksdb',
+        multipleStatements: true,
+        timezone: '+00:00',
+        charset: 'utf8mb4'
+    };
+    console.log('🔧 Using HARDCODED production database config');
+} else {
+    // Development configuration with environment variables
+    connectionConfig = {
+        host: process.env.DB_HOST || 'localhost',
+        port: process.env.DB_PORT || 3306,
+        user: process.env.DB_USER || 's24100604_bricksdb',
+        password: process.env.DB_PASSWORD || 'bricksdatabase',
+        database: process.env.DB_NAME || 's24100604_bricksdb',
+        multipleStatements: true,
+        timezone: '+00:00',
+        charset: 'utf8mb4'
+    };
+    console.log('🔧 Using environment-based database config');
+}
+
+// Log the final configuration (without password)
+console.log('📊 Final Database Config:');
+console.log('Host:', connectionConfig.host);
+console.log('Port:', connectionConfig.port);
+console.log('User:', connectionConfig.user);
+console.log('Database:', connectionConfig.database);
+console.log('Password:', connectionConfig.password ? '*'.repeat(connectionConfig.password.length) : 'NOT SET');
 
 // Pool-specific configuration (includes connection config + pool options)
 const poolConfig = {

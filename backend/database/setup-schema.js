@@ -12,9 +12,9 @@ require('dotenv').config();
 const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 3306,
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'bricks_attendance',
+    user: process.env.DB_USER || 's24100604_bricksdb',
+    password: process.env.DB_PASSWORD || 'bricksdatabase',
+    database: process.env.DB_NAME || 's24100604_bricksdb',
     multipleStatements: true
 };
 
