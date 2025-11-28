@@ -630,7 +630,7 @@ router.delete('/:employeeId', auth, requireAdmin, async (req, res) => {
 });
 
 // Get employee statistics
-router.get('/stats/overview', requireManagerOrAdmin, async (req, res) => {
+router.get('/stats/overview', auth, requireManagerOrAdmin, async (req, res) => {
     try {
         const stats = await Promise.all([
             // Total employees
@@ -642,14 +642,6 @@ router.get('/stats/overview', requireManagerOrAdmin, async (req, res) => {
                 FROM employees 
                 WHERE status = ? 
                 GROUP BY department
-            `, ['active']),
-            
-            // By employment type
-            db.execute(`
-                SELECT employment_type, COUNT(*) as count 
-                FROM employees 
-                WHERE status = ? 
-                GROUP BY employment_type
             `, ['active']),
             
             // Recent hires (last 30 days)
@@ -665,8 +657,7 @@ router.get('/stats/overview', requireManagerOrAdmin, async (req, res) => {
             data: {
                 total_employees: stats[0][0].total,
                 by_department: stats[1],
-                by_employment_type: stats[2],
-                recent_hires: stats[3][0].recent_hires
+                recent_hires: stats[2][0].recent_hires
             }
         });
 
